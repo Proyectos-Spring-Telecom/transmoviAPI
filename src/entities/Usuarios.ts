@@ -12,10 +12,10 @@ import { Clientes } from "./Clientes";
 @Index("Usuarios_UserName_unique", ["userName"], { unique: true })
 @Index("IdRol", ["idRol"], {})
 @Index("IdCliente", ["idCliente"], {})
-@Entity("Usuarios", { schema: "Transmovi" })
+@Entity("Usuarios", { schema: "TransmoviDev" })
 export class Usuarios {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
-  id: string;
+  id: number;
 
   @Column("varchar", { name: "UserName", unique: true, length: 100 })
   userName: string;
@@ -46,10 +46,10 @@ export class Usuarios {
   estatus: number;
 
   @Column("bigint", { name: "IdRol", nullable: true })
-  idRol: string | null;
+  idRol: number | null;
 
   @Column("bigint", { name: "IdCliente", nullable: true })
-  idCliente: string | null;
+  idCliente: number | null;
 
   @ManyToOne(() => Roles, (roles) => roles.usuarios, {
     onDelete: "SET NULL",
