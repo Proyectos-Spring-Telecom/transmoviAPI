@@ -43,7 +43,7 @@ import Joi from 'joi';
         password: config.get<string>('DB_PASSWORD'),
         database: config.get<string>('DB_DATABASE'),
         autoLoadEntities: false,
-        entities: [__dirname + '/entities/*.entity{.ts,.js}'],
+        entities: [__dirname + '/entities/*{.ts,.js}'],
         synchronize: false, 
       }),
     }),
@@ -73,6 +73,7 @@ import Joi from 'joi';
     TransaccionesModule,
 
     VehiculosModule,
+    
   ],  controllers: [AppController],
   providers: [AppService],
 })
