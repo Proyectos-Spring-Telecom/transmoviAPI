@@ -3,6 +3,19 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { UsuariosModule } from './usuarios/usuarios.module';
+import { AuthModule } from './auth/auth.module';
+import { BitacoraModule } from './bitacora/bitacora.module';
+import { ClientesModule } from './clientes/clientes.module';
+import { DispositivosModule } from './dispositivos/dispositivos.module';
+import { ModulosModule } from './modulos/modulos.module';
+import { MonederosModule } from './monederos/monederos.module';
+import { OperadoresModule } from './operadores/operadores.module';
+import { PasajerosModule } from './pasajeros/pasajeros.module';
+import { PermisosModule } from './permisos/permisos.module';
+import { RolesModule } from './roles/roles.module';
+import { TransaccionesModule } from './transacciones/transacciones.module';
+import { VehiculosModule } from './vehiculos/vehiculos.module';
 import Joi from 'joi';
 
 @Module({
@@ -32,6 +45,32 @@ import Joi from 'joi';
         synchronize: false, 
       }),
     }),
+
+    UsuariosModule,
+
+    AuthModule,
+
+    BitacoraModule,
+
+    ClientesModule,
+
+    DispositivosModule,
+
+    ModulosModule,
+
+    MonederosModule,
+
+    OperadoresModule,
+
+    PasajerosModule,
+
+    PermisosModule,
+
+    RolesModule,
+
+    TransaccionesModule,
+
+    VehiculosModule,
   ],  controllers: [AppController],
   providers: [AppService],
 })
