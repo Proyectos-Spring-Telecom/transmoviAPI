@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -11,17 +12,25 @@ async function bootstrap() {
     credentials: true,
   });
 
-  
-    // Validación automática de DTOs
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,       // elimina propiedades que no están en el DTO
-        forbidNonWhitelisted: true, // lanza error si llegan propiedades extra
-        transform: true,       // transforma payloads a instancias de clases
-      }),
-    );
+  const config = new DocumentBuilder()
+    .setTitle('Transmovi API')
+    .setDescription('Documentación de la API de Transmovi') 
+    .setVersion('1.0') 
+    .addBearerAuth() 
+    .build();
 
-    
-  await app.listen(process.env.PORT ?? 3000);
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api', app, document); 
+  
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,       
+      forbidNonWhitelisted: true, 
+      transform: true,      
+    }),
+  );
+
+
+  await app.listen(process.env.PORT ?? 3010);
 }
 bootstrap();

@@ -1,16 +1,10 @@
-import {
-  Column,
-  Entity,
-  JoinTable,
-  ManyToMany,
-  PrimaryGeneratedColumn,
-} from "typeorm";
+import { Column, Entity, OneToMany } from "typeorm";
 import { Permisos } from "./Permisos";
 
 @Entity("Modulos", { schema: "Transmovi" })
 export class Modulos {
-  @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
-  id: string;
+  @Column("bigint", { primary: true, name: "id" })
+  id: number;
 
   @Column("varchar", { name: "Nombre", length: 100 })
   nombre: string;
@@ -18,12 +12,6 @@ export class Modulos {
   @Column("varchar", { name: "Descripcion", nullable: true, length: 255 })
   descripcion: string | null;
 
-  @ManyToMany(() => Permisos, (permisos) => permisos.modulos)
-  @JoinTable({
-    name: "ModuloPermisos",
-    joinColumns: [{ name: "IdModulo", referencedColumnName: "id" }],
-    inverseJoinColumns: [{ name: "IdPermiso", referencedColumnName: "id" }],
-    schema: "Transmovi",
-  })
+  @OneToMany(() => Permisos, (permisos) => permisos.idModulo)
   permisos: Permisos[];
 }

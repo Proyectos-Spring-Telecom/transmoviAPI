@@ -1,7 +1,10 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Put } from '@nestjs/common';
 import { ModulosService } from './modulos.service';
 import { CreateModuloDto } from './dto/create-modulo.dto';
 import { UpdateModuloDto } from './dto/update-modulo.dto';
+import { ApiTags } from '@nestjs/swagger';
+
+@ApiTags('Modulos')
 
 @Controller('modulos')
 export class ModulosController {
@@ -22,13 +25,8 @@ export class ModulosController {
     return this.modulosService.findOne(+id);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateModuloDto: UpdateModuloDto) {
-    return this.modulosService.update(+id, updateModuloDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.modulosService.remove(+id);
+  @Put()
+  update( @Body() updateModuloDto: UpdateModuloDto) {
+    return this.modulosService.update(updateModuloDto);
   }
 }

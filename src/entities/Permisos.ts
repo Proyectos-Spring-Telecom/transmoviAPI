@@ -1,11 +1,20 @@
-import { Column, Entity, ManyToMany, PrimaryGeneratedColumn } from "typeorm";
+import {
+  Column,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToMany,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from "typeorm";
 import { Modulos } from "./Modulos";
 import { Roles } from "./Roles";
 
+@Index("fk_permisos_modulo", ["idModulo"], {})
 @Entity("Permisos", { schema: "Transmovi" })
 export class Permisos {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
-  id: string;
+  id: number;
 
   @Column("varchar", { name: "Nombre", length: 100 })
   nombre: string;
@@ -13,8 +22,14 @@ export class Permisos {
   @Column("varchar", { name: "Descripcion", nullable: true, length: 255 })
   descripcion: string | null;
 
-  @ManyToMany(() => Modulos, (modulos) => modulos.permisos)
-  modulos: Modulos[];
+
+
+  @ManyToOne(() => Modulos, (modulos) => modulos.permisos, {
+    onDelete: "CASCADE",
+    onUpdate: "CASCADE",
+  })
+  @JoinColumn([{ name: "idModulo", referencedColumnName: "id" }])
+  idModulo: Modulos;
 
   @ManyToMany(() => Roles, (roles) => roles.permisos)
   roles: Roles[];
