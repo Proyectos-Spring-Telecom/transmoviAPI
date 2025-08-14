@@ -12,14 +12,21 @@ export class PermisosController {
     return this.permisosService.create(createPermisoDto);
   }
 
-  @Get()
-  findAll() {
-    return this.permisosService.findAll();
+  @Get(':page/:limit')
+  findAll(@Param('page') page: number, @Param('limit') limit:number) {
+    return this.permisosService.findAll(page,limit);
   }
 
+    @Get('list')
+    async findAllList(): Promise<any[]> {
+        const permiso = await this.permisosService.findAllList();
+        return permiso;
+    }
+
+
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.permisosService.findOne(+id);
+  findOne(@Param('id') id: number) {
+    return this.permisosService.findOne(id);
   }
 
   @Patch(':id')
