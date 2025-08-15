@@ -11,6 +11,8 @@ export class Modulos {
 
   @Column("varchar", { name: "Descripcion", nullable: true, length: 255 })
   descripcion: string | null;
+    @Column("tinyint", { name: "Estatus", nullable: true })
+  estatus: number | null;
 
   @OneToMany(() => Permisos, (permisos) => permisos.idModulo)
   permisos: Permisos[];

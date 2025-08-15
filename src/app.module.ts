@@ -75,7 +75,8 @@ import Joi from 'joi';
 
     VehiculosModule,
     
-  ],  controllers: [AppController],
+  ], 
+ controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}

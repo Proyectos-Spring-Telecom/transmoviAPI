@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Usuarios } from 'src/entities/Usuarios';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
+import { UsuarioPermisos } from 'src/entities/UsuarioPermisos';
 
 @Module({
   imports:[
@@ -17,7 +18,7 @@ import { JwtModule } from '@nestjs/jwt';
         signOptions: {expiresIn: config.get<string>('JWT_EXPIRES_IN')}
       })
     }),
-    TypeOrmModule.forFeature([Usuarios]),],
+    TypeOrmModule.forFeature([Usuarios,UsuarioPermisos]),],
   controllers: [AuthController],
   providers: [AuthService],
 })

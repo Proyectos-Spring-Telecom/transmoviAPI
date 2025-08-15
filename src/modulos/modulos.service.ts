@@ -4,11 +4,12 @@ import { UpdateModuloDto } from './dto/update-modulo.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Modulos } from 'src/entities/Modulos';
 import { Repository } from 'typeorm';
+import { Permisos } from 'src/entities/Permisos';
 
 @Injectable()
 export class ModulosService {
 
-  constructor(@InjectRepository(Modulos) private readonly moduloRepository: Repository<Modulos>) { }
+  constructor(@InjectRepository(Permisos) private readonly permisosRepository: Repository<Permisos>,@InjectRepository(Modulos) private readonly moduloRepository: Repository<Modulos>) { }
 
   async create(createModuloDto: CreateModuloDto) {
     try {
@@ -22,7 +23,9 @@ export class ModulosService {
 
   async findAll() {
     try {
-      return await this.moduloRepository.find();
+      return await this.moduloRepository.find({
+        relations:['permisos']
+      });
     } catch (error) {
       throw new BadRequestException(error);
 
@@ -50,4 +53,34 @@ export class ModulosService {
       throw new BadRequestException(error);
     }
   }
+
+  async deleteModulo(id: number, req): Promise<any> {
+        const modulo = await this.moduloRepository.findOne({ where: { id: id } });
+
+        if (!modulo) throw new NotFoundException('Modulo no encontrado');
+        if (modulo.estatus === 1) {
+            modulo.estatus = 0;
+            await this.moduloRepository.update(id, modulo);
+
+            const permisos = await this.permisosRepository.find({ where: { idModulo: id } })
+            if (permisos.length > 0) {
+                for (const permiso of permisos) {
+                    permiso.estatus = 0;
+                    await this.permisosRepository.update(permiso.id, permiso)
+                }
+            }
+        } else {
+            modulo.estatus = 1;
+            await this.moduloRepository.update(id, modulo);
+            const permisos = await this.permisosRepository.find({ where: { idModulo: id } })
+            if (permisos.length > 0) {
+                for (const permiso of permisos) {
+                    permiso.estatus = 1;
+                    await this.permisosRepository.update(permiso.id, permiso)
+                }
+            }
+        }
+
+        return modulo;
+    }
 }

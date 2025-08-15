@@ -22,14 +22,15 @@ export class Permisos {
   @Column("varchar", { name: "Descripcion", nullable: true, length: 255 })
   descripcion: string | null;
 
-
+    @Column("tinyint", { name: "Estatus", nullable: true })
+  estatus: number | null;
 
   @ManyToOne(() => Modulos, (modulos) => modulos.permisos, {
     onDelete: "CASCADE",
     onUpdate: "CASCADE",
   })
   @JoinColumn([{ name: "idModulo", referencedColumnName: "id" }])
-  idModulo: Modulos;
+  idModulo: number;
 
   @ManyToMany(() => Roles, (roles) => roles.permisos)
   roles: Roles[];
