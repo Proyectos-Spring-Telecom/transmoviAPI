@@ -7,13 +7,15 @@ import {
   Patch, 
   Param, 
   Delete, 
-  Put 
+  Put, 
+  UseGuards
 } from '@nestjs/common';
 import { UsuariosService } from './usuarios.service';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
 import { UpdateUsuarioDto } from './dto/update-usuario.dto';
 import { UpdateUsuarioEstatusDto } from './dto/update-usuario-estatus.dto';
-
+import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
+@UseGuards(JwtAuthGuard)
 @Controller('usuarios')
 export class UsuariosController {
   constructor(private readonly usuariosService: UsuariosService) {}
@@ -30,7 +32,6 @@ export class UsuariosController {
 
   @Post()
   createUsuario(@Body() createUsuarioDto: CreateUsuarioDto){
-    console.log('Entro a crear un usuario controller');
     return this.usuariosService.createUsuario(createUsuarioDto);
   }
 

@@ -1,7 +1,7 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn } from "typeorm";
 
 @Index("FK_Usuarios", ["idUsuario"], {})
-@Entity("UsuarioPermisos", { schema: "TransmoviDev" })
+@Entity("UsuariosPermisos", { schema: "TransmoviDev" })
 export class UsuarioPermisos {
   @Column("bigint", { name: "IdUsuario" })
   idUsuario: number;

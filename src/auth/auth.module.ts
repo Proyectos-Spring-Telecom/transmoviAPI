@@ -6,6 +6,8 @@ import { Usuarios } from 'src/entities/Usuarios';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { UsuarioPermisos } from 'src/entities/UsuarioPermisos';
+import { JwtStrategy } from './jwt.strategy';
+
 
 @Module({
   imports:[
@@ -20,6 +22,6 @@ import { UsuarioPermisos } from 'src/entities/UsuarioPermisos';
     }),
     TypeOrmModule.forFeature([Usuarios,UsuarioPermisos]),],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [AuthService,JwtStrategy],
 })
 export class AuthModule {}

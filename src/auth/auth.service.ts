@@ -23,15 +23,16 @@ export class AuthService {
       const user = await this.usuariosRepository.findOne({
         where: { userName: loginAuthDto.email },
       });
-
+      console.log({data: user})
       if (
         !user ||
         !(await bcrypt.compare(loginAuthDto.password, user.password))
       ) {
+        console.log({user: user, message: 'Entro a verificar los valores y no son iguales'})
         throw new UnauthorizedException('Credenciales invalidas');
       }
 
-         const permisos = await this.permisosRepository.find({
+      const permisos = await this.permisosRepository.find({
         select: ['idPermiso'],
         where: { idUsuario: user.id },
       });

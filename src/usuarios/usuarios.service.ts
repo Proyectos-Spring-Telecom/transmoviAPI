@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 //Servicio usuario
 import {
   BadRequestException,
@@ -11,9 +10,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Usuarios } from 'src/entities/Usuarios';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
-import * as bcrypt from 'bcrypt';
 import { UpdateUsuarioDto } from './dto/update-usuario.dto';
 import { UpdateUsuarioEstatusDto } from './dto/update-usuario-estatus.dto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsuariosService {
@@ -35,7 +34,7 @@ export class UsuariosService {
         throw error;
       }
       console.log(error);
-      
+
       throw new BadRequestException({ message: 'Error al obtener Usuarios' });
     }
   }
@@ -63,7 +62,6 @@ export class UsuariosService {
   //Creacion de un usuario
   async createUsuario(createUsuarioDto: CreateUsuarioDto) {
     try {
-      console.log('Entramos a crear un usuario service')
       const {
         userName,
         password,
@@ -76,7 +74,6 @@ export class UsuariosService {
         idRol,
         idCliente,
       } = createUsuarioDto;
-      console.log('antes de buscar');
       const existingUser = await this.usuarioService.findOne({
         where: { userName },
       });
@@ -84,13 +81,9 @@ export class UsuariosService {
         throw new BadRequestException('El usuario ya existe');
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       const hashedPassword = await bcrypt.hash(password, 10);
-      const user1 = createUsuarioDto;
-      console.log(user1)
       const newUser = this.usuarioService.create({
         userName,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         password: hashedPassword,
         emailConfirmed,
         telefono,
@@ -104,7 +97,11 @@ export class UsuariosService {
 
       await this.usuarioService.save(newUser);
       //Falta el apartado de la bitacora
-      return { message: 'Usuario creado exitosamente', usuario: newUser };
+      const { password: _, ...usuarioSinPassword } = newUser;
+      return {
+        message: 'Usuario creado exitosamente',
+        User: usuarioSinPassword,
+      };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -178,8 +175,8 @@ export class UsuariosService {
       if (!usuario) {
         throw new NotFoundException(`Usuario con ${id} no encontrado`);
       }
-
-      return await this.usuarioService.remove(usuario);
+      await this.usuarioService.remove(usuario);
+      return `Usuario con ${id} eliminado exitosamente`;
     } catch (error) {
       if (error instanceof HttpException) {
         throw new InternalServerErrorException('Error al eliminar el usuario');
