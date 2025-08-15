@@ -48,7 +48,7 @@ export class UsuariosController {
     return this.usuariosService.deleteUsuario(Number(id));
   }
 
-  @Patch('/:id')
+  @Patch('/:id/estatus')
   changeUsuarioEstatus(
     @Param('id') id: string,
     @Body() updateUsuarioEstatusDto: UpdateUsuarioEstatusDto

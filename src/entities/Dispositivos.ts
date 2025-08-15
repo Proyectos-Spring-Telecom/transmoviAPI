@@ -8,7 +8,7 @@ import {
 import { Vehiculos } from "./Vehiculos";
 
 @Index("NumeroSerie", ["numeroSerie"], { unique: true })
-@Entity("Dispositivos", { schema: "Transmovi" })
+@Entity("Dispositivos", { schema: "TransmoviDev" })
 export class Dispositivos {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: string;

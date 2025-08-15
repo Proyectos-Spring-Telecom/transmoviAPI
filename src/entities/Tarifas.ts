@@ -9,7 +9,7 @@ import {
 import { Rutas } from "./Rutas";
 
 @Index("IdRuta", ["idRuta"], {})
-@Entity("Tarifas", { schema: "Transmovi" })
+@Entity("Tarifas", { schema: "TransmoviDev" })
 export class Tarifas {
   @PrimaryGeneratedColumn({ type: "int", name: "Id" })
   id: number;

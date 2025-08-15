@@ -1,7 +1,7 @@
 import { Column, Entity, OneToMany } from "typeorm";
 import { Permisos } from "./Permisos";
 
-@Entity("Modulos", { schema: "Transmovi" })
+@Entity("Modulos", { schema: "TransmoviDev" })
 export class Modulos {
   @Column("bigint", { primary: true, name: "id" })
   id: number;

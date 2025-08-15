@@ -8,7 +8,7 @@ import {
 import { ConteoPasajeros } from "./ConteoPasajeros";
 
 @Index("Clave", ["clave"], { unique: true })
-@Entity("BlueVoxs", { schema: "Transmovi" })
+@Entity("BlueVoxs", { schema: "TransmoviDev" })
 export class BlueVoxs {
   @PrimaryGeneratedColumn({ type: "int", name: "Id" })
   id: number;

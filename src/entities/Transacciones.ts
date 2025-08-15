@@ -9,7 +9,7 @@ import {
 import { Monederos } from "./Monederos";
 
 @Index("IdMonedero", ["idMonedero"], {})
-@Entity("Transacciones", { schema: "Transmovi" })
+@Entity("Transacciones", { schema: "TransmoviDev" })
 export class Transacciones {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: string;

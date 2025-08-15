@@ -1,6 +1,6 @@
 import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
 
-@Entity("Bitacora", { schema: "Transmovi" })
+@Entity("Bitacora", { schema: "TransmoviDev" })
 export class Bitacora {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: string;

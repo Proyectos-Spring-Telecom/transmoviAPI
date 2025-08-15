@@ -11,7 +11,7 @@ import { Rutas } from "./Rutas";
 
 @Index("ClaveBlueVox", ["claveBlueVox"], {})
 @Index("IdRuta", ["idRuta"], {})
-@Entity("ConteoPasajeros", { schema: "Transmovi" })
+@Entity("ConteoPasajeros", { schema: "TransmoviDev" })
 export class ConteoPasajeros {
   @PrimaryGeneratedColumn({ type: "int", name: "Id" })
   id: number;

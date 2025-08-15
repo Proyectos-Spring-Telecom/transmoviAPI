@@ -9,7 +9,7 @@ import {
 import { Permisos } from "./Permisos";
 import { Usuarios } from "./Usuarios";
 
-@Entity("Roles", { schema: "Transmovi" })
+@Entity("Roles", { schema: "TransmoviDev" })
 export class Roles {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: string;

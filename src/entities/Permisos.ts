@@ -11,7 +11,7 @@ import { Modulos } from "./Modulos";
 import { Roles } from "./Roles";
 
 @Index("fk_permisos_modulo", ["idModulo"], {})
-@Entity("Permisos", { schema: "Transmovi" })
+@Entity("Permisos", { schema: "TransmoviDev" })
 export class Permisos {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;

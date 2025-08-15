@@ -13,7 +13,7 @@ import { Dispositivos } from "./Dispositivos";
 @Index("NumeroEconomico", ["numeroEconomico"], { unique: true })
 @Index("IdOperador", ["idOperador"], {})
 @Index("IdDispositivo", ["idDispositivo"], {})
-@Entity("Vehiculos", { schema: "Transmovi" })
+@Entity("Vehiculos", { schema: "TransmoviDev" })
 export class Vehiculos {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: string;
