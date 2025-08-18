@@ -4,7 +4,7 @@ import { Usuarios } from "./Usuarios";
 @Entity("Clientes", { schema: "TransmoviDev" })
 export class Clientes {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
-  id: string;
+  id: number;
 
   @Column("varchar", { name: "IdPadre", length: 50 })
   idPadre: string;

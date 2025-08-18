@@ -11,7 +11,7 @@ import { Transacciones } from "./Transacciones";
 @Entity("Monederos", { schema: "TransmoviDev" })
 export class Monederos {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
-  id: string;
+  id: number;
 
   @Column("varchar", { name: "NumeroSerie", unique: true, length: 100 })
   numeroSerie: string;
@@ -25,7 +25,7 @@ export class Monederos {
     scale: 2,
     default: () => "'0.00'",
   })
-  saldo: string;
+  saldo: number;
 
   @Column("tinyint", { name: "Estatus", default: () => "'1'" })
   estatus: number;

@@ -11,7 +11,7 @@ import { Vehiculos } from "./Vehiculos";
 @Entity("Dispositivos", { schema: "TransmoviDev" })
 export class Dispositivos {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
-  id: string;
+  id: number;
 
   @Column("varchar", { name: "NumeroSerie", unique: true, length: 255 })
   numeroSerie: string;
