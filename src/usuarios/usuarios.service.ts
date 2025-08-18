@@ -28,28 +28,29 @@ export class UsuariosService {
         throw new NotFoundException('Usuarios no encontrados');
       }
       //Falta el apartado de la bitacora
-      return Usuarios;
+      const usuariosSinPassword = Usuarios.map(({ password, ...rest }) => rest);
+      return usuariosSinPassword;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
       }
-      console.log(error);
 
       throw new BadRequestException({ message: 'Error al obtener Usuarios' });
     }
   }
   //Obtener el usuario por ID
-  async getUsuarioByID(id: string) {
+  async getUsuarioByID(id: number) {
     try {
       //Cambiamos el id a number
       const user = await this.usuarioService.findOne({
-        where: { id: Number(id) },
+        where: { id },
       });
       if (!user) {
         throw new NotFoundException(`Usuario con ID:${id} no encontrado`);
       }
       //Falta el apartado de la bitacora
-      return user;
+      const { password: _, ...usuarioSinPassword } = user;
+      return usuarioSinPassword;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -74,10 +75,10 @@ export class UsuariosService {
         idRol,
         idCliente,
       } = createUsuarioDto;
-      const existingUser = await this.usuarioService.findOne({
+      const existUsuario = await this.usuarioService.findOne({
         where: { userName },
       });
-      if (existingUser) {
+      if (existUsuario) {
         throw new BadRequestException('El usuario ya existe');
       }
 
@@ -127,8 +128,12 @@ export class UsuariosService {
       }
 
       await this.usuarioService.update(id, updateUsuarioDto);
-
-      return await this.usuarioService.findOne({ where: { id } });
+      const newUser = await this.usuarioService.findOne({ where: { id } });
+      if (!newUser) {
+        throw new NotFoundException(`Usuario con ID:${id} no encontrado`);
+      }
+      const { password: _, ...usuarioSinPassword } = newUser;
+      return usuarioSinPassword;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -140,7 +145,7 @@ export class UsuariosService {
   }
 
   //Actualizar Estatus
-  async changeUsuarioEstatus(
+  async updateUsuarioEstatus(
     id: number,
     updateUsuarioEstatusDto: UpdateUsuarioEstatusDto,
   ) {
@@ -176,11 +181,13 @@ export class UsuariosService {
         throw new NotFoundException(`Usuario con ${id} no encontrado`);
       }
       await this.usuarioService.remove(usuario);
+      //Falta el apartado de la bitacora
       return `Usuario con ${id} eliminado exitosamente`;
     } catch (error) {
       if (error instanceof HttpException) {
-        throw new InternalServerErrorException('Error al eliminar el usuario');
+        throw error;
       }
+      throw new InternalServerErrorException('Error al eliminar el usuario');
     }
   }
 }

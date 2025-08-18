@@ -7,7 +7,6 @@ import { ConfigService } from '@nestjs/config';
 export class JwtStrategy extends PassportStrategy(Strategy,'jwt') {
   constructor(configService: ConfigService) {
     super({
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       secretOrKey: configService.get<string>('JWT_SECRET'),
     });

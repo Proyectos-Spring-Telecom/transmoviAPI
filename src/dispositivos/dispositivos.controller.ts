@@ -1,34 +1,57 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Put,
+} from '@nestjs/common';
 import { DispositivosService } from './dispositivos.service';
 import { CreateDispositivoDto } from './dto/create-dispositivo.dto';
 import { UpdateDispositivoDto } from './dto/update-dispositivo.dto';
-
+import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
+import { UpdateDispositivoEstatusDto } from './dto/update-dispositivos-estatus.dto';
+@UseGuards(JwtAuthGuard)
 @Controller('dispositivos')
 export class DispositivosController {
   constructor(private readonly dispositivosService: DispositivosService) {}
 
   @Post()
-  create(@Body() createDispositivoDto: CreateDispositivoDto) {
-    return this.dispositivosService.create(createDispositivoDto);
+  createDispositivo(@Body() createDispositivoDto: CreateDispositivoDto) {
+    return this.dispositivosService.createDispositivo(createDispositivoDto);
   }
 
   @Get()
-  findAll() {
-    return this.dispositivosService.findAll();
+  findAllDispositivos() {
+    return this.dispositivosService.findAllDispositivos();
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.dispositivosService.findOne(+id);
+  findOneDispositivo(@Param('id') id: string) {
+    return this.dispositivosService.findOneDispositivo(+id);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateDispositivoDto: UpdateDispositivoDto) {
-    return this.dispositivosService.update(+id, updateDispositivoDto);
+  @Patch(':id/estatus')
+  updateDispositivoEstatus(
+    @Param('id') id: string,
+    @Body() updateDispositivoEstatusDto: UpdateDispositivoEstatusDto,
+  ) {
+    return this.dispositivosService.updateDispositivoEstatus(+id, updateDispositivoEstatusDto);
+  }
+
+  @Put(':id')
+  updateDispositivo(
+    @Param('id') id: string,
+    @Body() updateDispositivoDto: UpdateDispositivoDto,
+  ) {
+    return this.dispositivosService.updateDispositivo(+id,updateDispositivoDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.dispositivosService.remove(+id);
+  removeDispositivo(@Param('id') id: string) {
+    return this.dispositivosService.removeDispositivo(+id);
   }
 }

@@ -27,7 +27,7 @@ export class UsuariosController {
 
   @Get('/:id')
   findOne(@Param('id') id: string){
-    return this.usuariosService.getUsuarioByID(id);
+    return this.usuariosService.getUsuarioByID(+id);
   }
 
   @Post()
@@ -41,12 +41,12 @@ export class UsuariosController {
     id: string,
     @Body() updateUsuarioDto: UpdateUsuarioDto
   ) {
-    return this.usuariosService.updateUsuario(Number(id), updateUsuarioDto);
+    return this.usuariosService.updateUsuario(+id, updateUsuarioDto);
   }
 
   @Delete('/:id')
   deleteUsuario(@Param('id') id: string) {
-    return this.usuariosService.deleteUsuario(Number(id));
+    return this.usuariosService.deleteUsuario(+id);
   }
 
   @Patch('/:id/estatus')
@@ -54,8 +54,8 @@ export class UsuariosController {
     @Param('id') id: string,
     @Body() updateUsuarioEstatusDto: UpdateUsuarioEstatusDto
   ) {
-    return this.usuariosService.changeUsuarioEstatus(
-      Number(id),
+    return this.usuariosService.updateUsuarioEstatus(
+      +id,
       updateUsuarioEstatusDto
     );
   }
