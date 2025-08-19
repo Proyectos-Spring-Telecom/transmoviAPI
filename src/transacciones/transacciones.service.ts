@@ -1,26 +1,44 @@
 import { Injectable } from '@nestjs/common';
 import { CreateTransaccioneDto } from './dto/create-transaccione.dto';
 import { UpdateTransaccioneDto } from './dto/update-transaccione.dto';
+import { UpdateTransaccionEstatusDto } from './dto/update-transaccione-status.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Transacciones } from 'src/entities/Transacciones';
 
 @Injectable()
 export class TransaccionesService {
-  create(createTransaccioneDto: CreateTransaccioneDto) {
+  constructor(
+    @InjectRepository(Transacciones)
+    private readonly transaccioneRepository: Repository<Transacciones>,
+  ) {}
+  async createTransaccion(createTransaccioneDto: CreateTransaccioneDto) {
     return 'This action adds a new transaccione';
   }
 
-  findAll() {
+  async findAllTransacciones() {
     return `This action returns all transacciones`;
   }
 
-  findOne(id: number) {
+  async findOneTransaccion(id: number) {
     return `This action returns a #${id} transaccione`;
   }
 
-  update(id: number, updateTransaccioneDto: UpdateTransaccioneDto) {
+  async updateTransaccionEstatus(
+    id: number,
+    updateTransaccionEstatusDto: UpdateTransaccionEstatusDto,
+  ) {
     return `This action updates a #${id} transaccione`;
   }
 
-  remove(id: number) {
+  async updateTransaccions(
+    id: number,
+    updateTransaccioneDto: UpdateTransaccioneDto,
+  ) {
+    return `This action updates a #${id} transaccione`;
+  }
+  //Eliminar 
+  async removeTransaccion(id: number) {
     return `This action removes a #${id} transaccione`;
   }
 }

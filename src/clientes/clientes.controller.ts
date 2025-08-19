@@ -8,6 +8,7 @@ import {
   Delete,
   Put,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 import { ClientesService } from './clientes.service';
 import { CreateClienteDto } from './dto/create-cliente.dto';
@@ -20,19 +21,23 @@ export class ClientesController {
   constructor(private readonly clientesService: ClientesService) {}
   //Crear cliente
   @Post()
-  createCliente(@Body() createClienteDto: CreateClienteDto) {
-    console.log('Entro a crear cliente controller');
-    return this.clientesService.createCliente(createClienteDto);
+  createCliente(@Body() createClienteDto: CreateClienteDto,
+  @Request()req
+) {
+    const idUser ="1"
+    return this.clientesService.createCliente(createClienteDto,idUser);
   }
   //Obtener todos los clientes
   @Get('')
   getClientes() {
-    return this.clientesService.getClientes();
+    const idUser ="1"
+    return this.clientesService.getClientes(idUser);
   }
   //Obtener solo un cliente
   @Get(':id')
   getOneCliente(@Param('id') id: string) {
-    return this.clientesService.getOneCliente(+id);
+    const idUser ="1"
+    return this.clientesService.getOneCliente(+id,idUser);
   }
   //Actualizar un cliente
   @Put(':id')
@@ -40,7 +45,8 @@ export class ClientesController {
     @Param('id') id: string,
     @Body() updateClienteDto: UpdateClienteDto,
   ) {
-    return this.clientesService.updateCliente(+id, updateClienteDto);
+    const idUser ="1"
+    return this.clientesService.updateCliente(+id, idUser,updateClienteDto);
   }
   //Actualizar el estatus del cliente
   @Patch(':id/estatus')
@@ -48,14 +54,17 @@ export class ClientesController {
     @Param('id') id: string,
     @Body() updateClienteEstatusDto: UpdateClienteEstatusDto,
   ) {
+    const idUser ="1"
     return this.clientesService.updateClienteStatus(
       +id,
+      idUser,//falta
       updateClienteEstatusDto,
     );
   }
   //Eliminar Cliente
   @Delete(':id')
   removeClientes(@Param('id') id: string) {
-    return this.clientesService.removeCliente(+id);
+    const idUser ="1" //falta
+    return this.clientesService.removeCliente(+id,idUser);
   }
 }

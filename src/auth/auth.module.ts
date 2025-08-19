@@ -7,6 +7,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { UsuarioPermisos } from 'src/entities/UsuarioPermisos';
 import { JwtStrategy } from './jwt.strategy';
+import { UsuariosModule } from 'src/usuarios/usuarios.module';
 
 
 @Module({

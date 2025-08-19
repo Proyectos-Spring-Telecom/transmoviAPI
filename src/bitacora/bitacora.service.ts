@@ -1,26 +1,59 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { CreateBitacoraDto } from './dto/create-bitacora.dto';
-import { UpdateBitacoraDto } from './dto/update-bitacora.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Bitacora } from 'src/entities/Bitacora';
+import { Repository } from 'typeorm';
+import moment from 'moment-timezone';
 
 @Injectable()
-export class BitacoraService {
-  create(createBitacoraDto: CreateBitacoraDto) {
+export class BitacoraLoggerService {
+  constructor(
+    @InjectRepository(Bitacora)
+    private readonly bitacoraRepository: Repository<Bitacora>,
+  ) {}
+  createBitacora(createBitacoraDto: CreateBitacoraDto) {
     return 'This action adds a new bitacora';
   }
 
-  findAll() {
-    return `This action returns all bitacora`;
+  async findAllBitacora() {
+    try {
+      const bitacora = await this.bitacoraRepository.find();
+      if (bitacora.length === 0) {
+        throw new BadRequestException('Bitacoras no encontradas');
+      }
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Error al obtener las bitacoras');
+    }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} bitacora`;
+  async logToBitacora(
+    Modulo: string,
+    Descripcion: string,
+    Accion: string,
+    Query: string,
+    IdUsuario: number,
+  ) {
+    const FechaActual = moment().tz('America/Mexico_City').toDate();// fecha en tu zona horaria
+
+    const registro = this.bitacoraRepository.create({
+      modulo: Modulo,
+      descripcion: Descripcion,
+      accion: Accion,
+      query: Query,
+      fecha: FechaActual,
+      idUsuario: IdUsuario,
+    });
+    console.log(FechaActual)
+    await this.bitacoraRepository.save(registro);
+    console.log('Registro insertado en Bitacora:', registro);
   }
 
-  update(id: number, updateBitacoraDto: UpdateBitacoraDto) {
-    return `This action updates a #${id} bitacora`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} bitacora`;
-  }
 }

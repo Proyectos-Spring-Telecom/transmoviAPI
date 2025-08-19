@@ -15,13 +15,13 @@ export class Transacciones {
   id: string;
 
   @Column("bigint", { name: "IdMonedero" })
-  idMonedero: string;
+  idMonedero: number;
 
   @Column("varchar", { name: "TipoTransaccion", length: 10 })
   tipoTransaccion: string;
 
   @Column("decimal", { name: "Monto", precision: 10, scale: 2 })
-  monto: string;
+  monto: number;
 
   @Column("decimal", {
     name: "Latitud",
