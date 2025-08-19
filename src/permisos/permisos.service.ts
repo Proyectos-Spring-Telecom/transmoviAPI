@@ -41,7 +41,7 @@ export class PermisosService {
     if (!permiso) throw new NotFoundException('Permiso no encontrado');
     return permiso;
   }
-   async createPermiso(createPermiso:Permisos, idUsuario){
+   async createPermiso(createPermiso:CreatePermisoDto, idUsuario){
     try {
       const create = this.permisoRepository.create(createPermiso);
       const savedPermiso = await this.permisoRepository.save(create);

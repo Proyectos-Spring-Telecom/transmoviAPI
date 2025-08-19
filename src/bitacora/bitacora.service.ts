@@ -41,6 +41,7 @@ export class BitacoraLoggerService {
     Query: string,
     IdUsuario: number,
   ) {
+
     const FechaActual = moment()
     .tz('America/Mexico_City')
     .format('YYYY-MM-DD HH:mm:ss');
