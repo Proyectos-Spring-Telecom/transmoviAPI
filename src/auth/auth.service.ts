@@ -25,12 +25,12 @@ export class AuthService {
   async signIn(loginAuthDto: LoginAuthDto) {
     try {
       const user = await this.usuariosRepository.findOne({
-        where: { userName: loginAuthDto.email },
+        where: { userName: loginAuthDto.UserName },
       });
       console.log({ data: user });
       if (
         !user ||
-        !(await bcrypt.compare(loginAuthDto.password, user.password))
+        !(await bcrypt.compare(loginAuthDto.Password, user.password))
       ) {
         console.log({
           user: user,
