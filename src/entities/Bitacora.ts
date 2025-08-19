@@ -3,7 +3,7 @@ import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
 @Entity("Bitacora", { schema: "TransmoviDev" })
 export class Bitacora {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
-  id: string;
+  id: number;
 
   @Column("varchar", { name: "Modulo", nullable: true, length: 100 })
   modulo: string | null;
@@ -21,5 +21,5 @@ export class Bitacora {
   query: string | null;
 
   @Column("bigint", { name: "IdUsuario" })
-  idUsuario: string;
+  idUsuario: number;
 }

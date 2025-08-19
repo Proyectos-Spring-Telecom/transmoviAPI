@@ -1,34 +1,61 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Put,
+} from '@nestjs/common';
 import { OperadoresService } from './operadores.service';
 import { CreateOperadoreDto } from './dto/create-operadore.dto';
 import { UpdateOperadoreDto } from './dto/update-operadore.dto';
+import { UpdateOperadorStatusDto } from './dto/update-operadores.dto';
+import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 
+@UseGuards(JwtAuthGuard)
 @Controller('operadores')
 export class OperadoresController {
   constructor(private readonly operadoresService: OperadoresService) {}
 
   @Post()
-  create(@Body() createOperadoreDto: CreateOperadoreDto) {
-    return this.operadoresService.create(createOperadoreDto);
+  createOperador(@Body() createOperadoreDto: CreateOperadoreDto) {
+    return this.operadoresService.createOperador(createOperadoreDto);
   }
 
   @Get()
-  findAll() {
-    return this.operadoresService.findAll();
+  findAllOperador() {
+    return this.operadoresService.findAllOperadores();
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.operadoresService.findOne(+id);
+  findOneOperador(@Param('id') id: string) {
+    return this.operadoresService.findOneOperador(+id);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateOperadoreDto: UpdateOperadoreDto) {
-    return this.operadoresService.update(+id, updateOperadoreDto);
+  @Patch(':id/estatus')
+  updateOperadorEstatus(
+    @Param('id') id: string,
+    @Body() updateOperadorStatusDto: UpdateOperadorStatusDto,
+  ) {
+    return this.operadoresService.updateOperadorEstatus(
+      +id,
+      updateOperadorStatusDto,
+    );
+  }
+
+  @Put(':id')
+  updateOperador(
+    @Param('id') id: string,
+    @Body() updateOperadoreDto: UpdateOperadoreDto,
+  ) {
+    return this.operadoresService.updateOperador(+id, updateOperadoreDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.operadoresService.remove(+id);
+  removeOperador(@Param('id') id: string) {
+    return this.operadoresService.removeOperador(+id);
   }
 }
