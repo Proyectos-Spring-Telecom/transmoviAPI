@@ -60,7 +60,7 @@ export class DispositivosController {
     return this.dispositivosService.removeDispositivo(+id,idUser);
   }
 
-  @Get('prueba')
+  @Get('/prueba')
   prueba() {
     console.log('prueba');
     
