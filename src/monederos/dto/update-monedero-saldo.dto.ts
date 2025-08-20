@@ -4,5 +4,5 @@ import { IsNumber } from 'class-validator';
 export class UpdateMonederoSaldoDto {
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
-  saldo: number = 0.0;
+  Saldo: number = 0.0;
 }

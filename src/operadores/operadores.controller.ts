@@ -8,11 +8,12 @@ import {
   Delete,
   UseGuards,
   Put,
+  Request,
 } from '@nestjs/common';
 import { OperadoresService } from './operadores.service';
 import { CreateOperadoreDto } from './dto/create-operadore.dto';
 import { UpdateOperadoreDto } from './dto/update-operadore.dto';
-import { UpdateOperadorStatusDto } from './dto/update-operadores.dto';
+import { UpdateOperadorStatusDto } from './dto/update-operadores-estatus.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 
 @UseGuards(JwtAuthGuard)
@@ -21,8 +22,10 @@ export class OperadoresController {
   constructor(private readonly operadoresService: OperadoresService) {}
 
   @Post()
-  createOperador(@Body() createOperadoreDto: CreateOperadoreDto) {
-    return this.operadoresService.createOperador(createOperadoreDto);
+  createOperador(@Body() createOperadoreDto: CreateOperadoreDto,
+@Request() req,) {
+    const idUser = req.user.userId;
+    return this.operadoresService.createOperador(createOperadoreDto,idUser);
   }
 
   @Get()
@@ -38,10 +41,13 @@ export class OperadoresController {
   @Patch(':id/estatus')
   updateOperadorEstatus(
     @Param('id') id: string,
+    @Request() req,
     @Body() updateOperadorStatusDto: UpdateOperadorStatusDto,
   ) {
+    const idUser = req.user.userId;
     return this.operadoresService.updateOperadorEstatus(
       +id,
+      idUser,
       updateOperadorStatusDto,
     );
   }
@@ -49,13 +55,16 @@ export class OperadoresController {
   @Put(':id')
   updateOperador(
     @Param('id') id: string,
+    @Request() req,
     @Body() updateOperadoreDto: UpdateOperadoreDto,
   ) {
-    return this.operadoresService.updateOperador(+id, updateOperadoreDto);
+    const idUser = req.user.userId;
+    return this.operadoresService.updateOperador(+id, idUser,updateOperadoreDto);
   }
 
   @Delete(':id')
-  removeOperador(@Param('id') id: string) {
-    return this.operadoresService.removeOperador(+id);
+  removeOperador(@Param('id') id: string,@Request() req,) {
+    const idUser = req.user.userId;
+    return this.operadoresService.removeOperador(+id,idUser);
   }
 }
