@@ -3,14 +3,17 @@ import { PermisosService } from './permisos.service';
 import { CreatePermisoDto } from './dto/create-permiso.dto';
 import { UpdatePermisoDto } from './dto/update-permiso.dto';
 import { Permisos } from 'src/entities/Permisos';
+import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 
 @Controller('permisos')
+@UseGuards(JwtAuthGuard)
 export class PermisosController {
   constructor(private readonly permisosService: PermisosService) { }
   
   @Post()
-  async createPermioo(@Body() createPermiso: Permisos, @Req() req) {
+  async createPermioo(@Body() createPermiso: CreatePermisoDto, @Req() req) {
     const idUsuario = req.user.userId;
+    console.log(idUsuario)
     return this.permisosService.createPermiso(createPermiso, idUsuario);
   }
 
