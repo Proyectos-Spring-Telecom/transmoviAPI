@@ -31,13 +31,13 @@ export class ClientesController {
   @Get('')
   getClientes() {
     const idUser ="1"
-    return this.clientesService.getClientes(idUser);
+    return this.clientesService.getClientes();
   }
   //Obtener solo un cliente
   @Get(':id')
   getOneCliente(@Param('id') id: string) {
     const idUser ="1"
-    return this.clientesService.getOneCliente(+id,idUser);
+    return this.clientesService.getOneCliente(+id);
   }
   //Actualizar un cliente
   @Put(':id')

@@ -8,6 +8,7 @@ import {
   Delete,
   UseGuards,
   Put,
+  Request,
 } from '@nestjs/common';
 import { DispositivosService } from './dispositivos.service';
 import { CreateDispositivoDto } from './dto/create-dispositivo.dto';
@@ -21,7 +22,8 @@ export class DispositivosController {
 
   @Post()
   createDispositivo(@Body() createDispositivoDto: CreateDispositivoDto) {
-    return this.dispositivosService.createDispositivo(createDispositivoDto);
+    const idUser ="1"
+    return this.dispositivosService.createDispositivo(createDispositivoDto,idUser);
   }
 
   @Get()
@@ -39,7 +41,8 @@ export class DispositivosController {
     @Param('id') id: string,
     @Body() updateDispositivoEstatusDto: UpdateDispositivoEstatusDto,
   ) {
-    return this.dispositivosService.updateDispositivoEstatus(+id, updateDispositivoEstatusDto);
+    const idUser ="1"
+    return this.dispositivosService.updateDispositivoEstatus(+id, idUser,updateDispositivoEstatusDto);
   }
 
   @Put(':id')
@@ -47,11 +50,20 @@ export class DispositivosController {
     @Param('id') id: string,
     @Body() updateDispositivoDto: UpdateDispositivoDto,
   ) {
-    return this.dispositivosService.updateDispositivo(+id,updateDispositivoDto);
+    const idUser ="1"
+    return this.dispositivosService.updateDispositivo(+id,idUser,updateDispositivoDto);
   }
 
   @Delete(':id')
   removeDispositivo(@Param('id') id: string) {
-    return this.dispositivosService.removeDispositivo(+id);
+    const idUser ="1"
+    return this.dispositivosService.removeDispositivo(+id,idUser);
+  }
+
+  @Get('prueba')
+  prueba() {
+    console.log('prueba');
+    
+    return 'Hola mundo'; 
   }
 }

@@ -76,20 +76,12 @@ export class ClientesService {
     }
   }
   //Obtener todos los clientes
-  async getClientes(idUser:string) {
+  async getClientes() {
     try {
       const Clientes = await this.clienteRepository.find();
       if (Clientes.length === 0) {
         throw new NotFoundException('Clientes no encontrados');
       }
-      //-----Registro en la bitacora-----
-      await this.bitacoraLogger.logToBitacora(
-        'Clientes',
-        `Se consultaron todos los clientes`,
-        'GET',
-        `SELECT * FROM Clientes`,
-        Number(idUser),
-      );
       return Clientes;
     } catch (error) {
       if (error instanceof HttpException) {
@@ -99,7 +91,7 @@ export class ClientesService {
     }
   }
   //Obtener el cliente por ID
-  async getOneCliente(id: number,idUser: string) {
+  async getOneCliente(id: number) {
     try {
       const oneCliente = await this.clienteRepository.findOne({
         where: { id },
@@ -107,14 +99,6 @@ export class ClientesService {
       if (!oneCliente) {
         throw new NotFoundException(`EL cliente con id:${id} no encontrado`);
       }
-      //-----Registro en la bitacora-----
-      await this.bitacoraLogger.logToBitacora(
-        'Clientes',
-        `Se consultó el cliente con ID: ${id}`,
-        'GET',
-        `SELECT * FROM Clientes`,
-        Number(idUser),
-      );
       return oneCliente;
     } catch (error) {
       if (error instanceof HttpException) {
@@ -125,7 +109,7 @@ export class ClientesService {
       });
     }
   }
-  //Cambiar informacion del cliente
+  //Actualizar informacion del cliente
   async updateCliente(id: number, idUser:string ,updateClienteDto: UpdateClienteDto) {
     try {
       const Cliente = await this.clienteRepository.findOne({ where: { id } });
@@ -194,7 +178,7 @@ export class ClientesService {
         'Clientes',
         `Se cambio el estatus del cliente: ${id} a estatus: ${estatus}`,
         'CREATE',
-        `UPDATE CLIENTE SET Estatus = 0 WHERE id = ${id}`,
+        `UPDATE CLIENTE SET Estatus = ${estatus} WHERE id = ${id}`,
         Number(idUser),
       );
       return {
