@@ -12,6 +12,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Dispositivos } from 'src/entities/Dispositivos';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
+import { plainToInstance } from 'class-transformer';
+import { ExposeDispositivoDto } from './dto/expose-dispositivo.dto';
 @Injectable()
 export class DispositivosService {
   constructor(
@@ -43,7 +45,7 @@ export class DispositivosService {
       await this.dispositivoRepository.save(dataDispositivo);
       // --- Registro en la bitácora ---
       await this.bitacoraLogger.logToBitacora(
-        'Dispositivo',
+        'Dispositivos',
         `Se creó un dispositivo con numero de serie: ${createDispositivoDto.NumeroSerie}`,
         'CREATE',
         `INSERT Dispositivos -> NumeroSerie: ${createDispositivoDto.NumeroSerie}`, // opcional, puedes poner más info
@@ -51,7 +53,9 @@ export class DispositivosService {
       );
       return {
         message: 'Dispositivo creado exitosamente',
-        data: dataDispositivo,
+        dispositivo: plainToInstance(ExposeDispositivoDto, dataDispositivo, {
+          excludeExtraneousValues: true,
+        }),
       };
     } catch (error) {
       if (error instanceof HttpException) {
@@ -64,10 +68,12 @@ export class DispositivosService {
   async findAllDispositivos() {
     try {
       const dispostivosExistentes = await this.dispositivoRepository.find();
-      if (!dispostivosExistentes) {
+      if (dispostivosExistentes.length === 0) {
         throw new NotFoundException(`Dispositivo no encontrados`);
       }
-      return dispostivosExistentes;
+      return plainToInstance(ExposeDispositivoDto, dispostivosExistentes, {
+        excludeExtraneousValues: true,
+      });
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -86,7 +92,9 @@ export class DispositivosService {
       if (!dispostivoExistente) {
         throw new NotFoundException(`Dispositivo con id: ${id} no encontrado`);
       }
-      return dispostivoExistente;
+      return plainToInstance(ExposeDispositivoDto, dispostivoExistente, {
+        excludeExtraneousValues: true,
+      });
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -113,13 +121,13 @@ export class DispositivosService {
       await this.dispositivoRepository.update(id, { estatus });
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
-        'Clientes',
+        'Dispositivos',
         `Se cambio el estatus del cliente: ${id} a estatus: ${estatus}`,
         'CREATE',
-        `UPDATE CLIENTE SET Estatus = ${estatus} WHERE id = ${id}`,
+        `UPDATE Dispositivos SET Estatus = ${estatus} WHERE id = ${id}`,
         Number(idUser),
       );
-      return `Estatus actualizado exitosamente a ${estatus}`;
+      return {message:`Estatus actualizado exitosamente a ${estatus}`,Estatus:Number(estatus)};
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -151,13 +159,19 @@ export class DispositivosService {
       await this.dispositivoRepository.update(id, dataDispositivo);
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
-        'Clientes',
+        'Dispositivos',
         `Se actualizó el dispositivo con ID: ${id}`,
         'UPDATE',
-        `UPDATE Clientes SET ... WHERE Id=${id}`,
+        `UPDATE Dispositivo SET ... WHERE Id=${id}`,
         Number(idUser),
       );
-      return await this.dispositivoRepository.findOne({ where: { id } });
+      const dispositivoActualizado = await this.dispositivoRepository.findOne({ where: { id } });
+      return {
+        message: 'Dispositivo creado exitosamente',
+        dispositivo: plainToInstance(ExposeDispositivoDto, dispositivoActualizado, {
+          excludeExtraneousValues: true,
+        }),
+      };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -181,13 +195,13 @@ export class DispositivosService {
       await this.dispositivoRepository.remove(findDispositivo);
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
-        'Clientes',
-        `Se eliminó el cliente con ID: ${id}`,
+        'Dispositivo',
+        `Se eliminó el dispositivo con ID: ${id}`,
         'DELETE',
         `DELETE FROM Clientes WHERE Id=${id}`,
         Number(idUser),
       );
-      return `El dispositivo con id:${id} fue eliminado exitosamente`;
+      return {message:`Dispositivo con id: ${id} eliminado exitosamente`,Id:Number(id)};
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
