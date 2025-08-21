@@ -71,9 +71,12 @@ export class DispositivosService {
       if (dispostivosExistentes.length === 0) {
         throw new NotFoundException(`Dispositivo no encontrados`);
       }
-      return plainToInstance(ExposeDispositivoDto, dispostivosExistentes, {
-        excludeExtraneousValues: true,
-      });
+      return {
+        message: 'Dispositivos obtenidos exitosamente',
+        dispositivos: plainToInstance(ExposeDispositivoDto, dispostivosExistentes, {
+          excludeExtraneousValues: true,
+        }),
+      };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
