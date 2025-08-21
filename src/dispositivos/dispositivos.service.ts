@@ -12,7 +12,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Dispositivos } from 'src/entities/Dispositivos';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
-import { instanceToPlain, plainToInstance } from 'class-transformer';
+import { plainToInstance } from 'class-transformer';
 import { ExposeDispositivoDto } from './dto/expose-dispositivo.dto';
 @Injectable()
 export class DispositivosService {
@@ -48,7 +48,7 @@ export class DispositivosService {
         'Dispositivos',
         `Se creó un dispositivo con numero de serie: ${createDispositivoDto.NumeroSerie}`,
         'CREATE',
-        `INSERT Dispositivos -> NumeroSerie: ${createDispositivoDto.NumeroSerie}`, // opcional, puedes poner más info
+        `INSERT INTO Dispositivos (NumeroSerie, Marca, Modelo, Estatus) VALUES (${createDispositivoDto.NumeroSerie}, ${createDispositivoDto.Marca}, '${createDispositivoDto.Modelo}', ${createDispositivoDto.Estatus})`, 
         Number(idUser),
       );
       const dispositivoExpuesto = plainToInstance(
@@ -133,19 +133,19 @@ export class DispositivosService {
       if (!dispostivoExistente) {
         throw new NotFoundException(`Dispositivo con ${id} no encontrado`);
       }
-      const { estatus } = updateDispositivoEstatusDto;
-      await this.dispositivoRepository.update(id, { estatus });
+      const { Estatus } = updateDispositivoEstatusDto;
+      await this.dispositivoRepository.update(id, { estatus:updateDispositivoEstatusDto.Estatus });
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Dispositivos',
-        `Se cambio el estatus del cliente: ${id} a estatus: ${estatus}`,
+        `Se cambio el estatus del cliente: ${id} a estatus: ${Estatus}`,
         'CREATE',
-        `UPDATE Dispositivos SET Estatus = ${estatus} WHERE id = ${id}`,
+        `UPDATE Dispositivos SET Estatus = ${Estatus} WHERE id = ${id}`,
         Number(idUser),
       );
       return {
-        message: `Estatus actualizado exitosamente a ${estatus}`,
-        Estatus: Number(estatus),
+        message: `Estatus actualizado exitosamente a ${Estatus}`,
+        Estatus: Number(Estatus),
       };
     } catch (error) {
       if (error instanceof HttpException) {
@@ -181,7 +181,7 @@ export class DispositivosService {
         'Dispositivos',
         `Se actualizó el dispositivo con ID: ${id}`,
         'UPDATE',
-        `UPDATE Dispositivo SET ... WHERE Id=${id}`,
+        `UPDATE Dispositivos SET NumeroSerie='${updateDispositivoDto.NumeroSerie}', Marca='${updateDispositivoDto.Marca}', Modelo='${updateDispositivoDto.Modelo}', Estatus=${updateDispositivoDto.Estatus} WHERE Id=${id}`,
         Number(idUser),
       );
       const dispositivoActualizado = await this.dispositivoRepository.findOne({

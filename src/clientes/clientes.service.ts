@@ -12,6 +12,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Clientes } from 'src/entities/Clientes';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
+import { plainToInstance } from 'class-transformer';
+import { ExposeClienteDto } from './dto/expose-cliente.dto';
 
 @Injectable()
 export class ClientesService {
@@ -23,14 +25,13 @@ export class ClientesService {
   //Crear cliente
   async createCliente(createClienteDto: CreateClienteDto, idUser: string) {
     try {
-      //temporal
       const clienteCreate = await this.clienteRepository.findOne({
         where: {
           rfc: createClienteDto.RFC,
         },
       });
       if (clienteCreate) {
-        console.log(clienteCreate)
+        console.log(clienteCreate);
         throw new BadRequestException(
           `Cliente registrado con RFC: ${createClienteDto.RFC}, ingrese otro cliente`,
         );
@@ -64,10 +65,13 @@ export class ClientesService {
         'Clientes',
         `Se creó un cliente con RFC ${createClienteDto.RFC}`,
         'CREATE',
-        `INSERT Cliente -> RFC: ${createClienteDto.RFC}`,
+        `INSERT INTO Clientes (...) VALUES (...) -> RFC: ${createClienteDto.RFC}`,
         Number(idUser),
       );
-      return { message: 'Usuario creado exitosamente', User: clienteCreado };
+      const clienteExpuesto = plainToInstance(ExposeClienteDto, clienteCreado, {
+        excludeExtraneousValues: true,
+      });
+      return { message: 'Cliente creado exitosamente', User: clienteExpuesto };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -82,7 +86,10 @@ export class ClientesService {
       if (Clientes.length === 0) {
         throw new NotFoundException('Clientes no encontrados');
       }
-      return Clientes;
+      const clienteExpuesto = plainToInstance(ExposeClienteDto, Clientes, {
+        excludeExtraneousValues: true,
+      });
+      return clienteExpuesto;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -99,7 +106,10 @@ export class ClientesService {
       if (!oneCliente) {
         throw new NotFoundException(`EL cliente con id:${id} no encontrado`);
       }
-      return oneCliente;
+      const clienteExpuesto = plainToInstance(ExposeClienteDto, oneCliente, {
+        excludeExtraneousValues: true,
+      });
+      return clienteExpuesto;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -110,7 +120,11 @@ export class ClientesService {
     }
   }
   //Actualizar informacion del cliente
-  async updateCliente(id: number, idUser:string ,updateClienteDto: UpdateClienteDto) {
+  async updateCliente(
+    id: number,
+    idUser: string,
+    updateClienteDto: UpdateClienteDto,
+  ) {
     try {
       const Cliente = await this.clienteRepository.findOne({ where: { id } });
       if (!Cliente) {
@@ -118,7 +132,7 @@ export class ClientesService {
           `El cliente con id: ${id} no fue encontrado`,
         );
       }
-            const clienteData = await this.clienteRepository.create({
+      const clienteData = await this.clienteRepository.create({
         idPadre: updateClienteDto.IdPadre,
         rfc: updateClienteDto.RFC,
         tipoPersona: updateClienteDto.TipoPersona,
@@ -150,7 +164,14 @@ export class ClientesService {
         `UPDATE Clientes SET ... WHERE Id=${idUser}`,
         Number(idUser),
       );
-      return await this.clienteRepository.findOne({ where: { id } });
+      //Hacemos un expose que convierta los atributos en PascalCase
+      const clientefind = await this.clienteRepository.findOne({
+        where: { id },
+      });
+      const clienteExpuesto = plainToInstance(ExposeClienteDto, clientefind, {
+        excludeExtraneousValues: true,
+      });
+      return clienteExpuesto;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -171,18 +192,19 @@ export class ClientesService {
       if (!Usuario) {
         throw new NotFoundException(`Cliente con id: ${id} no encontrado`);
       }
-      const estatus = updateClienteEstatusDto.estatus;
-      await this.clienteRepository.update(id, { estatus });
+      const Estatus = updateClienteEstatusDto.Estatus;
+      await this.clienteRepository.update(id, { estatus: Estatus });
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Clientes',
-        `Se cambio el estatus del cliente: ${id} a estatus: ${estatus}`,
+        `Se cambio el estatus del cliente: ${id} a estatus: ${Estatus}`,
         'CREATE',
-        `UPDATE CLIENTE SET Estatus = ${estatus} WHERE id = ${id}`,
+        `UPDATE CLIENTE SET Estatus = ${Estatus} WHERE id = ${id}`,
         Number(idUser),
       );
       return {
-        message: `Cliente con id:${id} su estatus fue actualizado a ${estatus}`,
+        message: `Cliente con id:${id} su estatus fue actualizado a ${Estatus}`,
+        Estatus: Number(Estatus),
       };
     } catch (error) {
       if (error instanceof HttpException) {
@@ -194,7 +216,7 @@ export class ClientesService {
     }
   }
   //Eliminar cliente
-  async removeCliente(id: number,idUser: string) {
+  async removeCliente(id: number, idUser: string) {
     try {
       const clienteEliminar = await this.clienteRepository.findOne({
         where: { id },
@@ -213,7 +235,10 @@ export class ClientesService {
         `DELETE FROM Clientes WHERE Id=${id}`,
         Number(idUser),
       );
-      return `Cliente con id: ${id} eliminado exitosamente`;
+      return {
+        message: `Cliente con id: ${id} eliminado exitosamente`,
+        Id: Number(id),
+      };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
