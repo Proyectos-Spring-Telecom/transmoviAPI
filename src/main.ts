@@ -30,8 +30,6 @@ async function bootstrap() {
       transform: true,      
     }),
   );
-  // Serialización global (para DTOs de salida)
-  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
   await app.listen(process.env.PORT ?? 3010);
 }

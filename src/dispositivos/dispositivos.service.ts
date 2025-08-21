@@ -12,7 +12,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Dispositivos } from 'src/entities/Dispositivos';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
-import { plainToInstance } from 'class-transformer';
+import { instanceToPlain, plainToInstance } from 'class-transformer';
 import { ExposeDispositivoDto } from './dto/expose-dispositivo.dto';
 @Injectable()
 export class DispositivosService {
@@ -51,12 +51,15 @@ export class DispositivosService {
         `INSERT Dispositivos -> NumeroSerie: ${createDispositivoDto.NumeroSerie}`, // opcional, puedes poner más info
         Number(idUser),
       );
+      const dispositivoExpuesto = plainToInstance(
+      ExposeDispositivoDto,
+      dataDispositivo,
+      { excludeExtraneousValues: true },
+    );
       return {
-        message: 'Dispositivo creado exitosamente',
-        dispositivo: plainToInstance(ExposeDispositivoDto, dataDispositivo, {
-          excludeExtraneousValues: true,
-        }),
-      };
+      message: 'Dispositivo creado exitosamente',
+      dispositivo: dispositivoExpuesto,
+    };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -71,12 +74,15 @@ export class DispositivosService {
       if (dispostivosExistentes.length === 0) {
         throw new NotFoundException(`Dispositivo no encontrados`);
       }
+      const dispositivosDto = plainToInstance(
+        ExposeDispositivoDto,
+        dispostivosExistentes,
+        { excludeExtraneousValues: true },
+      );
       return {
-        message: 'Dispositivos obtenidos exitosamente',
-        dispositivos: plainToInstance(ExposeDispositivoDto, dispostivosExistentes, {
-          excludeExtraneousValues: true,
-        }),
-      };
+      message: 'Dispositivos obtenidos exitosamente',
+      dispositivos: dispositivosDto,
+    };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -95,9 +101,16 @@ export class DispositivosService {
       if (!dispostivoExistente) {
         throw new NotFoundException(`Dispositivo con id: ${id} no encontrado`);
       }
-      return plainToInstance(ExposeDispositivoDto, dispostivoExistente, {
-        excludeExtraneousValues: true,
-      });
+      return {
+        message: 'Dispositivo obtenido exitosamente',
+        dispositivo: plainToInstance(
+          ExposeDispositivoDto,
+          dispostivoExistente,
+          {
+            excludeExtraneousValues: true,
+          },
+        ),
+      };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -130,7 +143,10 @@ export class DispositivosService {
         `UPDATE Dispositivos SET Estatus = ${estatus} WHERE id = ${id}`,
         Number(idUser),
       );
-      return {message:`Estatus actualizado exitosamente a ${estatus}`,Estatus:Number(estatus)};
+      return {
+        message: `Estatus actualizado exitosamente a ${estatus}`,
+        Estatus: Number(estatus),
+      };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -168,12 +184,18 @@ export class DispositivosService {
         `UPDATE Dispositivo SET ... WHERE Id=${id}`,
         Number(idUser),
       );
-      const dispositivoActualizado = await this.dispositivoRepository.findOne({ where: { id } });
+      const dispositivoActualizado = await this.dispositivoRepository.findOne({
+        where: { id },
+      });
       return {
         message: 'Dispositivo creado exitosamente',
-        dispositivo: plainToInstance(ExposeDispositivoDto, dispositivoActualizado, {
-          excludeExtraneousValues: true,
-        }),
+        dispositivo: plainToInstance(
+          ExposeDispositivoDto,
+          dispositivoActualizado,
+          {
+            excludeExtraneousValues: true,
+          },
+        ),
       };
     } catch (error) {
       if (error instanceof HttpException) {
@@ -204,7 +226,10 @@ export class DispositivosService {
         `DELETE FROM Clientes WHERE Id=${id}`,
         Number(idUser),
       );
-      return {message:`Dispositivo con id: ${id} eliminado exitosamente`,Id:Number(id)};
+      return {
+        message: `Dispositivo con id: ${id} eliminado exitosamente`,
+        Id: Number(id),
+      };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;

@@ -1,23 +1,19 @@
 import { Expose, Transform } from 'class-transformer';
 
 export class ExposeDispositivoDto {
-  @Expose()
-  @Transform(({ obj }) => obj.id, { toClassOnly: true })
+  @Expose({ name: 'id' })
+  @Transform(({ value }) => Number(value))
   Id: number;
 
-  @Expose()
-  @Transform(({ obj }) => obj.numeroSerie, { toClassOnly: true })
+  @Expose({ name: 'numeroSerie' })
   NumeroSerie: string;
 
-  @Expose()
-  @Transform(({ obj }) => obj.marca, { toClassOnly: true })
+  @Expose({ name: 'marca' })
   Marca: string;
 
-  @Expose()
-  @Transform(({ obj }) => obj.modelo, { toClassOnly: true })
+  @Expose({ name: 'modelo' })
   Modelo: string;
 
-  @Expose()
-  @Transform(({ obj }) => obj.estatus, { toClassOnly: true })
+  @Expose({ name: 'estatus' })
   Estatus: number;
 }
