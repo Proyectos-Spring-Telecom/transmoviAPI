@@ -140,6 +140,7 @@ export class OperadoresService {
         where: { id },
       });
       if (!operadorExistente) {
+        console.log(operadorExistente)
         throw new NotFoundException(`Operador con id: ${id} no encontrado`);
       }
       const operadorData = await this.operadoresRepository.create({
