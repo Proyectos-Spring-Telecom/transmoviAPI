@@ -8,6 +8,7 @@ import {
   Delete,
   Put,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 import { MonederosService } from './monederos.service';
 import { CreateMonederoDto } from './dto/create-monedero.dto';
@@ -21,8 +22,9 @@ export class MonederosController {
   constructor(private readonly monederosService: MonederosService) {}
 
   @Post()
-  createMonedero(@Body() createMonederoDto: CreateMonederoDto) {
-    return this.monederosService.createMonedero(createMonederoDto);
+  createMonedero(@Body() createMonederoDto: CreateMonederoDto, @Request() req) {
+    const idUser = req.user.userId;
+    return this.monederosService.createMonedero(createMonederoDto, idUser);
   }
 
   @Get()
@@ -43,10 +45,13 @@ export class MonederosController {
   @Patch(':id/estatus')
   updateMonederoEstatus(
     @Param('id') id: string,
+    @Request() req,
     @Body() updateMonederoEstatusDto: UpdateMonederoEstatusDto,
   ) {
+    const idUser = req.user.userId;
     return this.monederosService.updateMonederoEstatus(
       +id,
+      idUser,
       updateMonederoEstatusDto,
     );
   }
@@ -54,10 +59,13 @@ export class MonederosController {
   @Patch(':id/saldo')
   updateMonederoSaldo(
     @Param('id') id: string,
+    @Request() req,
     @Body() updateMonederoSaldoDto: UpdateMonederoSaldoDto,
   ) {
+    const idUser = req.user.userId;
     return this.monederosService.updateMonederoSaldo(
       +id,
+      idUser,
       updateMonederoSaldoDto,
     );
   }
@@ -65,13 +73,16 @@ export class MonederosController {
   @Put(':id')
   updateMonedero(
     @Param('id') id: string,
+    @Request() req,
     @Body() updateMonederoDto: UpdateMonederoDto,
   ) {
-    return this.monederosService.updateMonedero(+id, updateMonederoDto);
+    const idUser = req.user.userId;
+    return this.monederosService.updateMonedero(+id, idUser, updateMonederoDto);
   }
 
   @Delete(':id')
-  removeMonedero(@Param('id') id: string) {
-    return this.monederosService.removeMonedero(+id);
+  removeMonedero(@Param('id') id: string, @Request() req) {
+    const idUser = req.user.userId;
+    return this.monederosService.removeMonedero(+id, idUser);
   }
 }

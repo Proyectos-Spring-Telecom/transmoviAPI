@@ -152,9 +152,9 @@ export class DispositivosService {
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Clientes',
-        `Se actualizó el cliente con ID: ${idUser}`,
+        `Se actualizó el dispositivo con ID: ${id}`,
         'UPDATE',
-        `UPDATE Clientes SET ... WHERE Id=${idUser}`,
+        `UPDATE Clientes SET ... WHERE Id=${id}`,
         Number(idUser),
       );
       return await this.dispositivoRepository.findOne({ where: { id } });
@@ -168,7 +168,7 @@ export class DispositivosService {
     }
   }
   //Eliminar Dispositivos
-  async removeDispositivo(id: number,idUser:string) {
+  async removeDispositivo(id: number, idUser: string) {
     try {
       const findDispositivo = await this.dispositivoRepository.findOne({
         where: { id },

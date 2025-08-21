@@ -21,9 +21,15 @@ export class DispositivosController {
   constructor(private readonly dispositivosService: DispositivosService) {}
 
   @Post()
-  createDispositivo(@Body() createDispositivoDto: CreateDispositivoDto) {
-    const idUser ="1"
-    return this.dispositivosService.createDispositivo(createDispositivoDto,idUser);
+  createDispositivo(
+    @Body() createDispositivoDto: CreateDispositivoDto,
+    @Request() req,
+  ) {
+    const idUser = req.user.userId;
+    return this.dispositivosService.createDispositivo(
+      createDispositivoDto,
+      idUser,
+    );
   }
 
   @Get()
@@ -39,31 +45,34 @@ export class DispositivosController {
   @Patch(':id/estatus')
   updateDispositivoEstatus(
     @Param('id') id: string,
+    @Request() req,
     @Body() updateDispositivoEstatusDto: UpdateDispositivoEstatusDto,
   ) {
-    const idUser ="1"
-    return this.dispositivosService.updateDispositivoEstatus(+id, idUser,updateDispositivoEstatusDto);
+    const idUser = req.user.userId;
+    return this.dispositivosService.updateDispositivoEstatus(
+      +id,
+      idUser,
+      updateDispositivoEstatusDto,
+    );
   }
 
   @Put(':id')
   updateDispositivo(
     @Param('id') id: string,
+    @Request() req,
     @Body() updateDispositivoDto: UpdateDispositivoDto,
   ) {
-    const idUser ="1"
-    return this.dispositivosService.updateDispositivo(+id,idUser,updateDispositivoDto);
+    const idUser = req.user.userId;
+    return this.dispositivosService.updateDispositivo(
+      +id,
+      idUser,
+      updateDispositivoDto,
+    );
   }
 
   @Delete(':id')
-  removeDispositivo(@Param('id') id: string) {
-    const idUser ="1"
-    return this.dispositivosService.removeDispositivo(+id,idUser);
-  }
-
-  @Get('/prueba')
-  prueba() {
-    console.log('prueba');
-    
-    return 'Hola mundo'; 
+  removeDispositivo(@Param('id') id: string, @Request() req) {
+    const idUser = req.user.userId;
+    return this.dispositivosService.removeDispositivo(+id, idUser);
   }
 }

@@ -24,47 +24,49 @@ export class ClientesController {
   createCliente(@Body() createClienteDto: CreateClienteDto,
   @Request()req
 ) {
-    const idUser ="1"
+    const idUser = req.user.userId
     return this.clientesService.createCliente(createClienteDto,idUser);
   }
   //Obtener todos los clientes
   @Get('')
   getClientes() {
-    const idUser ="1"
     return this.clientesService.getClientes();
   }
   //Obtener solo un cliente
   @Get(':id')
   getOneCliente(@Param('id') id: string) {
-    const idUser ="1"
     return this.clientesService.getOneCliente(+id);
   }
   //Actualizar un cliente
   @Put(':id')
   updateCliente(
     @Param('id') id: string,
+    @Request()req,
     @Body() updateClienteDto: UpdateClienteDto,
   ) {
-    const idUser ="1"
+    const idUser = req.user.userId
     return this.clientesService.updateCliente(+id, idUser,updateClienteDto);
   }
   //Actualizar el estatus del cliente
   @Patch(':id/estatus')
   updateEstatusClientes(
     @Param('id') id: string,
+    @Request()req,
     @Body() updateClienteEstatusDto: UpdateClienteEstatusDto,
   ) {
-    const idUser ="1"
+    const idUser = req.user.userId
     return this.clientesService.updateClienteStatus(
       +id,
-      idUser,//falta
+      idUser,
       updateClienteEstatusDto,
     );
   }
   //Eliminar Cliente
   @Delete(':id')
-  removeClientes(@Param('id') id: string) {
-    const idUser ="1" //falta
+  removeClientes(@Param('id') id: string,
+  @Request()req
+) {
+    const idUser = req.user.userId
     return this.clientesService.removeCliente(+id,idUser);
   }
 }
