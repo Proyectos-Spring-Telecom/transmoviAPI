@@ -34,4 +34,8 @@ export class Permisos {
 
   @ManyToMany(() => Roles, (roles) => roles.permisos)
   roles: Roles[];
+
+  @ManyToOne(()=>Modulos, (modulo)=> modulo.permisos)
+    @JoinColumn([{ name: "idModulo", referencedColumnName: "id" }])
+  modulo:Modulos;
 }
