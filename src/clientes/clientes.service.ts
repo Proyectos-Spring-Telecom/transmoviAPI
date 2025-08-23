@@ -198,7 +198,7 @@ export class ClientesService {
       await this.bitacoraLogger.logToBitacora(
         'Clientes',
         `Se cambio el estatus del cliente: ${id} a estatus: ${Estatus}`,
-        'CREATE',
+        'UPDATE',
         `UPDATE CLIENTE SET Estatus = ${Estatus} WHERE id = ${id}`,
         Number(idUser),
       );

@@ -12,6 +12,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Monederos } from 'src/entities/Monederos';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
+import { ExposeMonederoDto } from './dto/expose-monedero.dto';
+import { plainToInstance } from 'class-transformer';
 
 @Injectable()
 export class MonederosService {
@@ -40,13 +42,16 @@ export class MonederosService {
       const monedero = await this.monederoRepository.save(monederoData);
       // --- Registro en la bitácora ---
       await this.bitacoraLogger.logToBitacora(
-        'Dispositivo',
+        'Monederos',
         `Se creó un monedero con numero de serie: ${createMonederoDto.NumeroSerie}`,
         'CREATE',
         `INSERT Monedero -> NumeroSerie: ${createMonederoDto.NumeroSerie}`,
         Number(idUser),
       );
-      return { message: 'Monedero creado exitosamente', monedero };
+      const monederoExpuesto = plainToInstance(ExposeMonederoDto, monedero, {
+        excludeExtraneousValues: true,
+      });
+      return { message: 'Monedero creado exitosamente', monedero: monederoExpuesto };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -61,8 +66,10 @@ export class MonederosService {
       if (monederos.length === 0) {
         throw new NotFoundException('Monederos no encontrados');
       }
-      //falta el apartado de la bitacora
-      return monederos;
+      const monederoExpuesto = plainToInstance(ExposeMonederoDto, monederos, {
+        excludeExtraneousValues: true,
+      });
+      return { message: 'Monederos obtenidos exitosamente', monedero: monederoExpuesto };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -79,7 +86,10 @@ export class MonederosService {
           `El monedero con id: ${id} no fue encontrado`,
         );
       }
-      return await monedero;
+      const monederoExpuesto = plainToInstance(ExposeMonederoDto, monedero, {
+        excludeExtraneousValues: true,
+      });
+      return { message: 'Monedero obtenido exitosamente', monedero: monederoExpuesto };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -98,8 +108,10 @@ export class MonederosService {
           `El monedero con numero de serie: ${numeroSerie} no fue encontrado`,
         );
       }
-      //falta el apartado de la bitacora
-      return monedero;
+      const monederoExpuesto = plainToInstance(ExposeMonederoDto, monedero, {
+        excludeExtraneousValues: true,
+      });
+      return { message: 'Monedero obtenido exitosamente', monedero: monederoExpuesto };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -134,7 +146,8 @@ export class MonederosService {
         `UPDATE Monederos SET Estatus=${Estatus} WHERE Id=${id}`,
         Number(idUser),
       );
-      return await this.monederoRepository.findOne({ where: { id } });
+      const monedero = await this.monederoRepository.findOne({ where: { id } });
+      return { message: 'Estatus del monedero actualizado exitosamente', Estatus: Number(Estatus) };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -169,7 +182,8 @@ export class MonederosService {
         `UPDATE Monederos SET Saldo=${Saldo} WHERE Id=${id}`,
         Number(idUser),
       );
-      return await this.monederoRepository.findOne({ where: { id } });
+      const monedero = await this.monederoRepository.findOne({ where: { id } });
+      return { message: 'Saldo actualizado exitosamente', Saldo: Number(monedero?.saldo) };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -209,7 +223,11 @@ export class MonederosService {
         `UPDATE Monederos SET... WHERE Id=${id}`,
         Number(idUser),
       );
-      return await this.monederoRepository.findOne({ where: { id } });
+      const monedero = await this.monederoRepository.findOne({ where: { id } });
+      const monederoExpuesto = plainToInstance(ExposeMonederoDto, monedero, {
+        excludeExtraneousValues: true,
+      });
+      return { message: 'Monederos actualizado exitosamente', monedero: monederoExpuesto };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -237,7 +255,7 @@ export class MonederosService {
         `DELETE From Monederos WHERE Id=${id}`,
         Number(idUser),
       );
-      return `El monedero con id: ${id} ha sido eliminado exitosamente`;
+      return {message:`El monedero con id: ${id} ha sido eliminado exitosamente`,Id: Number(id)};
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;

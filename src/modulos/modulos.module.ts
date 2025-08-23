@@ -4,9 +4,10 @@ import { ModulosController } from './modulos.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Modulos } from 'src/entities/Modulos';
 import { Permisos } from 'src/entities/Permisos';
+import { BitacoraModule } from 'src/bitacora/bitacora.module';
 
 @Module({
-  imports:[TypeOrmModule.forFeature([Modulos,Permisos])],
+  imports:[TypeOrmModule.forFeature([Modulos,Permisos]),BitacoraModule],
   controllers: [ModulosController],
   providers: [ModulosService],
 })
