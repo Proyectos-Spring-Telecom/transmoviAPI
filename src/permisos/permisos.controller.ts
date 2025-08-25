@@ -13,8 +13,8 @@ import {
 import { PermisosService } from './permisos.service';
 import { CreatePermisoDto } from './dto/create-permiso.dto';
 import { UpdatePermisoDto } from './dto/update-permiso.dto';
-import { Permisos } from 'src/entities/Permisos';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
+import { UpdatePermisoEstatusDto } from './dto/update-permiso-estatus.dto';
 
 @Controller('permisos')
 @UseGuards(JwtAuthGuard)
@@ -22,9 +22,8 @@ export class PermisosController {
   constructor(private readonly permisosService: PermisosService) {}
 
   @Post()
-  async createPermioo(@Body() createPermiso: CreatePermisoDto, @Req() req) {
+  async createPermioso(@Body() createPermiso: CreatePermisoDto, @Req() req) {
     const idUsuario = req.user.userId;
-    console.log(idUsuario);
     return this.permisosService.createPermiso(createPermiso, idUsuario);
   }
 
@@ -34,9 +33,8 @@ export class PermisosController {
   }
 
   @Get('list')
-  async findAllList(): Promise<any[]> {
-    const permiso = await this.permisosService.findAllList();
-    return permiso;
+  async findAllList() {
+    return await this.permisosService.findAllList();
   }
 
   @Get('permisosAgrupados')
@@ -48,21 +46,28 @@ export class PermisosController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.permisosService.findOne( +id);
+  async findOne(@Param('id') id: string) {
+    return await this.permisosService.findOne(+id);
   }
 
   @Put()
-  update(@Body() updatePermisoDto: UpdatePermisoDto) {
-    return this.permisosService.update(updatePermisoDto);
+  async update(@Body() updatePermisoDto: UpdatePermisoDto) {
+    return await this.permisosService.update(updatePermisoDto);
   }
 
-  @Patch()
-  updatePermisoEstatus() {}
+  @Patch(':id/estatus')
+  async updatePermisoEstatus(
+    @Param('id') id: string,
+    @Body() updatePermisoEstatusDto: UpdatePermisoEstatusDto,
+  ) {
+    return await this.permisosService.updateEstatus(
+      +id,
+      updatePermisoEstatusDto,
+    );
+  }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.permisosService.remove(+id);
   }
-
 }
