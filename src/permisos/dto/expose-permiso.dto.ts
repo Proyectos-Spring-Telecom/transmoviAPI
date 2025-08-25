@@ -1,7 +1,7 @@
 import { Expose, Transform, Type } from 'class-transformer';
-import { ExposePermisoDto } from 'src/permisos/dto/expose-permiso.dto';
+import { ExposeModuloDto } from 'src/modulos/dto/expose-modulo.dto';
 
-export class ExposeModuloDto {
+export class ExposePermisoDto {
   @Expose({ name: 'id' })
   @Transform(({ value }) => Number(value))
   Id: number;
@@ -10,12 +10,12 @@ export class ExposeModuloDto {
   Nombre: string;
 
   @Expose({ name: 'descripcion' })
-  Descripcion: string | null;
+  Descripcion: string;
 
   @Expose({ name: 'estatus' })
-  Estatus: number | null;
+  Estatus: number;
 
-  @Expose({ name: 'permisos' })
-  @Type(() => ExposePermisoDto)
-  Permisos?: ExposePermisoDto[];
+  @Expose({ name: 'modulo' })
+  @Type(() => ExposeModuloDto)
+  Modulo?: ExposeModuloDto;
 }
