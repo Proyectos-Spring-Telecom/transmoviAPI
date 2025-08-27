@@ -9,8 +9,8 @@ import {
 import { BlueVoxs } from "./BlueVoxs";
 import { Rutas } from "./Rutas";
 
-@Index("ClaveBlueVox", ["claveBlueVox"], {})
-@Index("IdRuta", ["idRuta"], {})
+@Index("ClaveBlueVox", ["ClaveBlueVox"], {})
+@Index("IdRuta", ["IdRuta"], {})
 @Entity("ConteoPasajeros", { schema: "TransmoviDev" })
 export class ConteoPasajeros {
   @PrimaryGeneratedColumn({ type: "int", name: "Id" })
@@ -41,13 +41,13 @@ export class ConteoPasajeros {
     onDelete: "NO ACTION",
     onUpdate: "NO ACTION",
   })
-  @JoinColumn([{ name: "ClaveBlueVox", referencedColumnName: "clave" }])
+  @JoinColumn([{ name: "ClaveBlueVox", referencedColumnName: "Clave" }])
   ClaveBlueVox2: BlueVoxs;
 
   @ManyToOne(() => Rutas, (rutas) => rutas.conteoPasajeros, {
     onDelete: "NO ACTION",
     onUpdate: "NO ACTION",
   })
-  @JoinColumn([{ name: "IdRuta", referencedColumnName: "id" }])
+  @JoinColumn([{ name: "IdRuta", referencedColumnName: "Id" }])
   IdRuta2: Rutas;
 }

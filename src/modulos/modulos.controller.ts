@@ -10,18 +10,19 @@ import {
   Request,
   Query,
   Res,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ModulosService } from './modulos.service';
 import { CreateModuloDto } from './dto/create-modulo.dto';
 import { UpdateModuloDto } from './dto/update-modulo.dto';
 import { ApiTags } from '@nestjs/swagger';
 import { UpdateModulosEstatusDto } from './dto/update-modulo-estatus.dto';
-import { Response } from 'src/common/ApiResponse';
+import { ApiResponseCommon } from 'src/common/ApiResponse';
 
 @ApiTags('Modulos')
 @Controller('modulos')
 export class ModulosController {
-  constructor(private readonly modulosService: ModulosService) { }
+  constructor(private readonly modulosService: ModulosService) {}
 
   @Post()
   create(@Body() createModuloDto: CreateModuloDto, @Request() req) {
@@ -30,14 +31,16 @@ export class ModulosController {
   }
 
   @Get('list')
-  findAllList(): Promise<Response> {
+  findAllList(): Promise<ApiResponseCommon> {
     return this.modulosService.findAllList();
   }
 
-  @Get()
-  findAll(@Query('page') page:number,
-    @Query('limit') limit :number): Promise<Response> {
-    return this.modulosService.findAll(page,limit);
+  @Get('page/:page/:limit')
+  findAll(
+    @Param('page', ParseIntPipe) page: number,
+    @Param('limit', ParseIntPipe) limit: number,
+  ): Promise<ApiResponseCommon> {
+    return this.modulosService.findAll(page, limit);
   }
 
   @Get(':id')

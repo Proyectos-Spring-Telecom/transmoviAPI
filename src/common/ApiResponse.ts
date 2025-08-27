@@ -1,4 +1,4 @@
-export interface Response{
+export interface ApiResponseCommon{
     message:string;
     data:any[];
     paginated?:Paginated;

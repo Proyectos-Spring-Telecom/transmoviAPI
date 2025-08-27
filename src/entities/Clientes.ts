@@ -10,7 +10,7 @@ export class Clientes {
   IdPadre: string;
 
   @Column("varchar", { name: "RFC", length: 16 })
-  Rfc: string;
+  RFC: string;
 
   @Column("int", { name: "TipoPersona" })
   TipoPersona: number;
@@ -58,7 +58,7 @@ export class Clientes {
   NumeroInterior: string | null;
 
   @Column("varchar", { name: "CP", nullable: true, length: 5 })
-  Cp: string | null;
+  CP: string | null;
 
   @Column("varchar", { name: "NombreEncargado", nullable: true, length: 100 })
   NombreEncargado: string | null;

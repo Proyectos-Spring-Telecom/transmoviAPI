@@ -1,9 +1,10 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Param, ParseIntPipe } from '@nestjs/common';
 import { BitacoraLoggerService } from './bitacora.service';
 import { CreateBitacoraDto } from './dto/create-bitacora.dto';
 import { UpdateBitacoraDto } from './dto/update-bitacora.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-//@UseGuards(JwtAuthGuard)
+import { ApiResponseCommon } from 'src/common/ApiResponse';
+@UseGuards(JwtAuthGuard)
 @Controller('bitacora')
 export class BitacoraController {
   constructor(private readonly bitacoraService: BitacoraLoggerService) {}
@@ -13,9 +14,16 @@ export class BitacoraController {
     return this.bitacoraService.createBitacora(createBitacoraDto);
   }
 
-  @Get()
-  findAllBitacora() {
-    return this.bitacoraService.findAllBitacora();
+  @Get('list')
+  async findAllListBitacora(): Promise<ApiResponseCommon> {
+    return await this.bitacoraService.findAllListBitacora();
   }
 
+  @Get('page/:page/:limit')
+  findAll(
+    @Param('page', ParseIntPipe) page: number,
+    @Param('limit', ParseIntPipe) limit: number,
+  ): Promise<ApiResponseCommon> {
+    return this.bitacoraService.findAll(page, limit);
+  }
 }

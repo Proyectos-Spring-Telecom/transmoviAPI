@@ -28,19 +28,14 @@ export class DispositivosService {
   ) {
     try {
       const dispostivoExistente = await this.dispositivoRepository.findOne({
-        where: { numeroSerie: createDispositivoDto.NumeroSerie },
+        where: { NumeroSerie: createDispositivoDto.NumeroSerie },
       });
       if (dispostivoExistente) {
         throw new BadRequestException(
           `Dispositivo con numero de serie ${createDispositivoDto.NumeroSerie} existente`,
         );
       }
-      const dataDispositivo = await this.dispositivoRepository.create({
-        numeroSerie: createDispositivoDto.NumeroSerie,
-        marca: createDispositivoDto.Marca,
-        modelo: createDispositivoDto.Modelo,
-        estatus: createDispositivoDto.Estatus,
-      });
+      const dataDispositivo = await this.dispositivoRepository.create(createDispositivoDto);
 
       await this.dispositivoRepository.save(dataDispositivo);
       // --- Registro en la bitácora ---
@@ -93,13 +88,13 @@ export class DispositivosService {
     }
   }
   //Obtener dispositivo por ID
-  async findOneDispositivo(id: number) {
+  async findOneDispositivo(Id: number) {
     try {
       const dispostivoExistente = await this.dispositivoRepository.findOne({
-        where: { id },
+        where: { Id },
       });
       if (!dispostivoExistente) {
-        throw new NotFoundException(`Dispositivo con id: ${id} no encontrado`);
+        throw new NotFoundException(`Dispositivo con id: ${Id} no encontrado`);
       }
       const dispositivoExpuesto = plainToInstance(ExposeDispositivoDto, dispostivoExistente, {
         excludeExtraneousValues: true,
@@ -119,25 +114,25 @@ export class DispositivosService {
   }
   //Actualizar el estatus del dispositivo
   async updateDispositivoEstatus(
-    id: number,
+    Id: number,
     idUser: string,
     updateDispositivoEstatusDto: UpdateDispositivoEstatusDto,
   ) {
     try {
       const dispostivoExistente = await this.dispositivoRepository.findOne({
-        where: { id },
+        where: { Id },
       });
       if (!dispostivoExistente) {
-        throw new NotFoundException(`Dispositivo con ${id} no encontrado`);
+        throw new NotFoundException(`Dispositivo con ${Id} no encontrado`);
       }
       const { Estatus } = updateDispositivoEstatusDto;
-      await this.dispositivoRepository.update(id, { estatus:updateDispositivoEstatusDto.Estatus });
+      await this.dispositivoRepository.update(Id, { estatus:updateDispositivoEstatusDto.Estatus });
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Dispositivos',
-        `Se cambio el estatus del cliente: ${id} a estatus: ${Estatus}`,
+        `Se cambio el estatus del cliente: ${Id} a estatus: ${Estatus}`,
         'CREATE',
-        `UPDATE Dispositivos SET Estatus = ${Estatus} WHERE id = ${id}`,
+        `UPDATE Dispositivos SET Estatus = ${Estatus} WHERE id = ${Id}`,
         Number(idUser),
       );
       return {
@@ -155,34 +150,29 @@ export class DispositivosService {
   }
   //Actualizar datos de dispositivos
   async updateDispositivo(
-    id: number,
+    Id: number,
     idUser: string,
     updateDispositivoDto: UpdateDispositivoDto,
   ) {
     try {
       const dispostivoExistente = await this.dispositivoRepository.findOne({
-        where: { id },
+        where: { Id },
       });
       if (!dispostivoExistente) {
-        throw new NotFoundException(`Dipositivo con ${id} no encontrado`);
+        throw new NotFoundException(`Dipositivo con ${Id} no encontrado`);
       }
-      const dataDispositivo = await this.dispositivoRepository.create({
-        numeroSerie: updateDispositivoDto.NumeroSerie,
-        marca: updateDispositivoDto.Marca,
-        modelo: updateDispositivoDto.Modelo,
-        estatus: updateDispositivoDto.Estatus,
-      });
-      await this.dispositivoRepository.update(id, dataDispositivo);
+      const dataDispositivo = await this.dispositivoRepository.create(updateDispositivoDto);
+      await this.dispositivoRepository.update(Id, dataDispositivo);
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Dispositivos',
-        `Se actualizó el dispositivo con ID: ${id}`,
+        `Se actualizó el dispositivo con ID: ${Id}`,
         'UPDATE',
-        `UPDATE Dispositivos SET NumeroSerie='${updateDispositivoDto.NumeroSerie}', Marca='${updateDispositivoDto.Marca}', Modelo='${updateDispositivoDto.Modelo}', Estatus=${updateDispositivoDto.Estatus} WHERE Id=${id}`,
+        `UPDATE Dispositivos SET NumeroSerie='${updateDispositivoDto.NumeroSerie}', Marca='${updateDispositivoDto.Marca}', Modelo='${updateDispositivoDto.Modelo}', Estatus=${updateDispositivoDto.Estatus} WHERE Id=${Id}`,
         Number(idUser),
       );
       const dispositivoActualizado = await this.dispositivoRepository.findOne({
-        where: { id },
+        where: { Id },
       });
       const dispositivoExpuesto = plainToInstance(ExposeDispositivoDto, dispositivoActualizado, {
         excludeExtraneousValues: true,
@@ -201,28 +191,28 @@ export class DispositivosService {
     }
   }
   //Eliminar Dispositivos
-  async removeDispositivo(id: number, idUser: string) {
+  async removeDispositivo(Id: number, idUser: string) {
     try {
       const findDispositivo = await this.dispositivoRepository.findOne({
-        where: { id },
+        where: { Id },
       });
       if (!findDispositivo) {
         throw new NotFoundException(
-          `El dispositivo con Id:${id} no fue encontrado`,
+          `El dispositivo con Id:${Id} no fue encontrado`,
         );
       }
       await this.dispositivoRepository.remove(findDispositivo);
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Dispositivo',
-        `Se eliminó el dispositivo con ID: ${id}`,
+        `Se eliminó el dispositivo con ID: ${Id}`,
         'DELETE',
-        `DELETE FROM Clientes WHERE Id=${id}`,
+        `DELETE FROM Clientes WHERE Id=${Id}`,
         Number(idUser),
       );
       return {
-        message: `Dispositivo con id: ${id} eliminado exitosamente`,
-        Id: Number(id),
+        message: `Dispositivo con id: ${Id} eliminado exitosamente`,
+        Id: Number(Id),
       };
     } catch (error) {
       if (error instanceof HttpException) {

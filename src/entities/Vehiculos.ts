@@ -9,10 +9,10 @@ import {
 import { Operadores } from "./Operadores";
 import { Dispositivos } from "./Dispositivos";
 
-@Index("Placa", ["placa"], { unique: true })
-@Index("NumeroEconomico", ["numeroEconomico"], { unique: true })
-@Index("IdOperador", ["idOperador"], {})
-@Index("IdDispositivo", ["idDispositivo"], {})
+@Index("Placa", ["Placa"], { unique: true })
+@Index("NumeroEconomico", ["NumeroEconomico"], { unique: true })
+@Index("IdOperador", ["IdOperador"], {})
+@Index("IdDispositivo", ["IdDispositivo"], {})
 @Entity("Vehiculos", { schema: "TransmoviDev" })
 export class Vehiculos {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
@@ -46,13 +46,13 @@ export class Vehiculos {
     onDelete: "SET NULL",
     onUpdate: "CASCADE",
   })
-  @JoinColumn([{ name: "IdOperador", referencedColumnName: "id" }])
+  @JoinColumn([{ name: "IdOperador", referencedColumnName: "Id" }])
   IdOperador2: Operadores;
 
   @ManyToOne(() => Dispositivos, (dispositivos) => dispositivos.vehiculos, {
     onDelete: "SET NULL",
     onUpdate: "CASCADE",
   })
-  @JoinColumn([{ name: "IdDispositivo", referencedColumnName: "id" }])
+  @JoinColumn([{ name: "IdDispositivo", referencedColumnName: "Id" }])
   IdDispositivo2: Dispositivos;
 }

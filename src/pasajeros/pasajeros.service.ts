@@ -1,4 +1,10 @@
-import { BadRequestException, HttpException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreatePasajeroDto } from './dto/create-pasajero.dto';
 import { UpdatePasajeroDto } from './dto/update-pasajero.dto';
 import { UpdatePasajeroEstatusDto } from './dto/update-pasajeros-estatus.dto';
@@ -14,13 +20,21 @@ export class PasajerosService {
   ) {}
   async createPasajeros(createPasajeroDto: CreatePasajeroDto) {
     try {
-      const pasajeroExistente = await this.pasajeroRepository.findOne({where:{nombre: createPasajeroDto.nombre,apellidoPaterno:createPasajeroDto.apellidoPaterno}});
+      const pasajeroExistente = await this.pasajeroRepository.findOne({
+        where: {
+          Nombre: createPasajeroDto.Nombre,
+          ApellidoPaterno: createPasajeroDto.ApellidoPaterno,
+        },
+      });
       if (pasajeroExistente) {
-        throw new BadRequestException(`El pasajero con id: ${createPasajeroDto.nombre} no fue encontrado`);
+        throw new BadRequestException(
+          `El pasajero con id: ${createPasajeroDto.Nombre} no fue encontrado`,
+        );
       }
-      const clienteCreado = await this.pasajeroRepository.save(createPasajeroDto);
+      const clienteCreado =
+        await this.pasajeroRepository.save(createPasajeroDto);
       //falta el apartado de la bitcora
-      return{ message: 'Usuario creado exitosamente', clienteCreado };
+      return { message: 'Usuario creado exitosamente', clienteCreado };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -33,7 +47,7 @@ export class PasajerosService {
     try {
       const pasajerosExistentes = await this.pasajeroRepository.find();
       if (pasajerosExistentes.length === 0) {
-        throw new BadRequestException(`Pasajeros no encontrados`)
+        throw new BadRequestException(`Pasajeros no encontrados`);
       }
       //falta el apartado de la bitacora
       return pasajerosExistentes;
@@ -45,11 +59,15 @@ export class PasajerosService {
     }
   }
   //Obtener pasajero por ID
-  async findOnePasajero(id: number) {
+  async findOnePasajero(Id: number) {
     try {
-      const pasajeroExistente = await this.pasajeroRepository.findOne({where:{id}});
+      const pasajeroExistente = await this.pasajeroRepository.findOne({
+        where: { Id },
+      });
       if (!pasajeroExistente) {
-        throw new NotFoundException(`El pasajero con id: ${id} no fue encontrado`);
+        throw new NotFoundException(
+          `El pasajero con id: ${Id} no fue encontrado`,
+        );
       }
       //falta apartado de bitacora
       return pasajeroExistente;
@@ -62,36 +80,46 @@ export class PasajerosService {
   }
   //Cambiar estatus del pasajero
   async updatePasajeroEstatus(
-    id: number,
+    Id: number,
     updatePasajeroEstatusDto: UpdatePasajeroEstatusDto,
   ) {
     try {
-      const pasajeroExistente = await this.pasajeroRepository.findOne({where:{id}});
+      const pasajeroExistente = await this.pasajeroRepository.findOne({
+        where: { Id },
+      });
       if (!pasajeroExistente) {
-        throw new NotFoundException(`El pasajero con id: ${id} no fue encontrado`);
+        throw new NotFoundException(
+          `El pasajero con id: ${Id} no fue encontrado`,
+        );
       }
-      const { estatus } = updatePasajeroEstatusDto;
-      await this.pasajeroRepository.update(id,{estatus});
+      const { Estatus } = updatePasajeroEstatusDto;
+      await this.pasajeroRepository.update(Id, { Estatus });
       //falta el apartado de la bitacora
-      return{
-        message:`Cliente con id: ${id} su estatus fue actualizado a ${estatus}`
+      return {
+        message: `Cliente con id: ${Id} su estatus fue actualizado a ${Estatus}`,
       };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
       }
-      throw new InternalServerErrorException('Error al cambiar el estatus del pasajero');
+      throw new InternalServerErrorException(
+        'Error al cambiar el estatus del pasajero',
+      );
     }
   }
   // Cambiar informacion del pasajero
-  async updatePasajero(id: number, updatePasajeroDto: UpdatePasajeroDto) {
+  async updatePasajero(Id: number, updatePasajeroDto: UpdatePasajeroDto) {
     try {
-      const pasajeroExistente = await this.pasajeroRepository.findOne({where:{id}});
+      const pasajeroExistente = await this.pasajeroRepository.findOne({
+        where: { Id },
+      });
       if (!pasajeroExistente) {
-        throw new NotFoundException(`El pasajero con id: ${id} no fue encontrado`);
+        throw new NotFoundException(
+          `El pasajero con id: ${Id} no fue encontrado`,
+        );
       }
-      await this.pasajeroRepository.update(id,updatePasajeroDto);
-      return await this.pasajeroRepository.findOne({where: {id}});
+      await this.pasajeroRepository.update(Id, updatePasajeroDto);
+      return await this.pasajeroRepository.findOne({ where: { Id } });
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -100,14 +128,18 @@ export class PasajerosService {
     }
   }
   //Eliminar pasajero por ID
-  async removePasajero(id: number) {
+  async removePasajero(Id: number) {
     try {
-      const pasajeroEliminar = await this.pasajeroRepository.findOne({where:{id}});
+      const pasajeroEliminar = await this.pasajeroRepository.findOne({
+        where: { Id },
+      });
       if (!pasajeroEliminar) {
-        throw new NotFoundException(`El pasajero con id: ${id} no fue encontrado`);
+        throw new NotFoundException(
+          `El pasajero con id: ${Id} no fue encontrado`,
+        );
       }
       await this.pasajeroRepository.remove(pasajeroEliminar);
-      return `Pasajero con id: ${id} eliminado exitosamente`;
+      return `Pasajero con id: ${Id} eliminado exitosamente`;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;

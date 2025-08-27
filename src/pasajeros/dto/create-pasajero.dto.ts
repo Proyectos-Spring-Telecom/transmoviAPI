@@ -5,14 +5,14 @@ export class CreatePasajeroDto {
   @IsString()
   @IsNotEmpty({ message: 'Es necesario el nombre' })
   @MaxLength(100, { message: 'El nombre no puede exceder los 100 caracteres' })
-  nombre: string;
+  Nombre: string;
 
   @IsString()
   @IsNotEmpty({ message: 'Es obligatorio el apellido paterno' })
   @MaxLength(100, {
     message: 'El apellido paterno no puede exceder los 100 caracteres',
   })
-  apellidoPaterno: string;
+  ApellidoPaterno: string;
 
   //Apellido Materno es opcional para casos de un solo apellido
   @IsOptional()
@@ -20,23 +20,23 @@ export class CreatePasajeroDto {
   @MaxLength(100, {
     message: 'El apellido materno no puede exceder los 100 caracteres',
   })
-  apellidoMaterno?: string;
+  ApellidoMaterno?: string;
 
    @IsDate()
    @Type(() => Date)
-   fechaNacimiento: Date;
+   FechaNacimiento: Date;
 
   @IsOptional()
   @IsEmail()
-  correo?: string;
+  Correo?: string;
 
   @IsOptional()
   @IsString()
   @MaxLength(20, { message: 'El teléfono no puede exceder los 20 caracteres' })
-  telefono: string;
+  Telefono: string;
 
   @IsInt({ message: 'estatus debe ser un número entero'})
   @IsIn([0, 1], { message: 'Solo puede ser 0 ó 1'})
   @IsOptional() 
-  estatus?: number;
+  Estatus?: number;
 }

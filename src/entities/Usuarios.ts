@@ -9,9 +9,9 @@ import {
 import { Roles } from "./Roles";
 import { Clientes } from "./Clientes";
 
-@Index("Usuarios_UserName_unique", ["userName"], { unique: true })
-@Index("IdRol", ["idRol"], {})
-@Index("IdCliente", ["idCliente"], {})
+@Index("Usuarios_UserName_unique", ["UserName"], { unique: true })
+@Index("IdRol", ["IdRol"], {})
+@Index("IdCliente", ["IdCliente"], {})
 @Entity("Usuarios", { schema: "TransmoviDev" })
 export class Usuarios {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
@@ -28,7 +28,7 @@ export class Usuarios {
     nullable: true,
     default: () => "'0'",
   })
-  emailConfirmed: number | null;
+  EmailConfirmed: number | null;
 
   @Column("varchar", { name: "Telefono", nullable: true, length: 20 })
   Telefono: string | null;
@@ -43,7 +43,7 @@ export class Usuarios {
   ApellidoMaterno: string | null;
 
   @Column("tinyint", { name: "Estatus", default: () => "'1'" })
-  estatus: number;
+  Estatus: number;
 
   @Column("bigint", { name: "IdRol", nullable: true })
   IdRol: number | null;
@@ -55,13 +55,13 @@ export class Usuarios {
     onDelete: "SET NULL",
     onUpdate: "CASCADE",
   })
-  @JoinColumn([{ name: "IdRol", referencedColumnName: "id" }])
+  @JoinColumn([{ name: "IdRol", referencedColumnName: "Id" }])
   IdRol2: Roles;
 
   @ManyToOne(() => Clientes, (clientes) => clientes.usuarios, {
     onDelete: "SET NULL",
     onUpdate: "CASCADE",
   })
-  @JoinColumn([{ name: "IdCliente", referencedColumnName: "id" }])
+  @JoinColumn([{ name: "IdCliente", referencedColumnName: "Id" }])
   IdCliente2: Clientes;
 }

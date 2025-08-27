@@ -23,12 +23,12 @@ export class Roles {
   @ManyToMany(() => Permisos, (permisos) => permisos.roles)
   @JoinTable({
     name: "RolePermisos",
-    joinColumns: [{ name: "IdRol", referencedColumnName: "id" }],
-    inverseJoinColumns: [{ name: "IdPermiso", referencedColumnName: "id" }],
-    schema: "Transmovi",
+    joinColumns: [{ name: "IdRol", referencedColumnName: "Id" }],
+    inverseJoinColumns: [{ name: "IdPermiso", referencedColumnName: "Id" }],
+    schema: "TransmoviDev",
   })
   Permisos: Permisos[];
 
-  @OneToMany(() => Usuarios, (usuarios) => usuarios.idRol2)
+  @OneToMany(() => Usuarios, (usuarios) => usuarios.IdRol2)
   usuarios: Usuarios[];
 }

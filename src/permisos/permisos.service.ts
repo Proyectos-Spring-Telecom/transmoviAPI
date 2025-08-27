@@ -4,26 +4,15 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import {
-  HttpException,
-  Injectable,
-  InternalServerErrorException,
-  NotFoundException,
-} from '@nestjs/common';
 import { CreatePermisoDto } from './dto/create-permiso.dto';
 import { UpdatePermisoDto } from './dto/update-permiso.dto';
 import { Permisos } from 'src/entities/Permisos';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UsuarioPermisos } from 'src/entities/UsuarioPermisos';
-import { plainToInstance } from 'class-transformer';
-import { ExposePermisoDto } from './dto/expose-permiso.dto';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import { UpdatePermisoEstatusDto } from './dto/update-permiso-estatus.dto';
-import { plainToInstance } from 'class-transformer';
-import { ExposePermisoDto } from './dto/expose-permiso.dto';
-import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
-import { UpdatePermisoEstatusDto } from './dto/update-permiso-estatus.dto';
+import { ApiResponseCommon } from 'src/common/ApiResponse';
 
 @Injectable()
 export class PermisosService {
@@ -34,47 +23,39 @@ export class PermisosService {
     private readonly usuarioPermiso: Repository<UsuarioPermisos>,
     private readonly bitacoraLogger: BitacoraLoggerService,
   ) {}
-  constructor(
-    @InjectRepository(Permisos)
-    private readonly permisoRepository: Repository<Permisos>,
-    @InjectRepository(UsuarioPermisos)
-    private readonly usuarioPermiso: Repository<UsuarioPermisos>,
-    private readonly bitacoraLogger: BitacoraLoggerService,
-  ) {}
 
   //Obtener todos los permisos con paginado
-  //Obtener todos los permisos con paginado
-  async findAll(page: number = 1, limit: number = 10) {
-    const [permisos, total] = await this.permisoRepository.findAndCount({
+  async findAll(page: number = 1, limit: number = 10): Promise<ApiResponseCommon> {
+    const [data, total] = await this.permisoRepository.findAndCount({
       relations: ['modulo'],
       skip: (page - 1) * limit,
       take: limit,
     });
-    const permisoExpuesto = plainToInstance(ExposePermisoDto, permisos, {
-      excludeExtraneousValues: true,
-    });
-    const permisoExpuesto = plainToInstance(ExposePermisoDto, permisos, {
-      excludeExtraneousValues: true,
-    });
-    return {
-      data: permisoExpuesto,
-      data: permisoExpuesto,
-      total,
-      page,
-      lastPage: Math.ceil(total / limit),
-    };
+
+    const result: ApiResponseCommon = {
+        data,
+        paginated: {
+          total: Math.ceil(total / limit),
+          page,
+          limit,
+        },
+        message: 'Permisos obtenidos correctamente',
+      };
+
+    return result;
   }
 
   //Obtener todos los permisos
-  async findAllList(): Promise<ExposePermisoDto[]> {
+  async findAllList(): Promise<ApiResponseCommon> {
     try {
       const permisos = await this.permisoRepository.find({
         relations: ['modulo'],
       });
-      const permisoExpuesto = plainToInstance(ExposePermisoDto, permisos, {
-        excludeExtraneousValues: true,
-      });
-      return permisoExpuesto;
+      const result: ApiResponseCommon = {
+        data: permisos,
+        message: 'Permisos obtenidos correctamente',
+      };
+      return result;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -86,17 +67,15 @@ export class PermisosService {
   }
 
   //Obtener permiso by ID
-  async findOne(id: number): Promise<ExposePermisoDto> {
+  async findOne(id: number) {
     try {
       const permiso = await this.permisoRepository.findOne({
-        where: { id },
+        where: { Id: id },
         relations: ['modulo'],
       });
       if (!permiso) throw new NotFoundException('Permiso no encontrado');
-      const permisoExpuesto = plainToInstance(ExposePermisoDto, permiso, {
-        excludeExtraneousValues: true,
-      });
-      return permisoExpuesto;
+
+      return permiso;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -112,22 +91,22 @@ export class PermisosService {
       const create = this.permisoRepository.create(createPermiso);
       const savedPermiso = await this.permisoRepository.save(create);
       const asignar = {
-        idPermiso: savedPermiso.id,
-        idUsuario: idUsuario,
+        IdPermiso: savedPermiso.Id,
+        IdUsuario: idUsuario,
       };
       const permiso = await this.usuarioPermiso.create(asignar);
       const asignarRoot = {
-        idPermiso: savedPermiso.id,
-        idUsuario: 24, //Se asigna al usuario supremo
+        IdPermiso: savedPermiso.Id,
+        IdUsuario: 1, //Se asigna al usuario supremo
       };
       const permisoRoot = await this.usuarioPermiso.create(asignarRoot);
       this.usuarioPermiso.save(permisoRoot);
       // --- Registro en la bitácora ---
       await this.bitacoraLogger.logToBitacora(
         'Permisos',
-        `Se creó el permiso: ${savedPermiso.nombre}`,
+        `Se creó el permiso: ${savedPermiso.Nombre}`,
         'CREATE',
-        `INSERT INTO Permisos (Nombre, Descripcion) VALUES ('${savedPermiso.nombre}', '${savedPermiso.descripcion}')`,
+        `INSERT INTO Permisos (Nombre, Descripcion) VALUES ('${savedPermiso.Nombre}', '${savedPermiso.Descripcion}')`,
         Number(idUsuario),
       );
       return `Permiso creado exitosamente`;
@@ -144,20 +123,20 @@ export class PermisosService {
     updatePermisoEstatusDto: UpdatePermisoEstatusDto,
   ) {
     try {
-      console.log('Id: ',id)
-      const permiso = await this.permisoRepository.findOne({ where: { id } });
+      const permiso = await this.permisoRepository.findOne({
+        where: { Id: id },
+      });
       if (!permiso) throw new NotFoundException('Permiso no encontrado');
       //Actualiza
       const result = await this.permisoRepository.update(id, {
-        estatus:updatePermisoEstatusDto.estatus
+        Estatus: updatePermisoEstatusDto.Estatus,
       });
-      console.log(result)
       // --- Registro en la bitácora ---
       await this.bitacoraLogger.logToBitacora(
         'Permisos',
-        `Se actualizo a estatus ${updatePermisoEstatusDto.estatus} del permiso: ${permiso.nombre}`,
+        `Se actualizo a estatus ${updatePermisoEstatusDto.Estatus} del permiso: ${permiso.Nombre}`,
         'UPDATE',
-        `UPDATE Permiso SET Estatus=${updatePermisoEstatusDto.estatus} WHERE Id=${id}`,
+        `UPDATE Permiso SET Estatus=${updatePermisoEstatusDto.Estatus} WHERE Id=${id}`,
         Number(id),
       );
       return `Estatus permiso con ${id} actualizado exitosamente`;
@@ -171,20 +150,22 @@ export class PermisosService {
       const id = updatePermiso.id;
 
       const permisoActualizar = {
-        nombre: updatePermiso.nombre,
-        descripcion: updatePermiso.descripcion,
-        estatus: updatePermiso.estatus,
-        idModulo: updatePermiso.idModulo,
+        Nombre: updatePermiso.Nombre,
+        Descripcion: updatePermiso.Descripcion,
+        Estatus: updatePermiso.Estatus,
+        IdModulo: updatePermiso.IdModulo,
       };
-      const permiso = await this.permisoRepository.findOne({ where: { id } });
+      const permiso = await this.permisoRepository.findOne({
+        where: { Id: id },
+      });
       if (!permiso) throw new NotFoundException('Permiso no encontrado');
       const result = await this.permisoRepository.update(id, permisoActualizar);
       // --- Registro en la bitácora ---
       await this.bitacoraLogger.logToBitacora(
         'Permisos',
-        `Se actualizo: ${permisoActualizar.nombre}`,
+        `Se actualizo: ${permisoActualizar.Nombre}`,
         'UPDATE',
-        `UPDATE Permisos SET... WHERE Id=${id} VALUES ('${permisoActualizar.nombre}', '${permisoActualizar.descripcion}')`,
+        `UPDATE Permisos SET... WHERE Id=${id} VALUES ('${permisoActualizar.Nombre}', '${permisoActualizar.Descripcion}')`,
         Number(id),
       );
       return `Permiso con ${id} actualizado exitosamente`;
@@ -195,14 +176,16 @@ export class PermisosService {
 
   async remove(id: number) {
     try {
-      const permiso = await this.permisoRepository.findOne({ where: { id } });
+      const permiso = await this.permisoRepository.findOne({
+        where: { Id: id },
+      });
       if (!permiso) throw new NotFoundException('Permiso no encontrado');
       //Desahabilitamos el permiso
-      await this.permisoRepository.update(id, { estatus: 0 });
+      await this.permisoRepository.update(id, { Estatus: 0 });
       // --- Registro en la bitácora ---
       await this.bitacoraLogger.logToBitacora(
         'Permisos',
-        `Se desactivo el permiso: ${permiso.nombre}`,
+        `Se desactivo el permiso: ${permiso.Nombre}`,
         'UPDATE',
         `UPDATE Monederos SET Estatus=${0} WHERE Id=${id}`,
         Number(id),
@@ -239,45 +222,6 @@ export class PermisosService {
               Modulos ON Permisos.IdModulo = Modulos.Id
               Modulos ON Permisos.IdModulo = Modulos.Id
             WHERE 
-              UsuariosPermisos.IdUsuario ='${idUsuario}'`;
-
-      // Ejecutar la consulta
-      const results = await this.permisoRepository.query(query);
-
-      if (!Array.isArray(results)) {
-        throw new Error('El resultado de la consulta no es un array');
-      }
-
-      // Agrupar resultados
-      const permisosAgrupados = results.reduce((result, item) => {
-        let moduloExistente = result.find(
-          (mod) => mod.IdModulo === item.IdModulo,
-        );
-
-        if (!moduloExistente) {
-          moduloExistente = {
-            IdModulo: item.IdModulo,
-            NombreModulo: item.NombreModulo,
-            Permisos: [],
-          };
-          result.push(moduloExistente);
-        }
-
-        moduloExistente.Permisos.push({
-          Id: item.PermisoId,
-          Nombre: item.PermisoNombre,
-          Descripcion: item.PermisoDescripcion,
-        });
-
-        return result;
-      }, []);
-
-      return permisosAgrupados;
-    } catch (error) {
-      console.error('Error al obtener permisos agrupados:', error);
-      throw error; // Lanzar el error para manejarlo en la capa superior si es necesario
-    }
-  }
               UsuariosPermisos.IdUsuario ='${idUsuario}'`;
 
       // Ejecutar la consulta

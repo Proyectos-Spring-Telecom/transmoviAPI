@@ -24,5 +24,5 @@ export class Pasajeros {
   Telefono: string | null;
 
   @Column("tinyint", { name: "Estatus", default: () => "'1'" })
-  estatus: number;
+  Estatus: number;
 }

@@ -9,12 +9,14 @@ import {
   UseGuards,
   Req,
   Put,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { PermisosService } from './permisos.service';
 import { CreatePermisoDto } from './dto/create-permiso.dto';
 import { UpdatePermisoDto } from './dto/update-permiso.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { UpdatePermisoEstatusDto } from './dto/update-permiso-estatus.dto';
+import { ApiResponseCommon } from 'src/common/ApiResponse';
 
 @Controller('permisos')
 @UseGuards(JwtAuthGuard)
@@ -28,12 +30,15 @@ export class PermisosController {
   }
 
   @Get('page/:page/:limit')
-  findAll(@Param('page') page: string, @Param('limit') limit: string) {
-    return this.permisosService.findAll(Number(page), Number(limit));
+  async findAll(
+    @Param('page',ParseIntPipe) page: number,
+    @Param('limit',ParseIntPipe) limit: number,
+  ): Promise<ApiResponseCommon> {
+    return await this.permisosService.findAll(page,limit);
   }
 
   @Get('list')
-  async findAllList() {
+  async findAllList(): Promise<ApiResponseCommon> {
     return await this.permisosService.findAllList();
   }
 

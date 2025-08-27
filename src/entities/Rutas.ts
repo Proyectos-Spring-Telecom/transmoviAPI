@@ -33,10 +33,10 @@ export class Rutas {
 
   @OneToMany(
     () => ConteoPasajeros,
-    (conteoPasajeros) => conteoPasajeros.idRuta2
+    (conteoPasajeros) => conteoPasajeros.IdRuta2
   )
   conteoPasajeros: ConteoPasajeros[];
 
-  @OneToMany(() => Tarifas, (tarifas) => tarifas.idRuta2)
+  @OneToMany(() => Tarifas, (tarifas) => tarifas.IdRuta2)
   tarifas: Tarifas[];
 }

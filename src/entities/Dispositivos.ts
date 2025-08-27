@@ -7,7 +7,7 @@ import {
 } from "typeorm";
 import { Vehiculos } from "./Vehiculos";
 
-@Index("NumeroSerie", ["numeroSerie"], { unique: true })
+@Index("NumeroSerie", ["NumeroSerie"], { unique: true })
 @Entity("Dispositivos", { schema: "TransmoviDev" })
 export class Dispositivos {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })

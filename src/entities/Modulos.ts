@@ -3,7 +3,7 @@ import { Permisos } from "./Permisos";
 
 @Entity("Modulos", { schema: "TransmoviDev" })
 export class Modulos {
-  @Column("bigint", { primary: true, name: "id" })
+  @Column("bigint", { primary: true, name: "Id" })
   Id: number;
 
   @Column("varchar", { name: "Nombre", length: 100 })

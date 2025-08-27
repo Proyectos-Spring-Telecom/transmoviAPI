@@ -10,7 +10,7 @@ import {
 import { Modulos } from "./Modulos";
 import { Roles } from "./Roles";
 
-@Index("fk_permisos_modulo", ["idModulo"], {})
+@Index("fk_permisos_modulo", ["IdModulo"], {})
 @Entity("Permisos", { schema: "TransmoviDev" })
 export class Permisos {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
@@ -29,13 +29,13 @@ export class Permisos {
     onDelete: "CASCADE",
     onUpdate: "CASCADE",
   })
-  @JoinColumn([{ name: "idModulo", referencedColumnName: "id" }])
+  @JoinColumn([{ name: "IdModulo", referencedColumnName: "Id" }])
   IdModulo: number;
 
   @ManyToMany(() => Roles, (roles) => roles.Permisos)
   roles: Roles[];
 
   @ManyToOne(()=>Modulos, (modulo)=> modulo.permisos)
-    @JoinColumn([{ name: "idModulo", referencedColumnName: "id" }])
+    @JoinColumn([{ name: "IdModulo", referencedColumnName: "Id" }])
   Modulo:Modulos;
 }

@@ -7,7 +7,7 @@ import {
 } from "typeorm";
 import { ConteoPasajeros } from "./ConteoPasajeros";
 
-@Index("Clave", ["clave"], { unique: true })
+@Index("Clave", ["Clave"], { unique: true })
 @Entity("BlueVoxs", { schema: "TransmoviDev" })
 export class BlueVoxs {
   @PrimaryGeneratedColumn({ type: "int", name: "Id" })

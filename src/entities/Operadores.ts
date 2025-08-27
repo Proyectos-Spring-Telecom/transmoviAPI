@@ -7,8 +7,8 @@ import {
 } from "typeorm";
 import { Vehiculos } from "./Vehiculos";
 
-@Index("NumeroLicencia", ["numeroLicencia"], { unique: true })
-@Index("Correo", ["correo"], { unique: true })
+@Index("NumeroLicencia", ["NumeroLicencia"], { unique: true })
+@Index("Correo", ["Correo"], { unique: true })
 @Entity("Operadores", { schema: "TransmoviDev" })
 export class Operadores {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
@@ -38,6 +38,6 @@ export class Operadores {
   @Column("tinyint", { name: "Estatus", default: () => "'1'" })
   estatus: number;
 
-  @OneToMany(() => Vehiculos, (vehiculos) => vehiculos.idOperador2)
+  @OneToMany(() => Vehiculos, (vehiculos) => vehiculos.IdOperador2)
   vehiculos: Vehiculos[];
 }

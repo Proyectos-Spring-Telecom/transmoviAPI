@@ -8,7 +8,7 @@ import {
 } from "typeorm";
 import { Rutas } from "./Rutas";
 
-@Index("IdRuta", ["idRuta"], {})
+@Index("IdRuta", ["IdRuta"], {})
 @Entity("Tarifas", { schema: "TransmoviDev" })
 export class Tarifas {
   @PrimaryGeneratedColumn({ type: "int", name: "Id" })
@@ -43,6 +43,6 @@ export class Tarifas {
     onDelete: "NO ACTION",
     onUpdate: "NO ACTION",
   })
-  @JoinColumn([{ name: "IdRuta", referencedColumnName: "id" }])
+  @JoinColumn([{ name: "IdRuta", referencedColumnName: "Id" }])
   IdRuta2: Rutas;
 }

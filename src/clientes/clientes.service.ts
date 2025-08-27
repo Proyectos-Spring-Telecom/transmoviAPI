@@ -27,7 +27,7 @@ export class ClientesService {
     try {
       const clienteCreate = await this.clienteRepository.findOne({
         where: {
-          rfc: createClienteDto.RFC,
+          RFC: createClienteDto.RFC,
         },
       });
       if (clienteCreate) {
@@ -36,29 +36,7 @@ export class ClientesService {
           `Cliente registrado con RFC: ${createClienteDto.RFC}, ingrese otro cliente`,
         );
       }
-      const clienteData = await this.clienteRepository.create({
-        idPadre: createClienteDto.IdPadre,
-        rfc: createClienteDto.RFC,
-        tipoPersona: createClienteDto.TipoPersona,
-        estatus: createClienteDto.Estatus,
-        logotipo: createClienteDto.Logotipo,
-        nombre: createClienteDto.Nombre,
-        apellidoPaterno: createClienteDto.ApellidoPaterno,
-        apellidoMaterno: createClienteDto.ApellidoMaterno,
-        telefono: createClienteDto.Telefono,
-        correo: createClienteDto.Correo,
-        estado: createClienteDto.Estado,
-        municipio: createClienteDto.Municipio,
-        colonia: createClienteDto.Colonia,
-        calle: createClienteDto.Calle,
-        entreCalles: createClienteDto.EntreCalles,
-        numeroExterior: createClienteDto.NumeroExterior,
-        numeroInterior: createClienteDto.NumeroInterior,
-        cp: createClienteDto.CP,
-        nombreEncargado: createClienteDto.NombreEncargado,
-        telefonoEncargado: createClienteDto.TelefonoEncargado,
-        emailEncargado: createClienteDto.EmailEncargado,
-      });
+      const clienteData = await this.clienteRepository.create(createClienteDto);
       const clienteCreado = await this.clienteRepository.save(clienteData);
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
@@ -101,7 +79,7 @@ export class ClientesService {
   async getOneCliente(id: number) {
     try {
       const oneCliente = await this.clienteRepository.findOne({
-        where: { id },
+        where: { Id:id },
       });
       if (!oneCliente) {
         throw new NotFoundException(`EL cliente con id:${id} no encontrado`);
@@ -126,35 +104,13 @@ export class ClientesService {
     updateClienteDto: UpdateClienteDto,
   ) {
     try {
-      const Cliente = await this.clienteRepository.findOne({ where: { id } });
+      const Cliente = await this.clienteRepository.findOne({ where: { Id:id } });
       if (!Cliente) {
         throw new NotFoundException(
           `El cliente con id: ${id} no fue encontrado`,
         );
       }
-      const clienteData = await this.clienteRepository.create({
-        idPadre: updateClienteDto.IdPadre,
-        rfc: updateClienteDto.RFC,
-        tipoPersona: updateClienteDto.TipoPersona,
-        estatus: updateClienteDto.Estatus,
-        logotipo: updateClienteDto.Logotipo,
-        nombre: updateClienteDto.Nombre,
-        apellidoPaterno: updateClienteDto.ApellidoPaterno,
-        apellidoMaterno: updateClienteDto.ApellidoMaterno,
-        telefono: updateClienteDto.Telefono,
-        correo: updateClienteDto.Correo,
-        estado: updateClienteDto.Estado,
-        municipio: updateClienteDto.Municipio,
-        colonia: updateClienteDto.Colonia,
-        calle: updateClienteDto.Calle,
-        entreCalles: updateClienteDto.EntreCalles,
-        numeroExterior: updateClienteDto.NumeroExterior,
-        numeroInterior: updateClienteDto.NumeroInterior,
-        cp: updateClienteDto.CP,
-        nombreEncargado: updateClienteDto.NombreEncargado,
-        telefonoEncargado: updateClienteDto.TelefonoEncargado,
-        emailEncargado: updateClienteDto.EmailEncargado,
-      });
+      const clienteData = await this.clienteRepository.create(updateClienteDto);
       await this.clienteRepository.update(id, clienteData);
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
@@ -166,7 +122,7 @@ export class ClientesService {
       );
       //Hacemos un expose que convierta los atributos en PascalCase
       const clientefind = await this.clienteRepository.findOne({
-        where: { id },
+        where: { Id:id },
       });
       const clienteExpuesto = plainToInstance(ExposeClienteDto, clientefind, {
         excludeExtraneousValues: true,
@@ -188,12 +144,12 @@ export class ClientesService {
     updateClienteEstatusDto: UpdateClienteEstatusDto,
   ) {
     try {
-      const Usuario = await this.clienteRepository.findOne({ where: { id } });
+      const Usuario = await this.clienteRepository.findOne({ where: { Id:id } });
       if (!Usuario) {
         throw new NotFoundException(`Cliente con id: ${id} no encontrado`);
       }
       const Estatus = updateClienteEstatusDto.Estatus;
-      await this.clienteRepository.update(id, { estatus: Estatus });
+      await this.clienteRepository.update(id, { Estatus });
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Clientes',
@@ -219,7 +175,7 @@ export class ClientesService {
   async removeCliente(id: number, idUser: string) {
     try {
       const clienteEliminar = await this.clienteRepository.findOne({
-        where: { id },
+        where: { Id:id },
       });
       if (!clienteEliminar) {
         throw new NotFoundException(

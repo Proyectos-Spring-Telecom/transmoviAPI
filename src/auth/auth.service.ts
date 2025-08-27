@@ -25,12 +25,12 @@ export class AuthService {
   async signIn(loginAuthDto: LoginAuthDto) {
     try {
       const user = await this.usuariosRepository.findOne({
-        where: { userName: loginAuthDto.UserName },
+        where: { UserName: loginAuthDto.UserName },
       });
       console.log({ data: user });
       if (
         !user ||
-        !(await bcrypt.compare(loginAuthDto.Password, user.password))
+        !(await bcrypt.compare(loginAuthDto.Password, user.Password))
       ) {
         console.log({
           user: user,
@@ -40,13 +40,13 @@ export class AuthService {
       }
 
       const permisos = await this.permisosRepository.find({
-        select: ['idPermiso'],
-        where: { idUsuario: user.id },
+        select: ['IdPermiso'],
+        where: { IdUsuario: user.Id },
       });
 
-      const payload = { id: user.id, email: user.userName };
+      const payload = { id: user.Id, email: user.UserName };
       return {
-        message: `login exitoso ${user.nombre}`,
+        message: `login exitoso ${user.Nombre}`,
         token: this.jwtService.sign(payload),
         permisos: permisos,
       };
