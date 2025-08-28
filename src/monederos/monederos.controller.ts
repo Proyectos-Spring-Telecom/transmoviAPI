@@ -9,6 +9,7 @@ import {
   Put,
   UseGuards,
   Request,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { MonederosService } from './monederos.service';
 import { CreateMonederoDto } from './dto/create-monedero.dto';
@@ -16,6 +17,7 @@ import { UpdateMonederoDto } from './dto/update-monedero.dto';
 import { UpdateMonederoEstatusDto } from './dto/update-monedero-estatus.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { UpdateMonederoSaldoDto } from './dto/update-monedero-saldo.dto';
+import { ApiResponseCommon } from 'src/common/ApiResponse';
 @UseGuards(JwtAuthGuard)
 @Controller('monederos')
 export class MonederosController {
@@ -27,9 +29,17 @@ export class MonederosController {
     return this.monederosService.createMonedero(createMonederoDto, idUser);
   }
 
-  @Get()
-  findAllMonederos() {
-    return this.monederosService.findAllMonederos();
+  @Get('page/:page/:limit')
+  findAllMonederos(
+    @Param('page', ParseIntPipe) page: number,
+    @Param('limit', ParseIntPipe) limit: number,
+  ): Promise<ApiResponseCommon> {
+    return this.monederosService.findAllMonederos(page,limit);
+  }
+
+  @Get('list')
+  findAllListMonederos(): Promise<ApiResponseCommon> {
+    return this.monederosService.findAllListMonederos();
   }
 
   @Get(':id')

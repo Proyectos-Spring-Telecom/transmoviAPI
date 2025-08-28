@@ -77,7 +77,6 @@ export class UsuariosService {
       if (error instanceof HttpException) {
         throw error;
       }
-
       throw new BadRequestException({ message: 'Error al obtener Usuarios' });
     }
   }

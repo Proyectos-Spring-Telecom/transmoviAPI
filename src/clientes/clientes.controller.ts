@@ -9,12 +9,14 @@ import {
   Put,
   UseGuards,
   Request,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ClientesService } from './clientes.service';
 import { CreateClienteDto } from './dto/create-cliente.dto';
 import { UpdateClienteDto } from './dto/update-cliente.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { UpdateClienteEstatusDto } from './dto/update-clientes-estatus.dto';
+import { ApiResponseCommon } from 'src/common/ApiResponse';
 @UseGuards(JwtAuthGuard)
 @Controller('clientes')
 export class ClientesController {
@@ -27,10 +29,18 @@ export class ClientesController {
     const idUser = req.user.userId
     return this.clientesService.createCliente(createClienteDto,idUser);
   }
+  //Obtener todos los clientes con paginado
+  @Get('page/:page/:limit')
+  getAllClientes(
+    @Param('page',ParseIntPipe)page: number,
+    @Param('limit',ParseIntPipe)limit: number,
+  ):Promise<ApiResponseCommon> {
+    return this.clientesService.getAllClientes(page,limit);
+  }
   //Obtener todos los clientes
-  @Get('')
-  getClientes() {
-    return this.clientesService.getClientes();
+  @Get('list')
+  async getAllListClientes(): Promise<ApiResponseCommon> {
+    return this.clientesService.getAllListClientes();
   }
   //Obtener solo un cliente
   @Get(':id')

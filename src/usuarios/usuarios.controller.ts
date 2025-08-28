@@ -23,7 +23,7 @@ import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 @Controller('usuarios')
 export class UsuariosController {
   constructor(private readonly usuariosService: UsuariosService) {}
-
+  //Obtener clientes paginado
   @Get('page/:page/:limit')
   @ApiOperation({ summary: 'Obtener todos los usuarios' })
   @ApiResponse({ status: 200, description: 'Lista de usuarios', type: [CreateUsuarioDto] })
@@ -33,24 +33,23 @@ export class UsuariosController {
   ): Promise<ApiResponseCommon> {
     return await this.usuariosService.getAllUsuario(page,limit);
   }
-
+  //Obtener todos los usuario
   @Get('list')
   async findAllList():Promise <ApiResponseCommon>{
-    
     return await this.usuariosService.getAllListUsuarios();
   }
-
+  //Obtener los usuario por Id
   @Get('/:id')
   findOne(@Param('id') id: string) {
     return this.usuariosService.getUsuarioByID(+id);
   }
-
+  //Crear usuario
   @Post()
   createUsuario(@Body() createUsuarioDto: CreateUsuarioDto,@Request()req) {
     const idUser = req.user.userId;
     return this.usuariosService.createUsuario(createUsuarioDto,idUser);
   }
-
+  //actualizar usuario
   @Put('/:id')
   updateUsuario(
     @Param('id')
@@ -61,13 +60,13 @@ export class UsuariosController {
     const idUser = req.user.userId;
     return this.usuariosService.updateUsuario(+id, updateUsuarioDto,idUser);
   }
-
+  //eliminar usuario
   @Delete('/:id')
   deleteUsuario(@Param('id') id: string,@Request() req) {
     const idUser = req.user.userId;
     return this.usuariosService.deleteUsuario(+id,idUser);
   }
-
+  //actualizar estatus del usuario
   @Patch('/:id/estatus')
   changeUsuarioEstatus(
     @Param('id') id: string,

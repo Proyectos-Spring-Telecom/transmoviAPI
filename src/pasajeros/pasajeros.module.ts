@@ -3,9 +3,10 @@ import { PasajerosService } from './pasajeros.service';
 import { PasajerosController } from './pasajeros.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Pasajeros } from 'src/entities/Pasajeros';
+import { BitacoraModule } from 'src/bitacora/bitacora.module';
 
 @Module({
-  imports:[TypeOrmModule.forFeature([Pasajeros])],
+  imports: [TypeOrmModule.forFeature([Pasajeros]), BitacoraModule],
   controllers: [PasajerosController],
   providers: [PasajerosService],
 })

@@ -4,9 +4,15 @@ import { TransaccionesController } from './transacciones.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Transacciones } from 'src/entities/Transacciones';
 import { MonederosModule } from 'src/monederos/monederos.module';
+import { BitacoraModule } from 'src/bitacora/bitacora.module';
+import { Monederos } from 'src/entities/Monederos';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Transacciones]), MonederosModule],
+  imports: [
+    TypeOrmModule.forFeature([Transacciones,Monederos]),
+    MonederosModule,
+    BitacoraModule,
+  ],
   controllers: [TransaccionesController],
   providers: [TransaccionesService],
 })

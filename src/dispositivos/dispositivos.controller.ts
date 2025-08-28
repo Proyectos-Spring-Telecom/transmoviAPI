@@ -9,12 +9,14 @@ import {
   UseGuards,
   Put,
   Request,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { DispositivosService } from './dispositivos.service';
 import { CreateDispositivoDto } from './dto/create-dispositivo.dto';
 import { UpdateDispositivoDto } from './dto/update-dispositivo.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { UpdateDispositivoEstatusDto } from './dto/update-dispositivos-estatus.dto';
+import { ApiResponseCommon } from 'src/common/ApiResponse';
 @UseGuards(JwtAuthGuard)
 @Controller('dispositivos')
 export class DispositivosController {
@@ -32,9 +34,17 @@ export class DispositivosController {
     );
   }
 
+  @Get('page/:page/:limit')
+  async findAllDispositivos(
+    @Param('page', ParseIntPipe) page: number,
+    @Param('limit', ParseIntPipe) limit: number,
+  ): Promise<ApiResponseCommon> {
+    return this.dispositivosService.findAllDispositivos(page,limit);
+  }
+
   @Get()
-  findAllDispositivos() {
-    return this.dispositivosService.findAllDispositivos();
+  findAllListDispositivos(): Promise<ApiResponseCommon> {
+    return this.dispositivosService.findAllListDispositivos();
   }
 
   @Get(':id')

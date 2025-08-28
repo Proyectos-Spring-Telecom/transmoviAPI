@@ -13,7 +13,7 @@ import { Repository } from 'typeorm';
 import { Dispositivos } from 'src/entities/Dispositivos';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import { plainToInstance } from 'class-transformer';
-import { ExposeDispositivoDto } from './dto/expose-dispositivo.dto';
+import { ApiResponseCommon } from 'src/common/ApiResponse';
 @Injectable()
 export class DispositivosService {
   constructor(
@@ -46,14 +46,9 @@ export class DispositivosService {
         `INSERT INTO Dispositivos (NumeroSerie, Marca, Modelo, Estatus) VALUES (${createDispositivoDto.NumeroSerie}, ${createDispositivoDto.Marca}, '${createDispositivoDto.Modelo}', ${createDispositivoDto.Estatus})`, 
         Number(idUser),
       );
-      const dispositivoExpuesto = plainToInstance(
-      ExposeDispositivoDto,
-      dataDispositivo,
-      { excludeExtraneousValues: true },
-    );
       return {
       message: 'Dispositivo creado exitosamente',
-      dispositivo: dispositivoExpuesto,
+      dispositivo: dataDispositivo,
     };
     } catch (error) {
       if (error instanceof HttpException) {
@@ -62,22 +57,50 @@ export class DispositivosService {
       throw new InternalServerErrorException(`Error al crear el dipositivo`);
     }
   }
-  //Obtener todos los dispositivos
-  async findAllDispositivos() {
+    //Obtener todos los dispositivos
+  async findAllListDispositivos(): Promise<ApiResponseCommon> {
     try {
       const dispostivosExistentes = await this.dispositivoRepository.find();
       if (dispostivosExistentes.length === 0) {
         throw new NotFoundException(`Dispositivo no encontrados`);
       }
-      const dispositivosDto = plainToInstance(
-        ExposeDispositivoDto,
-        dispostivosExistentes,
-        { excludeExtraneousValues: true },
+      const result: ApiResponseCommon = {
+        data:dispostivosExistentes,
+        
+        message:'Dispositivos obtenidos correctamente',
+      }
+      return result;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Error al obtener los dipositivos`,
       );
-      return {
-      message: 'Dispositivos obtenidos exitosamente',
-      dispositivos: dispositivosDto,
-    };
+    }
+  }
+  //Obtener todos los dispositivos paginado
+  async findAllDispositivos(page: number, limit: number):Promise<ApiResponseCommon> {
+    try {
+      const dispostivosExistentes = await this.dispositivoRepository.find();
+      if (dispostivosExistentes.length === 0) {
+        throw new NotFoundException(`Dispositivo no encontrados`);
+      }
+      const [data, total] = await this.dispositivoRepository.findAndCount({
+        relations:[],
+        skip: (page - 1)*limit,
+        take:limit,
+      });
+      const result: ApiResponseCommon = {
+        data,
+        paginated: {
+          total: Math.ceil(total/limit),
+          page,
+          limit,
+        },
+        message:'Dispositivos obtenidos correctamente',
+      }
+      return result;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -96,12 +119,9 @@ export class DispositivosService {
       if (!dispostivoExistente) {
         throw new NotFoundException(`Dispositivo con id: ${Id} no encontrado`);
       }
-      const dispositivoExpuesto = plainToInstance(ExposeDispositivoDto, dispostivoExistente, {
-        excludeExtraneousValues: true,
-      });
       return {
         message: 'Dispositivo obtenido exitosamente',
-        dispositivo: dispositivoExpuesto,
+        dispositivo: dispostivoExistente,
       };
     } catch (error) {
       if (error instanceof HttpException) {
@@ -174,12 +194,9 @@ export class DispositivosService {
       const dispositivoActualizado = await this.dispositivoRepository.findOne({
         where: { Id },
       });
-      const dispositivoExpuesto = plainToInstance(ExposeDispositivoDto, dispositivoActualizado, {
-        excludeExtraneousValues: true,
-      });
       return {
         message: 'Dsipositivo actualizado exitosamente',
-        dispositivo: dispositivoExpuesto,
+        dispositivo: dispositivoActualizado,
       };
     } catch (error) {
       if (error instanceof HttpException) {

@@ -12,8 +12,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Monederos } from 'src/entities/Monederos';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
-import { ExposeMonederoDto } from './dto/expose-monedero.dto';
-import { plainToInstance } from 'class-transformer';
+import { ApiResponseCommon } from 'src/common/ApiResponse';
+
 
 @Injectable()
 export class MonederosService {
@@ -43,10 +43,7 @@ export class MonederosService {
         `INSERT Monedero -> NumeroSerie: ${createMonederoDto.NumeroSerie}`,
         Number(idUser),
       );
-      const monederoExpuesto = plainToInstance(ExposeMonederoDto, monedero, {
-        excludeExtraneousValues: true,
-      });
-      return { message: 'Monedero creado exitosamente', monedero: monederoExpuesto };
+      return { message: 'Monedero creado exitosamente', monedero: monedero };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -54,17 +51,49 @@ export class MonederosService {
       throw new InternalServerErrorException('Error al crear el monedero');
     }
   }
-  //Obtener todos los monederos
-  async findAllMonederos() {
+  //Obtener todos los monederos paginado
+  async findAllMonederos(page: number, limit: number): Promise<ApiResponseCommon> {
     try {
       const monederos = await this.monederoRepository.find();
       if (monederos.length === 0) {
         throw new NotFoundException('Monederos no encontrados');
       }
-      const monederoExpuesto = plainToInstance(ExposeMonederoDto, monederos, {
-        excludeExtraneousValues: true,
+      const [data,total] = await this.monederoRepository.findAndCount({
+        relations: [],
+        skip: (page - 1)*limit,
+        take: limit,
       });
-      return { message: 'Monederos obtenidos exitosamente', monederos: monederoExpuesto };
+      const result:ApiResponseCommon = {
+        data,
+        paginated: {
+          total: Math.ceil(total/limit),
+          page,
+          limit,
+        },
+        message: 'Monederos obtenidos correctamente',
+      }
+      return result;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Error al obtener los monederos');
+    }
+  }
+
+    //Obtener todos los monederos
+  async findAllListMonederos(): Promise<ApiResponseCommon> {
+    try {
+      const monederos = await this.monederoRepository.find();
+      if (monederos.length === 0) {
+        throw new NotFoundException('Monederos no encontrados');
+      }
+      const result:ApiResponseCommon = {
+        data:monederos,
+
+        message: 'Monederos obtenidos correctamente',
+      }
+      return result;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -81,10 +110,7 @@ export class MonederosService {
           `El monedero con id: ${Id} no fue encontrado`,
         );
       }
-      const monederoExpuesto = plainToInstance(ExposeMonederoDto, monedero, {
-        excludeExtraneousValues: true,
-      });
-      return { message: 'Monedero obtenido exitosamente', monederos: monederoExpuesto };
+      return { message: 'Monedero obtenido exitosamente', monederos: monedero };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -103,10 +129,7 @@ export class MonederosService {
           `El monedero con numero de serie: ${NumeroSerie} no fue encontrado`,
         );
       }
-      const monederoExpuesto = plainToInstance(ExposeMonederoDto, monedero, {
-        excludeExtraneousValues: true,
-      });
-      return { message: 'Monedero obtenido exitosamente', monederos: monederoExpuesto };
+      return { message: 'Monedero obtenido exitosamente', monederos: monedero };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -214,10 +237,7 @@ export class MonederosService {
         Number(idUser),
       );
       const monedero = await this.monederoRepository.findOne({ where: { Id } });
-      const monederoExpuesto = plainToInstance(ExposeMonederoDto, monedero, {
-        excludeExtraneousValues: true,
-      });
-      return { message: 'Monederos actualizado exitosamente', monedero: monederoExpuesto };
+      return { message: 'Monederos actualizado exitosamente', monedero: monedero };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;

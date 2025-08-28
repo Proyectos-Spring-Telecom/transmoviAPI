@@ -16,7 +16,7 @@ import { Dispositivos } from "./Dispositivos";
 @Entity("Vehiculos", { schema: "TransmoviDev" })
 export class Vehiculos {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
-  Id: string;
+  Id: number;
 
   @Column("varchar", { name: "Marca", length: 255 })
   Marca: string;
@@ -34,7 +34,7 @@ export class Vehiculos {
   NumeroEconomico: string;
 
   @Column("tinyint", { name: "Estatus", default: () => "'1'" })
-  estatus: number;
+  Estatus: number;
 
   @Column("bigint", { name: "IdOperador", nullable: true })
   IdOperador: string | null;

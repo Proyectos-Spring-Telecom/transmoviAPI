@@ -11,6 +11,7 @@ import {
   Query,
   Res,
   ParseIntPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { ModulosService } from './modulos.service';
 import { CreateModuloDto } from './dto/create-modulo.dto';
@@ -18,8 +19,10 @@ import { UpdateModuloDto } from './dto/update-modulo.dto';
 import { ApiTags } from '@nestjs/swagger';
 import { UpdateModulosEstatusDto } from './dto/update-modulo-estatus.dto';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
+import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 
 @ApiTags('Modulos')
+@UseGuards(JwtAuthGuard)
 @Controller('modulos')
 export class ModulosController {
   constructor(private readonly modulosService: ModulosService) {}

@@ -12,7 +12,7 @@ import { Monederos } from "./Monederos";
 @Entity("Transacciones", { schema: "TransmoviDev" })
 export class Transacciones {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
-  Id: string;
+  Id: number;
 
   @Column("bigint", { name: "IdMonedero" })
   IdMonedero: number;

@@ -12,8 +12,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Operadores } from 'src/entities/Operadores';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
-import { plainToInstance } from 'class-transformer';
-import { ExposeOperadoresDto } from './dto/expose-operadore.dto';
+import { ApiResponseCommon } from 'src/common/ApiResponse';
+
 @Injectable()
 export class OperadoresService {
   constructor(
@@ -45,12 +45,9 @@ export class OperadoresService {
         `INSERT Operadores SET ... Se creó el operador:${createOperadoreDto.Nombre} ${createOperadoreDto.ApellidoPaterno} CREATE, INSERT INTO Operadores (Nombre, ApellidoPaterno, ApellidoMaterno, NumeroLicencia, FechaNacimiento, Correo, Telefono, Estatus) VALUES (${createOperadoreDto.Nombre}, ${createOperadoreDto.ApellidoPaterno}, ${createOperadoreDto.ApellidoMaterno}, ${createOperadoreDto.NumeroLicencia}, ${createOperadoreDto.FechaNacimiento}, ${createOperadoreDto.Correo}, ${createOperadoreDto.Telefono}, ${createOperadoreDto.Estatus})`,
         Number(idUser),
       );
-      const operadorExpuesto = plainToInstance(ExposeOperadoresDto, operador, {
-        excludeExtraneousValues: true,
-      });
       return {
         message: 'Operador creado exitosamente',
-        operador: operadorExpuesto,
+        operador: operador,
       };
     } catch (error) {
       if (error instanceof HttpException) {
@@ -63,19 +60,50 @@ export class OperadoresService {
     }
   }
   //Obtener todos los operadores
-  async findAllOperadores() {
+  async findAllOperadores(page: number, limit: number): Promise<ApiResponseCommon> {
     try {
       const operadores = await this.operadoresRepository.find();
       if (operadores.length === 0) {
         throw new BadRequestException('Operadores no encontrado o null');
       }
-      const operadorExpuesto = plainToInstance(ExposeOperadoresDto, operadores, {
-        excludeExtraneousValues: true,
+      const [data,total] = await this.operadoresRepository.findAndCount({
+        relations:[],
+        skip: (page-1)*limit,
+        take:limit,
       });
-      return {
-        message: 'Operadores obtenidos exitosamente',
-        operadores: operadorExpuesto,
-      };
+      const result:ApiResponseCommon = {
+        data,
+        paginated: {
+          total: Math.ceil(total/limit),
+          page,
+          limit,
+        },
+        message: 'Operadores obtenidos correctamente'
+      }
+      return result;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Error al obtener a los operadores`,
+      );
+    }
+  }
+
+  //Obtener todos los operadores
+  async findAllListOperadores(): Promise<ApiResponseCommon> {
+    try {
+      const operadores = await this.operadoresRepository.find();
+      if (operadores.length === 0) {
+        throw new BadRequestException('Operadores no encontrado o null');
+      }
+      const result:ApiResponseCommon = {
+        data:operadores,
+        
+        message: 'Operadores obtenidos correctamente'
+      }
+      return result;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -94,12 +122,9 @@ export class OperadoresService {
       if (!operador) {
         throw new NotFoundException(`Operador con id: ${Id} no encontrado`);
       }
-      const operadorExpuesto = plainToInstance(ExposeOperadoresDto, operador, {
-        excludeExtraneousValues: true,
-      });
       return {
         message: 'Operador obtenido exitosamente',
-        operador: operadorExpuesto,
+        operador: operador,
       };
     } catch (error) {
       if (error instanceof HttpException) {
@@ -154,7 +179,6 @@ export class OperadoresService {
         where: { Id },
       });
       if (!operadorExistente) {
-        console.log(operadorExistente);
         throw new NotFoundException(`Operador con id: ${Id} no encontrado`);
       }
       const operadorData = await this.operadoresRepository.create(updateOperadoreDto);

@@ -9,12 +9,14 @@ import {
   UseGuards,
   Put,
   Request,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { OperadoresService } from './operadores.service';
 import { CreateOperadoreDto } from './dto/create-operadore.dto';
 import { UpdateOperadoreDto } from './dto/update-operadore.dto';
 import { UpdateOperadorStatusDto } from './dto/update-operadores-estatus.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
+import { ApiResponseCommon } from 'src/common/ApiResponse';
 
 @UseGuards(JwtAuthGuard)
 @Controller('operadores')
@@ -29,8 +31,16 @@ export class OperadoresController {
   }
 
   @Get()
-  findAllOperador() {
-    return this.operadoresService.findAllOperadores();
+  findAllOperador(
+    @Param('page', ParseIntPipe) page: number,
+    @Param('limit', ParseIntPipe) limit: number,
+  ): Promise<ApiResponseCommon> {
+    return this.operadoresService.findAllOperadores(page,limit);
+  }
+
+  @Get()
+  findAllListOperador(): Promise<ApiResponseCommon> {
+    return this.operadoresService.findAllListOperadores();
   }
 
   @Get(':id')
