@@ -9,18 +9,18 @@ import { UpdatePermisoDto } from './dto/update-permiso.dto';
 import { Permisos } from 'src/entities/Permisos';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import { UsuarioPermisos } from 'src/entities/UsuarioPermisos';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import { UpdatePermisoEstatusDto } from './dto/update-permiso-estatus.dto';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
+import { UsuariosPermisos } from 'src/entities/UsuariosPermisos';
 
 @Injectable()
 export class PermisosService {
   constructor(
     @InjectRepository(Permisos)
     private readonly permisoRepository: Repository<Permisos>,
-    @InjectRepository(UsuarioPermisos)
-    private readonly usuarioPermiso: Repository<UsuarioPermisos>,
+    @InjectRepository(UsuariosPermisos)
+    private readonly usuarioPermiso: Repository<UsuariosPermisos>,
     private readonly bitacoraLogger: BitacoraLoggerService,
   ) {}
 
@@ -70,7 +70,7 @@ export class PermisosService {
   async findOne(id: number) {
     try {
       const permiso = await this.permisoRepository.findOne({
-        where: { Id: id },
+        where: {id: id },
         relations: ['modulo'],
       });
       if (!permiso) throw new NotFoundException('Permiso no encontrado');
@@ -91,12 +91,12 @@ export class PermisosService {
       const create = this.permisoRepository.create(createPermiso);
       const savedPermiso = await this.permisoRepository.save(create);
       const asignar = {
-        IdPermiso: savedPermiso.Id,
-        IdUsuario: idUsuario,
+        idPermiso: savedPermiso.id,
+        idUsuario: idUsuario,
       };
       const permiso = await this.usuarioPermiso.create(asignar);
       const asignarRoot = {
-        IdPermiso: savedPermiso.Id,
+        idPermiso: savedPermiso.id,
         IdUsuario: 1, //Se asigna al usuario supremo
       };
       const permisoRoot = await this.usuarioPermiso.create(asignarRoot);
@@ -104,9 +104,9 @@ export class PermisosService {
       // --- Registro en la bitácora ---
       await this.bitacoraLogger.logToBitacora(
         'Permisos',
-        `Se creó el permiso: ${savedPermiso.Nombre}`,
+        `Se creó el permiso: ${savedPermiso.nombre}`,
         'CREATE',
-        `INSERT INTO Permisos (Nombre, Descripcion) VALUES ('${savedPermiso.Nombre}', '${savedPermiso.Descripcion}')`,
+        `INSERT INTO Permisos (Nombre, Descripcion) VALUES ('${savedPermiso.nombre}', '${savedPermiso.descripcion}')`,
         Number(idUsuario),
       );
       return `Permiso creado exitosamente`;
@@ -124,19 +124,19 @@ export class PermisosService {
   ) {
     try {
       const permiso = await this.permisoRepository.findOne({
-        where: { Id: id },
+        where: { id: id },
       });
       if (!permiso) throw new NotFoundException('Permiso no encontrado');
       //Actualiza
       const result = await this.permisoRepository.update(id, {
-        Estatus: updatePermisoEstatusDto.Estatus,
+        estatus: updatePermisoEstatusDto.estatus,
       });
       // --- Registro en la bitácora ---
       await this.bitacoraLogger.logToBitacora(
         'Permisos',
-        `Se actualizo a estatus ${updatePermisoEstatusDto.Estatus} del permiso: ${permiso.Nombre}`,
+        `Se actualizo a estatus ${updatePermisoEstatusDto.estatus} del permiso: ${permiso.nombre}`,
         'UPDATE',
-        `UPDATE Permiso SET Estatus=${updatePermisoEstatusDto.Estatus} WHERE Id=${id}`,
+        `UPDATE Permiso SET Estatus=${updatePermisoEstatusDto.estatus} WHERE Id=${id}`,
         Number(id),
       );
       return `Estatus permiso con ${id} actualizado exitosamente`;
@@ -150,22 +150,22 @@ export class PermisosService {
       const id = updatePermiso.id;
 
       const permisoActualizar = {
-        Nombre: updatePermiso.Nombre,
-        Descripcion: updatePermiso.Descripcion,
-        Estatus: updatePermiso.Estatus,
-        IdModulo: updatePermiso.IdModulo,
+        nombre: updatePermiso.nombre,
+        descripcion: updatePermiso.descripcion,
+        estatus: updatePermiso.estatus,
+        idModulo: updatePermiso.idModulo,
       };
       const permiso = await this.permisoRepository.findOne({
-        where: { Id: id },
+        where: { id: id },
       });
       if (!permiso) throw new NotFoundException('Permiso no encontrado');
       const result = await this.permisoRepository.update(id, permisoActualizar);
       // --- Registro en la bitácora ---
       await this.bitacoraLogger.logToBitacora(
         'Permisos',
-        `Se actualizo: ${permisoActualizar.Nombre}`,
+        `Se actualizo: ${permisoActualizar.nombre}`,
         'UPDATE',
-        `UPDATE Permisos SET... WHERE Id=${id} VALUES ('${permisoActualizar.Nombre}', '${permisoActualizar.Descripcion}')`,
+        `UPDATE Permisos SET... WHERE Id=${id} VALUES ('${permisoActualizar.nombre}', '${permisoActualizar.descripcion}')`,
         Number(id),
       );
       return `Permiso con ${id} actualizado exitosamente`;
@@ -177,15 +177,15 @@ export class PermisosService {
   async remove(id: number) {
     try {
       const permiso = await this.permisoRepository.findOne({
-        where: { Id: id },
+        where: { id: id },
       });
       if (!permiso) throw new NotFoundException('Permiso no encontrado');
       //Desahabilitamos el permiso
-      await this.permisoRepository.update(id, { Estatus: 0 });
+      await this.permisoRepository.update(id, { estatus: 0 });
       // --- Registro en la bitácora ---
       await this.bitacoraLogger.logToBitacora(
         'Permisos',
-        `Se desactivo el permiso: ${permiso.Nombre}`,
+        `Se desactivo el permiso: ${permiso.nombre}`,
         'UPDATE',
         `UPDATE Monederos SET Estatus=${0} WHERE Id=${id}`,
         Number(id),

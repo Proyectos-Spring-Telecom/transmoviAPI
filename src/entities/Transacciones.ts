@@ -3,25 +3,35 @@ import {
   Entity,
   Index,
   JoinColumn,
+  JoinTable,
+  ManyToMany,
   ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
+import { Dispositivos } from "./Dispositivos";
 import { Monederos } from "./Monederos";
+import { Viajes } from "./Viajes";
 
-@Index("IdMonedero", ["IdMonedero"], {})
+@Index(
+  "IX_Transacciones_NumeroSerieMonedero_FechaHora",
+  ["fechaHora", "numeroSerieMonedero"],
+  {}
+)
+@Index(
+  "IX_Transacciones_NumeroSerieDispositivo_FechaHora",
+  ["fechaHora", "numeroSerieDispositivo"],
+  {}
+)
 @Entity("Transacciones", { schema: "TransmoviDev" })
 export class Transacciones {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
-  Id: number;
-
-  @Column("bigint", { name: "IdMonedero" })
-  IdMonedero: number;
+  id: number;
 
   @Column("varchar", { name: "TipoTransaccion", length: 10 })
-  TipoTransaccion: string;
+  tipoTransaccion: string;
 
   @Column("decimal", { name: "Monto", precision: 10, scale: 2 })
-  Monto: number;
+  monto: string;
 
   @Column("decimal", {
     name: "Latitud",
@@ -29,7 +39,7 @@ export class Transacciones {
     precision: 10,
     scale: 7,
   })
-  Latitud: string | null;
+  latitud: string | null;
 
   @Column("decimal", {
     name: "Longitud",
@@ -37,18 +47,47 @@ export class Transacciones {
     precision: 10,
     scale: 7,
   })
-  Longitud: string | null;
+  longitud: string | null;
 
   @Column("datetime", { name: "FechaHora" })
-  FechaHora: Date;
+  fechaHora: Date;
 
-  @Column("tinyint", { name: "Estatus", default: () => "'1'" })
-  estatus: number;
+  @Column("datetime", {
+    name: "FHRegistro",
+    default: () => "CURRENT_TIMESTAMP",
+  })
+  fhRegistro: Date;
+
+  @Column("varchar", { name: "NumeroSerieMonedero", length: 100 })
+  numeroSerieMonedero: string;
+
+  @Column("varchar", { name: "NumeroSerieDispositivo", length: 100 })
+  numeroSerieDispositivo: string;
+
+  @ManyToOne(() => Dispositivos, (dispositivos) => dispositivos.transacciones, {
+    onDelete: "NO ACTION",
+    onUpdate: "NO ACTION",
+  })
+  @JoinColumn([
+    { name: "NumeroSerieDispositivo", referencedColumnName: "numeroSerie" },
+  ])
+  numeroSerieDispositivo2: Dispositivos;
 
   @ManyToOne(() => Monederos, (monederos) => monederos.transacciones, {
     onDelete: "NO ACTION",
-    onUpdate: "CASCADE",
+    onUpdate: "NO ACTION",
   })
-  @JoinColumn([{ name: "IdMonedero", referencedColumnName: "Id" }])
-  IdMonedero2: Monederos;
+  @JoinColumn([
+    { name: "NumeroSerieMonedero", referencedColumnName: "numeroSerie" },
+  ])
+  numeroSerieMonedero2: Monederos;
+
+  @ManyToMany(() => Viajes, (viajes) => viajes.transacciones)
+  @JoinTable({
+    name: "ViajesTransacciones",
+    joinColumns: [{ name: "IdTransaccion", referencedColumnName: "id" }],
+    inverseJoinColumns: [{ name: "IdViaje", referencedColumnName: "id" }],
+    schema: "TransmoviDev",
+  })
+  viajes: Viajes[];
 }

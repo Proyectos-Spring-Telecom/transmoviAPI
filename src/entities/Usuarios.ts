@@ -4,91 +4,123 @@ import {
   Index,
   JoinColumn,
   ManyToOne,
+  OneToMany,
+  OneToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
-import { Roles } from "./Roles";
+import { Bitacora } from "./Bitacora";
+import { Operadores } from "./Operadores";
 import { Clientes } from "./Clientes";
+import { Roles } from "./Roles";
+import { UsuariosInstalaciones } from "./UsuariosInstalaciones";
+import { UsuariosPermisos } from "./UsuariosPermisos";
+import { UsuariosRegiones } from "./UsuariosRegiones";
 
-@Index("UserName_IdCliente", ["IdCliente", "UserName"], { unique: true })
-@Index("IdRol", ["IdRol"], {})
-@Index("IdCliente", ["IdCliente"], {})
+@Index("UQ_Usuarios_IdCliente_UserName", ["userName", "idCliente"], {
+  unique: true,
+})
+@Index("FK_Usuarios_Roles", ["idRol"], {})
+@Index("FK_Usuarios_Clientes", ["idCliente"], {})
 @Entity("Usuarios", { schema: "TransmoviDev" })
 export class Usuarios {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
-  Id: number;
+  id: number;
 
-  @Column("varchar", { name: "UserName", length: 255 })
-  UserName: string;
+  @Column("varchar", { name: "UserName", length: 100 })
+  userName: string;
 
   @Column("varchar", { name: "PasswordHash", length: 255 })
-  PasswordHash: string;
+  passwordHash: string;
 
-  @Column("varchar", { name: "PinHash", nullable: true, length: 6 })
-  PinHash: string | null;
+  @Column("varchar", { name: "PinHash", nullable: true, length: 255 })
+  pinHash: string | null;
 
-  @Column("tinyint", {
-    name: "EmailConfirmado",
-    default: () => "'0'",
-  })
-  EmailConfirmado: number;
+  @Column("tinyint", { name: "EmailConfirmado", default: () => "'0'" })
+  emailConfirmado: number;
 
   @Column("varchar", { name: "Nombre", nullable: true, length: 100 })
-  Nombre: string | null;
+  nombre: string | null;
 
   @Column("varchar", { name: "ApellidoPaterno", nullable: true, length: 100 })
-  ApellidoPaterno: string | null;
+  apellidoPaterno: string | null;
 
   @Column("varchar", { name: "ApellidoMaterno", nullable: true, length: 100 })
-  ApellidoMaterno: string | null;
+  apellidoMaterno: string | null;
 
-  @Column("varchar", { name: "Telefono", nullable: true, length: 20 })
-  Telefono: string | null;
+  @Column("varchar", { name: "Telefono", nullable: true, length: 14 })
+  telefono: string | null;
 
   @Column("datetime", { name: "UltimoLogin", nullable: true })
-  UltimoLogin: Date | null;
+  ultimoLogin: string | null;
 
   @Column("datetime", { name: "ActualizacionPassword", nullable: true })
-  ActualizacionPassword: Date | null;
+  actualizacionPassword: string | null;
 
   @Column("datetime", { name: "ActualizacionPin", nullable: true })
-  ActualizacionPin: Date | null;
+  actualizacionPin: string | null;
 
-  @Column("varchar", { name: "DispositivoId", nullable: true, length: 15 })
-  DispositivoId: string | null;
+  @Column("varchar", { name: "DispositivoId", nullable: true, length: 100 })
+  dispositivoId: string | null;
+
+  @Column("varchar", { name: "FotoPerfil", nullable: true, length: 500 })
+  fotoPerfil: string | null;
 
   @Column("datetime", {
     name: "FechaCreacion",
     default: () => "CURRENT_TIMESTAMP",
   })
-  FechaCreacion: Date;
+  fechaCreacion: string;
 
   @Column("datetime", {
     name: "FechaActualizacion",
     default: () => "CURRENT_TIMESTAMP",
-    onUpdate: "CURRENT_TIMESTAMP",
   })
-  FechaActualizacion: Date;
+  fechaActualizacion: string;
 
   @Column("tinyint", { name: "Estatus", default: () => "'1'" })
-  Estatus: number;
+  estatus: number;
 
   @Column("bigint", { name: "IdRol" })
-  IdRol: number;
+  idRol: number;
 
   @Column("bigint", { name: "IdCliente" })
-  IdCliente: number;
+  idCliente: number;
 
-  @ManyToOne(() => Roles, (roles) => roles.usuarios, {
-    onDelete: "CASCADE",
-    onUpdate: "CASCADE",
-  })
-  @JoinColumn([{ name: "IdRol", referencedColumnName: "Id" }])
-  IdRol2: Roles;
+  @OneToMany(() => Bitacora, (bitacora) => bitacora.idUsuario2)
+  bitacoras: Bitacora[];
+
+  @OneToOne(() => Operadores, (operadores) => operadores.idUsuario2)
+  operadores: Operadores;
 
   @ManyToOne(() => Clientes, (clientes) => clientes.usuarios, {
-    onDelete: "CASCADE",
-    onUpdate: "CASCADE",
+    onDelete: "NO ACTION",
+    onUpdate: "NO ACTION",
   })
-  @JoinColumn([{ name: "IdCliente", referencedColumnName: "Id" }])
-  IdCliente2: Clientes;
+  @JoinColumn([{ name: "IdCliente", referencedColumnName: "id" }])
+  idCliente2: Clientes;
+
+  @ManyToOne(() => Roles, (roles) => roles.usuarios, {
+    onDelete: "NO ACTION",
+    onUpdate: "NO ACTION",
+  })
+  @JoinColumn([{ name: "IdRol", referencedColumnName: "id" }])
+  idRol2: Roles;
+
+  @OneToMany(
+    () => UsuariosInstalaciones,
+    (usuariosInstalaciones) => usuariosInstalaciones.idUsuario2
+  )
+  usuariosInstalaciones: UsuariosInstalaciones[];
+
+  @OneToMany(
+    () => UsuariosPermisos,
+    (usuariosPermisos) => usuariosPermisos.idUsuario2
+  )
+  usuariosPermisos: UsuariosPermisos[];
+
+  @OneToMany(
+    () => UsuariosRegiones,
+    (usuariosRegiones) => usuariosRegiones.idUsuario2
+  )
+  usuariosRegiones: UsuariosRegiones[];
 }

@@ -8,14 +8,14 @@ export class CreateModuloDto {
         description: 'Nombre del módulo',
         example: 'Módulos',
     })
-    Nombre: string;
+    nombre: string;
     @IsString()
     @IsNotEmpty()
         @ApiProperty({
         description: 'Descripción del módulo',
         example: 'Módulo',
     })
-    Descripcion: string;
+    descripcion: string;
       @IsInt({ message: 'Estatus debe ser un numero entero' })
       @IsIn([0, 1], { message: 'Estatus solo puede ser 0 ó 1' })
       @IsOptional()
@@ -23,5 +23,5 @@ export class CreateModuloDto {
         description: 'Estatus del dispositivo solo es 1 ó 0',
         example: '1',
       })
-      Estatus?: number = 1;
+      estatus?: number = 1;
 }

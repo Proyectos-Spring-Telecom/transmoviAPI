@@ -3,21 +3,23 @@ import {
   Entity,
   Index,
   JoinColumn,
+  JoinTable,
+  ManyToMany,
   ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
 import { BlueVoxs } from "./BlueVoxs";
-import { Rutas } from "./Rutas";
+import { Viajes } from "./Viajes";
 
-@Index("ClaveBlueVox", ["ClaveBlueVox"], {})
-@Index("IdRuta", ["IdRuta"], {})
+@Index(
+  "IX_ConteoPasajeros_Serie_FechaHora",
+  ["fechaHora", "numeroSerieBlueVox"],
+  {}
+)
 @Entity("ConteoPasajeros", { schema: "TransmoviDev" })
 export class ConteoPasajeros {
-  @PrimaryGeneratedColumn({ type: "int", name: "Id" })
-  Id: number;
-
-  @Column("varchar", { name: "ClaveBlueVox", length: 50 })
-  ClaveBlueVox: string;
+  @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
+  id: string;
 
   @Column("int", { name: "Entradas", nullable: true, default: () => "'0'" })
   entradas: number | null;
@@ -26,28 +28,35 @@ export class ConteoPasajeros {
   salidas: number | null;
 
   @Column("int", { name: "Diferencia" })
-  Diferencia: number;
+  diferencia: number;
 
   @Column("datetime", { name: "FechaHora" })
-  FechaHora: Date;
+  fechaHora: Date;
 
-  @Column("varchar", { name: "FolioViaje", length: 50 })
-  FolioViaje: string;
+  @Column("datetime", {
+    name: "FHRegistro",
+    default: () => "CURRENT_TIMESTAMP",
+  })
+  fhRegistro: Date;
 
-  @Column("int", { name: "IdRuta" })
-  IdRuta: number;
+  @Column("varchar", { name: "NumeroSerieBlueVox", length: 100 })
+  numeroSerieBlueVox: string;
 
   @ManyToOne(() => BlueVoxs, (blueVoxs) => blueVoxs.conteoPasajeros, {
     onDelete: "NO ACTION",
     onUpdate: "NO ACTION",
   })
-  @JoinColumn([{ name: "ClaveBlueVox", referencedColumnName: "Clave" }])
-  ClaveBlueVox2: BlueVoxs;
+  @JoinColumn([
+    { name: "NumeroSerieBlueVox", referencedColumnName: "numeroSerie" },
+  ])
+  numeroSerieBlueVox2: BlueVoxs;
 
-  @ManyToOne(() => Rutas, (rutas) => rutas.conteoPasajeros, {
-    onDelete: "NO ACTION",
-    onUpdate: "NO ACTION",
+  @ManyToMany(() => Viajes, (viajes) => viajes.conteoPasajeros)
+  @JoinTable({
+    name: "ViajesConteos",
+    joinColumns: [{ name: "IdConteo", referencedColumnName: "id" }],
+    inverseJoinColumns: [{ name: "IdViaje", referencedColumnName: "id" }],
+    schema: "TransmoviDev",
   })
-  @JoinColumn([{ name: "IdRuta", referencedColumnName: "Id" }])
-  IdRuta2: Rutas;
+  viajes: Viajes[];
 }

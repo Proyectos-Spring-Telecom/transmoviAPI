@@ -17,7 +17,7 @@ export class CreateVehiculoDto {
     description: 'Marca del vehiculo',
     example: 'Marcad del vehiculo',
   })
-  Marca: string;
+  marca: string;
 
   @IsString()
   @IsNotEmpty({ message: 'El modelo es obligatorio' })
@@ -25,7 +25,7 @@ export class CreateVehiculoDto {
     description: 'Modelo del vehiculo',
     example: 'Modelo del vehiculo',
   })
-  Modelo: string;
+  modelo: string;
 
   @IsNumber()
   @IsNotEmpty({ message: 'El año debe ser mayor a 1900' })
@@ -33,7 +33,7 @@ export class CreateVehiculoDto {
     description: 'Año del vehiculo',
     example: '1990',
   })
-  Ano: number;
+  ano: number;
 
   @IsString()
   @Length(1, 10)
@@ -42,7 +42,7 @@ export class CreateVehiculoDto {
     description: 'Placa del vehiculo',
     example: 'ABC-1234',
   })
-  Placa: string;
+  placa: string;
 
   @IsString()
   @Length(1, 50)
@@ -51,7 +51,7 @@ export class CreateVehiculoDto {
     description: 'Numero economico del vehiculo',
     example: 'A20',
   })
-  NumeroEconomico: string;
+  numeroEconomico: string;
 
   @IsNotEmpty({ message: 'Estaus necesario' })
   @IsInt({ message: 'Estatus debe ser un numero entero' })
@@ -60,7 +60,7 @@ export class CreateVehiculoDto {
     description: 'El estatus es solo 0 ó 1',
     example: '1',
   })
-  Estatus?: number;
+  estatus?: number;
 
   @IsString()
   @IsOptional()
@@ -68,7 +68,7 @@ export class CreateVehiculoDto {
     description: 'ID del operador',
     example: 'O15ABC',
   })
-  IdOperador?: string;
+  idOperador?: string;
 
   @IsString()
   @IsOptional()
@@ -76,5 +76,5 @@ export class CreateVehiculoDto {
     description: 'ID del dispositivo',
     example: '123ABC',
   })
-  IdDispositivo?: string;
+  idDispositivo?: string;
 }

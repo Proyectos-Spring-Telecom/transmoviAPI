@@ -6,43 +6,48 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
-import { Rutas } from "./Rutas";
+import { Derroteros } from "./Derroteros";
 
-@Index("IdRuta", ["IdRuta"], {})
+@Index("FK_Tarifas_Derroteros", ["idDerrotero"], {})
 @Entity("Tarifas", { schema: "TransmoviDev" })
 export class Tarifas {
-  @PrimaryGeneratedColumn({ type: "int", name: "Id" })
-  Id: number;
-
-  @Column("int", { name: "IdRuta" })
-  IdRuta: number;
+  @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
+  id: string;
 
   @Column("decimal", { name: "TarifaBase", precision: 10, scale: 2 })
-  TarifaBase: string;
+  tarifaBase: string;
 
   @Column("decimal", { name: "DistanciaBaseKm", precision: 10, scale: 2 })
-  DistanciaBaseKm: string;
+  distanciaBaseKm: string;
 
   @Column("int", { name: "IncrementoCadaMetros" })
-  IncrementoCadaMetros: number;
+  incrementoCadaMetros: number;
 
   @Column("decimal", { name: "CostoAdicional", precision: 10, scale: 2 })
-  CostoAdicional: string;
+  costoAdicional: string;
 
   @Column("datetime", {
-    name: "FechaRegistro",
-    nullable: true,
+    name: "FechaCreacion",
     default: () => "CURRENT_TIMESTAMP",
   })
-  fechaRegistro: Date | null;
+  fechaCreacion: Date;
 
-  @Column("tinyint", { name: "Estatus", nullable: true, default: () => "'1'" })
-  estatus: number | null;
+  @Column("datetime", {
+    name: "FechaActualizacion",
+    default: () => "CURRENT_TIMESTAMP",
+  })
+  fechaActualizacion: Date;
 
-  @ManyToOne(() => Rutas, (rutas) => rutas.tarifas, {
+  @Column("tinyint", { name: "Estatus", default: () => "'1'" })
+  estatus: number;
+
+  @Column("bigint", { name: "IdDerrotero" })
+  idDerrotero: string;
+
+  @ManyToOne(() => Derroteros, (derroteros) => derroteros.tarifas, {
     onDelete: "NO ACTION",
     onUpdate: "NO ACTION",
   })
-  @JoinColumn([{ name: "IdRuta", referencedColumnName: "Id" }])
-  IdRuta2: Rutas;
+  @JoinColumn([{ name: "IdDerrotero", referencedColumnName: "id" }])
+  idDerrotero2: Derroteros;
 }

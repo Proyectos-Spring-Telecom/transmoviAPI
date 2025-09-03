@@ -1,28 +1,44 @@
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Monederos } from "./Monederos";
 
 @Entity("Pasajeros", { schema: "TransmoviDev" })
 export class Pasajeros {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
-  Id: number;
+  id: number;
 
   @Column("varchar", { name: "Nombre", length: 100 })
-  Nombre: string;
+  nombre: string;
 
   @Column("varchar", { name: "ApellidoPaterno", length: 100 })
-  ApellidoPaterno: string;
+  apellidoPaterno: string;
 
   @Column("varchar", { name: "ApellidoMaterno", nullable: true, length: 100 })
-  ApellidoMaterno: string | null;
+  apellidoMaterno: string | null;
 
-  @Column("datetime", { name: "FechaNacimiento" })
-  FechaNacimiento: Date;
-
-  @Column("varchar", { name: "Correo", nullable: true, length: 100 })
-  Correo: string | null;
+  @Column("date", { name: "FechaNacimiento" })
+  fechaNacimiento: string;
 
   @Column("varchar", { name: "Telefono", nullable: true, length: 15 })
-  Telefono: string | null;
+  telefono: string | null;
+
+  @Column("varchar", { name: "Correo", nullable: true, length: 100 })
+  correo: string | null;
+
+  @Column("datetime", {
+    name: "FechaCreacion",
+    default: () => "CURRENT_TIMESTAMP",
+  })
+  fechaCreacion: Date;
+
+  @Column("datetime", {
+    name: "FechaActualizacion",
+    default: () => "CURRENT_TIMESTAMP",
+  })
+  fechaActualizacion: Date;
 
   @Column("tinyint", { name: "Estatus", default: () => "'1'" })
-  Estatus: number;
+  estatus: number;
+
+  @OneToMany(() => Monederos, (monederos) => monederos.idPasajero2)
+  monederos: Monederos[];
 }

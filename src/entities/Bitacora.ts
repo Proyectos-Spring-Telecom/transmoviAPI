@@ -1,25 +1,57 @@
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import {
+  Column,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from "typeorm";
+import { Modulos } from "./Modulos";
+import { Usuarios } from "./Usuarios";
 
+@Index("FK_Bitacora_Usuarios", ["idUsuario"], {})
+@Index("FK_Bitacora_Modulos", ["idModulo"], {})
 @Entity("Bitacora", { schema: "TransmoviDev" })
 export class Bitacora {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
-  Id: number;
+  id: string;
 
   @Column("varchar", { name: "Modulo", nullable: true, length: 100 })
-  Modulo: string | null;
+  modulo: string | null;
 
   @Column("varchar", { name: "Descripcion", nullable: true, length: 250 })
-  Descripcion: string | null;
+  descripcion: string | null;
 
   @Column("varchar", { name: "Accion", nullable: true, length: 45 })
-  Accion: string | null;
-
-  @Column("datetime", { name: "Fecha", nullable: true })
-  Fecha: Date | null;
+  accion: string | null;
 
   @Column("varchar", { name: "Query", nullable: true, length: 1000 })
-  Query: string | null;
+  query: string | null;
+
+  @Column("datetime", {
+    name: "FechaCreacion",
+    nullable: true,
+    default: () => "CURRENT_TIMESTAMP",
+  })
+  fechaCreacion: Date | null;
 
   @Column("bigint", { name: "IdUsuario" })
-  IdUsuario: number;
+  idUsuario: string;
+
+  @Column("bigint", { name: "IdModulo" })
+  idModulo: string;
+
+  @ManyToOne(() => Modulos, (modulos) => modulos.bitacoras, {
+    onDelete: "NO ACTION",
+    onUpdate: "NO ACTION",
+  })
+  @JoinColumn([{ name: "IdModulo", referencedColumnName: "id" }])
+  idModulo2: Modulos;
+
+  @ManyToOne(() => Usuarios, (usuarios) => usuarios.bitacoras, {
+    onDelete: "NO ACTION",
+    onUpdate: "NO ACTION",
+  })
+  @JoinColumn([{ name: "IdUsuario", referencedColumnName: "id" }])
+  idUsuario2: Usuarios;
 }

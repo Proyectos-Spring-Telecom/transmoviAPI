@@ -2,22 +2,25 @@ import {
   Column,
   Entity,
   Index,
+  JoinColumn,
+  ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
 } from "typeorm";
+import { Clientes } from "./Clientes";
+import { Pasajeros } from "./Pasajeros";
 import { Transacciones } from "./Transacciones";
 
-@Index("NumeroSerie", ["NumeroSerie"], { unique: true })
+@Index("UQ_Monederos_NumeroSerie", ["numeroSerie"], { unique: true })
+@Index("FK_Monederos_Pasajeros", ["idPasajero"], {})
+@Index("FK_Monederos_Clientes", ["idCliente"], {})
 @Entity("Monederos", { schema: "TransmoviDev" })
 export class Monederos {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
-  Id: number;
+  id: number;
 
   @Column("varchar", { name: "NumeroSerie", unique: true, length: 100 })
-  NumeroSerie: string;
-
-  @Column("datetime", { name: "FechaActivacion" })
-  FechaActivacion: Date;
+  numeroSerie: string;
 
   @Column("decimal", {
     name: "Saldo",
@@ -27,9 +30,47 @@ export class Monederos {
   })
   saldo: number;
 
+  @Column("datetime", { name: "FechaActivacion" })
+  fechaActivacion: Date;
+
+  @Column("datetime", {
+    name: "FechaCreacion",
+    default: () => "CURRENT_TIMESTAMP",
+  })
+  fechaCreacion: Date;
+
+  @Column("datetime", {
+    name: "FechaActualizacion",
+    default: () => "CURRENT_TIMESTAMP",
+  })
+  fechaActualizacion: Date;
+
   @Column("tinyint", { name: "Estatus", default: () => "'1'" })
   estatus: number;
 
-  @OneToMany(() => Transacciones, (transacciones) => transacciones.IdMonedero2)
+  @Column("bigint", { name: "IdPasajero", nullable: true })
+  idPasajero: string | null;
+
+  @Column("bigint", { name: "IdCliente" })
+  idCliente: string;
+
+  @ManyToOne(() => Clientes, (clientes) => clientes.monederos, {
+    onDelete: "NO ACTION",
+    onUpdate: "NO ACTION",
+  })
+  @JoinColumn([{ name: "IdCliente", referencedColumnName: "id" }])
+  idCliente2: Clientes;
+
+  @ManyToOne(() => Pasajeros, (pasajeros) => pasajeros.monederos, {
+    onDelete: "NO ACTION",
+    onUpdate: "NO ACTION",
+  })
+  @JoinColumn([{ name: "IdPasajero", referencedColumnName: "id" }])
+  idPasajero2: Pasajeros;
+
+  @OneToMany(
+    () => Transacciones,
+    (transacciones) => transacciones.numeroSerieMonedero2
+  )
   transacciones: Transacciones[];
 }

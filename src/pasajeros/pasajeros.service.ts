@@ -25,13 +25,13 @@ export class PasajerosService {
     try {
       const pasajeroExistente = await this.pasajeroRepository.findOne({
         where: {
-          Nombre: createPasajeroDto.Nombre,
-          ApellidoPaterno: createPasajeroDto.ApellidoPaterno,
+          nombre: createPasajeroDto.nombre,
+          apellidoPaterno: createPasajeroDto.apellidoPaterno,
         },
       });
       if (pasajeroExistente) {
         throw new BadRequestException(
-          `El pasajero con id: ${createPasajeroDto.Nombre} no fue encontrado`,
+          `El pasajero con id: ${createPasajeroDto.nombre} no fue encontrado`,
         );
       }
       const clienteCreado =
@@ -39,9 +39,9 @@ export class PasajerosService {
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Pasajeros',
-        `Se creó un pasajero con nombre: ${createPasajeroDto.Nombre}`,
+        `Se creó un pasajero con nombre: ${createPasajeroDto.nombre}`,
         'CREATE',
-        `INSERT INTO Pasajeros (...) VALUES (...) ->  nombre: ${createPasajeroDto.Nombre} apellido paterno: ${createPasajeroDto.ApellidoPaterno} apellido materno: ${createPasajeroDto.ApellidoMaterno}`,
+        `INSERT INTO Pasajeros (...) VALUES (...) ->  nombre: ${createPasajeroDto.nombre} apellido paterno: ${createPasajeroDto.apellidoPaterno} apellido materno: ${createPasajeroDto.apellidoMaterno}`,
         Number(idUser),
       );
       return { message: 'Usuario creado exitosamente', clienteCreado };
@@ -105,7 +105,7 @@ export class PasajerosService {
   async findOnePasajero(Id: number) {
     try {
       const pasajeroExistente = await this.pasajeroRepository.findOne({
-        where: { Id },
+        where: { id: Id },
       });
       if (!pasajeroExistente) {
         throw new NotFoundException(
@@ -128,25 +128,25 @@ export class PasajerosService {
   ) {
     try {
       const pasajeroExistente = await this.pasajeroRepository.findOne({
-        where: { Id },
+        where: { id: Id },
       });
       if (!pasajeroExistente) {
         throw new NotFoundException(
           `El pasajero con id: ${Id} no fue encontrado`,
         );
       }
-      const { Estatus } = updatePasajeroEstatusDto;
-      await this.pasajeroRepository.update(Id, { Estatus });
+      const { estatus } = updatePasajeroEstatusDto;
+      await this.pasajeroRepository.update(Id, { estatus });
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Pasajero',
-        `Se cambio del modulo ${pasajeroExistente.Nombre} con id: ${Id} a estatus: ${Estatus}`,
+        `Se cambio del modulo ${pasajeroExistente.nombre} con id: ${Id} a estatus: ${estatus}`,
         'UPDATE',
-        `UPDATE Pasajeros SET Estatus = ${Estatus} WHERE id = ${Id}`,
+        `UPDATE Pasajeros SET Estatus = ${estatus} WHERE id = ${Id}`,
         Number(idUser),
       );
       return {
-        message: `Cliente con id: ${Id} su estatus fue actualizado a ${Estatus}`,
+        message: `Cliente con id: ${Id} su estatus fue actualizado a ${estatus}`,
       };
     } catch (error) {
       if (error instanceof HttpException) {
@@ -161,7 +161,7 @@ export class PasajerosService {
   async updatePasajero(Id: number,idUser: number, updatePasajeroDto: UpdatePasajeroDto) {
     try {
       const pasajeroExistente = await this.pasajeroRepository.findOne({
-        where: { Id },
+        where: { id: Id },
       });
       if (!pasajeroExistente) {
         throw new NotFoundException(
@@ -172,12 +172,12 @@ export class PasajerosService {
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Pasajeros',
-        `Se cambio del datos del pasajero: ${pasajeroExistente.Nombre} con id: ${Id}`,
+        `Se cambio del datos del pasajero: ${pasajeroExistente.nombre} con id: ${Id}`,
         'UPDATE',
         `UPDATE Modulos SET (...) WHERE id = ${Id}`,
         Number(idUser),
       );
-      return await this.pasajeroRepository.findOne({ where: { Id } });
+      return await this.pasajeroRepository.findOne({ where: { id: Id } });
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -189,7 +189,7 @@ export class PasajerosService {
   async removePasajero(Id: number,idUser: number) {
     try {
       const pasajeroEliminar = await this.pasajeroRepository.findOne({
-        where: { Id },
+        where: { id: Id },
       });
       if (!pasajeroEliminar) {
         throw new NotFoundException(
@@ -200,7 +200,7 @@ export class PasajerosService {
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Pasajeros',
-        `Se elimino pasajero: ${pasajeroEliminar.Nombre} con id: ${Id}`,
+        `Se elimino pasajero: ${pasajeroEliminar.nombre} con id: ${Id}`,
         'DELETE',
         `DELETE FROM Pasajeros WHERE Id=${Id}`,
         Number(idUser),

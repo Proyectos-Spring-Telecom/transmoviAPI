@@ -4,5 +4,5 @@ import { IsNumber } from 'class-validator';
 
 export class UpdateModuloDto extends PartialType(CreateModuloDto) {
     @IsNumber()
-    Id:number;
+    id:number;
 }

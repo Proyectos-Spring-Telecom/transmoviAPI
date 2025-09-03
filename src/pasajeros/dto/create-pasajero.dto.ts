@@ -6,12 +6,16 @@ import {
   IsIn,
   IsInt,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
   MaxLength,
 } from 'class-validator';
 
 export class CreatePasajeroDto {
+  @IsNumber()
+  id:number; 
+
   @IsString()
   @IsNotEmpty({ message: 'Es necesario el nombre' })
   @MaxLength(100, { message: 'El nombre no puede exceder los 100 caracteres' })
@@ -19,7 +23,7 @@ export class CreatePasajeroDto {
     description: 'Nombre del pasajero',
     example: 'Nombre Pasajero',
   })
-  Nombre: string;
+  nombre: string;
 
   @IsString()
   @IsNotEmpty({ message: 'Es obligatorio el apellido paterno' })
@@ -30,7 +34,7 @@ export class CreatePasajeroDto {
     description: 'Apellido del pasajero',
     example: 'Apellido Paterno del Pasajero',
   })
-  ApellidoPaterno: string;
+  apellidoPaterno: string;
 
   //Apellido Materno es opcional para casos de un solo apellido
   @IsOptional()
@@ -42,7 +46,7 @@ export class CreatePasajeroDto {
     description: 'Apellido Materno del pasajero',
     example: 'Apellido Materno del Pasajero',
   })
-  ApellidoMaterno?: string;
+  apellidoMaterno?: string;
 
   @IsDate()
   @Type(() => Date)
@@ -50,7 +54,7 @@ export class CreatePasajeroDto {
     description: 'Fecha de nacimiento',
     example: '1955-08-25',
   })
-  FechaNacimiento: Date;
+  fechaNacimiento: string;
 
   @IsOptional()
   @IsEmail()
@@ -58,7 +62,7 @@ export class CreatePasajeroDto {
     description: 'Correo electronico',
     example: 'correo@ejemplo.com',
   })
-  Correo?: string;
+  correo?: string;
 
   @IsOptional()
   @IsString()
@@ -67,7 +71,7 @@ export class CreatePasajeroDto {
     description: 'Numero telefonico',
     example: '7354442211',
   })
-  Telefono: string;
+  telefono: string;
 
   @IsInt({ message: 'estatus debe ser un número entero' })
   @IsIn([0, 1], { message: 'Solo puede ser 0 ó 1' })
@@ -76,5 +80,5 @@ export class CreatePasajeroDto {
     description: 'El estatus es solo 0 ó 1',
     example: '1',
   })
-  Estatus?: number;
+  estatus?: number;
 }

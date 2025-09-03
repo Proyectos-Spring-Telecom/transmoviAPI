@@ -32,9 +32,9 @@ export class ModulosService {
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Modulos',
-        `Se creó un modulos con nombre: ${createModuloDto.Nombre}`,
+        `Se creó un modulos con nombre: ${createModuloDto.nombre}`,
         'CREATE',
-        `INSERT INTO Modulos (...) VALUES (...) -> nombre: ${createModuloDto.Nombre} descipcion: ${createModuloDto.Descripcion}`,
+        `INSERT INTO Modulos (...) VALUES (...) -> nombre: ${createModuloDto.nombre} descipcion: ${createModuloDto.descripcion}`,
         Number(idUser),
       );
       return saved;
@@ -84,7 +84,7 @@ export class ModulosService {
 
   async findOne(id: number) {
     try {
-      const exist = await this.moduloRepository.findOne({ where: { Id: id } });
+      const exist = await this.moduloRepository.findOne({ where: { id: id } });
       if (!exist) throw new NotFoundException('Módulo no encontrado');
       
     } catch (error) {
@@ -95,22 +95,22 @@ export class ModulosService {
   async update(updateModuloDto: UpdateModuloDto, idUser: string) {
     try {
       const exist = await this.moduloRepository.findOne({
-        where: { Id: updateModuloDto.Id },
+        where: { id: updateModuloDto.id },
       });
       if (!exist) throw new NotFoundException('Módulo no encontrado');
       const update = await this.moduloRepository.update(
-        updateModuloDto.Id,
+        updateModuloDto.id,
         updateModuloDto,
       );
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Modulos',
-        `Se creó un modulos con modulo: ${updateModuloDto.Nombre}`,
+        `Se creó un modulos con modulo: ${updateModuloDto.nombre}`,
         'UPDATE',
-        `UPDATE INTO Modulos (...) VALUES (...) -> nombre: ${updateModuloDto.Nombre} descipcion: ${updateModuloDto.Descripcion}`,
+        `UPDATE INTO Modulos (...) VALUES (...) -> nombre: ${updateModuloDto.nombre} descipcion: ${updateModuloDto.descripcion}`,
         Number(idUser),
       );
-      return await this.moduloRepository.findOne({where:{Id:updateModuloDto.Id}});
+      return await this.moduloRepository.findOne({where:{id:updateModuloDto.id}});
     } catch (error) {
       throw new BadRequestException(error);
     }
@@ -122,16 +122,16 @@ export class ModulosService {
     updateModulosEstatusDto: UpdateModulosEstatusDto,
   ) {
     try {
-      const modulo = await this.moduloRepository.findOne({ where: { Id: id } });
+      const modulo = await this.moduloRepository.findOne({ where: { id: id } });
       if (!modulo) {
         throw new NotFoundException('Modulo no encontrado');
       }
       const Estatus = updateModulosEstatusDto.Estatus;
-      await this.moduloRepository.update(id, { Estatus: Estatus });
+      await this.moduloRepository.update(id, { estatus: Estatus });
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Modulos',
-        `Se cambio del modulo ${modulo.Nombre} con id: ${id} a estatus: ${Estatus}`,
+        `Se cambio del modulo ${modulo.nombre} con id: ${id} a estatus: ${Estatus}`,
         'UPDATE',
         `UPDATE Modulos SET Estatus = ${Estatus} WHERE id = ${id}`,
         Number(idUser),
@@ -151,32 +151,32 @@ export class ModulosService {
   }
 
   async deleteModulo(id: number, req): Promise<any> {
-    const modulo = await this.moduloRepository.findOne({ where: { Id: id } });
+    const modulo = await this.moduloRepository.findOne({ where: { id: id } });
 
     if (!modulo) throw new NotFoundException('Modulo no encontrado');
-    if (modulo.Estatus === 1) {
-      modulo.Estatus = 0;
+    if (modulo.estatus === 1) {
+      modulo.estatus = 0;
       await this.moduloRepository.update(id, modulo);
 
       const permisos = await this.permisosRepository.find({
-        where: { IdModulo: id },
+        where: { id: id },
       });
       if (permisos.length > 0) {
         for (const permiso of permisos) {
-          permiso.Estatus = 0;
-          await this.permisosRepository.update(permiso.Id, permiso);
+          permiso.estatus = 0;
+          await this.permisosRepository.update(permiso.id, permiso);
         }
       }
     } else {
-      modulo.Estatus = 1;
+      modulo.estatus = 1;
       await this.moduloRepository.update(id, modulo);
       const permisos = await this.permisosRepository.find({
-        where: { IdModulo: id },
+        where: { idModulo: id },
       });
       if (permisos.length > 0) {
         for (const permiso of permisos) {
-          permiso.Estatus = 1;
-          await this.permisosRepository.update(permiso.Id, permiso);
+          permiso.estatus = 1;
+          await this.permisosRepository.update(permiso.id, permiso);
         }
       }
     }

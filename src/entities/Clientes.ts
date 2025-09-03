@@ -1,74 +1,158 @@
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import {
+  Column,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+  PrimaryGeneratedColumn,
+} from "typeorm";
+import { BlueVoxs } from "./BlueVoxs";
+import { Dispositivos } from "./Dispositivos";
+import { Instalaciones } from "./Instalaciones";
+import { Monederos } from "./Monederos";
+import { Regiones } from "./Regiones";
+import { Turnos } from "./Turnos";
 import { Usuarios } from "./Usuarios";
+import { Vehiculos } from "./Vehiculos";
+import { Viajes } from "./Viajes";
 
+@Index("UQ_Clientes_RFC", ["rfc"], { unique: true })
+@Index("IX_Clientes_IdPadre", ["idPadre"], {})
 @Entity("Clientes", { schema: "TransmoviDev" })
 export class Clientes {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
-  Id: number;
+  id: string;
 
-  @Column("varchar", { name: "IdPadre", length: 50 })
-  IdPadre: string;
+  @Column("bigint", { name: "IdPadre", nullable: true })
+  idPadre: string | null;
 
-  @Column("varchar", { name: "RFC", length: 16 })
-  RFC: string;
+  @Column("varchar", { name: "RFC", unique: true, length: 16 })
+  rfc: string;
 
-  @Column("int", { name: "TipoPersona" })
-  TipoPersona: number;
+  @Column("tinyint", { name: "TipoPersona" })
+  tipoPersona: number;
 
-  @Column("int", { name: "Estatus" })
-  Estatus: number;
-
-  @Column("varchar", { name: "Logotipo", nullable: true, length: 500 })
-  Logotipo: string | null;
-
-  @Column("varchar", { name: "Nombre", nullable: true, length: 255 })
-  Nombre: string | null;
+  @Column("varchar", { name: "Nombre", nullable: true, length: 100 })
+  nombre: string | null;
 
   @Column("varchar", { name: "ApellidoPaterno", nullable: true, length: 100 })
-  ApellidoPaterno: string | null;
+  apellidoPaterno: string | null;
 
   @Column("varchar", { name: "ApellidoMaterno", nullable: true, length: 100 })
-  ApellidoMaterno: string | null;
+  apellidoMaterno: string | null;
 
-  @Column("varchar", { name: "Telefono", nullable: true, length: 10 })
-  Telefono: string | null;
+  @Column("varchar", { name: "Telefono", nullable: true, length: 14 })
+  telefono: string | null;
 
   @Column("varchar", { name: "Correo", nullable: true, length: 100 })
-  Correo: string | null;
+  correo: string | null;
 
-  @Column("varchar", { name: "Estado", nullable: true, length: 45 })
-  Estado: string | null;
+  @Column("varchar", { name: "SitioWeb", nullable: true, length: 100 })
+  sitioWeb: string | null;
 
-  @Column("varchar", { name: "Municipio", nullable: true, length: 45 })
-  Municipio: string | null;
+  @Column("varchar", { name: "Estado", nullable: true, length: 50 })
+  estado: string | null;
 
-  @Column("varchar", { name: "Colonia", nullable: true, length: 45 })
-  Colonia: string | null;
+  @Column("varchar", { name: "Municipio", nullable: true, length: 50 })
+  municipio: string | null;
+
+  @Column("varchar", { name: "Colonia", nullable: true, length: 100 })
+  colonia: string | null;
 
   @Column("varchar", { name: "Calle", nullable: true, length: 100 })
-  Calle: string | null;
+  calle: string | null;
 
-  @Column("varchar", { name: "EntreCalles", nullable: true, length: 45 })
-  EntreCalles: string | null;
+  @Column("varchar", { name: "EntreCalles", nullable: true, length: 255 })
+  entreCalles: string | null;
 
-  @Column("varchar", { name: "NumeroExterior", nullable: true, length: 10 })
-  NumeroExterior: string | null;
+  @Column("varchar", { name: "NumeroExterior", nullable: true, length: 20 })
+  numeroExterior: string | null;
 
-  @Column("varchar", { name: "NumeroInterior", nullable: true, length: 10 })
-  NumeroInterior: string | null;
+  @Column("varchar", { name: "NumeroInterior", nullable: true, length: 20 })
+  numeroInterior: string | null;
 
   @Column("varchar", { name: "CP", nullable: true, length: 5 })
-  CP: string | null;
+  cp: string | null;
 
-  @Column("varchar", { name: "NombreEncargado", nullable: true, length: 100 })
-  NombreEncargado: string | null;
+  @Column("varchar", { name: "NombreEncargado", nullable: true, length: 255 })
+  nombreEncargado: string | null;
 
-  @Column("varchar", { name: "TelefonoEncargado", nullable: true, length: 10 })
-  TelefonoEncargado: string | null;
+  @Column("varchar", { name: "TelefonoEncargado", nullable: true, length: 14 })
+  telefonoEncargado: string | null;
 
-  @Column("varchar", { name: "EmailEncargado", nullable: true, length: 100 })
-  EmailEncargado: string | null;
+  @Column("varchar", { name: "CorreoEncargado", nullable: true, length: 100 })
+  correoEncargado: string | null;
 
-  @OneToMany(() => Usuarios, (usuarios) => usuarios.IdCliente2)
+  @Column("varchar", {
+    name: "ConstanciaSituacionFiscal",
+    nullable: true,
+    length: 500,
+  })
+  constanciaSituacionFiscal: string | null;
+
+  @Column("varchar", {
+    name: "ComprobanteDomicilio",
+    nullable: true,
+    length: 500,
+  })
+  comprobanteDomicilio: string | null;
+
+  @Column("varchar", { name: "ActaConstitutiva", nullable: true, length: 500 })
+  actaConstitutiva: string | null;
+
+  @Column("varchar", { name: "Logotipo", nullable: true, length: 500 })
+  logotipo: string | null;
+
+  @Column("datetime", {
+    name: "FechaCreacion",
+    default: () => "CURRENT_TIMESTAMP",
+  })
+  fechaCreacion: Date;
+
+  @Column("datetime", {
+    name: "FechaActualizacion",
+    default: () => "CURRENT_TIMESTAMP",
+  })
+  fechaActualizacion: Date;
+
+  @Column("tinyint", { name: "Estatus", default: () => "'1'" })
+  estatus: number;
+
+  @OneToMany(() => BlueVoxs, (blueVoxs) => blueVoxs.idCliente2)
+  blueVoxs: BlueVoxs[];
+
+  @ManyToOne(() => Clientes, (clientes) => clientes.clientes, {
+    onDelete: "NO ACTION",
+    onUpdate: "NO ACTION",
+  })
+  @JoinColumn([{ name: "IdPadre", referencedColumnName: "id" }])
+  idPadre2: Clientes;
+
+  @OneToMany(() => Clientes, (clientes) => clientes.idPadre2)
+  clientes: Clientes[];
+
+  @OneToMany(() => Dispositivos, (dispositivos) => dispositivos.idCliente2)
+  dispositivos: Dispositivos[];
+
+  @OneToMany(() => Instalaciones, (instalaciones) => instalaciones.idCliente2)
+  instalaciones: Instalaciones[];
+
+  @OneToMany(() => Monederos, (monederos) => monederos.idCliente2)
+  monederos: Monederos[];
+
+  @OneToMany(() => Regiones, (regiones) => regiones.idCliente2)
+  regiones: Regiones[];
+
+  @OneToMany(() => Turnos, (turnos) => turnos.idCliente2)
+  turnos: Turnos[];
+
+  @OneToMany(() => Usuarios, (usuarios) => usuarios.idCliente2)
   usuarios: Usuarios[];
+
+  @OneToMany(() => Vehiculos, (vehiculos) => vehiculos.idCliente2)
+  vehiculos: Vehiculos[];
+
+  @OneToMany(() => Viajes, (viajes) => viajes.idCliente2)
+  viajes: Viajes[];
 }

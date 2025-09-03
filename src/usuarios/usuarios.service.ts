@@ -34,24 +34,24 @@ async getAllUsuario(page: number, limit: number): Promise<ApiResponseCommon> {
     });
 
     const dataFiltrada = data.map((u) => ({
-      Id: u.Id,
-      UserName: u.UserName,
-      EmailConfirmado: u.EmailConfirmado,
-      Telefono: u.Telefono,
-      Nombre: u.Nombre,
-      ApellidoPaterno: u.ApellidoPaterno,
-      ApellidoMaterno: u.ApellidoMaterno,
-      Estatus: u.Estatus,
-      IdRol: u.IdRol,
-      RolNombre: u.IdRol2?.Nombre || null, // solo nombre del rol
-      IdCliente: u.IdCliente,
-      ClienteNombre: u.IdCliente2?.Nombre || null, // solo nombre del cliente
-      UltimoLogin: u.UltimoLogin,
-      ActualizacionPassword: u.ActualizacionPassword,
-      ActualizacionPin: u.ActualizacionPin,
-      DispositivoId: u.DispositivoId,
-      FechaCreacion: u.FechaCreacion,
-      FechaActualizacion: u.FechaActualizacion,
+      Id: u.id,
+      UserName: u.userName,
+      EmailConfirmado: u.emailConfirmado,
+      Telefono: u.telefono,
+      Nombre: u.nombre,
+      ApellidoPaterno: u.apellidoPaterno,
+      ApellidoMaterno: u.apellidoMaterno,
+      Estatus: u.estatus,
+      IdRol: u.idRol,
+      RolNombre: u.idRol2?.nombre || null, // solo nombre del rol
+      IdCliente: u.idCliente,
+      ClienteNombre: u.idCliente2?.nombre || null, // solo nombre del cliente
+      UltimoLogin: u.ultimoLogin,
+      ActualizacionPassword: u.actualizacionPassword,
+      ActualizacionPin: u.actualizacionPin,
+      DispositivoId: u.dispositivoId,
+      FechaCreacion: u.fechaCreacion,
+      FechaActualizacion: u.fechaActualizacion,
     }));
 
     const result: ApiResponseCommon = {
@@ -77,7 +77,7 @@ async getAllUsuario(page: number, limit: number): Promise<ApiResponseCommon> {
       if (usuarios.length === 0) {
         throw new NotFoundException('Usuarios no encontrados');
       }
-      const usuariosSinPassword = usuarios.map(({ PasswordHash, ...rest }) => rest);
+      const usuariosSinPassword = usuarios.map(({ passwordHash, ...rest }) => rest);
       const result: ApiResponseCommon = {
         data: usuariosSinPassword,
 
@@ -96,13 +96,13 @@ async getAllUsuario(page: number, limit: number): Promise<ApiResponseCommon> {
     try {
       //Cambiamos el id a number
       const user = await this.usuarioRepository.findOne({
-        where: { Id: id },
+        where: { id: id },
       });
       if (!user) {
         throw new NotFoundException(`Usuario con ID:${id} no encontrado`);
       }
       //Falta el apartado de la bitacora
-      const { PasswordHash: _, ...usuarioSinPassword } = user;
+      const { passwordHash: _, ...usuarioSinPassword } = user;
       return usuarioSinPassword;
     } catch (error) {
       if (error instanceof HttpException) {
@@ -117,18 +117,18 @@ async getAllUsuario(page: number, limit: number): Promise<ApiResponseCommon> {
   async createUsuario(createUsuarioDto: CreateUsuarioDto, idUser: string) {
     try {
       const existUsuario = await this.usuarioRepository.findOne({ //Buscamos si existe usuario
-        where: { UserName: createUsuarioDto.UserName },
+        where: { userName: createUsuarioDto.userName },
       });
       if (existUsuario) {
         throw new BadRequestException('El usuario ya existe');
       }
       const cliente = await this.clientesService.getOneCliente(   //Buscamos si existe el cliente
-        createUsuarioDto.IdCliente,
+        createUsuarioDto.idCliente,
       );
       if (!cliente) throw new BadRequestException('Cliente Invalido');
 
-      const hashedPassword = await bcrypt.hash(createUsuarioDto.PasswordHash, 10); //encriptamos la contraseña
-      createUsuarioDto.PasswordHash = hashedPassword;
+      const hashedPassword = await bcrypt.hash(createUsuarioDto.passwordHash, 10); //encriptamos la contraseña
+      createUsuarioDto.passwordHash = hashedPassword;
       
       const newUser = this.usuarioRepository.create(createUsuarioDto);
       await this.usuarioRepository.save(newUser);                             //creamos el usuario
@@ -136,12 +136,12 @@ async getAllUsuario(page: number, limit: number): Promise<ApiResponseCommon> {
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Usuarios',
-        `Se creó un usuarios con nombre: ${createUsuarioDto.Nombre}`,
+        `Se creó un usuarios con nombre: ${createUsuarioDto.nombre}`,
         'CREATE',
-        `INSERT INTO Usuarios (...) VALUES (...) -> username:  ${createUsuarioDto.UserName} nombre: ${createUsuarioDto.Nombre} apellido paterno: ${createUsuarioDto.ApellidoPaterno} apellido materno: ${createUsuarioDto.ApellidoMaterno}`,
+        `INSERT INTO Usuarios (...) VALUES (...) -> username:  ${createUsuarioDto.userName} nombre: ${createUsuarioDto.nombre} apellido paterno: ${createUsuarioDto.apellidoPaterno} apellido materno: ${createUsuarioDto.apellidoMaterno}`,
         Number(idUser),
       );
-      const { PasswordHash: _, ...usuarioSinPassword } = newUser;
+      const { passwordHash: _, ...usuarioSinPassword } = newUser;
       return {
         message: 'Usuario creado exitosamente',
         User: usuarioSinPassword,
@@ -162,36 +162,36 @@ async getAllUsuario(page: number, limit: number): Promise<ApiResponseCommon> {
   ) {
     try {
       const usuario = await this.usuarioRepository.findOne({    //Buscamos si existe el usuario
-        where: { Id: id },
+        where: { id: id },
       });
       if (!usuario) {
         throw new NotFoundException(`Usuario con ID:${id} no encontrado`);
       }
-      if (updateUsuarioDto.IdCliente) {                     //Si existe IdRol lo busca si es existente
-      const cliente = await this.clientesService.getOneCliente(Number(updateUsuarioDto.IdCliente))
+      if (updateUsuarioDto.idCliente) {                     //Si existe IdRol lo busca si es existente
+      const cliente = await this.clientesService.getOneCliente(Number(updateUsuarioDto.idCliente))
       if (!cliente) throw new BadRequestException('Cliente Invalido');
       }
-      if (updateUsuarioDto.PasswordHash) {
-        updateUsuarioDto.PasswordHash = await bcrypt.hash(
-          updateUsuarioDto.PasswordHash,
+      if (updateUsuarioDto.passwordHash) {
+        updateUsuarioDto.passwordHash = await bcrypt.hash(
+          updateUsuarioDto.passwordHash,
           10,
         );
       }
 
       await this.usuarioRepository.update(id, updateUsuarioDto);
       const newUser = await this.usuarioRepository.findOne({
-        where: { Id: id },
+        where: { id: id },
       });
       if (!newUser) {
         throw new NotFoundException(`Usuario con ID:${id} no encontrado`);
       }
-      const { PasswordHash: _, ...usuarioSinPassword } = newUser;
+      const { passwordHash: _, ...usuarioSinPassword } = newUser;
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Modulos',
-        `Se actualizo el usuario: ${newUser.Nombre} con ID; ${newUser.Id}`,
+        `Se actualizo el usuario: ${newUser.nombre} con ID; ${newUser.id}`,
         'UPDATE',
-        `UPDATE Usuarios SET UserName='${newUser.UserName}', Telefono='${newUser.Telefono}', Nombre='${newUser.Nombre}', ApellidoPaterno='${newUser.ApellidoPaterno}', ApellidoMaterno='${newUser.ApellidoMaterno}', Estatus=${newUser.Estatus}, IdRol=${newUser.IdRol}, IdCliente=${newUser.IdCliente} WHERE Id=${id}`,
+        `UPDATE Usuarios SET UserName='${newUser.userName}', Telefono='${newUser.telefono}', Nombre='${newUser.nombre}', ApellidoPaterno='${newUser.apellidoPaterno}', ApellidoMaterno='${newUser.apellidoMaterno}', Estatus=${newUser.estatus}, IdRol=${newUser.idRol}, IdCliente=${newUser.idCliente} WHERE Id=${id}`,
         Number(idUser),
       );
       return usuarioSinPassword;
@@ -213,16 +213,16 @@ async getAllUsuario(page: number, limit: number): Promise<ApiResponseCommon> {
   ) {
     try {
       const usuario = await this.usuarioRepository.findOne({
-        where: { Id: id },
+        where: { id: id },
       });
       if (!usuario) {
         throw new NotFoundException(`Usuario con ID:${id} no encontrado`);
       }
       const { Estatus } = updateUsuarioEstatusDto;
 
-      await this.usuarioRepository.update(id, { Estatus });
+      await this.usuarioRepository.update(id, { estatus: Estatus });
       const usuarioResult = await this.usuarioRepository.findOne({
-        where: { Id: id },
+        where: { id: id },
       });
       if (!usuarioResult) {
         throw new NotFoundException(`Usuario con ID:${id} no encontrado`);
@@ -230,7 +230,7 @@ async getAllUsuario(page: number, limit: number): Promise<ApiResponseCommon> {
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Modulos',
-        `Se cambio del modulo ${usuarioResult.Nombre} con id: ${id} a estatus: ${Estatus}`,
+        `Se cambio del modulo ${usuarioResult.nombre} con id: ${id} a estatus: ${Estatus}`,
         'UPDATE',
         `UPDATE Modulos SET Estatus = ${Estatus} WHERE id = ${id}`,
         Number(idUser),
@@ -250,7 +250,7 @@ async getAllUsuario(page: number, limit: number): Promise<ApiResponseCommon> {
   async deleteUsuario(id: number, idUser: string) {
     try {
       const usuario = await this.usuarioRepository.findOne({
-        where: { Id: id },
+        where: { id: id },
       });
       if (!usuario) {
         throw new NotFoundException(`Usuario con ${id} no encontrado`);

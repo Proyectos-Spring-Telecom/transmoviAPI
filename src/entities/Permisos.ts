@@ -3,39 +3,54 @@ import {
   Entity,
   Index,
   JoinColumn,
-  ManyToMany,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
 } from "typeorm";
 import { Modulos } from "./Modulos";
-import { Roles } from "./Roles";
+import { UsuariosPermisos } from "./UsuariosPermisos";
 
-@Index("fk_permisos_modulo", ["IdModulo"], {})
+@Index("UQ_Permisos_IdModulo_Nombre", ["nombre", "idModulo"], { unique: true })
+@Index("FK_Permisos_Modulo", ["idModulo"], {})
 @Entity("Permisos", { schema: "TransmoviDev" })
 export class Permisos {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
-  Id: number;
+  id: number;
 
   @Column("varchar", { name: "Nombre", length: 100 })
-  Nombre: string;
+  nombre: string;
 
   @Column("varchar", { name: "Descripcion", nullable: true, length: 255 })
-  Descripcion: string | null;
+  descripcion: string | null;
 
-    @Column("tinyint", { name: "Estatus", nullable: true })
-  Estatus: number | null;
+  @Column("datetime", {
+    name: "FechaCreacion",
+    default: () => "CURRENT_TIMESTAMP",
+  })
+  fechaCreacion: Date;
+
+  @Column("datetime", {
+    name: "FechaActualizacion",
+    default: () => "CURRENT_TIMESTAMP",
+  })
+  fechaActualizacion: Date;
+
+  @Column("tinyint", { name: "Estatus", nullable: true, default: () => "'1'" })
+  estatus: number | null;
+
+  @Column("bigint", { name: "IdModulo" })
+  idModulo: number;
 
   @ManyToOne(() => Modulos, (modulos) => modulos.permisos, {
-    onDelete: "CASCADE",
-    onUpdate: "CASCADE",
+    onDelete: "NO ACTION",
+    onUpdate: "NO ACTION",
   })
-  @JoinColumn([{ name: "IdModulo", referencedColumnName: "Id" }])
-  IdModulo: number;
+  @JoinColumn([{ name: "IdModulo", referencedColumnName: "id" }])
+  idModulo2: Modulos;
 
-  @ManyToMany(() => Roles, (roles) => roles.Permisos)
-  roles: Roles[];
-
-  @ManyToOne(()=>Modulos, (modulo)=> modulo.permisos)
-    @JoinColumn([{ name: "IdModulo", referencedColumnName: "Id" }])
-  Modulo:Modulos;
+  @OneToMany(
+    () => UsuariosPermisos,
+    (usuariosPermisos) => usuariosPermisos.idPermiso2
+  )
+  usuariosPermisos: UsuariosPermisos[];
 }

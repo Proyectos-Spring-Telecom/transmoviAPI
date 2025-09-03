@@ -85,7 +85,7 @@ export class TransaccionesService {
   async findOneTransaccion(Id: number) {
     try {
       const transaccion = await this.transaccionesRepository.findOne({
-        where: { Id },
+        where: { id:Id },
       });
       if (!transaccion)
         throw new NotFoundException('Transaccion no encontradas');
