@@ -24,11 +24,11 @@ export class VehiculosService {
   async create(createVehiculoDto: CreateVehiculoDto, idUser: string) {
     try {
       const vehiculoExist = await this.vehiculoRepository.findOne({
-        where: { Placa: createVehiculoDto.Placa },
+        where: { placa: createVehiculoDto.placa },
       });
       if (vehiculoExist)
         throw new BadRequestException(
-          `Vehiculo con placas: ${createVehiculoDto.Placa}con numeroregistrado`,
+          `Vehiculo con placas: ${createVehiculoDto.placa}con numeroregistrado`,
         );
       const vehiculoData =
         await this.vehiculoRepository.create(createVehiculoDto);
@@ -36,9 +36,9 @@ export class VehiculosService {
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Operadores',
-        `Se creó el vehiculo con placas: ${createVehiculoDto.Placa}`,
+        `Se creó el vehiculo con placas: ${createVehiculoDto.placa}`,
         'CREATE',
-        `INSERT INTO Vehiculos (Marca, Modelo, Ano, Placa, NumeroEconomico, Estatus, IdOperador, IdDispositivo) VALUES ('${createVehiculoDto.Marca}', '${createVehiculoDto.Modelo}', ${createVehiculoDto.Ano}, '${createVehiculoDto.Placa}', '${createVehiculoDto.NumeroEconomico}', ${createVehiculoDto.Estatus}, ${createVehiculoDto.IdOperador}, ${createVehiculoDto.IdDispositivo})`,
+        `INSERT INTO Vehiculos (Marca, Modelo, Ano, Placa, NumeroEconomico, Estatus, IdOperador, IdDispositivo) VALUES ('${createVehiculoDto.marca}', '${createVehiculoDto.modelo}', ${createVehiculoDto.ano}, '${createVehiculoDto.placa}', '${createVehiculoDto.numeroEconomico}', ${createVehiculoDto.estatus}, ${createVehiculoDto.idOperador}, ${createVehiculoDto.idDispositivo})`,
         Number(idUser),
       );
       return {
@@ -105,7 +105,7 @@ export class VehiculosService {
 
   async findOne(Id: number) {
     try {
-      const vehiculo = await this.vehiculoRepository.findOne({ where: { Id } });
+      const vehiculo = await this.vehiculoRepository.findOne({ where: { id:Id } });
       if (!vehiculo) throw new NotFoundException('Vehiculo no encontrado');
       return vehiculo;
     } catch (error) {
@@ -122,10 +122,10 @@ export class VehiculosService {
     updateVehiculoEstausDto: UpdateVehiculoEstatusDto,
   ) {
     try {
-      const vehiculo = await this.vehiculoRepository.findOne({ where: { Id } });
+      const vehiculo = await this.vehiculoRepository.findOne({ where: { id:Id } });
       if (!vehiculo) throw new NotFoundException('Vehiculo no encontrado');
       const Estatus = updateVehiculoEstausDto.Estatus
-      await this.vehiculoRepository.update(Id,{Estatus})
+      await this.vehiculoRepository.update(Id,{estatus: Estatus});
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Vehiculo',
@@ -151,7 +151,7 @@ export class VehiculosService {
     updateVehiculoDto: UpdateVehiculoDto,
   ) {
     try {
-      const vehiculo = await this.vehiculoRepository.findOne({ where: { Id } });
+      const vehiculo = await this.vehiculoRepository.findOne({ where: { id:Id } });
       if (!vehiculo) throw new NotFoundException('Vehiculo no encontrado');
       const vehiculoData =
         await this.vehiculoRepository.update(Id,updateVehiculoDto);
@@ -160,7 +160,7 @@ export class VehiculosService {
         'Vehiculo',
         `Se actualizo el vehiculo con ID: ${Id}`,
         'UPDATE',
-        `UPDATE Vehiculos SET Marca='${updateVehiculoDto.Marca}', Modelo='${updateVehiculoDto.Modelo}', Ano=${updateVehiculoDto.Ano}, Placa='${updateVehiculoDto.Placa}', NumeroEconomico='${updateVehiculoDto.NumeroEconomico}', Estatus=${updateVehiculoDto.Estatus}, IdOperador=${updateVehiculoDto.IdOperador}, IdDispositivo=${updateVehiculoDto.IdDispositivo} WHERE Id=${Id}`,
+        `UPDATE Vehiculos SET Marca='${updateVehiculoDto.marca}', Modelo='${updateVehiculoDto.modelo}', Ano=${updateVehiculoDto.ano}, Placa='${updateVehiculoDto.placa}', NumeroEconomico='${updateVehiculoDto.numeroEconomico}', Estatus=${updateVehiculoDto.estatus}, IdOperador=${updateVehiculoDto.idOperador}, IdDispositivo=${updateVehiculoDto.idDispositivo} WHERE Id=${Id}`,
         Number(idUser),
       );
       return vehiculoData;
@@ -174,7 +174,7 @@ export class VehiculosService {
 
   async remove(Id: number, idUser: string) {
     try {
-      const vehiculo = await this.vehiculoRepository.findOne({ where: { Id } });
+      const vehiculo = await this.vehiculoRepository.findOne({ where: { id:Id } });
       if (!vehiculo) throw new NotFoundException('Vehiculo no encontrado');
       await this.vehiculoRepository.remove(vehiculo)
       //-----Registro en la bitacora-----
@@ -182,7 +182,7 @@ export class VehiculosService {
         'Vehiculos',
         `Se eliminó el vehiculo con ID: ${Id}`,
         'DELETE',
-        `DELETE Vehiculos SET Marca='${vehiculo.Marca}', Modelo='${vehiculo.Modelo}', Ano=${vehiculo.Ano}, Placa='${vehiculo.Placa}', NumeroEconomico='${vehiculo.NumeroEconomico}', Estatus=${vehiculo.Estatus}, IdOperador=${vehiculo.IdOperador}, IdDispositivo=${vehiculo.IdDispositivo} WHERE Id=${Id}`,
+        `DELETE Vehiculos SET Marca='${vehiculo.marca}', Modelo='${vehiculo.modelo}', Ano=${vehiculo.ano}, Placa='${vehiculo.placa}', NumeroEconomico='${vehiculo.numeroEconomico}', Estatus=${vehiculo.estatus}`,  //, IdOperador=${vehiculo.idOperador}, IdDispositivo=${vehiculo.idDispositivo} WHERE Id=${Id}`,
         Number(idUser),
       );
     } catch (error) {

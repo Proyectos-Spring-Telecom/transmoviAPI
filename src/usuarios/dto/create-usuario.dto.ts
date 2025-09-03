@@ -8,9 +8,12 @@ import {
   MaxLength,
   MinLength,
   IsDateString,
+  IsNumber,
 } from "class-validator";
 
 export class CreateUsuarioDto {
+  @IsNumber()
+  id:number;
   @IsString()
   @IsNotEmpty({ message: "El nombre de usuario es obligatorio" })
   @MaxLength(255, {
@@ -20,7 +23,7 @@ export class CreateUsuarioDto {
     description: "Username único del usuario",
     example: "correo@ejemplo.com",
   })
-  UserName: string;
+  userName: string;
 
   @IsString()
   @IsNotEmpty({ message: "La contraseña es obligatoria" })
@@ -32,7 +35,7 @@ export class CreateUsuarioDto {
     description: "Contraseña encriptada (hash)",
     example: "Contraseña123",
   })
-  PasswordHash: string;
+  passwordHash: string;
 
   @IsOptional()
   @IsString()
@@ -42,7 +45,7 @@ export class CreateUsuarioDto {
     example: "123456",
     required: false,
   })
-  PinHash?: string;
+  pinHash?: string;
 
   @IsNotEmpty({ message: "Confirmar email en valor de 0 ó 1" })
   @IsInt({ message: "EmailConfirmado debe ser un número entero" })
@@ -51,7 +54,7 @@ export class CreateUsuarioDto {
     description: "Confirmación de email",
     example: 0,
   })
-  EmailConfirmado: number = 0;
+  emailConfirmado: number = 0;
 
   @IsOptional()
   @IsString()
@@ -61,7 +64,7 @@ export class CreateUsuarioDto {
     example: "Juan",
     required: false,
   })
-  Nombre?: string;
+  nombre?: string;
 
   @IsOptional()
   @IsString()
@@ -73,7 +76,7 @@ export class CreateUsuarioDto {
     example: "Castillo",
     required: false,
   })
-  ApellidoPaterno?: string;
+  apellidoPaterno?: string;
 
   @IsOptional()
   @IsString()
@@ -85,7 +88,7 @@ export class CreateUsuarioDto {
     example: "Tzec",
     required: false,
   })
-  ApellidoMaterno?: string;
+  apellidoMaterno?: string;
 
   @IsOptional()
   @IsString()
@@ -95,7 +98,7 @@ export class CreateUsuarioDto {
     example: "5564101421",
     required: false,
   })
-  Telefono?: string;
+  telefono?: string;
 
   @IsOptional()
   @IsDateString({}, { message: "UltimoLogin debe ser una fecha válida" })
@@ -104,7 +107,7 @@ export class CreateUsuarioDto {
     example: "2025-09-01T12:00:00Z",
     required: false,
   })
-  UltimoLogin?: Date;
+  ultimoLogin?: string;
 
   @IsOptional()
   @IsDateString({}, { message: "ActualizacionPassword debe ser una fecha válida" })
@@ -113,7 +116,7 @@ export class CreateUsuarioDto {
     example: "2025-09-01T12:00:00Z",
     required: false,
   })
-  ActualizacionPassword?: Date;
+  actualizacionPassword?: string;
 
   @IsOptional()
   @IsDateString({}, { message: "ActualizacionPin debe ser una fecha válida" })
@@ -122,7 +125,7 @@ export class CreateUsuarioDto {
     example: "2025-09-01T12:00:00Z",
     required: false,
   })
-  ActualizacionPin?: Date;
+  actualizacionPin?: string;
 
   @IsOptional()
   @IsString()
@@ -132,7 +135,7 @@ export class CreateUsuarioDto {
     example: "DISP123456",
     required: false,
   })
-  DispositivoId?: string;
+  dispositivoId?: string;
 
   @IsNotEmpty({ message: "Confirmar estatus en valor de 0 ó 1" })
   @IsInt({ message: "Estatus debe ser un número entero" })
@@ -141,7 +144,7 @@ export class CreateUsuarioDto {
     description: "Estatus de activación del usuario",
     example: 1,
   })
-  Estatus: number = 1;
+  estatus: number = 1;
 
   @IsNotEmpty({ message: "El rol es obligatorio" })
   @IsInt({ message: "El rol debe ser un identificador numérico válido" })
@@ -149,7 +152,7 @@ export class CreateUsuarioDto {
     description: "ID del Rol asignado al usuario",
     example: 2,
   })
-  IdRol: number;
+  idRol: number;
 
   @IsNotEmpty({ message: "El cliente es obligatorio" })
   @IsInt({ message: "El cliente debe ser un identificador numérico válido" })
@@ -157,5 +160,5 @@ export class CreateUsuarioDto {
     description: "ID del Cliente al que pertenece el usuario",
     example: 1,
   })
-  IdCliente: number;
+  idCliente: number;
 }

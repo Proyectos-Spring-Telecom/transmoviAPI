@@ -1,0 +1,59 @@
+import {
+  Column,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+  PrimaryGeneratedColumn,
+} from "typeorm";
+import { Clientes } from "./Clientes";
+import { Rutas } from "./Rutas";
+import { UsuariosRegiones } from "./UsuariosRegiones";
+
+@Index("FK_Regiones_Clientes", ["idCliente"], {})
+@Entity("Regiones", { schema: "TransmoviDev" })
+export class Regiones {
+  @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
+  id: string;
+
+  @Column("varchar", { name: "Nombre", length: 100 })
+  nombre: string;
+
+  @Column("varchar", { name: "Descripcion", nullable: true, length: 255 })
+  descripcion: string | null;
+
+  @Column("datetime", {
+    name: "FechaCreacion",
+    default: () => "CURRENT_TIMESTAMP",
+  })
+  fechaCreacion: Date;
+
+  @Column("datetime", {
+    name: "FechaActualizacion",
+    default: () => "CURRENT_TIMESTAMP",
+  })
+  fechaActualizacion: Date;
+
+  @Column("tinyint", { name: "Estatus", default: () => "'1'" })
+  estatus: number;
+
+  @Column("bigint", { name: "IdCliente" })
+  idCliente: string;
+
+  @ManyToOne(() => Clientes, (clientes) => clientes.regiones, {
+    onDelete: "NO ACTION",
+    onUpdate: "NO ACTION",
+  })
+  @JoinColumn([{ name: "IdCliente", referencedColumnName: "id" }])
+  idCliente2: Clientes;
+
+  @OneToMany(() => Rutas, (rutas) => rutas.idRegion2)
+  rutas: Rutas[];
+
+  @OneToMany(
+    () => UsuariosRegiones,
+    (usuariosRegiones) => usuariosRegiones.idRegion2
+  )
+  usuariosRegiones: UsuariosRegiones[];
+}

@@ -2,29 +2,63 @@ import {
   Column,
   Entity,
   Index,
+  JoinColumn,
+  ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
 } from "typeorm";
+import { Clientes } from "./Clientes";
 import { ConteoPasajeros } from "./ConteoPasajeros";
+import { Instalaciones } from "./Instalaciones";
 
-@Index("Clave", ["Clave"], { unique: true })
+@Index("UQ_BlueVoxs_NumeroSerie", ["numeroSerie"], { unique: true })
+@Index("UQ_BlueVoxs_IdCliente_Id", ["id", "idCliente"], { unique: true })
+@Index("FK_BlueVoxs_Clientes", ["idCliente"], {})
 @Entity("BlueVoxs", { schema: "TransmoviDev" })
 export class BlueVoxs {
-  @PrimaryGeneratedColumn({ type: "int", name: "Id" })
-  Id: number;
+  @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
+  id: string;
 
-  @Column("varchar", { name: "Clave", unique: true, length: 50 })
-  Clave: string;
+  @Column("varchar", { name: "NumeroSerie", unique: true, length: 100 })
+  numeroSerie: string;
 
-  @Column("varchar", { name: "Descripcion", nullable: true, length: 100 })
-  Descripcion: string | null;
+  @Column("varchar", { name: "Marca", nullable: true, length: 100 })
+  marca: string | null;
 
-  @Column("tinyint", { name: "Estatus", nullable: true, default: () => "'1'" })
-  estatus: number | null;
+  @Column("varchar", { name: "Modelo", nullable: true, length: 100 })
+  modelo: string | null;
+
+  @Column("datetime", {
+    name: "FechaCreacion",
+    default: () => "CURRENT_TIMESTAMP",
+  })
+  fechaCreacion: Date;
+
+  @Column("datetime", {
+    name: "FechaActualizacion",
+    default: () => "CURRENT_TIMESTAMP",
+  })
+  fechaActualizacion: Date;
+
+  @Column("tinyint", { name: "Estatus", default: () => "'1'" })
+  estatus: number;
+
+  @Column("bigint", { name: "IdCliente" })
+  idCliente: string;
+
+  @ManyToOne(() => Clientes, (clientes) => clientes.blueVoxs, {
+    onDelete: "NO ACTION",
+    onUpdate: "NO ACTION",
+  })
+  @JoinColumn([{ name: "IdCliente", referencedColumnName: "id" }])
+  idCliente2: Clientes;
 
   @OneToMany(
     () => ConteoPasajeros,
-    (conteoPasajeros) => conteoPasajeros.ClaveBlueVox2
+    (conteoPasajeros) => conteoPasajeros.numeroSerieBlueVox2
   )
   conteoPasajeros: ConteoPasajeros[];
+
+  @OneToMany(() => Instalaciones, (instalaciones) => instalaciones.blueVoxs)
+  instalaciones: Instalaciones[];
 }

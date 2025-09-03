@@ -4,55 +4,83 @@ import {
   Index,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
 } from "typeorm";
-import { Operadores } from "./Operadores";
-import { Dispositivos } from "./Dispositivos";
+import { Instalaciones } from "./Instalaciones";
+import { Clientes } from "./Clientes";
 
-@Index("Placa", ["Placa"], { unique: true })
-@Index("NumeroEconomico", ["NumeroEconomico"], { unique: true })
-@Index("IdOperador", ["IdOperador"], {})
-@Index("IdDispositivo", ["IdDispositivo"], {})
+@Index("UQ_Vehiculos_Placa", ["placa"], { unique: true })
+@Index("UQ_Vehiculos_IdCliente_Id", ["id", "idCliente"], { unique: true })
+@Index("FK_Vehiculos_Clientes", ["idCliente"], {})
 @Entity("Vehiculos", { schema: "TransmoviDev" })
 export class Vehiculos {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
-  Id: number;
+  id: number;
 
   @Column("varchar", { name: "Marca", length: 255 })
-  Marca: string;
+  marca: string;
 
   @Column("varchar", { name: "Modelo", length: 100 })
-  Modelo: string;
+  modelo: string;
 
   @Column("int", { name: "Ano" })
-  Ano: number;
+  ano: number;
 
   @Column("varchar", { name: "Placa", unique: true, length: 10 })
-  Placa: string;
+  placa: string;
 
-  @Column("varchar", { name: "NumeroEconomico", unique: true, length: 50 })
-  NumeroEconomico: string;
+  @Column("varchar", { name: "NumeroEconomico", length: 50 })
+  numeroEconomico: string;
+
+  @Column("varchar", {
+    name: "TarjetaCirculacion",
+    nullable: true,
+    length: 500,
+  })
+  tarjetaCirculacion: string | null;
+
+  @Column("varchar", { name: "PolizaSeguro", nullable: true, length: 500 })
+  polizaSeguro: string | null;
+
+  @Column("varchar", { name: "PermisoConcesion", nullable: true, length: 500 })
+  permisoConcesion: string | null;
+
+  @Column("varchar", {
+    name: "InspeccionMecanica",
+    nullable: true,
+    length: 500,
+  })
+  inspeccionMecanica: string | null;
+
+  @Column("varchar", { name: "Foto", nullable: true, length: 500 })
+  foto: string | null;
+
+  @Column("datetime", {
+    name: "FechaCreacion",
+    default: () => "CURRENT_TIMESTAMP",
+  })
+  fechaCreacion: string;
+
+  @Column("datetime", {
+    name: "FechaActualizacion",
+    default: () => "CURRENT_TIMESTAMP",
+  })
+  fechaActualizacion: string;
 
   @Column("tinyint", { name: "Estatus", default: () => "'1'" })
-  Estatus: number;
+  estatus: number;
 
-  @Column("bigint", { name: "IdOperador", nullable: true })
-  IdOperador: string | null;
+  @Column("bigint", { name: "IdCliente" })
+  idCliente: string;
 
-  @Column("bigint", { name: "IdDispositivo", nullable: true })
-  IdDispositivo: string | null;
+  @OneToMany(() => Instalaciones, (instalaciones) => instalaciones.vehiculos)
+  instalaciones: Instalaciones[];
 
-  @ManyToOne(() => Operadores, (operadores) => operadores.vehiculos, {
-    onDelete: "SET NULL",
-    onUpdate: "CASCADE",
+  @ManyToOne(() => Clientes, (clientes) => clientes.vehiculos, {
+    onDelete: "NO ACTION",
+    onUpdate: "NO ACTION",
   })
-  @JoinColumn([{ name: "IdOperador", referencedColumnName: "Id" }])
-  IdOperador2: Operadores;
-
-  @ManyToOne(() => Dispositivos, (dispositivos) => dispositivos.vehiculos, {
-    onDelete: "SET NULL",
-    onUpdate: "CASCADE",
-  })
-  @JoinColumn([{ name: "IdDispositivo", referencedColumnName: "Id" }])
-  IdDispositivo2: Dispositivos;
+  @JoinColumn([{ name: "IdCliente", referencedColumnName: "id" }])
+  idCliente2: Clientes;
 }

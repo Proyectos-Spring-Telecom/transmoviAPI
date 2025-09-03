@@ -8,7 +8,7 @@ export class CreateMonederoDto {
             description: 'Numero de serie del monedero',
             example: 'DED82B9A',
         })
-  NumeroSerie: string;
+  numeroSerie: string;
 
   @IsDate()
   @Type(() => Date)
@@ -17,7 +17,7 @@ export class CreateMonederoDto {
             description: 'Fecha en la que se activo',
             example: '2025-08-17 08:00:00',
         })
-  FechaActivacion?: Date;
+  fechaActivacion?: string;
 
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
@@ -25,7 +25,7 @@ export class CreateMonederoDto {
             description: 'Saldo del monedero',
             example: '50.00',
         })
-  Saldo: number= 0.0;
+  saldo: number= 0.0;
 
   @IsInt({ message: 'estatus debe ser un número entero'})
   @IsIn([0, 1], { message: 'Solo puede ser 0 ó 1'})
@@ -34,5 +34,5 @@ export class CreateMonederoDto {
             description: 'Estatus del monedero solo puede ser 1 ó 0',
             example: '1',
         })
-  Estatus?: number = 1;
+  estatus?: number = 1;
 }

@@ -9,13 +9,15 @@ import {
 } from 'class-validator';
 
 export class CreatePermisoDto {
+  @IsNumber()
+  id:number;
   @IsString()
   @IsNotEmpty()
   @ApiProperty({
     description: 'Nombre del permiso',
     example: 'Permiso',
   })
-  Nombre: string;
+  nombre: string;
 
   @IsString()
   @IsNotEmpty()
@@ -23,7 +25,7 @@ export class CreatePermisoDto {
     description: 'Descripcion del permiso',
     example: 'Permiso',
   })
-  Descripcion: string;
+  descripcion: string;
 
   @IsInt({ message: 'Estatus debe ser un numero entero' })
   @IsIn([0, 1], { message: 'Estatus solo puede ser 0 ó 1' })
@@ -32,7 +34,7 @@ export class CreatePermisoDto {
     description: 'Estatus del dispositivo solo es 1 ó 0',
     example: '1',
   })
-  Estatus?: number = 1;
+  estatus?: number = 1;
 
   @IsNumber()
   @IsNotEmpty()
@@ -40,5 +42,5 @@ export class CreatePermisoDto {
     description: 'Asignarlo a un módulo',
     example: 'Permiso',
   })
-  IdModulo: number;
+  idModulo: number;
 }

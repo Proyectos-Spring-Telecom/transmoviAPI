@@ -26,11 +26,11 @@ export class MonederosService {
   async createMonedero(createMonederoDto: CreateMonederoDto, idUser: string) {
     try {
       const monederoExistente = await this.monederoRepository.findOne({
-        where: { NumeroSerie: createMonederoDto.NumeroSerie },
+        where: { numeroSerie: createMonederoDto.numeroSerie },
       });
       if (monederoExistente) {
         throw new NotFoundException(
-          `El monedero con numero de serie: ${createMonederoDto.NumeroSerie} esta registrado`,
+          `El monedero con numero de serie: ${createMonederoDto.numeroSerie} esta registrado`,
         );
       }
       const monederoData = await this.monederoRepository.create(createMonederoDto);
@@ -38,9 +38,9 @@ export class MonederosService {
       // --- Registro en la bitácora ---
       await this.bitacoraLogger.logToBitacora(
         'Monederos',
-        `Se creó un monedero con numero de serie: ${createMonederoDto.NumeroSerie}`,
+        `Se creó un monedero con numero de serie: ${createMonederoDto.numeroSerie}`,
         'CREATE',
-        `INSERT Monedero -> NumeroSerie: ${createMonederoDto.NumeroSerie}`,
+        `INSERT Monedero -> NumeroSerie: ${createMonederoDto.numeroSerie}`,
         Number(idUser),
       );
       return { message: 'Monedero creado exitosamente', monedero: monedero };
@@ -104,7 +104,7 @@ export class MonederosService {
   //Obtener monedero por ID
   async findOneMonedero(Id: number) {
     try {
-      const monedero = await this.monederoRepository.findOne({ where: { Id } });
+      const monedero = await this.monederoRepository.findOne({ where: { id:Id } });
       if (!monedero) {
         throw new NotFoundException(
           `El monedero con id: ${Id} no fue encontrado`,
@@ -122,7 +122,7 @@ export class MonederosService {
   async findOneMonederoBySerie(NumeroSerie: string) {
     try {
       const monedero = await this.monederoRepository.findOne({
-        where: { NumeroSerie },
+        where: { numeroSerie: NumeroSerie },
       });
       if (!monedero) {
         throw new NotFoundException(
@@ -147,7 +147,7 @@ export class MonederosService {
   ) {
     try {
       const monederoExistente = await this.monederoRepository.findOne({
-        where: { Id },
+        where: { id: Id  },
       });
       if (!monederoExistente) {
         throw new NotFoundException(
@@ -164,7 +164,7 @@ export class MonederosService {
         `UPDATE Monederos SET Estatus=${Estatus} WHERE Id=${Id}`,
         Number(idUser),
       );
-      const monedero = await this.monederoRepository.findOne({ where: { Id } });
+      const monedero = await this.monederoRepository.findOne({ where: { id: Id } });
       return { message: 'Estatus del monedero actualizado exitosamente', Estatus: Number(Estatus) };
     } catch (error) {
       if (error instanceof HttpException) {
@@ -183,7 +183,7 @@ export class MonederosService {
   ) {
     try {
       const monederoExistente = await this.monederoRepository.findOne({
-        where: { Id },
+        where: { id:Id },
       });
       if (!monederoExistente) {
         throw new NotFoundException(
@@ -200,7 +200,7 @@ export class MonederosService {
         `UPDATE Monederos SET Saldo=${Saldo} WHERE Id=${Id}`,
         Number(idUser),
       );
-      const monedero = await this.monederoRepository.findOne({ where: { Id } });
+      const monedero = await this.monederoRepository.findOne({ where: { id: Id } });
       return { message: 'Saldo actualizado exitosamente', Saldo: Number(monedero?.saldo) };
     } catch (error) {
       if (error instanceof HttpException) {
@@ -219,7 +219,7 @@ export class MonederosService {
   ) {
     try {
       const monederoExistente = await this.monederoRepository.findOne({
-        where: { Id },
+        where: { id: Id },
       });
       if (!monederoExistente) {
         throw new NotFoundException(
@@ -236,7 +236,7 @@ export class MonederosService {
         `UPDATE Monederos SET... WHERE Id=${Id}`,
         Number(idUser),
       );
-      const monedero = await this.monederoRepository.findOne({ where: { Id } });
+      const monedero = await this.monederoRepository.findOne({ where: { id: Id } });
       return { message: 'Monederos actualizado exitosamente', monedero: monedero };
     } catch (error) {
       if (error instanceof HttpException) {
@@ -249,7 +249,7 @@ export class MonederosService {
   async removeMonedero(Id: number, idUser: string) {
     try {
       const monederoExistente = await this.monederoRepository.findOne({
-        where: { Id },
+        where: { id:Id },
       });
       if (!monederoExistente) {
         throw new NotFoundException(
