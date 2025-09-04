@@ -1,4 +1,3 @@
-import { ApiProperty } from '@nestjs/swagger';
 import {
   IsString,
   IsNotEmpty,
@@ -46,5 +45,13 @@ export class CreatePermisoDto {
     description: 'Estatus del dispositivo solo es 1 ó 0',
     example: '1',
   })
+  descripcion?: string;
+
+  @IsNumber()
+  @IsNotEmpty()
+  idModulo: number;
+
+  @IsInt()
+  @IsOptional()
   estatus?: number;
 }
