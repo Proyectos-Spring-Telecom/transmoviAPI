@@ -13,7 +13,7 @@ import { Repository } from 'typeorm';
 import { Permisos } from 'src/entities/Permisos';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import { UpdateModulosEstatusDto } from './dto/update-modulo-estatus.dto';
-import { ApiResponseCommon } from 'src/common/ApiResponse';
+import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 
 @Injectable()
 export class ModulosService {
@@ -25,8 +25,17 @@ export class ModulosService {
     private readonly bitacoraLogger: BitacoraLoggerService,
   ) {}
 
-  async create(createModuloDto: CreateModuloDto, idUser: string) {
+  async create(
+    createModuloDto: CreateModuloDto,
+    idUser: string,
+  ): Promise<ApiCrudResponse> {
     try {
+      const modulos = await this.moduloRepository.findOne({
+        where: { nombre: createModuloDto.nombre },
+      });
+      if (modulos) {
+        throw new BadRequestException('El modulo ya existe');
+      }
       const create = await this.moduloRepository.create(createModuloDto);
       const saved = await this.moduloRepository.save(create);
       //-----Registro en la bitacora-----
@@ -36,9 +45,19 @@ export class ModulosService {
         'CREATE',
         `INSERT INTO Modulos (...) VALUES (...) -> nombre: ${createModuloDto.nombre} descipcion: ${createModuloDto.descripcion}`,
         Number(idUser),
-        2,
+        5,
       );
-      return saved;
+      const idMod = saved.id;
+      //Api response
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'Modulo creado correctamente',
+        data: {
+          id: Number(idMod),
+          nombre: `${saved.nombre} ${saved.descripcion} ` || '',
+        },
+      };
+      return result;
     } catch (error) {
       throw new BadRequestException(error);
     }
@@ -85,24 +104,28 @@ export class ModulosService {
 
   async findOne(id: number) {
     try {
-      const exist = await this.moduloRepository.findOne({ where: { id: id } });
-      if (!exist) throw new NotFoundException('Módulo no encontrado');
-      
+      const modulo = await this.moduloRepository.findOne({ where: { id: id },relations:['permisos'] });
+      if (!modulo) throw new NotFoundException('Módulo no encontrado');
+      return modulo
     } catch (error) {
       throw new BadRequestException(error);
     }
   }
 
-  async update(updateModuloDto: UpdateModuloDto, idUser: string) {
+  async update(
+    id: number,
+    updateModuloDto: UpdateModuloDto,
+    idUser: string,
+  ): Promise<ApiCrudResponse> {
     try {
-      const exist = await this.moduloRepository.findOne({
-        where: { id: updateModuloDto.id },
+      const modulo = await this.moduloRepository.findOne({
+        where: { id: id },
       });
-      if (!exist) throw new NotFoundException('Módulo no encontrado');
-      const update = await this.moduloRepository.update(
-        updateModuloDto.id,
-        updateModuloDto,
-      );
+      if (!modulo) throw new NotFoundException('Módulo no encontrado');
+      await this.moduloRepository.update(id, updateModuloDto);
+      const moduloResult = await this.moduloRepository.findOne({
+        where: { id: id },
+      });
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Modulos',
@@ -110,9 +133,18 @@ export class ModulosService {
         'UPDATE',
         `UPDATE INTO Modulos (...) VALUES (...) -> nombre: ${updateModuloDto.nombre} descipcion: ${updateModuloDto.descripcion}`,
         Number(idUser),
-        2,
+        5,
       );
-      return await this.moduloRepository.findOne({where:{id:updateModuloDto.id}});
+      //Api response
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'Modulo actualizado correctamente',
+        data: {
+          id: id,
+          nombre: `${moduloResult?.nombre} ${moduloResult?.descripcion} ` || '',
+        },
+      };
+      return result;
     } catch (error) {
       throw new BadRequestException(error);
     }
@@ -122,27 +154,34 @@ export class ModulosService {
     id: number,
     idUser: string,
     updateModulosEstatusDto: UpdateModulosEstatusDto,
-  ) {
+  ): Promise<ApiCrudResponse> {
     try {
       const modulo = await this.moduloRepository.findOne({ where: { id: id } });
       if (!modulo) {
         throw new NotFoundException('Modulo no encontrado');
       }
-      const Estatus = updateModulosEstatusDto.Estatus;
-      await this.moduloRepository.update(id, { estatus: Estatus });
+      const estatus = updateModulosEstatusDto.estatus;
+      await this.moduloRepository.update(id, { estatus: estatus });
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Modulos',
-        `Se cambio del modulo ${modulo.nombre} con id: ${id} a estatus: ${Estatus}`,
+        `Se cambio del modulo ${modulo.nombre} con id: ${id} a estatus: ${estatus}`,
         'UPDATE',
-        `UPDATE Modulos SET Estatus = ${Estatus} WHERE id = ${id}`,
+        `UPDATE Modulos SET Estatus = ${estatus} WHERE id = ${id}`,
         Number(idUser),
-        2,
+        5,
       );
-      return {
-        message: `Modulo con id: ${id} su estatus fue actualizado a ${Estatus}`,
-        Estatus: Number(Estatus),
+      //Api response
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'Estatus modulo actualizado correctamente',
+        estatus: { estatus: estatus },
+        data: {
+          id: id,
+          nombre: `${modulo.nombre} ${modulo.descripcion} ` || '',
+        },
       };
+      return result;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -153,7 +192,7 @@ export class ModulosService {
     }
   }
 
-  async deleteModulo(id: number, req): Promise<any> {
+  async deleteModulo(id: number, userId:string): Promise<ApiCrudResponse> {
     const modulo = await this.moduloRepository.findOne({ where: { id: id } });
 
     if (!modulo) throw new NotFoundException('Modulo no encontrado');
@@ -189,9 +228,18 @@ export class ModulosService {
       `Se eliminó el modulos con ID: ${id}`,
       'UPDATE',
       `UPDATE FROM Modulos WHERE Id=${id}`,
-      req.user.userId,
-      2,
+      Number(userId),
+      5,
     );
-    return `Modulo fue eliminado exitosamente`;
+    //Api response
+    const result: ApiCrudResponse = {
+      status: 'success',
+      message: 'Modulo eliminado correctamente',
+      data: {
+        id: id,
+        nombre: `${modulo.nombre} ${modulo.descripcion} ` || '',
+      },
+    };
+    return result;
   }
 }

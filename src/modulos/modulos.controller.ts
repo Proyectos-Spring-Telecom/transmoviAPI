@@ -18,7 +18,7 @@ import { CreateModuloDto } from './dto/create-modulo.dto';
 import { UpdateModuloDto } from './dto/update-modulo.dto';
 import { ApiTags } from '@nestjs/swagger';
 import { UpdateModulosEstatusDto } from './dto/update-modulo-estatus.dto';
-import { ApiResponseCommon } from 'src/common/ApiResponse';
+import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 
 @ApiTags('Modulos')
@@ -28,9 +28,12 @@ export class ModulosController {
   constructor(private readonly modulosService: ModulosService) {}
 
   @Post()
-  create(@Body() createModuloDto: CreateModuloDto, @Request() req) {
+  async create(
+    @Body() createModuloDto: CreateModuloDto,
+    @Request() req,
+  ): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
-    return this.modulosService.create(createModuloDto, idUser);
+    return await this.modulosService.create(createModuloDto, idUser);
   }
 
   @Get('list')
@@ -51,23 +54,33 @@ export class ModulosController {
     return this.modulosService.findOne(+id);
   }
 
-  @Put()
-  update(@Body() updateModuloDto: UpdateModuloDto, @Request() req) {
+  @Put(':id')
+  async update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateModuloDto: UpdateModuloDto,
+    @Request() req,
+  ): Promise <ApiCrudResponse> {
     const idUser = req.user.userId;
-    return this.modulosService.update(updateModuloDto, idUser);
+    return await this.modulosService.update(id,updateModuloDto, idUser);
   }
 
   @Patch(':id/estatus')
-  updateModuloEstatus(
+  async updateModuloEstatus(
     @Param('id') id: string,
     @Request() req,
-    updateModulosEstatusDto: UpdateModulosEstatusDto,
-  ) {
+    @Body()updateModulosEstatusDto: UpdateModulosEstatusDto,
+  ):Promise <ApiCrudResponse> {
     const idUser = req.user.userId;
-    return this.modulosService.updateModulosStatus(
+    return await this.modulosService.updateModulosStatus(
       +id,
       idUser,
       updateModulosEstatusDto,
     );
+  }
+
+  @Delete(':id')
+  async remove(@Param('id',ParseIntPipe)id:number,@Request()req):Promise <ApiCrudResponse> {
+    const idUser = req.user.userId;
+    return await this.modulosService.deleteModulo(id,idUser);
   }
 }

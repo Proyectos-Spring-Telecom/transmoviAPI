@@ -11,7 +11,7 @@ import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import { UpdatePermisoEstatusDto } from './dto/update-permiso-estatus.dto';
-import { ApiResponseCommon } from 'src/common/ApiResponse';
+import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { UsuariosPermisos } from 'src/entities/UsuariosPermisos';
 
 @Injectable()
@@ -25,7 +25,10 @@ export class PermisosService {
   ) {}
 
   //Obtener todos los permisos con paginado
-  async findAll(page: number = 1, limit: number = 10): Promise<ApiResponseCommon> {
+  async findAll(
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<ApiResponseCommon> {
     const [data, total] = await this.permisoRepository.findAndCount({
       relations: ['idModulo2'],
       skip: (page - 1) * limit,
@@ -33,14 +36,14 @@ export class PermisosService {
     });
 
     const result: ApiResponseCommon = {
-        data,
-        paginated: {
-          total: Math.ceil(total / limit),
-          page,
-          limit,
-        },
-        message: 'Permisos obtenidos correctamente',
-      };
+      data,
+      paginated: {
+        total: Math.ceil(total / limit),
+        page,
+        limit,
+      },
+      message: 'Permisos obtenidos correctamente',
+    };
 
     return result;
   }
@@ -48,7 +51,6 @@ export class PermisosService {
   //Obtener todos los permisos
   async findAllList(): Promise<ApiResponseCommon> {
     try {
-      console.log('Entro a permisos service')
       const permisos = await this.permisoRepository.find({
         relations: ['idModulo2'],
       });
@@ -62,7 +64,8 @@ export class PermisosService {
         throw error;
       }
       throw new InternalServerErrorException(
-        `Error al obtener todos los permisos:`, error
+        `Error al obtener todos los permisos:`,
+        error,
       );
     }
   }
@@ -71,7 +74,7 @@ export class PermisosService {
   async findOne(id: number) {
     try {
       const permiso = await this.permisoRepository.findOne({
-        where: {id: id },
+        where: { id: id },
         relations: ['idModulo2'],
       });
       if (!permiso) throw new NotFoundException('Permiso no encontrado');
@@ -87,18 +90,16 @@ export class PermisosService {
     }
   }
 
-  async createPermiso(createPermiso: CreatePermisoDto, idUsuario) {
+  async createPermiso(
+    createPermiso: CreatePermisoDto,
+    idUsuario,
+  ): Promise<ApiCrudResponse> {
     try {
       const create = this.permisoRepository.create(createPermiso);
       const savedPermiso = await this.permisoRepository.save(create);
-      const asignar = {
-        idPermiso: savedPermiso.id,
-        idUsuario: idUsuario,
-      };
-      const permiso = await this.usuarioPermiso.create(asignar);
       const asignarRoot = {
         idPermiso: savedPermiso.id,
-        IdUsuario: 1, //Se asigna al usuario supremo
+        idUsuario: 1, //Se asigna al usuario supremo
       };
       const permisoRoot = await this.usuarioPermiso.create(asignarRoot);
       this.usuarioPermiso.save(permisoRoot);
@@ -109,9 +110,19 @@ export class PermisosService {
         'CREATE',
         `INSERT INTO Permisos (Nombre, Descripcion) VALUES ('${savedPermiso.nombre}', '${savedPermiso.descripcion}')`,
         Number(idUsuario),
-        2,
+        4,
       );
-      return `Permiso creado exitosamente`;
+      const idPer = savedPermiso.id;
+      //Api response
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'Permiso creado correctamente',
+        data: {
+          id: Number(idPer),
+          nombre: `${savedPermiso.nombre} ${savedPermiso.descripcion} ` || '',
+        },
+      };
+      return result;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -122,15 +133,16 @@ export class PermisosService {
 
   async updateEstatus(
     id: number,
+    idUser: string,
     updatePermisoEstatusDto: UpdatePermisoEstatusDto,
-  ) {
+  ):Promise <ApiCrudResponse> {
     try {
       const permiso = await this.permisoRepository.findOne({
         where: { id: id },
       });
       if (!permiso) throw new NotFoundException('Permiso no encontrado');
       //Actualiza
-      const result = await this.permisoRepository.update(id, {
+      const permisoResult = await this.permisoRepository.update(id, {
         estatus: updatePermisoEstatusDto.estatus,
       });
       // --- Registro en la bitácora ---
@@ -139,19 +151,27 @@ export class PermisosService {
         `Se actualizo a estatus ${updatePermisoEstatusDto.estatus} del permiso: ${permiso.nombre}`,
         'UPDATE',
         `UPDATE Permiso SET Estatus=${updatePermisoEstatusDto.estatus} WHERE Id=${id}`,
-        Number(id),
-        2,
+        Number(idUser),
+        4,
       );
-      return `Estatus permiso con ${id} actualizado exitosamente`;
+      //Api response
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'Usuario creado correctamente',
+        estatus: {estatus:updatePermisoEstatusDto.estatus},
+        data: {
+          id:id,
+          nombre: `${permiso.nombre} ${permiso.descripcion} ` || "",
+        }
+      };
+      return result;
     } catch (error) {
       return error;
     }
   }
 
-  async update(updatePermiso: UpdatePermisoDto) {
+  async update(id: number, updatePermiso: UpdatePermisoDto, idUser: string):Promise<ApiCrudResponse> {
     try {
-      const id = updatePermiso.id;
-
       const permisoActualizar = {
         nombre: updatePermiso.nombre,
         descripcion: updatePermiso.descripcion,
@@ -162,23 +182,33 @@ export class PermisosService {
         where: { id: id },
       });
       if (!permiso) throw new NotFoundException('Permiso no encontrado');
-      const result = await this.permisoRepository.update(id, permisoActualizar);
+      await this.permisoRepository.update(id, permisoActualizar);
+      const permisoResult = await this.permisoRepository.findOne({where: {id:id}});
       // --- Registro en la bitácora ---
       await this.bitacoraLogger.logToBitacora(
         'Permisos',
-        `Se actualizo: ${permisoActualizar.nombre}`,
+        `Se actualizo permiso: ${permisoResult?.nombre}`,
         'UPDATE',
-        `UPDATE Permisos SET... WHERE Id=${id} VALUES ('${permisoActualizar.nombre}', '${permisoActualizar.descripcion}')`,
-        Number(id),
-        2,
+        `UPDATE Permisos SET... WHERE Id=${id} VALUES ('${permisoResult?.nombre}', '${permisoResult?.descripcion}')`,
+        Number(idUser),
+        4,
       );
-      return `Permiso con ${id} actualizado exitosamente`;
+      //Api response
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'Permiso actualizado correctamente',
+        data: {
+          id: id,
+          nombre: `${permisoResult?.nombre} ${permisoResult?.descripcion} ` || "",
+        }
+      };
+      return result;
     } catch (error) {
       return error;
     }
   }
 
-  async remove(id: number) {
+  async remove(id: number, idUser: string):Promise <ApiCrudResponse> {
     try {
       const permiso = await this.permisoRepository.findOne({
         where: { id: id },
@@ -192,10 +222,19 @@ export class PermisosService {
         `Se desactivo el permiso: ${permiso.nombre}`,
         'UPDATE',
         `UPDATE Monederos SET Estatus=${0} WHERE Id=${id}`,
-        Number(id),
-        2,
+        Number(idUser),
+        4,
       );
-      return `Permiso con #${id} eliminado`;
+      //Api response
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'Permiso eliminado correctamente',
+        data: {
+          id: id,
+          nombre: `${permiso.nombre} ${permiso.descripcion} ` || "",
+        }
+      };
+      return result;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
