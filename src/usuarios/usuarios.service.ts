@@ -13,7 +13,7 @@ import { CreateUsuarioDto } from './dto/create-usuario.dto';
 import { UpdateUsuarioDto } from './dto/update-usuario.dto';
 import { UpdateUsuarioEstatusDto } from './dto/update-usuario-estatus.dto';
 import * as bcrypt from 'bcrypt';
-import { ApiResponseCommon } from 'src/common/ApiResponse';
+import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import { ClientesService } from 'src/clientes/clientes.service';
 @Injectable()
@@ -24,51 +24,53 @@ export class UsuariosService {
     private readonly bitacoraLogger: BitacoraLoggerService,
     private readonly clientesService: ClientesService,
   ) {}
-// Obtener todos los usuarios con paginación
-async getAllUsuario(page: number, limit: number): Promise<ApiResponseCommon> {
-  try {
-    const [data, total] = await this.usuarioRepository.findAndCount({
-      relations: ["idCliente2", "idRol2"],
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+  // Obtener todos los usuarios con paginación
+  async getAllUsuario(page: number, limit: number): Promise<ApiResponseCommon> {
+    try {
+      const [data, total] = await this.usuarioRepository.findAndCount({
+        relations: ['idCliente2', 'idRol2'],
+        skip: (page - 1) * limit,
+        take: limit,
+      });
 
-    const dataFiltrada = data.map((u) => ({
-      Id: u.id,
-      UserName: u.userName,
-      EmailConfirmado: u.emailConfirmado,
-      Telefono: u.telefono,
-      Nombre: u.nombre,
-      ApellidoPaterno: u.apellidoPaterno,
-      ApellidoMaterno: u.apellidoMaterno,
-      Estatus: u.estatus,
-      IdRol: u.idRol,
-      RolNombre: u.idRol2?.nombre || null, // solo nombre del rol
-      IdCliente: u.idCliente,
-      ClienteNombre: u.idCliente2?.nombre || null, // solo nombre del cliente
-      UltimoLogin: u.ultimoLogin,
-      ActualizacionPassword: u.actualizacionPassword,
-      ActualizacionPin: u.actualizacionPin,
-      DispositivoId: u.dispositivoId,
-      FechaCreacion: u.fechaCreacion,
-      FechaActualizacion: u.fechaActualizacion,
-    }));
+      const dataFiltrada = data.map((u) => ({
+        Id: u.id,
+        UserName: u.userName,
+        EmailConfirmado: u.emailConfirmado,
+        Telefono: u.telefono,
+        Nombre: u.nombre,
+        ApellidoPaterno: u.apellidoPaterno,
+        ApellidoMaterno: u.apellidoMaterno,
+        Estatus: u.estatus,
+        IdRol: u.idRol,
+        RolNombre: u.idRol2?.nombre || null, // solo nombre del rol
+        IdCliente: u.idCliente,
+        ClienteNombre: u.idCliente2?.nombre || null, // solo nombre del cliente
+        UltimoLogin: u.ultimoLogin,
+        ActualizacionPassword: u.actualizacionPassword,
+        ActualizacionPin: u.actualizacionPin,
+        DispositivoId: u.dispositivoId,
+        FechaCreacion: u.fechaCreacion,
+        FechaActualizacion: u.fechaActualizacion,
+      }));
 
-    const result: ApiResponseCommon = {
-      data: dataFiltrada,
-      paginated: {
-        total: Math.ceil(total / limit),
-        page,
-        limit,
-      },
-      message: "Usuarios obtenidos correctamente",
-    };
+      const result: ApiResponseCommon = {
+        data: dataFiltrada,
+        paginated: {
+          total: Math.ceil(total / limit),
+          page,
+          limit,
+        },
+        message: 'Usuarios obtenidos correctamente',
+      };
 
-    return result;
-  } catch (error) {
-    throw new BadRequestException(error.message || "Error al obtener usuarios");
+      return result;
+    } catch (error) {
+      throw new BadRequestException(
+        error.message || 'Error al obtener usuarios',
+      );
+    }
   }
-}
 
   //Obtener todos los usuarios
   async getAllListUsuarios(): Promise<ApiResponseCommon> {
@@ -77,7 +79,9 @@ async getAllUsuario(page: number, limit: number): Promise<ApiResponseCommon> {
       if (usuarios.length === 0) {
         throw new NotFoundException('Usuarios no encontrados');
       }
-      const usuariosSinPassword = usuarios.map(({ passwordHash, ...rest }) => rest);
+      const usuariosSinPassword = usuarios.map(
+        ({ passwordHash, ...rest }) => rest,
+      );
       const result: ApiResponseCommon = {
         data: usuariosSinPassword,
 
@@ -114,24 +118,33 @@ async getAllUsuario(page: number, limit: number): Promise<ApiResponseCommon> {
     }
   }
   //Creacion de un usuario
-  async createUsuario(createUsuarioDto: CreateUsuarioDto, idUser: string) {
+  async createUsuario(
+    createUsuarioDto: CreateUsuarioDto,
+    idUser: string,
+  ): Promise<ApiCrudResponse> {
     try {
-      const existUsuario = await this.usuarioRepository.findOne({ //Buscamos si existe usuario
+      const existUsuario = await this.usuarioRepository.findOne({
+        //Buscamos si existe usuario
         where: { userName: createUsuarioDto.userName },
       });
       if (existUsuario) {
         throw new BadRequestException('El usuario ya existe');
       }
-      const cliente = await this.clientesService.getOneCliente(   //Buscamos si existe el cliente
+      const cliente = await this.clientesService.getOneCliente(
+        //Buscamos si existe el cliente
         createUsuarioDto.idCliente,
       );
       if (!cliente) throw new BadRequestException('Cliente Invalido');
 
-      const hashedPassword = await bcrypt.hash(createUsuarioDto.passwordHash, 10); //encriptamos la contraseña
+
+      const hashedPassword = await bcrypt.hash(
+        createUsuarioDto.passwordHash,
+        10,
+      ); //encriptamos la contraseña
       createUsuarioDto.passwordHash = hashedPassword;
-      
+
       const newUser = this.usuarioRepository.create(createUsuarioDto);
-      await this.usuarioRepository.save(newUser);                             //creamos el usuario
+      await this.usuarioRepository.save(newUser); //creamos el usuario
 
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
@@ -143,10 +156,17 @@ async getAllUsuario(page: number, limit: number): Promise<ApiResponseCommon> {
         2,
       );
       const { passwordHash: _, ...usuarioSinPassword } = newUser;
-      return {
-        message: 'Usuario creado exitosamente',
-        User: usuarioSinPassword,
+
+      //Api response
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'Usuario creado correctamente',
+        data: {
+          id: usuarioSinPassword.id,
+          nombre: `${usuarioSinPassword.nombre} ${usuarioSinPassword.apellidoPaterno} ` || "",
+        }
       };
+      return result;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -160,17 +180,21 @@ async getAllUsuario(page: number, limit: number): Promise<ApiResponseCommon> {
     id: number,
     updateUsuarioDto: UpdateUsuarioDto,
     idUser: string,
-  ) {
+  ):Promise <ApiCrudResponse> {
     try {
-      const usuario = await this.usuarioRepository.findOne({    //Buscamos si existe el usuario
+      const usuario = await this.usuarioRepository.findOne({
+        //Buscamos si existe el usuario
         where: { id: id },
       });
       if (!usuario) {
         throw new NotFoundException(`Usuario con ID:${id} no encontrado`);
       }
-      if (updateUsuarioDto.idCliente) {                     //Si existe IdRol lo busca si es existente
-      const cliente = await this.clientesService.getOneCliente(Number(updateUsuarioDto.idCliente))
-      if (!cliente) throw new BadRequestException('Cliente Invalido');
+      if (updateUsuarioDto.idCliente) {
+        //Si existe IdRol lo busca si es existente
+        const cliente = await this.clientesService.getOneCliente(
+          Number(updateUsuarioDto.idCliente),
+        );
+        if (!cliente) throw new BadRequestException('Cliente Invalido');
       }
       if (updateUsuarioDto.passwordHash) {
         updateUsuarioDto.passwordHash = await bcrypt.hash(
@@ -196,13 +220,24 @@ async getAllUsuario(page: number, limit: number): Promise<ApiResponseCommon> {
         Number(idUser),
         2,
       );
-      return usuarioSinPassword;
+
+      //Api response
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'Usuario actualizado correctamente',
+        data: {
+          id: usuarioSinPassword.id,
+          nombre: `${usuarioSinPassword.nombre} ${usuarioSinPassword.apellidoPaterno} ` || "",
+        }
+      };
+      return result;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
       }
       throw new InternalServerErrorException({
-        message: 'Error al actualizar usuario',error
+        message: 'Error al actualizar usuario',
+        error,
       });
     }
   }
@@ -212,7 +247,7 @@ async getAllUsuario(page: number, limit: number): Promise<ApiResponseCommon> {
     id: number,
     updateUsuarioEstatusDto: UpdateUsuarioEstatusDto,
     idUser: string,
-  ) {
+  ):Promise <ApiCrudResponse> {
     try {
       const usuario = await this.usuarioRepository.findOne({
         where: { id: id },
@@ -232,13 +267,25 @@ async getAllUsuario(page: number, limit: number): Promise<ApiResponseCommon> {
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Usuarios',
-        `Se cambio del modulo ${usuarioResult.nombre} con id: ${id} a estatus: ${estatus}`,
+        `Se cambio estatus del usuario ${usuarioResult.nombre} con id: ${id} a estatus: ${estatus}`,
         'UPDATE',
         `UPDATE Usuarios SET Estatus = ${estatus} WHERE id = ${id}`,
         Number(idUser),
         2,
       );
-      return { message: `Estatus actualizado correctamente a ${estatus}` };
+      //Api Response
+      const result:ApiCrudResponse = {
+        status: 'success',
+        message:'Estatus usuario actualizado correctamente',
+        estatus:{
+          estatus:estatus
+        },
+        data: {
+          id: usuarioResult.id,
+          nombre: `${usuarioResult.nombre} ${usuarioResult.apellidoPaterno} ` || "",
+        }
+      };
+      return result;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -250,7 +297,7 @@ async getAllUsuario(page: number, limit: number): Promise<ApiResponseCommon> {
   }
 
   //Eliminamos usuario
-  async deleteUsuario(id: number, idUser: string) {
+  async deleteUsuario(id: number, idUser: string):Promise <ApiCrudResponse> {
     try {
       const usuario = await this.usuarioRepository.findOne({
         where: { id: id },
@@ -268,7 +315,16 @@ async getAllUsuario(page: number, limit: number): Promise<ApiResponseCommon> {
         Number(idUser),
         2,
       );
-      return `Usuario con ${id} eliminado exitosamente`;
+      //Api response
+      const result:ApiCrudResponse = {
+        status: 'success',
+        message:'Usuario eliminado correctamente',
+        data: {
+          id: usuario.id,
+          nombre: `${usuario.nombre} ${usuario.apellidoPaterno} ` || "",
+        }
+      };
+      return result;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;

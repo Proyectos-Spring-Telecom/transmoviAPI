@@ -12,6 +12,8 @@ import * as bcrypt from 'bcrypt';
 import { LoginAuthDto } from './dto/login-auth.dto';
 import { UsuariosPermisos } from 'src/entities/UsuariosPermisos';
 
+import moment from 'moment-timezone';
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -24,13 +26,15 @@ export class AuthService {
 
   async signIn(loginAuthDto: LoginAuthDto) {
     try {
-      const user = await this.usuariosRepository.findOne({relations: ["idRol2"],
-        where: { userName: loginAuthDto.UserName },
+
+      const user = await this.usuariosRepository.findOne({
+        relations: ['idRol2'],
+        where: { userName: loginAuthDto.userName },
       });
       console.log({ data: user });
       if (
         !user ||
-        !(await bcrypt.compare(loginAuthDto.Password, user.passwordHash))
+        !(await bcrypt.compare(loginAuthDto.password, user.passwordHash))
       ) {
         console.log({
           user: user,
@@ -45,12 +49,17 @@ export class AuthService {
       });
 
       const payload = { id: user.id, email: user.userName };
+
+      const ultimoLogin = moment()
+        .tz('America/Mexico_City')
+        .format('YYYY-MM-DD HH:mm:ss');
+      await this.usuariosRepository.update(user.id,{ultimoLogin:ultimoLogin})
       return {
         message: `login exitoso`,
         nombre: `${user.nombre}`,
         apellidoPaterno: `${user.apellidoPaterno}`,
-        apellidoMaterno:`${user.apellidoMaterno}`,
-        userName:`${user.userName}`,
+        apellidoMaterno: `${user.apellidoMaterno}`,
+        userName: `${user.userName}`,
         rol: user.idRol2,
         token: this.jwtService.sign(payload),
         permisos: permisos,

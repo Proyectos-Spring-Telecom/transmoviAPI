@@ -19,6 +19,8 @@ import { UpdateUsuarioEstatusDto } from './dto/update-usuario-estatus.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiCrudResponse } from 'src/common/ApiResponse';
+
 @UseGuards(JwtAuthGuard)
 @Controller('usuarios')
 export class UsuariosController {
@@ -45,36 +47,36 @@ export class UsuariosController {
   }
   //Crear usuario
   @Post()
-  createUsuario(@Body() createUsuarioDto: CreateUsuarioDto,@Request()req) {
+  async createUsuario(@Body() createUsuarioDto: CreateUsuarioDto,@Request()req):Promise <ApiCrudResponse> {
     const idUser = req.user.userId;
-    return this.usuariosService.createUsuario(createUsuarioDto,idUser);
+    return await this.usuariosService.createUsuario(createUsuarioDto,idUser);
   }
   //actualizar usuario
   @Put('/:id')
-  updateUsuario(
+  async updateUsuario(
     @Param('id')
     id: string,
     @Body() updateUsuarioDto: UpdateUsuarioDto,
     @Request() req
-  ) {
+  ):Promise <ApiCrudResponse> {
     const idUser = req.user.userId;
-    return this.usuariosService.updateUsuario(+id, updateUsuarioDto,idUser);
+    return await this.usuariosService.updateUsuario(+id, updateUsuarioDto,idUser);
   }
   //eliminar usuario
   @Delete('/:id')
-  deleteUsuario(@Param('id') id: string,@Request() req) {
+  async deleteUsuario(@Param('id') id: string,@Request() req):Promise <ApiCrudResponse> {
     const idUser = req.user.userId;
-    return this.usuariosService.deleteUsuario(+id,idUser);
+    return await this.usuariosService.deleteUsuario(+id,idUser);
   }
   //actualizar estatus del usuario
   @Patch('/:id/estatus')
-  changeUsuarioEstatus(
+  async changeUsuarioEstatus(
     @Param('id') id: string,
     @Body() updateUsuarioEstatusDto: UpdateUsuarioEstatusDto,
     @Request() req
-  ) {
+  ):Promise <ApiCrudResponse> {
     const idUser = req.user.userId;
-    return this.usuariosService.updateUsuarioEstatus(
+    return await this.usuariosService.updateUsuarioEstatus(
       +id,
       updateUsuarioEstatusDto,
       idUser
