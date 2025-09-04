@@ -40,7 +40,7 @@ export class PermisosService {
       paginated: {
         total: Math.ceil(total / limit),
         page,
-        limit,
+        limit:total,
       },
       message: 'Permisos obtenidos correctamente',
     };

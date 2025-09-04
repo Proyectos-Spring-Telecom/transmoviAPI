@@ -92,7 +92,7 @@ export class ModulosService {
         paginated: {
           total: Math.ceil(total / limit),
           page,
-          limit,
+          limit:total,
         },
         message: 'Módulos obtenidos correctamente',
       };

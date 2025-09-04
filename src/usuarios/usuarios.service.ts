@@ -280,7 +280,7 @@ export class UsuariosService {
           estatus:estatus
         },
         data: {
-          id: usuarioResult.id,
+          id: id,
           nombre: `${usuarioResult.nombre} ${usuarioResult.apellidoPaterno} ` || "",
         }
       };
