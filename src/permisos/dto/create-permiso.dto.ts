@@ -16,11 +16,35 @@ export class CreatePermisoDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(100)
+  @ApiProperty({
+    description: 'Nombre del permiso',
+    example: 'Permiso',
+  })
   nombre: string;
 
   @IsString()
   @IsOptional()
   @MaxLength(255)
+  @ApiProperty({
+    description: 'Descripción del permiso',
+    example: 'Permiso',
+  })
+  descripcion?: string;
+
+  @IsNumber()
+  @IsNotEmpty()
+  @ApiProperty({
+    description: 'Numero del modulo',
+    example: '1',
+  })
+  idModulo: number;
+
+  @IsInt()
+  @IsOptional()
+  @ApiProperty({
+    description: 'Estatus del dispositivo solo es 1 ó 0',
+    example: '1',
+  })
   descripcion?: string;
 
   @IsNumber()
