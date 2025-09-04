@@ -8,7 +8,7 @@ export class LoginAuthDto{
                 description: 'Usuario',
                 example: 'ejemplo@ejemplo.com',
             })
-    UserName:string;
+    userName:string;
 
     @IsString()
     @IsNotEmpty()
@@ -16,6 +16,6 @@ export class LoginAuthDto{
             description: 'Contraseña',
             example: 'contraseña1',
         })
-    Password: string;
+    password: string;
 
 }

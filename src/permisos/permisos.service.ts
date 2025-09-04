@@ -27,7 +27,7 @@ export class PermisosService {
   //Obtener todos los permisos con paginado
   async findAll(page: number = 1, limit: number = 10): Promise<ApiResponseCommon> {
     const [data, total] = await this.permisoRepository.findAndCount({
-      relations: ['modulo'],
+      relations: ['idModulo2'],
       skip: (page - 1) * limit,
       take: limit,
     });
@@ -48,8 +48,9 @@ export class PermisosService {
   //Obtener todos los permisos
   async findAllList(): Promise<ApiResponseCommon> {
     try {
+      console.log('Entro a permisos service')
       const permisos = await this.permisoRepository.find({
-        relations: ['modulo'],
+        relations: ['idModulo2'],
       });
       const result: ApiResponseCommon = {
         data: permisos,
@@ -61,7 +62,7 @@ export class PermisosService {
         throw error;
       }
       throw new InternalServerErrorException(
-        `Error al obtener todos los permisos`,
+        `Error al obtener todos los permisos:`, error
       );
     }
   }
@@ -71,7 +72,7 @@ export class PermisosService {
     try {
       const permiso = await this.permisoRepository.findOne({
         where: {id: id },
-        relations: ['modulo'],
+        relations: ['idModulo2'],
       });
       if (!permiso) throw new NotFoundException('Permiso no encontrado');
 
