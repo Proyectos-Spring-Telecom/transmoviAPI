@@ -16,6 +16,7 @@ import * as bcrypt from 'bcrypt';
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import { ClientesService } from 'src/clientes/clientes.service';
+import { UsuariosPermisos } from 'src/entities/UsuariosPermisos';
 @Injectable()
 export class UsuariosService {
   constructor(
@@ -23,6 +24,8 @@ export class UsuariosService {
     private readonly usuarioRepository: Repository<Usuarios>,
     private readonly bitacoraLogger: BitacoraLoggerService,
     private readonly clientesService: ClientesService,
+    @InjectRepository(UsuariosPermisos)
+    private permisosRepository: Repository<UsuariosPermisos>,
   ) {}
   // Obtener todos los usuarios con paginación
   async getAllUsuario(page: number, limit: number): Promise<ApiResponseCommon> {
