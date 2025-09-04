@@ -101,7 +101,6 @@ export class UsuariosService {
   //Obtener el usuario por ID
   async getUsuarioByID(id: number) {
     try {
-      //Cambiamos el id a number
       const user = await this.usuarioRepository.findOne({
         where: { id: id },
       });
@@ -110,7 +109,7 @@ export class UsuariosService {
       }
       //Falta el apartado de la bitacora
       const { passwordHash: _, ...usuarioSinPassword } = user;
-      return usuarioSinPassword;
+      return { usuarioSinPassword };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -165,8 +164,10 @@ export class UsuariosService {
         message: 'Usuario creado correctamente',
         data: {
           id: usuarioSinPassword.id,
-          nombre: `${usuarioSinPassword.nombre} ${usuarioSinPassword.apellidoPaterno} ` || "",
-        }
+          nombre:
+            `${usuarioSinPassword.nombre} ${usuarioSinPassword.apellidoPaterno} ` ||
+            '',
+        },
       };
       return result;
     } catch (error) {
@@ -182,7 +183,7 @@ export class UsuariosService {
     id: number,
     updateUsuarioDto: UpdateUsuarioDto,
     idUser: string,
-  ):Promise <ApiCrudResponse> {
+  ): Promise<ApiCrudResponse> {
     try {
       const usuario = await this.usuarioRepository.findOne({
         //Buscamos si existe el usuario
@@ -229,8 +230,10 @@ export class UsuariosService {
         message: 'Usuario actualizado correctamente',
         data: {
           id: usuarioSinPassword.id,
-          nombre: `${usuarioSinPassword.nombre} ${usuarioSinPassword.apellidoPaterno} ` || "",
-        }
+          nombre:
+            `${usuarioSinPassword.nombre} ${usuarioSinPassword.apellidoPaterno} ` ||
+            '',
+        },
       };
       return result;
     } catch (error) {
@@ -249,7 +252,7 @@ export class UsuariosService {
     id: number,
     updateUsuarioEstatusDto: UpdateUsuarioEstatusDto,
     idUser: string,
-  ):Promise <ApiCrudResponse> {
+  ): Promise<ApiCrudResponse> {
     try {
       const usuario = await this.usuarioRepository.findOne({
         where: { id: id },
@@ -276,16 +279,17 @@ export class UsuariosService {
         2,
       );
       //Api Response
-      const result:ApiCrudResponse = {
+      const result: ApiCrudResponse = {
         status: 'success',
-        message:'Estatus usuario actualizado correctamente',
-        estatus:{
-          estatus:estatus
+        message: 'Estatus usuario actualizado correctamente',
+        estatus: {
+          estatus: estatus,
         },
         data: {
           id: id,
-          nombre: `${usuarioResult.nombre} ${usuarioResult.apellidoPaterno} ` || "",
-        }
+          nombre:
+            `${usuarioResult.nombre} ${usuarioResult.apellidoPaterno} ` || '',
+        },
       };
       return result;
     } catch (error) {
@@ -299,7 +303,7 @@ export class UsuariosService {
   }
 
   //Eliminamos usuario
-  async deleteUsuario(id: number, idUser: string):Promise <ApiCrudResponse> {
+  async deleteUsuario(id: number, idUser: string): Promise<ApiCrudResponse> {
     try {
       const usuario = await this.usuarioRepository.findOne({
         where: { id: id },
@@ -318,13 +322,13 @@ export class UsuariosService {
         2,
       );
       //Api response
-      const result:ApiCrudResponse = {
+      const result: ApiCrudResponse = {
         status: 'success',
-        message:'Usuario eliminado correctamente',
+        message: 'Usuario eliminado correctamente',
         data: {
           id: usuario.id,
-          nombre: `${usuario.nombre} ${usuario.apellidoPaterno} ` || "",
-        }
+          nombre: `${usuario.nombre} ${usuario.apellidoPaterno} ` || '',
+        },
       };
       return result;
     } catch (error) {
