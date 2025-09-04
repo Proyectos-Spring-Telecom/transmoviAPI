@@ -11,6 +11,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { LoginAuthDto } from './dto/login-auth.dto';
 import { UsuariosPermisos } from 'src/entities/UsuariosPermisos';
+
 import moment from 'moment-timezone';
 
 @Injectable()
@@ -25,6 +26,7 @@ export class AuthService {
 
   async signIn(loginAuthDto: LoginAuthDto) {
     try {
+
       const user = await this.usuariosRepository.findOne({
         relations: ['idRol2'],
         where: { userName: loginAuthDto.userName },
@@ -52,7 +54,6 @@ export class AuthService {
         .tz('America/Mexico_City')
         .format('YYYY-MM-DD HH:mm:ss');
       await this.usuariosRepository.update(user.id,{ultimoLogin:ultimoLogin})
-
       return {
         message: `login exitoso`,
         nombre: `${user.nombre}`,

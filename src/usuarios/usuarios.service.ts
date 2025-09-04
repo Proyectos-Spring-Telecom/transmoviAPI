@@ -136,6 +136,7 @@ export class UsuariosService {
       );
       if (!cliente) throw new BadRequestException('Cliente Invalido');
 
+
       const hashedPassword = await bcrypt.hash(
         createUsuarioDto.passwordHash,
         10,
