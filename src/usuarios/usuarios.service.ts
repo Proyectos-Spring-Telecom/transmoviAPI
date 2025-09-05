@@ -25,7 +25,7 @@ export class UsuariosService {
     private readonly bitacoraLogger: BitacoraLoggerService,
     private readonly clientesService: ClientesService,
     @InjectRepository(UsuariosPermisos)
-    private permisosRepository: Repository<UsuariosPermisos>,
+    private usuariosPermisosRepository: Repository<UsuariosPermisos>,
   ) {}
   // Obtener todos los usuarios con paginación
   async getAllUsuario(page: number, limit: number): Promise<ApiResponseCommon> {
@@ -62,7 +62,7 @@ export class UsuariosService {
         paginated: {
           total: Math.ceil(total / limit),
           page,
-          limit,
+          limit: total,
         },
         message: 'Usuarios obtenidos correctamente',
       };
@@ -108,8 +108,11 @@ export class UsuariosService {
         throw new NotFoundException(`Usuario con ID:${id} no encontrado`);
       }
       //Falta el apartado de la bitacora
-      const { passwordHash: _, ...usuarioSinPassword } = user;
-      return { usuarioSinPassword };
+      const { passwordHash: _, ...usuario } = user;
+      const permiso = await this.usuariosPermisosRepository.find({
+        where: { idUsuario: id, estatus: 1 },
+      });
+      return { usuario, permiso };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -138,16 +141,27 @@ export class UsuariosService {
       );
       if (!cliente) throw new BadRequestException('Cliente Invalido');
 
-
       const hashedPassword = await bcrypt.hash(
         createUsuarioDto.passwordHash,
         10,
       ); //encriptamos la contraseña
       createUsuarioDto.passwordHash = hashedPassword;
 
-      const newUser = this.usuarioRepository.create(createUsuarioDto);
+      const newUser = await this.usuarioRepository.create(createUsuarioDto);
 
-      await this.usuarioRepository.save(newUser); //creamos el usuario
+      const userSave = await this.usuarioRepository.save(newUser); //creamos el usuario
+      console.log(newUser.id);
+
+      if (createUsuarioDto.permisosIds.length > 0) {
+        const usuariosPermisos = createUsuarioDto.permisosIds.map((permisoId) =>
+          this.usuariosPermisosRepository.create({
+            idUsuario: userSave.id,
+            idPermiso: permisoId,
+          }),
+        );
+
+        await this.usuariosPermisosRepository.save(usuariosPermisos);
+      }
 
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
@@ -188,28 +202,28 @@ export class UsuariosService {
   ): Promise<ApiCrudResponse> {
     try {
       const usuario = await this.usuarioRepository.findOne({
-        //Buscamos si existe el usuario
         where: { id: id },
       });
       if (!usuario) {
         throw new NotFoundException(`Usuario con ID:${id} no encontrado`);
       }
+
       if (updateUsuarioDto.idCliente) {
-        //Si existe IdRol lo busca si es existente
         const cliente = await this.clientesService.getOneCliente(
           Number(updateUsuarioDto.idCliente),
         );
         if (!cliente) throw new BadRequestException('Cliente Invalido');
       }
+
       if (updateUsuarioDto.passwordHash) {
         updateUsuarioDto.passwordHash = await bcrypt.hash(
           updateUsuarioDto.passwordHash,
           10,
         );
       }
-      //*-*-*-*-*-*-*-*-*-*-*-**-*-*-*-*-*--*
-
-      await this.usuarioRepository.update(id, updateUsuarioDto);
+      const { permisosIds, ...usuarioUpdate } = updateUsuarioDto;
+      // ----- ACTUALIZACIÓN DE USUARIO -----
+      await this.usuarioRepository.update(id, usuarioUpdate);
       const newUser = await this.usuarioRepository.findOne({
         where: { id: id },
       });
@@ -217,17 +231,83 @@ export class UsuariosService {
         throw new NotFoundException(`Usuario con ID:${id} no encontrado`);
       }
       const { passwordHash: _, ...usuarioSinPassword } = newUser;
-      //-----Registro en la bitacora-----
+
+      // ----- ACTUALIZACIÓN DE PERMISOS -----
+      if (
+        updateUsuarioDto.permisosIds &&
+        Array.isArray(updateUsuarioDto.permisosIds)
+      ) {
+        const nuevaLista: number[] = updateUsuarioDto.permisosIds.map(Number); // lista nueva de permisos (ej. [1,2,3])
+        
+        // Permisos actuales en BD
+        const creadaLista = await this.usuariosPermisosRepository.find({
+          where: { idUsuario: id },
+        });
+        
+        const nuevaSet = new Set<number>(nuevaLista);
+        const creadaMap = new Map<number, any>(
+          creadaLista.map((p) => [Number(p.idPermiso), p] as const),
+        );
+        // Unimos todos los ids (de la nueva lista y de la creada)
+        const todosIds = new Set<number>([
+          ...nuevaSet,
+          ...creadaLista.map((p) => Number(p.idPermiso)),
+        ]);
+
+        for (const permisoId of todosIds) {
+          const enNueva = nuevaSet.has(permisoId);
+          const creado = creadaMap.get(permisoId);
+          if (enNueva && creado) {
+            if (creado.estatus === 0) {
+              // Caso: existe en ambas y en creada estatus=0 → activar
+              await this.usuariosPermisosRepository.update(creado.id, {
+                estatus: 1,
+              });
+            } else {
+              // Caso: existe en ambas y ya está activo → no hacer nada
+              continue;
+            }
+          } else if (enNueva && !creado) {
+            // Caso: existe en nueva pero no en creada → crear
+
+            const existe = await this.usuariosPermisosRepository.findOne({
+              where: { idUsuario: id, idPermiso: permisoId },
+            });
+            if (!existe) {
+              await this.usuariosPermisosRepository.save({
+                idUsuario: id,
+                idPermiso: permisoId,
+                estatus: 1,
+              });
+            }
+          } else if (!enNueva && creado) {
+            if (creado.estatus === 1) {
+              // Caso: no está en nueva pero sí en creada activo → desactivar
+              await this.usuariosPermisosRepository.update(creado.id, {
+                estatus: 0,
+              });
+            } else {
+              // Caso: ya estaba inactivo → nada que hacer
+              continue;
+            }
+          } else {
+            // Caso: no existe ni en nueva ni en creada → nada que hacer
+            continue;
+          }
+        }
+      }
+
+      // ----- Registro en la bitácora -----
       await this.bitacoraLogger.logToBitacora(
         'Usuarios',
-        `Se actualizo el usuario: ${newUser.nombre} con ID; ${newUser.id}`,
+        `Se actualizó el usuario: ${newUser.nombre} con ID: ${newUser.id}`,
         'UPDATE',
         `UPDATE Usuarios SET UserName='${newUser.userName}', Telefono='${newUser.telefono}', Nombre='${newUser.nombre}', ApellidoPaterno='${newUser.apellidoPaterno}', ApellidoMaterno='${newUser.apellidoMaterno}', Estatus=${newUser.estatus}, IdRol=${newUser.idRol}, IdCliente=${newUser.idCliente} WHERE Id=${id}`,
         Number(idUser),
         2,
       );
 
-      //Api response
+      // ----- Api response -----
       const result: ApiCrudResponse = {
         status: 'success',
         message: 'Usuario actualizado correctamente',
@@ -314,7 +394,18 @@ export class UsuariosService {
       if (!usuario) {
         throw new NotFoundException(`Usuario con ${id} no encontrado`);
       }
-      await this.usuarioRepository.remove(usuario);
+      //Se hacer eliminado logico
+      //Cambiamos el estatus del usuario a 0
+      await this.usuarioRepository.update(id,{estatus:0})
+
+      //buscamos sus permisos
+      const permisos = await this.usuariosPermisosRepository.find({where:{idUsuario:id}})
+
+      //Cambiamos estatus de los permisos a 0
+      for ( const i of permisos) {
+        await this.usuariosPermisosRepository.update(i.id,{estatus:0})
+        
+      }
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Usuarios',
