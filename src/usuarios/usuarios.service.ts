@@ -146,6 +146,7 @@ export class UsuariosService {
       createUsuarioDto.passwordHash = hashedPassword;
 
       const newUser = this.usuarioRepository.create(createUsuarioDto);
+
       await this.usuarioRepository.save(newUser); //creamos el usuario
 
       //-----Registro en la bitacora-----
@@ -206,6 +207,7 @@ export class UsuariosService {
           10,
         );
       }
+      //*-*-*-*-*-*-*-*-*-*-*-**-*-*-*-*-*--*
 
       await this.usuarioRepository.update(id, updateUsuarioDto);
       const newUser = await this.usuarioRepository.findOne({

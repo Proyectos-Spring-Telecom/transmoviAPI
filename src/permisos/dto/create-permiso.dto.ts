@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger';
 import {
   IsString,
   IsNotEmpty,
@@ -36,18 +37,6 @@ export class CreatePermisoDto {
     description: 'Numero del modulo',
     example: '1',
   })
-  idModulo: number;
-
-  @IsInt()
-  @IsOptional()
-  @ApiProperty({
-    description: 'Estatus del dispositivo solo es 1 ó 0',
-    example: '1',
-  })
-  descripcion?: string;
-
-  @IsNumber()
-  @IsNotEmpty()
   idModulo: number;
 
   @IsInt()
