@@ -250,8 +250,6 @@ export class PermisosService {
             DISTINCT UsuariosPermisos.IdPermiso,
               Modulos.Id AS IdModulo,
               Modulos.Nombre AS NombreModulo,
-              Modulos.Id AS IdModulo,
-              Modulos.Nombre AS NombreModulo,
               Permisos.Id AS PermisoId,
               Permisos.Nombre AS PermisoNombre,
               Permisos.Descripcion AS PermisoDescripcion

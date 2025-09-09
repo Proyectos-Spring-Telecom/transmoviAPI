@@ -538,16 +538,11 @@ export class UsuariosService {
       }
       //Se hacer eliminado logico
       //Cambiamos el estatus del usuario a 0
-      await this.usuarioRepository.update(id,{estatus:0})
+      await this.usuarioRepository.update(id,{estatus:0});
 
       //buscamos sus permisos
       const permisos = await this.usuariosPermisosRepository.find({where:{idUsuario:id}})
 
-      //Cambiamos estatus de los permisos a 0
-      for ( const i of permisos) {
-        await this.usuariosPermisosRepository.update(i.id,{estatus:0})
-        
-      }
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Usuarios',

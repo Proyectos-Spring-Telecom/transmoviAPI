@@ -10,9 +10,6 @@ import {
   IsIn,
   IsArray,
   IsNumber,
-} from "class-validator";
-  IsArray,
-  IsNumber,
   Matches,
 } from 'class-validator';
 
@@ -116,9 +113,4 @@ export class CreateUsuarioDto {
   @IsArray()
   @IsNumber({}, { each: true })
   permisosIds: number[]; 
-
-
-  @IsArray()
-  @IsNumber({}, { each: true })
-  permisosIds: number[];
 }
