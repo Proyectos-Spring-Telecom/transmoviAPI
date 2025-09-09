@@ -16,26 +16,24 @@ import { CreateClienteDto } from './dto/create-cliente.dto';
 import { UpdateClienteDto } from './dto/update-cliente.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { UpdateClienteEstatusDto } from './dto/update-clientes-estatus.dto';
-import { ApiResponseCommon } from 'src/common/ApiResponse';
+import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 @UseGuards(JwtAuthGuard)
 @Controller('clientes')
 export class ClientesController {
   constructor(private readonly clientesService: ClientesService) {}
   //Crear cliente
   @Post()
-  createCliente(@Body() createClienteDto: CreateClienteDto,
-  @Request()req
-) {
-    const idUser = req.user.userId
-    return this.clientesService.createCliente(createClienteDto,idUser);
+  async createCliente(@Body() createClienteDto: CreateClienteDto, @Request() req): Promise<ApiCrudResponse> {
+    const idUser = req.user.userId;
+    return await this.clientesService.createCliente(createClienteDto, idUser);
   }
   //Obtener todos los clientes con paginado
   @Get('page/:page/:limit')
   getAllClientes(
-    @Param('page',ParseIntPipe)page: number,
-    @Param('limit',ParseIntPipe)limit: number,
-  ):Promise<ApiResponseCommon> {
-    return this.clientesService.getAllClientes(page,limit);
+    @Param('page', ParseIntPipe) page: number,
+    @Param('limit', ParseIntPipe) limit: number,
+  ): Promise<ApiResponseCommon> {
+    return this.clientesService.getAllClientes(page, limit);
   }
   //Obtener todos los clientes
   @Get('list')
@@ -49,22 +47,22 @@ export class ClientesController {
   }
   //Actualizar un cliente
   @Put(':id')
-  updateCliente(
+  async updateCliente(
     @Param('id') id: string,
-    @Request()req,
+    @Request() req,
     @Body() updateClienteDto: UpdateClienteDto,
-  ) {
-    const idUser = req.user.userId
-    return this.clientesService.updateCliente(+id, idUser,updateClienteDto);
+  ): Promise<ApiCrudResponse> {
+    const idUser = req.user.userId;
+    return await this.clientesService.updateCliente(+id, idUser, updateClienteDto);
   }
   //Actualizar el estatus del cliente
-  @Patch(':id/estatus')
+  @Patch('estatus/:id')
   updateEstatusClientes(
     @Param('id') id: string,
-    @Request()req,
+    @Request() req,
     @Body() updateClienteEstatusDto: UpdateClienteEstatusDto,
-  ) {
-    const idUser = req.user.userId
+  ): Promise<ApiCrudResponse> {
+    const idUser = req.user.userId;
     return this.clientesService.updateClienteStatus(
       +id,
       idUser,
@@ -73,10 +71,8 @@ export class ClientesController {
   }
   //Eliminar Cliente
   @Delete(':id')
-  removeClientes(@Param('id') id: string,
-  @Request()req
-) {
-    const idUser = req.user.userId
-    return this.clientesService.removeCliente(+id,idUser);
+  async removeClientes(@Param('id') id: string, @Request() req): Promise<ApiCrudResponse> {
+    const idUser = req.user.userId;
+    return await this.clientesService.removeCliente(+id, idUser);
   }
 }

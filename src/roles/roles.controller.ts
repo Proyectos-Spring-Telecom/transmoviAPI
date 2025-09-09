@@ -7,19 +7,28 @@ import {
   Param,
   Delete,
   ParseIntPipe,
+  Request,
+  Put,
+  UseGuards,
 } from '@nestjs/common';
 import { RolesService } from './roles.service';
-import { CreateRoleDto } from './dto/create-role.dto';
+import { CreateRolDto } from './dto/create-rol.dto'; 
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
+import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 
 @Controller('roles')
+@UseGuards(JwtAuthGuard)
 export class RolesController {
   constructor(private readonly rolesService: RolesService) {}
 
   @Post()
-  create(@Body() createRoleDto: CreateRoleDto) {
-    return this.rolesService.create(createRoleDto);
+  create(
+    @Body() createRoleDto: CreateRolDto,
+    @Request()req
+  ) {
+    const idUser = req.user.userId;
+    return this.rolesService.create(idUser,createRoleDto);
   }
 
   @Get(':page/:limit')
@@ -40,13 +49,15 @@ export class RolesController {
     return this.rolesService.findOne(id);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateRoleDto: UpdateRoleDto) {
-    return this.rolesService.update(+id, updateRoleDto);
+  @Put(':id')
+  update(@Param('id',ParseIntPipe) id: number, @Body() updateRoleDto: UpdateRoleDto,@Request()req) {
+    const idUser = req.user.userId;
+    return this.rolesService.update(id,idUser, updateRoleDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.rolesService.remove(+id);
+  remove(@Param('id') id: string,@Request()req) {
+    const idUser = req.user.userId;
+    return this.rolesService.remove(+id,idUser);
   }
 }

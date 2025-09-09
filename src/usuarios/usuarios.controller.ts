@@ -44,7 +44,7 @@ export class UsuariosController {
 
   //actualizar o crear pin
   @Put('operador')
-  async updatePin(@Body()updateUsuarioOperadorDto:UpdateUsuarioOperadorDto,@Request() req){
+  async updatePin(@Body()updateUsuarioOperadorDto:UpdateUsuarioOperadorDto,@Request() req): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
     const userName = req.user.email;
     return await this.usuariosService.createPin(userName,idUser,updateUsuarioOperadorDto)

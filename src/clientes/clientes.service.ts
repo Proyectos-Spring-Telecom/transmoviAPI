@@ -12,7 +12,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Clientes } from 'src/entities/Clientes';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
-import { ApiResponseCommon } from 'src/common/ApiResponse';
+import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 
 @Injectable()
 export class ClientesService {
@@ -22,7 +22,10 @@ export class ClientesService {
     private readonly bitacoraLogger: BitacoraLoggerService,
   ) {}
   //Crear cliente
-  async createCliente(createClienteDto: CreateClienteDto, idUser: string) {
+  async createCliente(
+    createClienteDto: CreateClienteDto,
+    idUser: string,
+  ): Promise<ApiCrudResponse> {
     try {
       const clienteCreate = await this.clienteRepository.findOne({
         where: {
@@ -43,9 +46,19 @@ export class ClientesService {
         'CREATE',
         `INSERT INTO Clientes (...) VALUES (...) -> RFC: ${createClienteDto.rfc}`,
         Number(idUser),
-        2,
+        1,
       );
-      return { message: 'Cliente creado exitosamente', Data: clienteCreado };
+      //Api response
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'Cliente creado correctamente',
+        data: {
+          id: clienteCreado.id,
+          nombre:
+            `${clienteCreado.nombre} ${clienteCreado.apellidoPaterno} ` || '',
+        },
+      };
+      return result;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -54,27 +67,54 @@ export class ClientesService {
     }
   }
   //Obtener todos los clientes
-  async getAllClientes(page: number, limit: number): Promise<ApiResponseCommon> {
+  async getAllClientes(
+    page: number,
+    limit: number,
+  ): Promise<ApiResponseCommon> {
     try {
       const Clientes = await this.clienteRepository.find();
       if (Clientes.length === 0) {
         throw new NotFoundException('Clientes no encontrados');
       }
       const [data, total] = await this.clienteRepository.findAndCount({
-        relations:[],         //Falta la relacion
+        relations: [], //Falta la relacion
         skip: (page - 1) * limit,
-        take: limit,
-        
+        take: limit,select:{
+          id:true,
+          rfc:true,
+          tipoPersona:true,
+          nombre:true,
+          apellidoPaterno:true,
+          apellidoMaterno:true,
+          telefono:true,
+          correo:true,
+          estado:true,
+          municipio:true,
+          colonia:true,
+          calle:true,
+          entreCalles:true,
+          numeroExterior:true,
+          numeroInterior:true,
+          cp:true,
+          nombreEncargado:true,
+          telefonoEncargado:true,
+          correoEncargado:true,
+          constanciaSituacionFiscal:true,
+          comprobanteDomicilio:true,
+          actaConstitutiva:true,
+          logotipo:true,
+          estatus:true,
+        }
       });
       const result: ApiResponseCommon = {
         data,
         paginated: {
-          total: Math.ceil(total/limit),
+          total: Math.ceil(total / limit),
           page,
           limit,
         },
         message: 'Clientes obtenidos correctamente',
-      }
+      };
       return result;
     } catch (error) {
       if (error instanceof HttpException) {
@@ -84,18 +124,26 @@ export class ClientesService {
     }
   }
 
-    //Obtener todos los clientes
+  //Obtener todos los clientes
   async getAllListClientes(): Promise<ApiResponseCommon> {
     try {
-      const Clientes = await this.clienteRepository.find();
+      const Clientes = await this.clienteRepository.find({
+        select: {
+          id: true,
+          nombre: true,
+          apellidoPaterno: true,
+          apellidoMaterno: true,
+        },
+        where: { estatus: 1 },
+      });
       if (Clientes.length === 0) {
         throw new NotFoundException('Clientes no encontrados');
       }
       const result: ApiResponseCommon = {
-        data:Clientes,
+        data: Clientes,
 
         message: 'Clientes obtenidos correctamente',
-      }
+      };
       return result;
     } catch (error) {
       if (error instanceof HttpException) {
@@ -109,7 +157,7 @@ export class ClientesService {
   async getOneCliente(id: number) {
     try {
       const cliente = await this.clienteRepository.findOne({
-        where: { id:id },
+        where: { id: id },
       });
       if (!cliente) {
         throw new NotFoundException(`EL cliente con id:${id} no encontrado`);
@@ -124,14 +172,17 @@ export class ClientesService {
       });
     }
   }
+
   //Actualizar informacion del cliente
   async updateCliente(
     id: number,
     idUser: string,
     updateClienteDto: UpdateClienteDto,
-  ) {
+  ): Promise<ApiCrudResponse> {
     try {
-      const Cliente = await this.clienteRepository.findOne({ where: { id:id } });
+      const Cliente = await this.clienteRepository.findOne({
+        where: { id: id },
+      });
       if (!Cliente) {
         throw new NotFoundException(
           `El cliente con id: ${id} no fue encontrado`,
@@ -146,18 +197,28 @@ export class ClientesService {
         'UPDATE',
         `UPDATE Clientes SET ... WHERE Id=${idUser}`,
         Number(idUser),
-        2,
+        1,
       );
       //Hacemos un expose que convierta los atributos en PascalCase
       const clientefind = await this.clienteRepository.findOne({
-        where: { id:id },
+        where: { id: id },
       });
-      return clientefind;
+      //Api response
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'Cliente actualizado correctamente',
+        data: {
+          id: id,
+          nombre:
+            `${clientefind?.nombre} ${clientefind?.apellidoPaterno} ` || '',
+        },
+      };
+      return result;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
       }
-      new InternalServerErrorException(
+      throw new InternalServerErrorException(
         `Error al cambiar la informacion del cliente con id:${id}`,
       );
     }
@@ -167,10 +228,12 @@ export class ClientesService {
     id: number,
     idUser: string,
     updateClienteEstatusDto: UpdateClienteEstatusDto,
-  ) {
+  ): Promise<ApiCrudResponse> {
     try {
-      const Usuario = await this.clienteRepository.findOne({ where: { id:id } });
-      if (!Usuario) {
+      const usuario = await this.clienteRepository.findOne({
+        where: { id: id },
+      });
+      if (!usuario) {
         throw new NotFoundException(`Cliente con id: ${id} no encontrado`);
       }
       const estatus = updateClienteEstatusDto.Estatus;
@@ -182,12 +245,18 @@ export class ClientesService {
         'UPDATE',
         `UPDATE CLIENTE SET Estatus = ${estatus} WHERE id = ${id}`,
         Number(idUser),
-        2,
+        1,
       );
-      return {
-        message: `Cliente con id:${id} su estatus fue actualizado a ${estatus}`,
-        Estatus: Number(estatus),
+      //Api response
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'Estatus cliente actualizado correctamente',
+        data: {
+          id: id,
+          nombre: `${usuario.nombre} ${usuario.apellidoPaterno} ` || '',
+        },
       };
+      return result;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -198,17 +267,17 @@ export class ClientesService {
     }
   }
   //Eliminar cliente
-  async removeCliente(id: number, idUser: string) {
+  async removeCliente(id: number, idUser: string): Promise<ApiCrudResponse> {
     try {
       const clienteEliminar = await this.clienteRepository.findOne({
-        where: { id:id },
+        where: { id: id },
       });
       if (!clienteEliminar) {
         throw new NotFoundException(
           `El cliente con id:${id} no fue encontrado`,
         );
       }
-      await this.clienteRepository.remove(clienteEliminar);
+      await this.clienteRepository.update(id, { estatus: 0 });
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Clientes',
@@ -216,12 +285,20 @@ export class ClientesService {
         'DELETE',
         `DELETE FROM Clientes WHERE Id=${id}`,
         Number(idUser),
-        2,
+        1,
       );
-      return {
-        message: `Cliente con id: ${id} eliminado exitosamente`,
-        Id: Number(id),
+      //Api response
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'Cliente creado correctamente',
+        data: {
+          id: id,
+          nombre:
+            `${clienteEliminar.nombre} ${clienteEliminar.apellidoPaterno} ` ||
+            '',
+        },
       };
+      return result;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;

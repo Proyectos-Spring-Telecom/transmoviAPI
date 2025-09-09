@@ -221,7 +221,7 @@ export class PermisosService {
         'Permisos',
         `Se desactivo el permiso: ${permiso.nombre}`,
         'UPDATE',
-        `UPDATE Monederos SET Estatus=${0} WHERE Id=${id}`,
+        `UPDATE Rol SET Estatus=${0} WHERE Id=${id}`,
         Number(idUser),
         4,
       );
