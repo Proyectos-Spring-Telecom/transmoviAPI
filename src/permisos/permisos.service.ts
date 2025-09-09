@@ -250,23 +250,19 @@ export class PermisosService {
             DISTINCT UsuariosPermisos.IdPermiso,
               Modulos.Id AS IdModulo,
               Modulos.Nombre AS NombreModulo,
-            DISTINCT UsuariosPermisos.IdPermiso,
               Modulos.Id AS IdModulo,
               Modulos.Nombre AS NombreModulo,
               Permisos.Id AS PermisoId,
               Permisos.Nombre AS PermisoNombre,
               Permisos.Descripcion AS PermisoDescripcion
             FROM 
-           UsuariosPermisos
-           UsuariosPermisos
+			TransmoviDev.UsuariosPermisos
             INNER JOIN 
-              Permisos ON UsuariosPermisos.IdPermiso = Permisos.Id
-              Permisos ON UsuariosPermisos.IdPermiso = Permisos.Id
+              TransmoviDev.Permisos ON UsuariosPermisos.IdPermiso = Permisos.Id
             INNER JOIN 
-              Modulos ON Permisos.IdModulo = Modulos.Id
-              Modulos ON Permisos.IdModulo = Modulos.Id
+             TransmoviDev.Modulos ON Permisos.IdModulo = Modulos.Id
             WHERE 
-              UsuariosPermisos.IdUsuario ='${idUsuario}'`;
+              UsuariosPermisos.IdUsuario = '${idUsuario}'`;
 
       // Ejecutar la consulta
       const results = await this.permisoRepository.query(query);
