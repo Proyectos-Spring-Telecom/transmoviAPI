@@ -26,8 +26,8 @@ export class PermisosService {
 
   //Obtener todos los permisos con paginado
   async findAll(
-    page: number = 1,
-    limit: number = 10,
+    page: number,
+    limit: number,
   ): Promise<ApiResponseCommon> {
     const [data, total] = await this.permisoRepository.findAndCount({
       relations: ['idModulo2'],
