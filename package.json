@@ -21,6 +21,7 @@
     "generate:entities": "ts-node scripts/generate-entities.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.884.0",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",
@@ -35,6 +36,8 @@
     "class-validator": "^0.14.2",
     "joi": "^18.0.0",
     "moment-timezone": "^0.6.0",
+    "multer": "^2.0.2",
+    "multer-s3": "^3.0.1",
     "mysql2": "^3.14.3",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
@@ -52,6 +55,7 @@
     "@types/bcrypt": "^6.0.0",
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
+    "@types/multer": "^2.0.0",
     "@types/node": "^22.10.7",
     "@types/supertest": "^6.0.2",
     "eslint": "^9.18.0",

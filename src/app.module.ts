@@ -19,6 +19,7 @@ import { VehiculosModule } from './vehiculos/vehiculos.module';
 import { BluevoxModule } from './bluevox/bluevox.module';
 import { RutasModule } from './rutas/rutas.module';
 import { PosicionesModule } from './posiciones/posiciones.module';
+import { S3Module } from './s3/s3.module';
 import Joi from 'joi';
 
 @Module({
@@ -83,6 +84,8 @@ import Joi from 'joi';
     RutasModule,
 
     PosicionesModule,
+
+    S3Module,
     
   ], 
  controllers: [AppController],
