@@ -236,7 +236,7 @@ export class ClientesService {
       if (!usuario) {
         throw new NotFoundException(`Cliente con id: ${id} no encontrado`);
       }
-      const estatus = updateClienteEstatusDto.Estatus;
+      const estatus = updateClienteEstatusDto.estatus;
       await this.clienteRepository.update(id, { estatus });
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(

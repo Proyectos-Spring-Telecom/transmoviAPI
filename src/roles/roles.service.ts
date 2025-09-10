@@ -74,7 +74,7 @@ export class RolesService {
     });
 
     const result: ApiResponseCommon = {
-      data,
+      data:data,
       paginated: {
         total: Math.ceil(total / limit),
         page,
