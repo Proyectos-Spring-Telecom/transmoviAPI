@@ -117,15 +117,23 @@ export class BluevoxService {
     }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} bluevox`;
+  async findOne(id: number) {
+    try {
+      const bluevox = await this.bluevoxsRepository.findOne({
+        where: { id: id },
+      });
+      if (!bluevox) {
+        throw new NotFoundException(`BlueVoxs con ID:${id} no encontrado`);
+      }
+      return bluevox;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Error al obtener BlueVoxs',
+      });
+    }
   }
 
-  update(id: number, updateBluevoxDto: UpdateBluevoxDto) {
-    return `This action updates a #${id} bluevox`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} bluevox`;
-  }
 }

@@ -26,4 +26,9 @@ export class BitacoraController {
   ): Promise<ApiResponseCommon> {
     return this.bitacoraService.findAll(page, limit);
   }
+
+  @Get(':id')
+  async findOne(@Param('id',ParseIntPipe)id: number) {
+    return await this.bitacoraService.findOne(id);
+  }
 }

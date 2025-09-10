@@ -47,14 +47,4 @@ export class BluevoxController {
   findOne(@Param('id') id: string) {
     return this.bluevoxService.findOne(+id);
   }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateBluevoxDto: UpdateBluevoxDto) {
-    return this.bluevoxService.update(+id, updateBluevoxDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.bluevoxService.remove(+id);
-  }
 }
