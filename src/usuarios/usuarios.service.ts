@@ -81,7 +81,9 @@ export class UsuariosService {
   //Obtener todos los usuarios
   async getAllListUsuarios(): Promise<ApiResponseCommon> {
     try {
-      const usuarios = await this.usuarioRepository.find();
+      const usuarios = await this.usuarioRepository.find({
+        where: { estatus: 1 },
+      });
       if (usuarios.length === 0) {
         throw new NotFoundException('Usuarios no encontrados');
       }
@@ -135,14 +137,15 @@ export class UsuariosService {
     try {
       //Buscamos al usuario
       const usuario = await this.usuarioRepository.findOne({
-        where: { userName: userName,id: Number(idUser) },
+        where: { userName: userName, id: Number(idUser) },
       });
-      console.log('entro en service usuario',usuario)
+      console.log('entro en service usuario', usuario);
       if (!usuario) {
         throw new NotFoundException(`Usuario con ID:${userName} no encontrado`);
       }
 
-      if (updateUsuarioOperadorDto.userName !== usuario.userName) throw new BadRequestException('Datos invalidas')
+      if (updateUsuarioOperadorDto.userName !== usuario.userName)
+        throw new BadRequestException('Datos invalidas');
 
       //encriptamos la contraseña
       const pinPassword = await bcrypt.hash(
@@ -303,17 +306,18 @@ export class UsuariosService {
         updateUsuarioContrasena.passwordNueva = hashedPassword;
       }
       //Agregamos le fecha de la actualizacion
-        const FechaActual = moment()
-          .tz('America/Mexico_City')
-          .format('YYYY-MM-DD HH:mm:ss');
-        
+      const FechaActual = moment()
+        .tz('America/Mexico_City')
+        .format('YYYY-MM-DD HH:mm:ss');
 
       //actualiza en usuario contraseña
       await this.usuarioRepository.update(id, {
         passwordHash: updateUsuarioContrasena.passwordNueva,
       });
 
-      await this.usuarioRepository.update(id,{actualizacionPassword:FechaActual})
+      await this.usuarioRepository.update(id, {
+        actualizacionPassword: FechaActual,
+      });
 
       //Api response
       const result: ApiCrudResponse = {
@@ -357,12 +361,6 @@ export class UsuariosService {
         if (!cliente) throw new BadRequestException('Cliente Invalido');
       }
 
-      if (updateUsuarioDto.passwordHash) {
-        updateUsuarioDto.passwordHash = await bcrypt.hash(
-          updateUsuarioDto.passwordHash,
-          10,
-        );
-      }
       const { permisosIds, ...usuarioUpdate } = updateUsuarioDto;
       // ----- ACTUALIZACIÓN DE USUARIO -----
       await this.usuarioRepository.update(id, usuarioUpdate);
@@ -380,12 +378,12 @@ export class UsuariosService {
         Array.isArray(updateUsuarioDto.permisosIds)
       ) {
         const nuevaLista: number[] = updateUsuarioDto.permisosIds.map(Number); // lista nueva de permisos (ej. [1,2,3])
-        
+
         // Permisos actuales en BD
         const creadaLista = await this.usuariosPermisosRepository.find({
           where: { idUsuario: id },
         });
-        
+
         const nuevaSet = new Set<number>(nuevaLista);
         const creadaMap = new Map<number, any>(
           creadaLista.map((p) => [Number(p.idPermiso), p] as const),
@@ -538,10 +536,12 @@ export class UsuariosService {
       }
       //Se hacer eliminado logico
       //Cambiamos el estatus del usuario a 0
-      await this.usuarioRepository.update(id,{estatus:0});
+      await this.usuarioRepository.update(id, { estatus: 0 });
 
       //buscamos sus permisos
-      const permisos = await this.usuariosPermisosRepository.find({where:{idUsuario:id}})
+      const permisos = await this.usuariosPermisosRepository.find({
+        where: { idUsuario: id },
+      });
 
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(

@@ -45,17 +45,8 @@ export class ClientesController {
   getOneCliente(@Param('id') id: string) {
     return this.clientesService.getOneCliente(+id);
   }
-  //Actualizar un cliente
-  @Put(':id')
-  async updateCliente(
-    @Param('id') id: string,
-    @Request() req,
-    @Body() updateClienteDto: UpdateClienteDto,
-  ): Promise<ApiCrudResponse> {
-    const idUser = req.user.userId;
-    return await this.clientesService.updateCliente(+id, idUser, updateClienteDto);
-  }
-  //Actualizar el estatus del cliente
+
+    //Actualizar el estatus del cliente
   @Patch('estatus/:id')
   updateEstatusClientes(
     @Param('id') id: string,
@@ -69,6 +60,18 @@ export class ClientesController {
       updateClienteEstatusDto,
     );
   }
+
+  //Actualizar un cliente
+  @Put(':id')
+  async updateCliente(
+    @Param('id') id: string,
+    @Request() req,
+    @Body() updateClienteDto: UpdateClienteDto,
+  ): Promise<ApiCrudResponse> {
+    const idUser = req.user.userId;
+    return await this.clientesService.updateCliente(+id, idUser, updateClienteDto);
+  }
+
   //Eliminar Cliente
   @Delete(':id')
   async removeClientes(@Param('id') id: string, @Request() req): Promise<ApiCrudResponse> {

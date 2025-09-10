@@ -1,43 +1,60 @@
-import { ApiProperty } from "@nestjs/swagger";
-import { IsInt, IsOptional, IsString } from "class-validator";
+import { ApiProperty } from '@nestjs/swagger';
+import { IsNotEmpty, IsOptional, IsString, IsNumber, MaxLength } from 'class-validator';
 
 export class CreateBitacoraDto {
+  @ApiProperty({
+    description: 'Nombre del módulo',
+    example: 'Usuarios',
+    required: false,
+  })
   @IsOptional()
   @IsString()
-  @ApiProperty({
-              description: 'Nombre del modulo',
-              example: 'Permiso',
-          })
-  Modulo?: string;
+  @MaxLength(100)
+  modulo?: string;
 
+  @ApiProperty({
+    description: 'Descripción de la acción realizada',
+    example: 'El usuario actualizó su contraseña',
+    required: false,
+  })
   @IsOptional()
   @IsString()
-  @ApiProperty({
-            description: 'Descripcion del modulo',
-            example: 'Gestión de la bitácora del sistema',
-        })
-  Descripcion?: string;
+  @MaxLength(250)
+  descripcion?: string;
 
+  @ApiProperty({
+    description: 'Acción realizada en el sistema',
+    example: 'UPDATE',
+    required: false,
+  })
   @IsOptional()
   @IsString()
-  @ApiProperty({
-            description: 'Accion que esta haciendo en el sistema',
-            example: 'UPDATE',
-        })
-  Accion?: string;
+  @MaxLength(45)
+  accion?: string;
 
+  @ApiProperty({
+    description: 'Query SQL ejecutada o detalle técnico',
+    example: 'UPDATE Usuarios SET PasswordHash = "****" WHERE Id=1',
+    required: false,
+  })
   @IsOptional()
   @IsString()
-  @ApiProperty({
-            description: 'Query en SQL',
-            example: 'USE Base de Datos UPDATE Tablas WHERE id = 10;',
-        })
-  Query?: string;
+  @MaxLength(1000)
+  query?: string;
 
-  @IsInt()
   @ApiProperty({
-            description: 'El id del usuario que ejecuto la accion',
-            example: '24',
-        })
-  IdUsuario: number;
+    description: 'ID del usuario que generó la acción',
+    example: 1,
+  })
+  @IsNotEmpty()
+  @IsNumber()
+  idUsuario: number;
+
+  @ApiProperty({
+    description: 'ID del módulo asociado a la acción',
+    example: 3,
+  })
+  @IsNotEmpty()
+  @IsNumber()
+  idModulo: number;
 }

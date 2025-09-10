@@ -3,6 +3,7 @@ import {
   HttpException,
   Injectable,
   InternalServerErrorException,
+  NotFoundException,
 } from '@nestjs/common';
 import { CreateBitacoraDto } from './dto/create-bitacora.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -40,11 +41,11 @@ export class BitacoraLoggerService {
     }
   }
 
-    async findAll(page: number, limit: number) {
+  async findAll(page: number, limit: number) {
     try {
       const [data, total] = await this.bitacoraRepository.findAndCount({
         relations: [],
-        skip: (page-1)*limit,
+        skip: (page - 1) * limit,
         take: limit,
       });
       const result: ApiResponseCommon = {
@@ -52,7 +53,7 @@ export class BitacoraLoggerService {
         paginated: {
           total: Math.ceil(total / limit),
           page,
-          limit,
+          limit: total,
         },
         message: 'Módulos obtenidos correctamente',
       };
@@ -65,13 +66,32 @@ export class BitacoraLoggerService {
     }
   }
 
+  async findOne(id: number) {
+    try {
+      const bitacora = await this.bitacoraRepository.findOne({
+        where: { id: id },
+      });
+      if (!bitacora) {
+        throw new NotFoundException(`Bitacora con ID:${id} no encontrado`);
+      }
+      return bitacora;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Error al obtener bitacora',
+      });
+    }
+  }
+
   async logToBitacora(
     modulo: string,
     descripcion: string,
     accion: string,
     query: string,
     idUsuario: number,
-    idModulo:number,
+    idModulo: number,
   ) {
     const FechaActual = moment()
       .tz('America/Mexico_City')
@@ -83,7 +103,7 @@ export class BitacoraLoggerService {
       accion: accion,
       query: query,
       idUsuario: idUsuario,
-      idModulo:idModulo,
+      idModulo: idModulo,
     });
     console.log(FechaActual);
     await this.bitacoraRepository.save(registro);

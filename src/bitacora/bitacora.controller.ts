@@ -19,7 +19,7 @@ export class BitacoraController {
     return await this.bitacoraService.findAllListBitacora();
   }
 
-  @Get('page/:page/:limit')
+  @Get(':page/:limit')
   findAll(
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,

@@ -180,7 +180,7 @@ export class RolesService {
       //Api response
       const result: ApiCrudResponse = {
         status: 'success',
-        message: 'Estatus rol creado correctamente',
+        message: 'Estatus rol actualizado correctamente',
         estatus: { estatus: updateRolEstatusDto.estatus },
         data: {
           id: id,

@@ -4,6 +4,10 @@ import { IsDateString, IsNotEmpty, IsOptional, IsString, Matches, MinLength } fr
 export class UpdateUsuarioContrasena {
   @IsString()
   @IsNotEmpty({ message: 'El Password es obligatorio' })
+  @ApiProperty({
+    description: 'Contraseña del usuario',
+    example: 'P@ssword123',
+  })
   passwordActual: string;
 
   @IsString()
