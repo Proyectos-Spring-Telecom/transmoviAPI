@@ -35,7 +35,7 @@ export class DispositivosService {
         throw new BadRequestException(
           `Dispositivo con numero de serie ${createDispositivoDto.numeroSerie} existente`,
         );
-      };
+      }
       const cliente = await this.clientesService.getOneCliente(
         //Buscamos si existe el cliente
         createDispositivoDto.idCliente,
@@ -43,14 +43,16 @@ export class DispositivosService {
       if (!cliente) throw new BadRequestException('Cliente Invalido');
 
       //Crear dispositivo
-      const newDispositivo = await this.dispositivoRepository.create(createDispositivoDto);
-      const dispositivoSave = await this.dispositivoRepository.save(newDispositivo);
+      const newDispositivo =
+        await this.dispositivoRepository.create(createDispositivoDto);
+      const dispositivoSave =
+        await this.dispositivoRepository.save(newDispositivo);
       // --- Registro en la bitácora ---
       await this.bitacoraLogger.logToBitacora(
         'Dispositivos',
         `Se creó un dispositivo con numero de serie: ${createDispositivoDto.numeroSerie}`,
         'CREATE',
-        `INSERT INTO Dispositivos (NumeroSerie, Marca, Modelo, Estatus) VALUES (${createDispositivoDto.numeroSerie}, ${createDispositivoDto.marca}, '${createDispositivoDto.modelo}', ${createDispositivoDto.estatus})`, 
+        `INSERT INTO Dispositivos (NumeroSerie, Marca, Modelo, Estatus) VALUES (${createDispositivoDto.numeroSerie}, ${createDispositivoDto.marca}, '${createDispositivoDto.modelo}', ${createDispositivoDto.estatus})`,
         Number(idUser),
         11,
       );
@@ -62,8 +64,7 @@ export class DispositivosService {
         data: {
           id: Number(dispositivoSave.id),
           nombre:
-            `${dispositivoSave.modelo} ${dispositivoSave.numeroSerie} ` ||
-            '',
+            `${dispositivoSave.modelo} ${dispositivoSave.numeroSerie} ` || '',
         },
       };
       return result;
@@ -74,18 +75,20 @@ export class DispositivosService {
       throw new InternalServerErrorException(`Error al crear el dipositivo`);
     }
   }
-    //Obtener todos los dispositivos
+  //Obtener todos los dispositivos
   async findAllListDispositivos(): Promise<ApiResponseCommon> {
     try {
-      const dispostivosExistentes = await this.dispositivoRepository.find({where: {estatus:1}});
+      const dispostivosExistentes = await this.dispositivoRepository.find({
+        where: { estatus: 1 },
+      });
       if (dispostivosExistentes.length === 0) {
         throw new NotFoundException(`Dispositivo no encontrados`);
       }
       const result: ApiResponseCommon = {
-        data:dispostivosExistentes,
-        
-        message:'Dispositivos obtenidos correctamente',
-      }
+        data: dispostivosExistentes,
+
+        message: 'Dispositivos obtenidos correctamente',
+      };
       return result;
     } catch (error) {
       if (error instanceof HttpException) {
@@ -97,26 +100,29 @@ export class DispositivosService {
     }
   }
   //Obtener todos los dispositivos paginado
-  async findAllDispositivos(page: number, limit: number):Promise<ApiResponseCommon> {
+  async findAllDispositivos(
+    page: number,
+    limit: number,
+  ): Promise<ApiResponseCommon> {
     try {
       const dispostivosExistentes = await this.dispositivoRepository.find();
       if (dispostivosExistentes.length === 0) {
         throw new NotFoundException(`Dispositivo no encontrados`);
       }
       const [data, total] = await this.dispositivoRepository.findAndCount({
-        relations:[],
-        skip: (page - 1)*limit,
-        take:limit,
+        relations: [],
+        skip: (page - 1) * limit,
+        take: limit,
       });
       const result: ApiResponseCommon = {
         data,
         paginated: {
-          total: Math.ceil(total/limit),
+          total: Math.ceil(total / limit),
           page,
-          limit,
+          limit:total,
         },
-        message:'Dispositivos obtenidos correctamente',
-      }
+        message: 'Dispositivos obtenidos correctamente',
+      };
       return result;
     } catch (error) {
       if (error instanceof HttpException) {
@@ -131,7 +137,7 @@ export class DispositivosService {
   async findOneDispositivo(Id: number) {
     try {
       const dispostivoExistente = await this.dispositivoRepository.findOne({
-        where: { id:Id },
+        where: { id: Id },
       });
       if (!dispostivoExistente) {
         throw new NotFoundException(`Dispositivo con id: ${Id} no encontrado`);
@@ -157,13 +163,15 @@ export class DispositivosService {
   ) {
     try {
       const dispositivo = await this.dispositivoRepository.findOne({
-        where: { id:id },
+        where: { id: id },
       });
       if (!dispositivo) {
         throw new NotFoundException(`Dispositivo con ${id} no encontrado`);
       }
       const { estatus } = updateDispositivoEstatusDto;
-      await this.dispositivoRepository.update(id, { estatus:updateDispositivoEstatusDto.estatus });
+      await this.dispositivoRepository.update(id, {
+        estatus: updateDispositivoEstatusDto.estatus,
+      });
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Dispositivos',
@@ -177,12 +185,10 @@ export class DispositivosService {
       const result: ApiCrudResponse = {
         status: 'success',
         message: 'Estatus dispositivo actualizado correctamente',
-        estatus:{estatus: estatus},
+        estatus: { estatus: estatus },
         data: {
           id: id,
-          nombre:
-            `${dispositivo.modelo} ${dispositivo.numeroSerie} ` ||
-            '',
+          nombre: `${dispositivo.modelo} ${dispositivo.numeroSerie} ` || '',
         },
       };
       return result;
@@ -203,7 +209,7 @@ export class DispositivosService {
   ): Promise<ApiCrudResponse> {
     try {
       const dispostivoExistente = await this.dispositivoRepository.findOne({
-        where: { id:id },
+        where: { id: id },
       });
       if (!dispostivoExistente) {
         throw new NotFoundException(`Dipositivo con ${id} no encontrado`);
@@ -211,14 +217,15 @@ export class DispositivosService {
 
       if (!updateDispositivoDto.idCliente) {
         const cliente = await this.clientesService.getOneCliente(
-        //Buscamos si existe el cliente
-        Number(updateDispositivoDto.idCliente),
-      );
-      if (!cliente) throw new BadRequestException('Dispositivo Invalido');
+          //Buscamos si existe el cliente
+          Number(updateDispositivoDto.idCliente),
+        );
+        if (!cliente) throw new BadRequestException('Dispositivo Invalido');
       }
 
       //Actualindo dispositivo
-      const dataDispositivo = await this.dispositivoRepository.create(updateDispositivoDto);
+      const dataDispositivo =
+        await this.dispositivoRepository.create(updateDispositivoDto);
       await this.dispositivoRepository.update(id, dataDispositivo);
 
       //-----Registro en la bitacora-----
@@ -231,7 +238,7 @@ export class DispositivosService {
         11,
       );
       const dispositivoActualizado = await this.dispositivoRepository.findOne({
-        where: { id:id },
+        where: { id: id },
       });
 
       //Api response
@@ -256,17 +263,20 @@ export class DispositivosService {
     }
   }
   //Eliminar Dispositivos
-  async removeDispositivo(id: number, idUser: string): Promise<ApiCrudResponse> {
+  async removeDispositivo(
+    id: number,
+    idUser: string,
+  ): Promise<ApiCrudResponse> {
     try {
       const dispositivo = await this.dispositivoRepository.findOne({
-        where: { id:id },
+        where: { id: id },
       });
       if (!dispositivo) {
         throw new NotFoundException(
           `El dispositivo con Id:${id} no fue encontrado`,
         );
       }
-      await this.dispositivoRepository.update(id,{estatus:0});
+      await this.dispositivoRepository.update(id, { estatus: 0 });
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Dispositivo',
@@ -282,9 +292,7 @@ export class DispositivosService {
         message: 'Dispositivo eliminado correctamente',
         data: {
           id: id,
-          nombre:
-            `${dispositivo.modelo} ${dispositivo.numeroSerie} ` ||
-            '',
+          nombre: `${dispositivo.modelo} ${dispositivo.numeroSerie} ` || '',
         },
       };
       return result;
