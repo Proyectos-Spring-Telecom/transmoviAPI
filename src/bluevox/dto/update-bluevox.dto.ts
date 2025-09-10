@@ -1,4 +1,4 @@
 import { PartialType } from '@nestjs/swagger';
-import { CreateBluevoxDto } from './create-bluevox.dto';
+import { CreateBlueVoxsDto } from './create-bluevox.dto';
 
-export class UpdateBluevoxDto extends PartialType(CreateBluevoxDto) {}
+export class UpdateBluevoxDto extends PartialType(CreateBlueVoxsDto) {}

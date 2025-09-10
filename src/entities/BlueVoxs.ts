@@ -17,7 +17,7 @@ import { Instalaciones } from "./Instalaciones";
 @Entity("BlueVoxs", { schema: "TransmoviDev" })
 export class BlueVoxs {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
-  id: string;
+  id: number;
 
   @Column("varchar", { name: "NumeroSerie", unique: true, length: 100 })
   numeroSerie: string;

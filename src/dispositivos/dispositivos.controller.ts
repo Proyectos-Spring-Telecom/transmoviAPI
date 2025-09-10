@@ -17,6 +17,7 @@ import { UpdateDispositivoDto } from './dto/update-dispositivo.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { UpdateDispositivoEstatusDto } from './dto/update-dispositivos-estatus.dto';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
+
 @UseGuards(JwtAuthGuard)
 @Controller('dispositivos')
 export class DispositivosController {
@@ -34,7 +35,7 @@ export class DispositivosController {
     );
   }
 
-  @Get('page/:page/:limit')
+  @Get(':page/:limit')
   async findAllDispositivos(
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,
@@ -42,7 +43,7 @@ export class DispositivosController {
     return this.dispositivosService.findAllDispositivos(page,limit);
   }
 
-  @Get()
+  @Get('list')
   findAllListDispositivos(): Promise<ApiResponseCommon> {
     return this.dispositivosService.findAllListDispositivos();
   }
@@ -52,7 +53,7 @@ export class DispositivosController {
     return this.dispositivosService.findOneDispositivo(+id);
   }
 
-  @Patch(':id/estatus')
+  @Patch('estatus/:id')
   updateDispositivoEstatus(
     @Param('id') id: string,
     @Request() req,

@@ -1,20 +1,46 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Request,
+  ParseIntPipe,
+  UseGuards,
+} from '@nestjs/common';
 import { BluevoxService } from './bluevox.service';
-import { CreateBluevoxDto } from './dto/create-bluevox.dto';
+import { CreateBlueVoxsDto } from './dto/create-bluevox.dto';
 import { UpdateBluevoxDto } from './dto/update-bluevox.dto';
+import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
+import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 
+@UseGuards(JwtAuthGuard)
 @Controller('bluevox')
 export class BluevoxController {
   constructor(private readonly bluevoxService: BluevoxService) {}
 
   @Post()
-  create(@Body() createBluevoxDto: CreateBluevoxDto) {
-    return this.bluevoxService.create(createBluevoxDto);
+  async create(
+    @Body() createBlueVoxsDto: CreateBlueVoxsDto,
+    @Request() req,
+  ): Promise<ApiCrudResponse> {
+    const idUser = req.user.userId;
+    return await this.bluevoxService.create(idUser, createBlueVoxsDto);
   }
 
-  @Get()
-  findAll() {
-    return this.bluevoxService.findAll();
+  @Get(':page/:limit')
+  async findAll(
+    @Param('page', ParseIntPipe) page: number,
+    @Param('limit', ParseIntPipe) limit: number,
+  ): Promise<ApiResponseCommon> {
+    return await this.bluevoxService.findAll(page, limit);
+  }
+
+  @Get('list')
+  async findAllList(): Promise<ApiResponseCommon> {
+    return this.bluevoxService.findAllList();
   }
 
   @Get(':id')
