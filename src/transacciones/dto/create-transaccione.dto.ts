@@ -1,81 +1,70 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
 import {
   IsDateString,
   IsIn,
-  IsInt,
+  IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
-  Max,
-  Min,
 } from 'class-validator';
 
 export class CreateTransaccioneDto {
-  @Type(() => Number)
-  @IsInt({ message: 'IdMonedero debe ser un número entero' })
-  @Min(1, { message: 'IdMonedero debe ser mayor a 0' })
-  @ApiProperty({
-    description: 'ID del monedero',
-    example: '123',
-  })
-  IdMonedero: number;
-
-  @IsIn(['Recarga', 'Debito'], {
+  @IsIn(['RECARGA', 'DEBITO'], {
     message: 'Tipo de transacción inválido',
   })
   @ApiProperty({
     description: 'Tipo de transaccion',
     example: 'Recarga/debito',
   })
-  TipoTransaccion: string;
+  @IsNotEmpty()
+  tipoTransaccion: string;
 
-  @Type(() => Number)
-  @IsNumber({ maxDecimalPlaces: 2 }) // máximo 2 decimales
-  @Min(0) // opcional: evita negativos
-  @Max(99999999.99) // máximo permitido por DECIMAL(10,2)
   @ApiProperty({
-    description: 'Monto de dinero a abonar',
-    example: '23.5',
+    example: 150.75,
+    description: 'Monto de la transacción (2 decimales)',
   })
-  Monto: number;
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @IsNotEmpty()
+  monto: number;
 
-  @IsOptional()
-  @Type(() => Number)
+  @ApiProperty({
+    example: 19.432608,
+    description: 'Latitud de la ubicación (opcional)',
+    required: false,
+  })
   @IsNumber({ maxDecimalPlaces: 7 })
-  @Min(-999.9999999)
-  @Max(999.9999999)
-  @ApiProperty({
-    description: 'Latitud',
-    example: '123.9876543',
-  })
-  Latitud: number;
+  @IsOptional()
+  latitud?: number;
 
-  @Type(() => Number)
+  @ApiProperty({
+    example: -99.133209,
+    description: 'Longitud de la ubicación (opcional)',
+    required: false,
+  })
   @IsNumber({ maxDecimalPlaces: 7 })
-  @Min(-999.9999999)
-  @Max(999.9999999)
   @IsOptional()
-  @ApiProperty({
-    description: 'Longitud',
-    example: '123.9876543',
-  })
-  Longitud?: number;
+  longitud?: number;
 
-  @Type(() => Date)
-  @IsDateString() // valida que sea una fecha en formato ISO 8601
   @ApiProperty({
-    description: 'Fecha y hora de la transaccion',
-    example: '1988-08-08 08:00:00',
+    example: '2025-09-10T12:30:00Z',
+    description: 'Fecha y hora de la transacción en formato ISO8601',
   })
-  FechaHora: Date;
+  @IsDateString()
+  fechaHora: string;
 
-  @IsInt({ message: 'estatus debe ser un número entero' })
-  @IsIn([0, 1], { message: 'Solo puede ser 0 ó 1' })
+  @ApiProperty({
+    example: 'MON-0001',
+    description: 'Número de serie del monedero',
+  })
+  @IsString()
+  @IsNotEmpty()
+  numeroSerieMonedero: string;
+
+  @ApiProperty({
+    example: 'DISP-0001',
+    description: 'Número de serie del dispositivo',
+  })
+  @IsString()
   @IsOptional()
-  @ApiProperty({
-    description: 'Estatus del operador solo puede ser 1 ó 0',
-    example: '1',
-  })
-  Estatus?: number = 1;
+  numeroSerieDispositivo?: string;
 }

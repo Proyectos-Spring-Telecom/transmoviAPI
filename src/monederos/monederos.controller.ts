@@ -29,7 +29,7 @@ export class MonederosController {
     return this.monederosService.createMonedero(createMonederoDto, idUser);
   }
 
-  @Get('page/:page/:limit')
+  @Get(':page/:limit')
   findAllMonederos(
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,
@@ -52,7 +52,7 @@ export class MonederosController {
     return this.monederosService.findOneMonederoBySerie(id);
   }
 
-  @Patch(':id/estatus')
+  @Patch('estatus/:id')
   updateMonederoEstatus(
     @Param('id') id: string,
     @Request() req,
@@ -63,20 +63,6 @@ export class MonederosController {
       +id,
       idUser,
       updateMonederoEstatusDto,
-    );
-  }
-
-  @Patch(':id/saldo')
-  updateMonederoSaldo(
-    @Param('id') id: string,
-    @Request() req,
-    @Body() updateMonederoSaldoDto: UpdateMonederoSaldoDto,
-  ) {
-    const idUser = req.user.userId;
-    return this.monederosService.updateMonederoSaldo(
-      +id,
-      idUser,
-      updateMonederoSaldoDto,
     );
   }
 

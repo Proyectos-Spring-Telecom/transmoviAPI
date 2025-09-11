@@ -1,77 +1,67 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
 import {
-  IsDate,
-  IsEmail,
-  IsIn,
-  IsInt,
-  IsNotEmpty,
-  IsNumber,
-  IsOptional,
   IsString,
-  MaxLength,
+  IsOptional,
+  IsDateString,
+  Length,
+  IsEmail,
+  IsInt,
+  IsIn,
+  IsNotEmpty,
 } from 'class-validator';
 
 export class CreatePasajeroDto {
-  @IsNumber()
-  id:number; 
-
+  @ApiProperty({ example: 'Juan', description: 'Nombre del pasajero' })
   @IsString()
-  @IsNotEmpty({ message: 'Es necesario el nombre' })
-  @MaxLength(100, { message: 'El nombre no puede exceder los 100 caracteres' })
-  @ApiProperty({
-    description: 'Nombre del pasajero',
-    example: 'Nombre Pasajero',
-  })
+  @Length(1, 100)
+  @IsNotEmpty()
   nombre: string;
 
-  @IsString()
-  @IsNotEmpty({ message: 'Es obligatorio el apellido paterno' })
-  @MaxLength(100, {
-    message: 'El apellido paterno no puede exceder los 100 caracteres',
-  })
   @ApiProperty({
-    description: 'Apellido del pasajero',
-    example: 'Apellido Paterno del Pasajero',
+    example: 'Pérez',
+    description: 'Apellido paterno del pasajero',
   })
+  @IsString()
+  @Length(1, 100)
+  @IsNotEmpty()
   apellidoPaterno: string;
 
-  //Apellido Materno es opcional para casos de un solo apellido
+  @ApiProperty({
+    example: 'García',
+    description: 'Apellido materno del pasajero (opcional)',
+    required: false,
+  })
   @IsOptional()
   @IsString()
-  @MaxLength(100, {
-    message: 'El apellido materno no puede exceder los 100 caracteres',
-  })
-  @ApiProperty({
-    description: 'Apellido Materno del pasajero',
-    example: 'Apellido Materno del Pasajero',
-  })
+  @Length(1, 100)
   apellidoMaterno?: string;
 
-  @IsDate()
-  @Type(() => Date)
   @ApiProperty({
-    description: 'Fecha de nacimiento',
-    example: '1955-08-25',
+    example: '1995-08-15',
+    description: 'Fecha de nacimiento (YYYY-MM-DD)',
   })
+  @IsDateString()
   fechaNacimiento: string;
 
-  @IsOptional()
-  @IsEmail()
   @ApiProperty({
-    description: 'Correo electronico',
-    example: 'correo@ejemplo.com',
+    example: '5544332211',
+    description: 'Teléfono del pasajero (opcional)',
+    required: false,
   })
-  correo?: string;
-
   @IsOptional()
   @IsString()
-  @MaxLength(20, { message: 'El teléfono no puede exceder los 20 caracteres' })
+  @Length(1, 15)
+  telefono?: string;
+
   @ApiProperty({
-    description: 'Numero telefonico',
-    example: '7354442211',
+    example: 'juan.perez@example.com',
+    description: 'Correo electrónico del pasajero (opcional)',
+    required: false,
   })
-  telefono: string;
+  @IsOptional()
+  @IsEmail()
+  @IsNotEmpty()
+  correo?: string;
 
   @IsInt({ message: 'estatus debe ser un número entero' })
   @IsIn([0, 1], { message: 'Solo puede ser 0 ó 1' })
@@ -80,5 +70,5 @@ export class CreatePasajeroDto {
     description: 'El estatus es solo 0 ó 1',
     example: '1',
   })
-  estatus?: number;
+  estatus?: number = 1;
 }

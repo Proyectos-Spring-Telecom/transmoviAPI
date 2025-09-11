@@ -12,8 +12,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Monederos } from 'src/entities/Monederos';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
-import { ApiResponseCommon } from 'src/common/ApiResponse';
-
+import { ClientesService } from 'src/clientes/clientes.service';
+import { PasajerosService } from 'src/pasajeros/pasajeros.service';
+import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
+import moment from 'moment-timezone';
 
 @Injectable()
 export class MonederosService {
@@ -21,30 +23,58 @@ export class MonederosService {
     @InjectRepository(Monederos)
     private readonly monederoRepository: Repository<Monederos>,
     private readonly bitacoraLogger: BitacoraLoggerService,
+    private readonly clientesService: ClientesService,
+    private readonly pasajerosService: PasajerosService,
   ) {}
+
   //Crear un monedero
-  async createMonedero(createMonederoDto: CreateMonederoDto, idUser: string) {
+  async createMonedero(
+    createMonederoDto: CreateMonederoDto,
+    idUser: string,
+  ): Promise<ApiCrudResponse> {
     try {
-      const monederoExistente = await this.monederoRepository.findOne({
+      const monedero = await this.monederoRepository.findOne({
         where: { numeroSerie: createMonederoDto.numeroSerie },
       });
-      if (monederoExistente) {
+      if (monedero) {
         throw new NotFoundException(
           `El monedero con numero de serie: ${createMonederoDto.numeroSerie} esta registrado`,
         );
       }
-      const monederoData = await this.monederoRepository.create(createMonederoDto);
-      const monedero = await this.monederoRepository.save(monederoData);
+
+      //Agregamos la fecha actual
+      const FechaActual = moment()
+        .tz('America/Mexico_City')
+        .format('YYYY-MM-DD HH:mm:ss');
+
+      //Añadimos fecha
+      createMonederoDto.fechaActivacion = FechaActual;
+
+      //Guardamos el monedero
+      const newMonedero =
+        await this.monederoRepository.create(createMonederoDto);
+      const monederoSave = await this.monederoRepository.save(newMonedero);
+
       // --- Registro en la bitácora ---
       await this.bitacoraLogger.logToBitacora(
         'Monederos',
-        `Se creó un monedero con numero de serie: ${createMonederoDto.numeroSerie}`,
+        `Se creó un monedero con numero de serie: ${monederoSave.numeroSerie}`,
         'CREATE',
-        `INSERT Monedero -> NumeroSerie: ${createMonederoDto.numeroSerie}`,
+        `INSERT Monedero -> NumeroSerie: ${monederoSave.numeroSerie}`,
         Number(idUser),
-        2,
+        20,
       );
-      return { message: 'Monedero creado exitosamente', monedero: monedero };
+
+      //API response
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'Monedero creado correctamente',
+        data: {
+          id: Number(monederoSave.id),
+          nombre: `${monederoSave.numeroSerie} ${monederoSave.saldo} ` || '',
+        },
+      };
+      return result;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -53,26 +83,28 @@ export class MonederosService {
     }
   }
   //Obtener todos los monederos paginado
-  async findAllMonederos(page: number, limit: number): Promise<ApiResponseCommon> {
+  async findAllMonederos(
+    page: number,
+    limit: number,
+  ): Promise<ApiResponseCommon> {
     try {
       const monederos = await this.monederoRepository.find();
       if (monederos.length === 0) {
         throw new NotFoundException('Monederos no encontrados');
       }
-      const [data,total] = await this.monederoRepository.findAndCount({
+      const [data, total] = await this.monederoRepository.findAndCount({
         relations: [],
-        skip: (page - 1)*limit,
+        skip: (page - 1) * limit,
         take: limit,
       });
-      const result:ApiResponseCommon = {
+      const result: ApiResponseCommon = {
         data,
         paginated: {
-          total: Math.ceil(total/limit),
+          total: total,
           page,
-          limit,
+          lastPage: Math.ceil(total / limit),
         },
-        message: 'Monederos obtenidos correctamente',
-      }
+      };
       return result;
     } catch (error) {
       if (error instanceof HttpException) {
@@ -82,18 +114,20 @@ export class MonederosService {
     }
   }
 
-    //Obtener todos los monederos
+  //Obtener todos los monederos
   async findAllListMonederos(): Promise<ApiResponseCommon> {
     try {
-      const monederos = await this.monederoRepository.find();
+      const monederos = await this.monederoRepository.find({
+        where: { estatus: 1 },
+      });
       if (monederos.length === 0) {
         throw new NotFoundException('Monederos no encontrados');
       }
-      const result:ApiResponseCommon = {
-        data:monederos,
 
-        message: 'Monederos obtenidos correctamente',
-      }
+      //Api response
+      const result: ApiResponseCommon = {
+        data: monederos,
+      };
       return result;
     } catch (error) {
       if (error instanceof HttpException) {
@@ -103,15 +137,17 @@ export class MonederosService {
     }
   }
   //Obtener monedero por ID
-  async findOneMonedero(Id: number) {
+  async findOneMonedero(id: number) {
     try {
-      const monedero = await this.monederoRepository.findOne({ where: { id:Id } });
+      const monedero = await this.monederoRepository.findOne({
+        where: { id: id },
+      });
       if (!monedero) {
         throw new NotFoundException(
-          `El monedero con id: ${Id} no fue encontrado`,
+          `El monedero con id: ${id} no fue encontrado`,
         );
       }
-      return { message: 'Monedero obtenido exitosamente', monederos: monedero };
+      return { data: monedero };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -130,7 +166,7 @@ export class MonederosService {
           `El monedero con numero de serie: ${NumeroSerie} no fue encontrado`,
         );
       }
-      return { message: 'Monedero obtenido exitosamente', monederos: monedero };
+      return { data: monedero };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -142,32 +178,43 @@ export class MonederosService {
   }
   //Actualizar el estatus del monedero
   async updateMonederoEstatus(
-    Id: number,
+    id: number,
     idUser: string,
     updateMonederoEstatusDto: UpdateMonederoEstatusDto,
   ) {
     try {
-      const monederoExistente = await this.monederoRepository.findOne({
-        where: { id: Id  },
+      const monedero = await this.monederoRepository.findOne({
+        where: { id: id },
       });
-      if (!monederoExistente) {
+      if (!monedero) {
         throw new NotFoundException(
-          `El monedero con id: ${Id} no fue encontrado`,
+          `El monedero con id: ${id} no fue encontrado`,
         );
       }
-      const { Estatus } = updateMonederoEstatusDto;
-      await this.monederoRepository.update(Id, { estatus: Estatus });
+
+      //Actualizamos estatus
+      const { estatus } = updateMonederoEstatusDto;
+      await this.monederoRepository.update(id, { estatus: estatus });
       // --- Registro en la bitácora ---
       await this.bitacoraLogger.logToBitacora(
         'Monederos',
-        `Se actualizó estatus a ${Estatus} el monedero con ID: ${Id}`,
+        `Se actualizó estatus a ${estatus} el monedero con ID: ${id}`,
         'UPDATE',
-        `UPDATE Monederos SET Estatus=${Estatus} WHERE Id=${Id}`,
+        `UPDATE Monederos SET Estatus=${estatus} WHERE id=${id}`,
         Number(idUser),
-        2,
+        20,
       );
-      const monedero = await this.monederoRepository.findOne({ where: { id: Id } });
-      return { message: 'Estatus del monedero actualizado exitosamente', Estatus: Number(Estatus) };
+      //API response
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'Estatus monedero actualizado correctamente',
+        estatus: { estatus: estatus },
+        data: {
+          id: Number(monedero.id),
+          nombre: `${monedero.numeroSerie} ${monedero.saldo} ` || '',
+        },
+      };
+      return result;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -179,32 +226,47 @@ export class MonederosService {
   }
   //Actualizar saldo en el monedero
   async updateMonederoSaldo(
-    Id: number,
-    idUser,
-    updateMonederoSaldoDto: UpdateMonederoSaldoDto,
+    numeroSerie: string,
+    idUser: string,
+    saldo: number,
   ) {
     try {
-      const monederoExistente = await this.monederoRepository.findOne({
-        where: { id:Id },
+      const monedero = await this.monederoRepository.findOne({
+        where: { numeroSerie: numeroSerie },
       });
-      if (!monederoExistente) {
+      const id = Number(monedero?.id);
+      if (!monedero) {
         throw new NotFoundException(
-          `El monedero con id: ${Id} no fue encontrado`,
+          `El monedero con id: ${id} no fue encontrado`,
         );
       }
-      const { Saldo } = updateMonederoSaldoDto;
-      await this.monederoRepository.update(Id, { saldo: Saldo });
+
+      //Actualizamos saldo
+      await this.monederoRepository.update(id, { saldo: saldo });
+
       // --- Registro en la bitácora ---
       await this.bitacoraLogger.logToBitacora(
         'Monederos',
-        `Se actualizó saldo del monedero con ID: ${Id}`,
+        `Se actualizó saldo del monedero con ID: ${id}`,
         'UPDATE',
-        `UPDATE Monederos SET Saldo=${Saldo} WHERE Id=${Id}`,
+        `UPDATE Monederos SET saldo=${saldo} WHERE id=${id}`,
         Number(idUser),
-        2,
+        20,
       );
-      const monedero = await this.monederoRepository.findOne({ where: { id: Id } });
-      return { message: 'Saldo actualizado exitosamente', Saldo: Number(monedero?.saldo) };
+      const monederoSave = await this.monederoRepository.findOne({
+        where: { id: id },
+      });
+
+      //API response
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'Saldo monedero actualizado correctamente',
+        data: {
+          id: id,
+          nombre: `${monederoSave?.numeroSerie} ${monederoSave?.saldo} ` || '',
+        },
+      };
+      return result;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -216,32 +278,66 @@ export class MonederosService {
   }
   //Actualizar el monedero
   async updateMonedero(
-    Id: number,
+    id: number,
     idUser: string,
     updateMonederoDto: UpdateMonederoDto,
   ) {
     try {
-      const monederoExistente = await this.monederoRepository.findOne({
-        where: { id: Id },
+      const monedero = await this.monederoRepository.findOne({
+        where: { id: id },
       });
-      if (!monederoExistente) {
+      if (!monedero) {
         throw new NotFoundException(
-          `El monedero con id: ${Id} no fue encontrado`,
+          `El monedero con id: ${id} no fue encontrado`,
         );
       }
-      const monederoData = await this.monederoRepository.create(updateMonederoDto);
-      await this.monederoRepository.update(Id, monederoData);
+
+      //Buscamos pasajero
+      if (
+        !(await this.pasajerosService.findOnePasajero(
+          Number(updateMonederoDto.idPasajero),
+        ))
+      ) {
+        throw new NotFoundException();
+      }
+
+      //Buscamos Cliente
+      if (
+        !(await this.clientesService.getOneCliente(
+          Number(updateMonederoDto.idCliente),
+        ))
+      ) {
+        throw new NotFoundException();
+      }
+
+      //Actualizamos monedero
+      const monederoData =
+        await this.monederoRepository.create(updateMonederoDto);
+      await this.monederoRepository.update(id, monederoData);
+
       // --- Registro en la bitácora ---
       await this.bitacoraLogger.logToBitacora(
         'Monederos',
-        `Se actualizó el monedero con ID: ${Id}`,
+        `Se actualizó el monedero con ID: ${id}`,
         'UPDATE',
-        `UPDATE Monederos SET... WHERE Id=${Id}`,
+        `UPDATE Monederos SET... WHERE id=${id}`,
         Number(idUser),
-        2,
+        20,
       );
-      const monedero = await this.monederoRepository.findOne({ where: { id: Id } });
-      return { message: 'Monederos actualizado exitosamente', monedero: monedero };
+      const monederoSave = await this.monederoRepository.findOne({
+        where: { id: id },
+      });
+
+      //API response
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'Monedero actualizado correctamente',
+        data: {
+          id: id,
+          nombre: `${monederoSave?.numeroSerie} ${monederoSave?.saldo} ` || '',
+        },
+      };
+      return result;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -250,27 +346,39 @@ export class MonederosService {
     }
   }
   //Eliminar monederos
-  async removeMonedero(Id: number, idUser: string) {
+  async removeMonedero(id: number, idUser: string) {
     try {
-      const monederoExistente = await this.monederoRepository.findOne({
-        where: { id:Id },
+      const monedero = await this.monederoRepository.findOne({
+        where: { id: id },
       });
-      if (!monederoExistente) {
+      if (!monedero) {
         throw new NotFoundException(
-          `El monedero con id: ${Id} no fue encontrado`,
+          `El monedero con id: ${id} no fue encontrado`,
         );
       }
-      await this.monederoRepository.remove(monederoExistente);
+
+      //Eliminamos de manera logica
+      await this.monederoRepository.update(id, { estatus: 0 });
       // --- Registro en la bitácora ---
       await this.bitacoraLogger.logToBitacora(
         'Monederos',
-        `Se elimino el monedero con ID: ${Id}`,
+        `Se elimino el monedero con ID: ${id}`,
         'DELETE',
-        `DELETE From Monederos WHERE Id=${Id}`,
+        `DELETE From Monederos WHERE id=${id}`,
         Number(idUser),
-        2,
+        20,
       );
-      return {message:`El monedero con id: ${Id} ha sido eliminado exitosamente`,Id: Number(Id)};
+
+      //API response
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'Monedero eliminado correctamente',
+        data: {
+          id: id,
+          nombre: `${monedero.numeroSerie} ${monedero.saldo} ` || '',
+        },
+      };
+      return result;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;

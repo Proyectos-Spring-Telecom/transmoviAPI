@@ -29,7 +29,7 @@ export class UsuariosController {
   constructor(private readonly usuariosService: UsuariosService) {}
 
   //Obtener clientes paginado
-  @Get('page/:page/:limit')
+  @Get(':page/:limit')
   @ApiOperation({ summary: 'Obtener todos los usuarios' })
   @ApiResponse({
     status: 200,

@@ -1,38 +1,62 @@
-import { ApiProperty } from "@nestjs/swagger";
-import { Type } from "class-transformer";
-import { IsDate, IsDecimal, IsIn, IsInt, IsNumber, IsOptional, IsString } from "class-validator";
+import { ApiProperty } from '@nestjs/swagger';
+import {
+  IsString,
+  IsNumber,
+  IsDateString,
+  IsOptional,
+  IsInt,
+  Min,
+  IsNotEmpty,
+  IsIn,
+} from 'class-validator';
 
 export class CreateMonederoDto {
-  @IsString()
   @ApiProperty({
-            description: 'Numero de serie del monedero',
-            example: 'DED82B9A',
-        })
+    example: 'MON-0001',
+    description: 'Número de serie único del monedero',
+  })
+  @IsString()
   numeroSerie: string;
 
-  @IsDate()
-  @Type(() => Date)
-  @IsOptional()
   @ApiProperty({
-            description: 'Fecha en la que se activo',
-            example: '2025-08-17 08:00:00',
-        })
+    example: 500.0,
+    description: 'Saldo inicial del monedero',
+    default: 0.0,
+  })
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  saldo: number = 0.0;
+
+  @ApiProperty({
+    example: '2025-09-10T10:00:00Z',
+    description: 'Fecha de activación del monedero en formato ISO8601',
+  })
+  @IsDateString()
+  @IsOptional()
   fechaActivacion?: string;
 
-  @Type(() => Number)
-  @IsNumber({ maxDecimalPlaces: 2 })
+  @IsInt({ message: 'estatus debe ser un número entero' })
+  @IsIn([0, 1], { message: 'Solo puede ser 0 ó 1' })
+  @IsOptional()
   @ApiProperty({
-            description: 'Saldo del monedero',
-            example: '50.00',
-        })
-  saldo: number= 0.0;
-
-  @IsInt({ message: 'estatus debe ser un número entero'})
-  @IsIn([0, 1], { message: 'Solo puede ser 0 ó 1'})
-  @IsOptional() 
-  @ApiProperty({
-            description: 'Estatus del monedero solo puede ser 1 ó 0',
-            example: '1',
-        })
+    description: 'El estatus es solo 0 ó 1',
+    example: '1',
+  })
   estatus?: number = 1;
+
+  @ApiProperty({
+    example: 2,
+    description: 'ID del pasajero (opcional)',
+    required: false,
+  })
+  @IsNotEmpty()
+  @IsInt()
+  idPasajero: number;
+
+  @ApiProperty({
+    example: 1,
+    description: 'ID del cliente propietario del monedero',
+  })
+  @IsInt()
+  idCliente: number;
 }

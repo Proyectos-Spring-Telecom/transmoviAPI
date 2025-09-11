@@ -86,8 +86,6 @@ export class DispositivosService {
       }
       const result: ApiResponseCommon = {
         data: dispostivosExistentes,
-
-        message: 'Dispositivos obtenidos correctamente',
       };
       return result;
     } catch (error) {
@@ -117,11 +115,10 @@ export class DispositivosService {
       const result: ApiResponseCommon = {
         data,
         paginated: {
-          total: Math.ceil(total / limit),
+          total:total,
           page,
-          limit:total,
+          lastPage: Math.ceil(total / limit),
         },
-        message: 'Dispositivos obtenidos correctamente',
       };
       return result;
     } catch (error) {
@@ -143,8 +140,7 @@ export class DispositivosService {
         throw new NotFoundException(`Dispositivo con id: ${Id} no encontrado`);
       }
       return {
-        message: 'Dispositivo obtenido exitosamente',
-        dispositivo: dispostivoExistente,
+        data: dispostivoExistente,
       };
     } catch (error) {
       if (error instanceof HttpException) {

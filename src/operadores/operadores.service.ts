@@ -74,11 +74,10 @@ export class OperadoresService {
       const result:ApiResponseCommon = {
         data,
         paginated: {
-          total: Math.ceil(total/limit),
+          total:total,
           page,
-          limit,
+          lastPage: Math.ceil(total / limit),
         },
-        message: 'Operadores obtenidos correctamente'
       }
       return result;
     } catch (error) {
@@ -94,14 +93,12 @@ export class OperadoresService {
   //Obtener todos los operadores
   async findAllListOperadores(): Promise<ApiResponseCommon> {
     try {
-      const operadores = await this.operadoresRepository.find();
+      const operadores = await this.operadoresRepository.find({where:{estatus:1}});
       if (operadores.length === 0) {
         throw new BadRequestException('Operadores no encontrado o null');
       }
       const result:ApiResponseCommon = {
         data:operadores,
-        
-        message: 'Operadores obtenidos correctamente'
       }
       return result;
     } catch (error) {
@@ -123,8 +120,7 @@ export class OperadoresService {
         throw new NotFoundException(`Operador con id: ${Id} no encontrado`);
       }
       return {
-        message: 'Operador obtenido exitosamente',
-        operador: operador,
+        data: operador,
       };
     } catch (error) {
       if (error instanceof HttpException) {

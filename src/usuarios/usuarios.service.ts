@@ -63,11 +63,10 @@ export class UsuariosService {
       const result: ApiResponseCommon = {
         data: dataFiltrada,
         paginated: {
-          total: Math.ceil(total / limit),
+          total:total,
           page,
-          limit: total,
+          lastPage: Math.ceil(total / limit),
         },
-        message: 'Usuarios obtenidos correctamente',
       };
 
       return result;
@@ -92,8 +91,6 @@ export class UsuariosService {
       );
       const result: ApiResponseCommon = {
         data: usuariosSinPassword,
-
-        message: 'Usuarios obtenidos correctamente',
       };
       return result;
     } catch (error) {
@@ -103,6 +100,7 @@ export class UsuariosService {
       throw new BadRequestException({ message: 'Error al obtener Usuarios' });
     }
   }
+  
   //Obtener el usuario por ID
   async getUsuarioByID(id: number) {
     try {
@@ -117,7 +115,7 @@ export class UsuariosService {
       const permiso = await this.usuariosPermisosRepository.find({
         where: { idUsuario: id, estatus: 1 },
       });
-      return { usuario, permiso };
+      return { data:{usuario, permiso} };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -181,7 +179,7 @@ export class UsuariosService {
         status: 'success',
         message: 'Pin creado correctamente',
         data: {
-          id: usuario.id,
+          id: Number(usuario.id),
           nombre: `${usuario.nombre} ${usuario.apellidoPaterno} ` || '',
         },
       };
@@ -254,7 +252,7 @@ export class UsuariosService {
         status: 'success',
         message: 'Usuario creado correctamente',
         data: {
-          id: usuarioSinPassword.id,
+          id: Number(usuarioSinPassword.id),
           nombre:
             `${usuarioSinPassword.nombre} ${usuarioSinPassword.apellidoPaterno} ` ||
             '',
@@ -324,7 +322,7 @@ export class UsuariosService {
         status: 'success',
         message: 'Contraseña actualizada correctamente',
         data: {
-          id: usuario.id,
+          id: id,
           nombre: `${usuario.nombre} ${usuario.apellidoPaterno} ` || '',
         },
       };
@@ -452,7 +450,7 @@ export class UsuariosService {
         status: 'success',
         message: 'Usuario actualizado correctamente',
         data: {
-          id: usuarioSinPassword.id,
+          id: id,
           nombre:
             `${usuarioSinPassword.nombre} ${usuarioSinPassword.apellidoPaterno} ` ||
             '',
@@ -557,7 +555,7 @@ export class UsuariosService {
         status: 'success',
         message: 'Usuario eliminado correctamente',
         data: {
-          id: usuario.id,
+          id: id,
           nombre: `${usuario.nombre} ${usuario.apellidoPaterno} ` || '',
         },
       };

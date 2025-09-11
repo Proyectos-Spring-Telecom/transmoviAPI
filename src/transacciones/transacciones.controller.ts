@@ -3,20 +3,15 @@ import {
   Get,
   Post,
   Body,
-  Patch,
   Param,
-  Delete,
-  Put,
   UseGuards,
   ParseIntPipe,
   Request,
 } from '@nestjs/common';
 import { TransaccionesService } from './transacciones.service';
 import { CreateTransaccioneDto } from './dto/create-transaccione.dto';
-import { UpdateTransaccioneDto } from './dto/update-transaccione.dto';
-import { UpdateTransaccionEstatusDto } from './dto/update-transaccione-status.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-import { ApiResponseCommon } from 'src/common/ApiResponse';
+import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 
 @UseGuards(JwtAuthGuard)
 @Controller('transacciones')
@@ -24,12 +19,18 @@ export class TransaccionesController {
   constructor(private readonly transaccionesService: TransaccionesService) {}
 
   @Post()
-  createTransaccion(@Body() createTransaccioneDto: CreateTransaccioneDto,@Request()req) {
+  createTransaccion(
+    @Body() createTransaccioneDto: CreateTransaccioneDto,
+    @Request() req,
+  ): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
-    return this.transaccionesService.createTransaccion(createTransaccioneDto,idUser);
+    return this.transaccionesService.createTransaccion(
+      createTransaccioneDto,
+      idUser,
+    );
   }
 
-  @Get('page/:page/:limit')
+  @Get(':page/:limit')
   async findAllTransacciones(
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,

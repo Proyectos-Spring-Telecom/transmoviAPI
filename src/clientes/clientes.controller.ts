@@ -28,7 +28,7 @@ export class ClientesController {
     return await this.clientesService.createCliente(createClienteDto, idUser);
   }
   //Obtener todos los clientes con paginado
-  @Get('page/:page/:limit')
+  @Get(':page/:limit')
   getAllClientes(
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,

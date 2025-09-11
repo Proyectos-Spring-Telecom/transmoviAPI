@@ -9,5 +9,6 @@ import { BitacoraModule } from 'src/bitacora/bitacora.module';
   imports: [TypeOrmModule.forFeature([Pasajeros]), BitacoraModule],
   controllers: [PasajerosController],
   providers: [PasajerosService],
+  exports: [PasajerosService]
 })
 export class PasajerosModule {}

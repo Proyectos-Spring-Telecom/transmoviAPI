@@ -30,7 +30,7 @@ export class RolesService {
       const rol = await this.rolesRepository.find({
         where: { nombre: createRoleDto.nombre },
       });
-      console.log(rol.length)
+      console.log(rol.length);
       if (rol.length !== 0) {
         throw new BadRequestException('El rol ya existe');
       }
@@ -74,23 +74,21 @@ export class RolesService {
     });
 
     const result: ApiResponseCommon = {
-      data:data,
+      data: data,
       paginated: {
-        total: Math.ceil(total / limit),
+        total: total,
         page,
-        limit: total,
+        lastPage: Math.ceil(total / limit),
       },
-      message: 'Roles obtenidos correctamente',
     };
 
     return result;
   }
 
   async findAllList(): Promise<ApiResponseCommon> {
-    const permisos = await this.rolesRepository.find();
+    const permisos = await this.rolesRepository.find({where:{estatus:1}});
     const result: ApiResponseCommon = {
       data: permisos,
-      message: 'Roles obtenidos correctamente',
     };
     return result;
   }
@@ -102,7 +100,7 @@ export class RolesService {
       });
       if (!permiso) throw new NotFoundException('Rol no encontrado');
 
-      return permiso;
+      return {data:permiso};
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;

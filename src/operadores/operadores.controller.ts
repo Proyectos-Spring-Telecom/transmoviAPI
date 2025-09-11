@@ -30,7 +30,7 @@ export class OperadoresController {
     return this.operadoresService.createOperador(createOperadoreDto,idUser);
   }
 
-  @Get()
+  @Get(':page/:limit')
   findAllOperador(
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,

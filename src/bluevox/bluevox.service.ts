@@ -79,11 +79,10 @@ export class BluevoxService {
       const result: ApiResponseCommon = {
         data: data,
         paginated: {
-          total: Math.ceil(total / limit),
+          total:total,
           page,
-          limit: total,
+          lastPage: Math.ceil(total / limit),
         },
-        message: 'BlueVoxs obtenidos correctamente',
       };
 
       return result;
@@ -105,8 +104,6 @@ export class BluevoxService {
       };
       const result: ApiResponseCommon = {
         data: blueVoxs,
-
-        message: 'BlueVoxs obtenidos correctamente',
       };
       return result;
     } catch (error) {

@@ -30,7 +30,6 @@ export class BitacoraLoggerService {
       }
       const result: ApiResponseCommon = {
         data: bitacora,
-        message: 'Módulos obtenidos correctamente',
       };
       return result;
     } catch (error) {
@@ -51,11 +50,10 @@ export class BitacoraLoggerService {
       const result: ApiResponseCommon = {
         data,
         paginated: {
-          total: Math.ceil(total / limit),
+          total:total,
           page,
-          limit: total,
+          lastPage: Math.ceil(total / limit),
         },
-        message: 'Módulos obtenidos correctamente',
       };
       return result;
     } catch (error) {
@@ -74,7 +72,7 @@ export class BitacoraLoggerService {
       if (!bitacora) {
         throw new NotFoundException(`Bitacora con ID:${id} no encontrado`);
       }
-      return bitacora;
+      return {data: bitacora};
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;

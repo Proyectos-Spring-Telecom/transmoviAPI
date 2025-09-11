@@ -49,10 +49,10 @@ export class Monederos {
   estatus: number;
 
   @Column("bigint", { name: "IdPasajero", nullable: true })
-  idPasajero: string | null;
+  idPasajero: number | null;
 
   @Column("bigint", { name: "IdCliente" })
-  idCliente: string;
+  idCliente: number;
 
   @ManyToOne(() => Clientes, (clientes) => clientes.monederos, {
     onDelete: "NO ACTION",

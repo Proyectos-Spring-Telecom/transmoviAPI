@@ -109,11 +109,10 @@ export class ClientesService {
       const result: ApiResponseCommon = {
         data,
         paginated: {
-          total: Math.ceil(total / limit),
+          total:total,
           page,
-          limit,
+          lastPage: Math.ceil(total / limit),
         },
-        message: 'Clientes obtenidos correctamente',
       };
       return result;
     } catch (error) {
@@ -141,8 +140,6 @@ export class ClientesService {
       }
       const result: ApiResponseCommon = {
         data: Clientes,
-
-        message: 'Clientes obtenidos correctamente',
       };
       return result;
     } catch (error) {
@@ -162,7 +159,7 @@ export class ClientesService {
       if (!cliente) {
         throw new NotFoundException(`EL cliente con id:${id} no encontrado`);
       }
-      return cliente;
+      return {data: cliente};
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;

@@ -67,11 +67,10 @@ export class ModulosService {
     try {
       const modulos = await this.moduloRepository.find({
         relations: ['permisos'],
+        where: {estatus: 1}
       });
       const result: ApiResponseCommon = {
         data: modulos,
-
-        message: 'Módulos obtenidos correctamente',
       };
       return result;
     } catch (error) {
@@ -90,11 +89,10 @@ export class ModulosService {
       const result: ApiResponseCommon = {
         data,
         paginated: {
-          total: Math.ceil(total / limit),
+          total:total,
           page,
-          limit:total,
+          lastPage: Math.ceil(total / limit),
         },
-        message: 'Módulos obtenidos correctamente',
       };
       return result;
     } catch (error) {
@@ -106,7 +104,7 @@ export class ModulosService {
     try {
       const modulo = await this.moduloRepository.findOne({ where: { id: id },relations:['permisos'] });
       if (!modulo) throw new NotFoundException('Módulo no encontrado');
-      return modulo
+      return {data: modulo}
     } catch (error) {
       throw new BadRequestException(error);
     }

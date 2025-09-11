@@ -5,11 +5,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Transacciones } from 'src/entities/Transacciones';
 import { MonederosModule } from 'src/monederos/monederos.module';
 import { BitacoraModule } from 'src/bitacora/bitacora.module';
-import { Monederos } from 'src/entities/Monederos';
+import { Dispositivos } from 'src/entities/Dispositivos';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Transacciones,Monederos]),
+    TypeOrmModule.forFeature([Transacciones,Dispositivos]),
     MonederosModule,
     BitacoraModule,
   ],

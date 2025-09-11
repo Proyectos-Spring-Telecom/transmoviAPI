@@ -41,7 +41,7 @@ export class ModulosController {
     return this.modulosService.findAllList();
   }
 
-  @Get('page/:page/:limit')
+  @Get(':page/:limit')
   findAll(
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,

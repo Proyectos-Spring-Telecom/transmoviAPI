@@ -12,7 +12,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Pasajeros } from 'src/entities/Pasajeros';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
-import { ApiResponseCommon } from 'src/common/ApiResponse';
+import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 @Injectable()
 export class PasajerosService {
   constructor(
@@ -21,21 +21,24 @@ export class PasajerosService {
     private readonly bitacoraLogger: BitacoraLoggerService,
   ) {}
   //Crear pasajero
-  async createPasajeros(createPasajeroDto: CreatePasajeroDto,idUser: number) {
+  async createPasajeros(
+    createPasajeroDto: CreatePasajeroDto,
+    idUser: number,
+  ): Promise<ApiCrudResponse> {
     try {
-      const pasajeroExistente = await this.pasajeroRepository.findOne({
+      const pasajero = await this.pasajeroRepository.findOne({
         where: {
-          nombre: createPasajeroDto.nombre,
-          apellidoPaterno: createPasajeroDto.apellidoPaterno,
+          correo: createPasajeroDto.correo,
         },
       });
-      if (pasajeroExistente) {
+      if (pasajero) {
         throw new BadRequestException(
-          `El pasajero con id: ${createPasajeroDto.nombre} no fue encontrado`,
+          `El pasajero con correo: ${createPasajeroDto.correo}  ya existe`,
         );
       }
-      const clienteCreado =
-        await this.pasajeroRepository.save(createPasajeroDto);
+      const newPasajero =
+        await this.pasajeroRepository.create(createPasajeroDto);
+      const pasajeroSave = await this.pasajeroRepository.save(newPasajero);
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Pasajeros',
@@ -43,9 +46,20 @@ export class PasajerosService {
         'CREATE',
         `INSERT INTO Pasajeros (...) VALUES (...) ->  nombre: ${createPasajeroDto.nombre} apellido paterno: ${createPasajeroDto.apellidoPaterno} apellido materno: ${createPasajeroDto.apellidoMaterno}`,
         Number(idUser),
-        2,
+        21,
       );
-      return { message: 'Usuario creado exitosamente', clienteCreado };
+
+      //API response
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'Pasajero creado correctamente',
+        data: {
+          id: Number(pasajeroSave.id),
+          nombre:
+            `${pasajeroSave.nombre} ${pasajeroSave.apellidoPaterno} ` || '',
+        },
+      };
+      return result;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -54,26 +68,28 @@ export class PasajerosService {
     }
   }
   //Obtener todos los pasajeros
-  async findAllPasajeros(page: number, limit: number): Promise<ApiResponseCommon> {
+  async findAllPasajeros(
+    page: number,
+    limit: number,
+  ): Promise<ApiResponseCommon> {
     try {
       const pasajerosExistentes = await this.pasajeroRepository.find();
       if (pasajerosExistentes.length === 0) {
         throw new BadRequestException(`Pasajeros no encontrados`);
       }
-      const[data, total] = await this.pasajeroRepository.findAndCount({
-        relations:[],
-        skip:(page - 1)*limit,
+      const [data, total] = await this.pasajeroRepository.findAndCount({
+        relations: [],
+        skip: (page - 1) * limit,
         take: limit,
       });
-      const result:ApiResponseCommon = {
+      const result: ApiResponseCommon = {
         data,
         paginated: {
-          total: Math.ceil(total/limit),
+          total: total,
           page,
-          limit,
+          lastPage: Math.ceil(total / limit),
         },
-        message: 'Pasajeros obtenidos correctamente'
-      }
+      };
       return result;
     } catch (error) {
       if (error instanceof HttpException) {
@@ -85,15 +101,15 @@ export class PasajerosService {
   //Obtener todos los pasajeros
   async findAllListPasajeros(): Promise<ApiResponseCommon> {
     try {
-      const pasajerosExistentes = await this.pasajeroRepository.find();
+      const pasajerosExistentes = await this.pasajeroRepository.find({
+        where: { estatus: 1 },
+      });
       if (pasajerosExistentes.length === 0) {
         throw new BadRequestException(`Pasajeros no encontrados`);
       }
-      const result:ApiResponseCommon = {
-        data:pasajerosExistentes,
-        
-        message: 'Pasajeros obtenidos correctamente'
-      }
+      const result: ApiResponseCommon = {
+        data: pasajerosExistentes,
+      };
       return result;
     } catch (error) {
       if (error instanceof HttpException) {
@@ -103,17 +119,17 @@ export class PasajerosService {
     }
   }
   //Obtener pasajero por ID
-  async findOnePasajero(Id: number) {
+  async findOnePasajero(id: number) {
     try {
       const pasajeroExistente = await this.pasajeroRepository.findOne({
-        where: { id: Id },
+        where: { id: id },
       });
       if (!pasajeroExistente) {
         throw new NotFoundException(
-          `El pasajero con id: ${Id} no fue encontrado`,
+          `El pasajero con id: ${id} no fue encontrado`,
         );
       }
-      return pasajeroExistente;
+      return { data: pasajeroExistente };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -123,33 +139,41 @@ export class PasajerosService {
   }
   //Cambiar estatus del pasajero
   async updatePasajeroEstatus(
-    Id: number,
+    id: number,
     updatePasajeroEstatusDto: UpdatePasajeroEstatusDto,
-    idUser: number
+    idUser: number,
   ) {
     try {
-      const pasajeroExistente = await this.pasajeroRepository.findOne({
-        where: { id: Id },
+      const pasajero = await this.pasajeroRepository.findOne({
+        where: { id: id },
       });
-      if (!pasajeroExistente) {
+      if (!pasajero) {
         throw new NotFoundException(
-          `El pasajero con id: ${Id} no fue encontrado`,
+          `El pasajero con id: ${id} no fue encontrado`,
         );
       }
       const { estatus } = updatePasajeroEstatusDto;
-      await this.pasajeroRepository.update(Id, { estatus });
+      await this.pasajeroRepository.update(id, { estatus });
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Pasajero',
-        `Se cambio del modulo ${pasajeroExistente.nombre} con id: ${Id} a estatus: ${estatus}`,
+        `Se cambio del modulo ${pasajero.nombre} con id: ${id} a estatus: ${estatus}`,
         'UPDATE',
-        `UPDATE Pasajeros SET Estatus = ${estatus} WHERE id = ${Id}`,
+        `UPDATE Pasajeros SET Estatus = ${estatus} WHERE id = ${id}`,
         Number(idUser),
-        2,
+        21,
       );
-      return {
-        message: `Cliente con id: ${Id} su estatus fue actualizado a ${estatus}`,
+      //Api response
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'Estatus pasajero actualizado correctamente',
+        estatus: { estatus: estatus },
+        data: {
+          id: id,
+          nombre: `${pasajero.nombre} ${pasajero.apellidoPaterno} ` || '',
+        },
       };
+      return result;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -159,28 +183,46 @@ export class PasajerosService {
       );
     }
   }
+
   // Cambiar informacion del pasajero
-  async updatePasajero(Id: number,idUser: number, updatePasajeroDto: UpdatePasajeroDto) {
+  async updatePasajero(
+    id: number,
+    idUser: number,
+    updatePasajeroDto: UpdatePasajeroDto,
+  ): Promise<ApiCrudResponse> {
     try {
-      const pasajeroExistente = await this.pasajeroRepository.findOne({
-        where: { id: Id },
+      const pasajero = await this.pasajeroRepository.findOne({
+        where: { id: id },
       });
-      if (!pasajeroExistente) {
+      if (!pasajero) {
         throw new NotFoundException(
-          `El pasajero con id: ${Id} no fue encontrado`,
+          `El pasajero con id: ${id} no fue encontrado`,
         );
       }
-      await this.pasajeroRepository.update(Id, updatePasajeroDto);
+      await this.pasajeroRepository.update(id, updatePasajeroDto);
+      const pasajeroSave = await this.pasajeroRepository.findOne({
+        where: { id: id },
+      });
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Pasajeros',
-        `Se cambio del datos del pasajero: ${pasajeroExistente.nombre} con id: ${Id}`,
+        `Se cambio del datos del pasajero: ${pasajero.nombre} con id: ${id}`,
         'UPDATE',
-        `UPDATE Modulos SET (...) WHERE id = ${Id}`,
+        `UPDATE Modulos SET (...) WHERE id = ${id}`,
         Number(idUser),
-        2,
+        21,
       );
-      return await this.pasajeroRepository.findOne({ where: { id: Id } });
+      //Api response
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'Pasajero actualizado correctamente',
+        data: {
+          id: id,
+          nombre:
+            `${pasajeroSave?.nombre} ${pasajeroSave?.apellidoPaterno} ` || '',
+        },
+      };
+      return result;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -189,27 +231,36 @@ export class PasajerosService {
     }
   }
   //Eliminar pasajero por ID
-  async removePasajero(Id: number,idUser: number) {
+  async removePasajero(id: number, idUser: number) {
     try {
-      const pasajeroEliminar = await this.pasajeroRepository.findOne({
-        where: { id: Id },
+      const pasajero = await this.pasajeroRepository.findOne({
+        where: { id: id },
       });
-      if (!pasajeroEliminar) {
+      if (!pasajero) {
         throw new NotFoundException(
-          `El pasajero con id: ${Id} no fue encontrado`,
+          `El pasajero con id: ${id} no fue encontrado`,
         );
       }
-      await this.pasajeroRepository.remove(pasajeroEliminar);
+      await this.pasajeroRepository.update(id, { estatus: 0 });
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Pasajeros',
-        `Se elimino pasajero: ${pasajeroEliminar.nombre} con id: ${Id}`,
+        `Se elimino pasajero: ${pasajero.nombre} con id: ${id}`,
         'DELETE',
-        `DELETE FROM Pasajeros WHERE Id=${Id}`,
+        `DELETE FROM Pasajeros WHERE id=${id}`,
         Number(idUser),
-        2,
+        21,
       );
-      return `Pasajero con id: ${Id} eliminado exitosamente`;
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'Pasajero eliminado correctamente',
+        data: {
+          id: Number(pasajero.id),
+          nombre:
+            `${pasajero.nombre} ${pasajero.apellidoPaterno} ` || '',
+        },
+      };
+      return result;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;

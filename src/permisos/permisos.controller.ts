@@ -33,7 +33,7 @@ export class PermisosController {
     return this.permisosService.createPermiso(createPermiso, idUsuario);
   }
 
-  @Get('page/:page/:limit')
+  @Get(':page/:limit')
   async findAll(
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,

@@ -16,7 +16,7 @@ export class VehiculosController {
     return this.vehiculosService.create(createVehiculoDto,idUser);
   }
 
-  @Get('page/:page/:limit')
+  @Get(':page/:limit')
   async findAll(
     @Param('page',ParseIntPipe)page: number,
     @Param('limit',ParseIntPipe)limit: number,

@@ -70,11 +70,10 @@ export class VehiculosService {
       const result: ApiResponseCommon = {
         data,
         paginated: {
-          total: Math.ceil(total / limit),
+          total: total,
           page,
-          limit,
+          lastPage: Math.ceil(total / limit),
         },
-        message: 'Vehiculos obtenidos correctamente',
       };
       return result;
     } catch (error) {
@@ -92,8 +91,6 @@ export class VehiculosService {
         throw new NotFoundException('vehiculos no encontrados');
       const result: ApiResponseCommon = {
         data: vehiculos,
-
-        message: 'Vehiculos obtenidos correctamente',
       };
       return result;
     } catch (error) {
@@ -106,9 +103,11 @@ export class VehiculosService {
 
   async findOne(Id: number) {
     try {
-      const vehiculo = await this.vehiculoRepository.findOne({ where: { id:Id } });
+      const vehiculo = await this.vehiculoRepository.findOne({
+        where: { id: Id },
+      });
       if (!vehiculo) throw new NotFoundException('Vehiculo no encontrado');
-      return vehiculo;
+      return {data:vehiculo};
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -116,17 +115,19 @@ export class VehiculosService {
       throw new InternalServerErrorException(`Error al obtener al operador`);
     }
   }
-  
+
   async updateEstatus(
     Id: number,
     idUser: string,
     updateVehiculoEstausDto: UpdateVehiculoEstatusDto,
   ) {
     try {
-      const vehiculo = await this.vehiculoRepository.findOne({ where: { id:Id } });
+      const vehiculo = await this.vehiculoRepository.findOne({
+        where: { id: Id },
+      });
       if (!vehiculo) throw new NotFoundException('Vehiculo no encontrado');
-      const Estatus = updateVehiculoEstausDto.Estatus
-      await this.vehiculoRepository.update(Id,{estatus: Estatus});
+      const Estatus = updateVehiculoEstausDto.Estatus;
+      await this.vehiculoRepository.update(Id, { estatus: Estatus });
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Vehiculo',
@@ -153,10 +154,14 @@ export class VehiculosService {
     updateVehiculoDto: UpdateVehiculoDto,
   ) {
     try {
-      const vehiculo = await this.vehiculoRepository.findOne({ where: { id:Id } });
+      const vehiculo = await this.vehiculoRepository.findOne({
+        where: { id: Id },
+      });
       if (!vehiculo) throw new NotFoundException('Vehiculo no encontrado');
-      const vehiculoData =
-        await this.vehiculoRepository.update(Id,updateVehiculoDto);
+      const vehiculoData = await this.vehiculoRepository.update(
+        Id,
+        updateVehiculoDto,
+      );
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Vehiculo',
@@ -177,15 +182,17 @@ export class VehiculosService {
 
   async remove(Id: number, idUser: string) {
     try {
-      const vehiculo = await this.vehiculoRepository.findOne({ where: { id:Id } });
+      const vehiculo = await this.vehiculoRepository.findOne({
+        where: { id: Id },
+      });
       if (!vehiculo) throw new NotFoundException('Vehiculo no encontrado');
-      await this.vehiculoRepository.remove(vehiculo)
+      await this.vehiculoRepository.remove(vehiculo);
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Vehiculos',
         `Se eliminó el vehiculo con ID: ${Id}`,
         'DELETE',
-        `DELETE Vehiculos SET Marca='${vehiculo.marca}', Modelo='${vehiculo.modelo}', Ano=${vehiculo.ano}, Placa='${vehiculo.placa}', NumeroEconomico='${vehiculo.numeroEconomico}', Estatus=${vehiculo.estatus}`,  //, IdOperador=${vehiculo.idOperador}, IdDispositivo=${vehiculo.idDispositivo} WHERE Id=${Id}`,
+        `DELETE Vehiculos SET Marca='${vehiculo.marca}', Modelo='${vehiculo.modelo}', Ano=${vehiculo.ano}, Placa='${vehiculo.placa}', NumeroEconomico='${vehiculo.numeroEconomico}', Estatus=${vehiculo.estatus}`, //, IdOperador=${vehiculo.idOperador}, IdDispositivo=${vehiculo.idDispositivo} WHERE Id=${Id}`,
         Number(idUser),
         2,
       );

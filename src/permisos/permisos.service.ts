@@ -25,10 +25,7 @@ export class PermisosService {
   ) {}
 
   //Obtener todos los permisos con paginado
-  async findAll(
-    page: number,
-    limit: number,
-  ): Promise<ApiResponseCommon> {
+  async findAll(page: number, limit: number): Promise<ApiResponseCommon> {
     const [data, total] = await this.permisoRepository.findAndCount({
       relations: ['idModulo2'],
       skip: (page - 1) * limit,
@@ -38,11 +35,10 @@ export class PermisosService {
     const result: ApiResponseCommon = {
       data,
       paginated: {
-        total: Math.ceil(total / limit),
+        total: total,
         page,
-        limit:total,
+        lastPage: Math.ceil(total / limit),
       },
-      message: 'Permisos obtenidos correctamente',
     };
 
     return result;
@@ -53,10 +49,10 @@ export class PermisosService {
     try {
       const permisos = await this.permisoRepository.find({
         relations: ['idModulo2'],
+        where: { estatus: 1 },
       });
       const result: ApiResponseCommon = {
         data: permisos,
-        message: 'Permisos obtenidos correctamente',
       };
       return result;
     } catch (error) {
@@ -79,7 +75,7 @@ export class PermisosService {
       });
       if (!permiso) throw new NotFoundException('Permiso no encontrado');
 
-      return permiso;
+      return { data: permiso };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -135,7 +131,7 @@ export class PermisosService {
     id: number,
     idUser: string,
     updatePermisoEstatusDto: UpdatePermisoEstatusDto,
-  ):Promise <ApiCrudResponse> {
+  ): Promise<ApiCrudResponse> {
     try {
       const permiso = await this.permisoRepository.findOne({
         where: { id: id },
@@ -158,11 +154,11 @@ export class PermisosService {
       const result: ApiCrudResponse = {
         status: 'success',
         message: 'Usuario creado correctamente',
-        estatus: {estatus:updatePermisoEstatusDto.estatus},
+        estatus: { estatus: updatePermisoEstatusDto.estatus },
         data: {
-          id:id,
-          nombre: `${permiso.nombre} ${permiso.descripcion} ` || "",
-        }
+          id: id,
+          nombre: `${permiso.nombre} ${permiso.descripcion} ` || '',
+        },
       };
       return result;
     } catch (error) {
@@ -170,7 +166,11 @@ export class PermisosService {
     }
   }
 
-  async update(id: number, updatePermiso: UpdatePermisoDto, idUser: string):Promise<ApiCrudResponse> {
+  async update(
+    id: number,
+    updatePermiso: UpdatePermisoDto,
+    idUser: string,
+  ): Promise<ApiCrudResponse> {
     try {
       const permisoActualizar = {
         nombre: updatePermiso.nombre,
@@ -183,7 +183,9 @@ export class PermisosService {
       });
       if (!permiso) throw new NotFoundException('Permiso no encontrado');
       await this.permisoRepository.update(id, permisoActualizar);
-      const permisoResult = await this.permisoRepository.findOne({where: {id:id}});
+      const permisoResult = await this.permisoRepository.findOne({
+        where: { id: id },
+      });
       // --- Registro en la bitácora ---
       await this.bitacoraLogger.logToBitacora(
         'Permisos',
@@ -199,8 +201,9 @@ export class PermisosService {
         message: 'Permiso actualizado correctamente',
         data: {
           id: id,
-          nombre: `${permisoResult?.nombre} ${permisoResult?.descripcion} ` || "",
-        }
+          nombre:
+            `${permisoResult?.nombre} ${permisoResult?.descripcion} ` || '',
+        },
       };
       return result;
     } catch (error) {
@@ -208,7 +211,7 @@ export class PermisosService {
     }
   }
 
-  async remove(id: number, idUser: string):Promise <ApiCrudResponse> {
+  async remove(id: number, idUser: string): Promise<ApiCrudResponse> {
     try {
       const permiso = await this.permisoRepository.findOne({
         where: { id: id },
@@ -231,8 +234,8 @@ export class PermisosService {
         message: 'Permiso eliminado correctamente',
         data: {
           id: id,
-          nombre: `${permiso.nombre} ${permiso.descripcion} ` || "",
-        }
+          nombre: `${permiso.nombre} ${permiso.descripcion} ` || '',
+        },
       };
       return result;
     } catch (error) {

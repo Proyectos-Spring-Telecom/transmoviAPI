@@ -17,7 +17,7 @@ export class PasajerosController {
     return this.pasajerosService.createPasajeros(createPasajeroDto,idUser);
   }
 
-  @Get('page/:page/:limit')
+  @Get(':page/:limit')
   findAllPasajero(
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,
@@ -25,7 +25,7 @@ export class PasajerosController {
     return this.pasajerosService.findAllPasajeros(page,limit);
   }
 
-  @Get()
+  @Get('list')
   findAllListPasajero(): Promise<ApiResponseCommon> {
     return this.pasajerosService.findAllListPasajeros();
   }
@@ -35,7 +35,7 @@ export class PasajerosController {
     return this.pasajerosService.findOnePasajero(+id);
   }
 
-  @Patch(':id/estatus')
+  @Patch('/estatus/:id')
   updatePasajeroEstatus(@Param('id') id: string, @Body() updatePasajeroEstatusDto: UpdatePasajeroEstatusDto,@Request()req) {
     const idUser = req.user.userId;
     return this.pasajerosService.updatePasajeroEstatus(+id, updatePasajeroEstatusDto,idUser);

@@ -31,7 +31,7 @@ export class Transacciones {
   tipoTransaccion: string;
 
   @Column("decimal", { name: "Monto", precision: 10, scale: 2 })
-  monto: string;
+  monto: number;
 
   @Column("decimal", {
     name: "Latitud",
@@ -39,7 +39,7 @@ export class Transacciones {
     precision: 10,
     scale: 7,
   })
-  latitud: string | null;
+  latitud: number | null;
 
   @Column("decimal", {
     name: "Longitud",
@@ -47,7 +47,7 @@ export class Transacciones {
     precision: 10,
     scale: 7,
   })
-  longitud: string | null;
+  longitud: number | null;
 
   @Column("datetime", { name: "FechaHora" })
   fechaHora: Date;
