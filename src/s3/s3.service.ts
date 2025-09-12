@@ -1,14 +1,26 @@
-// src/files/s3.service.ts
-import { Injectable } from '@nestjs/common';
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import {
+  Injectable,
+  BadRequestException,
+  InternalServerErrorException,
+  HttpException,
+} from '@nestjs/common';
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { v4 as uuid } from 'uuid';
+import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 
 @Injectable()
 export class S3Service {
   private client: S3Client;
   private bucket: string;
 
-  constructor() {
+  constructor(
+    private readonly bitacoraLogger: BitacoraLoggerService,
+  ) {
     this.client = new S3Client({
       region: process.env.AWS_REGION,
       credentials: {
@@ -19,22 +31,61 @@ export class S3Service {
     this.bucket = process.env.AWS_S3_BUCKET!;
   }
 
-  async uploadBuffer(
-    key: string,
-    buffer: Buffer,
-    contentType: string,
-  ): Promise<{ key: string }> {
-    await this.client.send(
-      new PutObjectCommand({
-        Bucket: this.bucket,
-        Key: key,
-        Body: buffer,
-        ContentType: contentType,
-        ACL: 'private',
-        ServerSideEncryption: 'AES256',
-      }),
-    );
-    return { key };
+  async uploadFile(file: Express.Multer.File,folder: string, idUser:string,idModule: number) {
+    try {
+      if (!file) throw new BadRequestException('Archivo requerido');
+
+      // Validar tipo de archivo
+      const allowedMimeTypes = ['image/png', 'image/jpg', 'image/jpeg', 'application/pdf'];
+      if (!allowedMimeTypes.includes(file.mimetype)) {
+        throw new BadRequestException('Solo se permiten PNG, JPG, JPEG o PDF');
+      }
+      
+
+      
+      if (file.size >= Number(process.env.UPLOAD_MAX_SIZE)){
+        throw new BadRequestException('Archivo demasiado grande');
+      };
+
+      // Definir extensión
+      let extension = '';
+      if (file.mimetype === 'image/png') extension = 'png';
+      else if (file.mimetype === 'image/jpg') extension = 'jpg';
+      else if (file.mimetype === 'image/jpeg') extension = 'jpeg';
+      else if (file.mimetype === 'application/pdf') extension = 'pdf';
+
+      const key = `${folder}/${uuid()}.${extension}`;
+
+      await this.client.send(
+        new PutObjectCommand({
+          Bucket: this.bucket,
+          Key: key,
+          Body: file.buffer,
+          ContentType: file.mimetype,
+          ACL: 'private', // sigue siendo privado
+        }),
+      );
+      
+
+      const publicUrl = `https://${this.bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+      
+      //-----Registro en la bitacora-----
+      await this.bitacoraLogger.logToBitacora(
+        `${folder}`,
+        `Se subio archivo al bucket: ${this.bucket}`,
+        'CREATE',
+        `INSERT INTO ${folder} (...) VALUES (...) -> bucket:  ${this.bucket} url: ${publicUrl}`,
+        Number(idUser),
+        idModule,
+      );
+
+      return {url: publicUrl}
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Error subiendo el archivo a S3');
+    }
   }
 
   async getPresignedUrl(key: string, expiresInSeconds = 300): Promise<string> {

@@ -16,7 +16,6 @@ import { CreateMonederoDto } from './dto/create-monedero.dto';
 import { UpdateMonederoDto } from './dto/update-monedero.dto';
 import { UpdateMonederoEstatusDto } from './dto/update-monedero-estatus.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-import { UpdateMonederoSaldoDto } from './dto/update-monedero-saldo.dto';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
 @UseGuards(JwtAuthGuard)
 @Controller('monederos')

@@ -7,7 +7,6 @@ import {
 import { CreateMonederoDto } from './dto/create-monedero.dto';
 import { UpdateMonederoDto } from './dto/update-monedero.dto';
 import { UpdateMonederoEstatusDto } from './dto/update-monedero-estatus.dto';
-import { UpdateMonederoSaldoDto } from './dto/update-monedero-saldo.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Monederos } from 'src/entities/Monederos';
