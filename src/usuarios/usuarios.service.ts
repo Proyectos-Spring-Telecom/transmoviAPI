@@ -56,6 +56,7 @@ export class UsuariosService {
         ActualizacionPassword: u.actualizacionPassword,
         ActualizacionPin: u.actualizacionPin,
         DispositivoId: u.dispositivoId,
+        FotoPerfil: u.fotoPerfil,
         FechaCreacion: u.fechaCreacion,
         FechaActualizacion: u.fechaActualizacion,
       }));
