@@ -29,28 +29,46 @@ export class TransaccionesService {
     idUser: string,
   ): Promise<ApiCrudResponse> {
     try {
-      //Declaramos monto de transaccion
-      const monto = createTransaccioneDto.monto;
+      //Buscamos el monedero
+      const monedero = await this.monederosService.findOneMonederoBySerie(
+        createTransaccioneDto.numeroSerieMonedero,
+      );
 
-      //Validar Debito o Recarga
-      if (monto < 0) {
+      //Declaramos transaccion y creamos la variable montoFinal
+      let transaccion = createTransaccioneDto.tipoTransaccion;
+      let montoFinal: number = 0;
+
+      //Checamos el tipo transaccion
+      if (transaccion === 'RECARGA') {
+        montoFinal =  Number(monedero.data.saldo) + Number(createTransaccioneDto.monto);
+      } else if (transaccion === 'DEBITO') {
+        montoFinal = Number(monedero.data.saldo) - Number(createTransaccioneDto.monto)
+      }
+      console.log('Saldo Inicial: ',monedero.data.saldo,' Tipo Transaccion: ',transaccion,' Monto: ',createTransaccioneDto.monto,' Monto Final: ',montoFinal)
+      //Pasamos un filtro que no haya valores negativos
+      if (montoFinal < 0) {
         throw new BadRequestException('Saldo insuficiente');
       }
 
-      const montoFinal = await this.monederosService.updateMonederoSaldo(
+      //actualizamos el saldo del monedero
+      /* await this.monederosService.updateMonederoSaldo(
         createTransaccioneDto.numeroSerieMonedero,
         idUser,
-        createTransaccioneDto.monto,
+        montoFinal,
+      ); */
+
+      //Creamos la transaccion en la BD
+      const newTransaccion = await this.transaccionesRepository.create(
+        createTransaccioneDto,
       );
-      const newTransaccion = await this.transaccionesRepository.create(createTransaccioneDto)
-      await this.transaccionesRepository.save(newTransaccion)
+      const transaccionSave = await this.transaccionesRepository.save(newTransaccion);
 
       // --- Registro en la bitácora ---
       await this.bitacoraLogger.logToBitacora(
         'Transacciones',
-        `Se realizo una transaccion de tipo ${createTransaccioneDto.tipoTransaccion}`,
+        `Se realizo una transaccion de tipo ${transaccion}`,
         'CREATE',
-        `INSERT INTO Transacciones (TipoTransaccion, Monto, Latitud, Longitud, FechaHora, NumeroSerieMonedero, NumeroSerieDispositivo) Values (${createTransaccioneDto.tipoTransaccion}, ${createTransaccioneDto.monto}, ${createTransaccioneDto.latitud}, ${createTransaccioneDto.longitud}, ${createTransaccioneDto.fechaHora}, ${createTransaccioneDto.numeroSerieMonedero}, ${createTransaccioneDto.numeroSerieDispositivo})`,
+        `INSERT INTO Transacciones (TipoTransaccion, Monto, Latitud, Longitud, FechaHora, NumeroSerieMonedero, NumeroSerieDispositivo) Values (${createTransaccioneDto.tipoTransaccion}, ${montoFinal}, ${createTransaccioneDto.latitud}, ${createTransaccioneDto.longitud}, ${createTransaccioneDto.fechaHora}, ${createTransaccioneDto.numeroSerieMonedero}, ${createTransaccioneDto.numeroSerieDispositivo})`,
         Number(idUser),
         25,
       );
@@ -59,8 +77,9 @@ export class TransaccionesService {
         status: 'success',
         message: 'Transaccion creado correctamente',
         data: {
-          id: Number(montoFinal.data?.id),
-          nombre: `${createTransaccioneDto.numeroSerieMonedero} ${monto} ` || '',
+          id: Number(transaccionSave.id),
+          nombre:
+            `${createTransaccioneDto.numeroSerieMonedero} ${montoFinal} ` || '',
         },
       };
       return result;
