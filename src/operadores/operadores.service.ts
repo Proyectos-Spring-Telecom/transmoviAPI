@@ -76,15 +76,30 @@ export class OperadoresService {
     limit: number,
   ): Promise<ApiResponseCommon> {
     try {
-      const operadores = await this.operadoresRepository.find();
-      if (operadores.length === 0) {
-        throw new BadRequestException('Operadores no encontrado o null');
-      }
-      const [data, total] = await this.operadoresRepository.findAndCount({
-        relations: [],
-        skip: (page - 1) * limit,
-        take: limit,
-      });
+      const query = this.operadoresRepository
+        .createQueryBuilder('operador')
+        .leftJoinAndSelect('operador.idUsuario2', 'usuario')
+        .select([
+          'operador', // incluye todos los campos de Operadores
+          // selecciona solo los campos necesarios del usuario
+          'usuario.id',
+          'usuario.userName',
+          'usuario.nombre',
+          'usuario.apellidoPaterno',
+          'usuario.apellidoMaterno',
+          'usuario.telefono',
+          'usuario.dispositivoId',
+          'usuario.fotoPerfil',
+          'usuario.fechaCreacion',
+          'usuario.fechaActualizacion',
+          'usuario.estatus',
+          'usuario.idRol',
+          'usuario.idCliente',
+        ])
+        .skip((page - 1) * limit)
+        .take(limit);
+
+      const [data, total] = await query.getManyAndCount();
       const result: ApiResponseCommon = {
         data,
         paginated: {
@@ -107,9 +122,28 @@ export class OperadoresService {
   //Obtener todos los operadores
   async findAllListOperadores(): Promise<ApiResponseCommon> {
     try {
-      const operadores = await this.operadoresRepository.find({
-        where: { estatus: 1 },
-      });
+      const operadores = await this.operadoresRepository
+        .createQueryBuilder('operador')
+        .leftJoinAndSelect('operador.idUsuario2', 'usuario')
+        .where('operador.estatus = :estatus', { estatus: 1 })
+        .select([
+          'operador', // todos los campos de la tabla Operadores
+          // solo estos campos de Usuarios
+          'usuario.id',
+          'usuario.userName',
+          'usuario.nombre',
+          'usuario.apellidoPaterno',
+          'usuario.apellidoMaterno',
+          'usuario.telefono',
+          'usuario.dispositivoId',
+          'usuario.fotoPerfil',
+          'usuario.fechaCreacion',
+          'usuario.fechaActualizacion',
+          'usuario.estatus',
+          'usuario.idRol',
+          'usuario.idCliente',
+        ])
+        .getMany();
       if (operadores.length === 0) {
         throw new BadRequestException('Operadores no encontrado o null');
       }
@@ -129,9 +163,27 @@ export class OperadoresService {
   //Obtener operador por ID
   async findOneOperador(id: number) {
     try {
-      const operador = await this.operadoresRepository.findOne({
-        where: { id: id },
-      });
+      const operador = await this.operadoresRepository
+        .createQueryBuilder('operador')
+        .leftJoin('operador.idUsuario2', 'usuario')
+        .addSelect([
+          'usuario.id',
+          'usuario.userName',
+          'usuario.nombre',
+          'usuario.apellidoPaterno',
+          'usuario.apellidoMaterno',
+          'usuario.telefono',
+          'usuario.dispositivoId',
+          'usuario.fotoPerfil',
+          'usuario.fechaCreacion',
+          'usuario.fechaActualizacion',
+          'usuario.estatus',
+          'usuario.idRol',
+          'usuario.idCliente',
+        ])
+        .where('operador.id = :id', { id })
+        .getOne();
+
       if (!operador) {
         throw new NotFoundException(`Operador con id: ${id} no encontrado`);
       }
@@ -174,7 +226,7 @@ export class OperadoresService {
       const result: ApiCrudResponse = {
         status: 'success',
         message: 'Estatus del operador actualizado correctamente',
-        estatus:{estatus:estatus},
+        estatus: { estatus: estatus },
         data: {
           id: id,
           nombre:
@@ -246,7 +298,7 @@ export class OperadoresService {
       if (!operador) {
         throw new NotFoundException(`Operador con id: ${id} no encontrado`);
       }
-      await this.operadoresRepository.update(id,{estatus: 0});
+      await this.operadoresRepository.update(id, { estatus: 0 });
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Operadores',
