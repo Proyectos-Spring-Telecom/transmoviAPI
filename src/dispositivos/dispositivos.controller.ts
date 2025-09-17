@@ -1,3 +1,4 @@
+
 import {
   Controller,
   Get,
@@ -35,17 +36,26 @@ export class DispositivosController {
     );
   }
 
+  // ✅ RUTAS ESPECÍFICAS PRIMERO (sin parámetros dinámicos)
+  @Get('list')
+  findAllListDispositivos(): Promise<ApiResponseCommon> {
+    return this.dispositivosService.findAllListDispositivos();
+  }
+
+  @Get('/clientes/:id')
+  async findAllDispositivosClientes(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<ApiResponseCommon> {
+    return await this.dispositivosService.findAllListDispositivosClientes(id);
+  }
+
+  // ✅ RUTAS CON PARÁMETROS DINÁMICOS AL FINAL
   @Get(':page/:limit')
   async findAllDispositivos(
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,
   ): Promise<ApiResponseCommon> {
-    return this.dispositivosService.findAllDispositivos(page,limit);
-  }
-
-  @Get('list')
-  findAllListDispositivos(): Promise<ApiResponseCommon> {
-    return this.dispositivosService.findAllListDispositivos();
+    return this.dispositivosService.findAllDispositivos(page, limit);
   }
 
   @Get(':id')
