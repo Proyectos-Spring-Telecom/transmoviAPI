@@ -25,7 +25,7 @@ import { UsuariosInstalaciones } from "./UsuariosInstalaciones";
 @Entity("Instalaciones", { schema: "TransmoviDev" })
 export class Instalaciones {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
-  id: string;
+  id: number;
 
   @Column("datetime", {
     name: "FechaCreacion",
@@ -43,16 +43,16 @@ export class Instalaciones {
   estatus: number;
 
   @Column("bigint", { name: "IdDispositivo" })
-  idDispositivo: string;
+  idDispositivo: number;
 
   @Column("bigint", { name: "IdBlueVox" })
-  idBlueVox: string;
+  idBlueVox: number;
 
   @Column("bigint", { name: "IdVehiculo" })
-  idVehiculo: string;
+  idVehiculo: number;
 
   @Column("bigint", { name: "IdCliente" })
-  idCliente: string;
+  idCliente: number;
 
   @ManyToOne(() => BlueVoxs, (blueVoxs) => blueVoxs.instalaciones, {
     onDelete: "NO ACTION",

@@ -248,6 +248,7 @@ export class ClientesService {
       const result: ApiCrudResponse = {
         status: 'success',
         message: 'Estatus cliente actualizado correctamente',
+        estatus:{estatus:estatus},
         data: {
           id: id,
           nombre: `${usuario.nombre} ${usuario.apellidoPaterno} ` || '',

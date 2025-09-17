@@ -20,6 +20,8 @@ import { BluevoxModule } from './bluevox/bluevox.module';
 import { RutasModule } from './rutas/rutas.module';
 import { PosicionesModule } from './posiciones/posiciones.module';
 import { S3Module } from './s3/s3.module';
+import { ConteopasajerosModule } from './conteopasajeros/conteopasajeros.module';
+import { InstalacionesModule } from './instalaciones/instalaciones.module';
 import Joi from 'joi';
 
 @Module({
@@ -91,6 +93,10 @@ import Joi from 'joi';
     PosicionesModule,
 
     S3Module,
+
+    ConteopasajerosModule,
+
+    InstalacionesModule,
     
   ], 
  controllers: [AppController],

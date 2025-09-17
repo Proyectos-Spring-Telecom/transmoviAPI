@@ -19,7 +19,7 @@ import { Viajes } from "./Viajes";
 @Entity("ConteoPasajeros", { schema: "TransmoviDev" })
 export class ConteoPasajeros {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
-  id: string;
+  id: number;
 
   @Column("int", { name: "Entradas", nullable: true, default: () => "'0'" })
   entradas: number | null;
