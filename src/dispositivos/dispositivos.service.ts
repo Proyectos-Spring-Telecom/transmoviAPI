@@ -75,6 +75,37 @@ export class DispositivosService {
       throw new InternalServerErrorException(`Error al crear el dipositivo`);
     }
   }
+
+  //Obtener todos los dispositivos por cliente
+  async findAllListDispositivosClientes(id: number) {
+    try {
+      const dispositivo = await this.dispositivoRepository.find({
+        where: { idCliente: id,estatus: 1 },
+      });
+      if (dispositivo.length === 0) {
+        throw new NotFoundException(`Dispositivo no encontrados`);
+      }
+
+      //Forzamos a cambiar el id a number
+      const data = dispositivo.map((item) => ({
+        ...item,
+        id: Number(item.id),
+      }));
+
+      const result: ApiResponseCommon = {
+        data: data,
+      };
+      return result;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Error al obtener los dipositivos de un cliente en especifico`,
+      );
+    }
+  }
+  
   //Obtener todos los dispositivos
   async findAllListDispositivos(): Promise<ApiResponseCommon> {
     try {
@@ -115,7 +146,7 @@ export class DispositivosService {
       const result: ApiResponseCommon = {
         data,
         paginated: {
-          total:total,
+          total: total,
           page,
           lastPage: Math.ceil(total / limit),
         },
@@ -131,13 +162,13 @@ export class DispositivosService {
     }
   }
   //Obtener dispositivo por ID
-  async findOneDispositivo(Id: number) {
+  async findOneDispositivo(id: number) {
     try {
       const dispostivoExistente = await this.dispositivoRepository.findOne({
-        where: { id: Id },
+        where: { id: id },
       });
       if (!dispostivoExistente) {
-        throw new NotFoundException(`Dispositivo con id: ${Id} no encontrado`);
+        throw new NotFoundException(`Dispositivo con id: ${id} no encontrado`);
       }
       return {
         data: dispostivoExistente,
@@ -269,7 +300,7 @@ export class DispositivosService {
       });
       if (!dispositivo) {
         throw new NotFoundException(
-          `El dispositivo con Id:${id} no fue encontrado`,
+          `El dispositivo con id:${id} no fue encontrado`,
         );
       }
       await this.dispositivoRepository.update(id, { estatus: 0 });

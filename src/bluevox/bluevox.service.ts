@@ -68,6 +68,36 @@ export class BluevoxService {
     }
   }
 
+  //Obtener los bluevox por cliente
+  async findAllListClientes(id: number) {
+    try {
+      const bluevox = await this.bluevoxsRepository.find({
+        where: { idCliente: id, estatus: 1 },
+      });
+      if (bluevox.length === 0) {
+        throw new NotFoundException(`BlueVoxs no encontrados`);
+      }
+
+      //Forzamos a cambiar el id a number
+      const data = bluevox.map((item) => ({
+        ...item,
+        id: Number(item.id),
+      }));
+
+      const result: ApiResponseCommon = {
+        data: data,
+      };
+      return result;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Error al obtener los bluevoxs de un cliente en especifico`,
+      );
+    }
+  }
+
   //Obtner paginado
   async findAll(page: number, limit: number): Promise<ApiResponseCommon> {
     try {
@@ -231,7 +261,7 @@ export class BluevoxService {
         'DELETE',
         `DELETE Bluevoxs (...) VALUES (...) -> Numero Serie: ${bluevoxs.numeroSerie}, Marca: ${bluevoxs.marca}, Modelo: ${bluevoxs.modelo}, Estatus: ${bluevoxs.estatus}, IdCliente: ${bluevoxs.idCliente}`, //, IdOperador=${bluevoxs.idOperador}, IdDispositivo=${bluevoxs.idDispositivo} WHERE id=${id}`,
         Number(idUser),
-        12 ,
+        12,
       );
 
       // ----- Api response -----
@@ -251,5 +281,4 @@ export class BluevoxService {
       throw new InternalServerErrorException(`Error al eliminar al bluevoxs`);
     }
   }
-
 }

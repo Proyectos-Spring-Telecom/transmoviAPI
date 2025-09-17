@@ -65,6 +65,36 @@ export class VehiculosService {
     }
   }
 
+  //Obtener los bluevox por cliente
+  async findAllListClientes(id: number) {
+    try {
+      const vehiculos = await this.vehiculoRepository.find({
+        where: { idCliente: id, estatus: 1 },
+      });
+      if (vehiculos.length === 0) {
+        throw new NotFoundException(`Vehiculos no encontrados`);
+      }
+
+      //Forzamos a cambiar el id a number
+      const data = vehiculos.map((item) => ({
+        ...item,
+        id: Number(item.id),
+      }));
+
+      const result: ApiResponseCommon = {
+        data: data,
+      };
+      return result;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Error al obtener los vehiculos de un cliente en especifico`,
+      );
+    }
+  }
+
   async findAll(page: number, limit: number): Promise<ApiResponseCommon> {
     try {
       const vehiculos = await this.vehiculoRepository.find();

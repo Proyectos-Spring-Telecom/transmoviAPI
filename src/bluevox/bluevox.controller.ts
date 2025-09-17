@@ -32,17 +32,25 @@ export class BluevoxController {
     return await this.bluevoxService.create(idUser, createBlueVoxsDto);
   }
 
+  @Get('list')
+  async findAllList(): Promise<ApiResponseCommon> {
+    return this.bluevoxService.findAllList();
+  }
+
+  @Get('clientes/:id')
+  async findAllDispositivosClientes(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<ApiResponseCommon> {
+    return await this.bluevoxService.findAllListClientes(id);
+  }
+
+  // ✅ RUTAS CON PARÁMETROS DINÁMICOS DESPUÉS
   @Get(':page/:limit')
   async findAll(
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,
   ): Promise<ApiResponseCommon> {
     return await this.bluevoxService.findAll(page, limit);
-  }
-
-  @Get('list')
-  async findAllList(): Promise<ApiResponseCommon> {
-    return this.bluevoxService.findAllList();
   }
 
   @Get(':id')
