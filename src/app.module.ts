@@ -58,8 +58,8 @@ import Joi from 'joi';
         autoLoadEntities: false,
         entities: [__dirname + '/entities/*{.ts,.js}'],
         synchronize: false, 
-        timezone: 'America/Mexico_City', // Zona horaria de México
-        dateStrings: false, // Mantener como Date objects
+        //dateStrings: false, // Mantener como Date objects
+        timezone: 'Z', // Zona horaria de México
       }),
     }),
 
