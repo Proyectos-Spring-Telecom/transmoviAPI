@@ -7,7 +7,7 @@ import {
 import { CreateConteoPasajerosDto } from './dto/create-conteopasajero.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConteoPasajeros } from 'src/entities/ConteoPasajeros';
-import { Repository } from 'typeorm';
+import { Between, MoreThanOrEqual, Repository } from 'typeorm';
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 
@@ -24,32 +24,26 @@ export class ConteopasajerosService {
     createConteopasajeroDto: CreateConteoPasajerosDto,
   ): Promise<ApiCrudResponse> {
     try {
-      //Crear una ConteoPasajero
       const newConteoPasajero = await this.conteopasajeroRepository.create(
         createConteopasajeroDto,
       );
-      const conteoPasajeroSave =
-        await this.conteopasajeroRepository.save(newConteoPasajero);
+      const conteoPasajeroSave = await this.conteopasajeroRepository.save(newConteoPasajero);
 
-      //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'ConteoPasajeros',
         `Se creó un ConteoPasajeros con Numero de serie BlueVoxs: ${createConteopasajeroDto.numeroSerieBlueVox}`,
         'CREATE',
-        `INSERT INTO ConteoPasajeros (...) VALUES (...) -> id:  ${conteoPasajeroSave.id}, Entradas: ${conteoPasajeroSave.entradas}, Salidas: ${conteoPasajeroSave.salidas}, Diferencia: ${conteoPasajeroSave.diferencia}, FechaHora: ${conteoPasajeroSave.fechaHora}, NumeroSerieBlueVox ${conteoPasajeroSave.numeroSerieBlueVox}`,
+        `INSERT INTO ConteoPasajeros (...) VALUES (...) -> id: ${conteoPasajeroSave.id}, Entradas: ${conteoPasajeroSave.entradas}, Salidas: ${conteoPasajeroSave.salidas}, Diferencia: ${conteoPasajeroSave.diferencia}, FechaHora: ${conteoPasajeroSave.fechaHora}, NumeroSerieBlueVox ${conteoPasajeroSave.numeroSerieBlueVox}`,
         Number(idUser),
         23,
       );
 
-      //Api response
       const result: ApiCrudResponse = {
         status: 'success',
         message: 'ConteoPasajero creado correctamente',
         data: {
           id: Number(conteoPasajeroSave.id),
-          nombre:
-            `${conteoPasajeroSave.id} ${conteoPasajeroSave.numeroSerieBlueVox} ` ||
-            '',
+          nombre: `${conteoPasajeroSave.id} ${conteoPasajeroSave.numeroSerieBlueVox}` || '',
         },
       };
       return result;
@@ -58,7 +52,8 @@ export class ConteopasajerosService {
         throw error;
       }
       throw new InternalServerErrorException({
-        message: 'Error al crear ConteoPasajeros',error
+        message: 'Error al crear ConteoPasajeros',
+        error,
       });
     }
   }
@@ -68,15 +63,14 @@ export class ConteopasajerosService {
       const [data, total] = await this.conteopasajeroRepository.findAndCount({
         skip: (page - 1) * limit,
         take: limit,
+        order: { fechaHora: 'DESC' },
       });
 
-      //Forzamos a cambiar el id a number
-      const conteoPasajeros = data.map(item =>({
+      const conteoPasajeros = data.map((item) => ({
         ...item,
-        id:Number(item.id)
+        id: Number(item.id),
       }));
 
-      //APi response
       const result: ApiResponseCommon = {
         data: conteoPasajeros,
         paginated: {
@@ -98,24 +92,19 @@ export class ConteopasajerosService {
 
   async findAllList(): Promise<ApiResponseCommon> {
     try {
-
-      //Obtenemos ConteoPasajeros
-      const conteopasajero = await this.conteopasajeroRepository.find();
+      const conteopasajero = await this.conteopasajeroRepository.find({
+        order: { fechaHora: 'DESC' },
+      });
       if (conteopasajero.length === 0) {
         throw new NotFoundException('ConteoPasajeros no encontrado');
       }
 
-      //Forzamos a cambiar el id a number
-      const data = conteopasajero.map(item =>({
+      const data = conteopasajero.map((item) => ({
         ...item,
-        id:Number(item.id)
+        id: Number(item.id),
       }));
 
-      const result: ApiResponseCommon = {
-        data: data,
-      };
-
-      return result;
+      return { data: data };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -135,8 +124,7 @@ export class ConteopasajerosService {
         throw new NotFoundException('ConteoPasajeros no encontrado');
       }
 
-      conteopasajero.id = Number(conteopasajero.id) 
-
+      conteopasajero.id = Number(conteopasajero.id);
       return { data: conteopasajero };
     } catch (error) {
       if (error instanceof HttpException) {
@@ -146,5 +134,270 @@ export class ConteopasajerosService {
         message: 'Error al obtener conteo pasajeros',
       });
     }
+  }
+
+  // MÉTODOS CON PAGINACIÓN
+  async findByDatePaginated(fecha: string, page: number, limit: number): Promise<ApiResponseCommon> {
+    try {
+      const startDate = new Date(`${fecha}T00:00:00`);
+      const endDate = new Date(`${fecha}T23:59:59`);
+
+      const [data, total] = await this.conteopasajeroRepository.findAndCount({
+        where: { fechaHora: Between(startDate, endDate) },
+        skip: (page - 1) * limit,
+        take: limit,
+        order: { fechaHora: 'DESC' },
+      });
+
+      const conteoPasajeros = data.map((item) => ({
+        ...item,
+        id: Number(item.id),
+      }));
+
+      return {
+        data: conteoPasajeros,
+        paginated: {
+          total: total,
+          page,
+          lastPage: Math.ceil(total / limit),
+        },
+      };
+    } catch (error) {
+      throw new InternalServerErrorException({
+        message: 'Error al obtener conteo pasajeros por fecha',
+      });
+    }
+  }
+
+  // 🕐 2. OBTENER DATOS DE UN RANGO DE FECHAS
+  async findByDateRangePaginated(
+    fechaInicio: string,
+    fechaFin: string,
+    page: number,
+    limit: number,
+  ): Promise<ApiResponseCommon> {
+    try {
+      const startDate = new Date(`${fechaInicio}T00:00:00`);
+      const endDate = new Date(`${fechaFin}T23:59:59`);
+
+      const [data, total] = await this.conteopasajeroRepository.findAndCount({
+        where: { fechaHora: Between(startDate, endDate) },
+        skip: (page - 1) * limit,
+        take: limit,
+        order: { fechaHora: 'DESC' },
+      });
+
+      const conteoPasajeros = data.map((item) => ({
+        ...item,
+        id: Number(item.id),
+      }));
+
+      return {
+        data: conteoPasajeros,
+        paginated: {
+          total: total,
+          page,
+          lastPage: Math.ceil(total / limit),
+        },
+      };
+    } catch (error) {
+      throw new InternalServerErrorException({
+        message: 'Error al obtener conteo pasajeros por rango de fechas',
+      });
+    }
+  }
+
+
+  // ⏰ 3. OBTENER DATOS DE UNA HORA ESPECÍFICA
+  async findByDateTimePaginated(
+    fecha: string,
+    hora: string,
+    page: number,
+    limit: number,
+  ): Promise<ApiResponseCommon> {
+    try {
+      const dateTime = new Date(`${fecha}T${hora}:00`);
+      const endDateTime = new Date(`${fecha}T${hora}:59`);
+
+      const [data, total] = await this.conteopasajeroRepository.findAndCount({
+        where: { fechaHora: Between(dateTime, endDateTime) },
+        skip: (page - 1) * limit,
+        take: limit,
+        order: { fechaHora: 'DESC' },
+      });
+
+      const conteoPasajeros = data.map((item) => ({
+        ...item,
+        id: Number(item.id),
+      }));
+
+      return {
+        data: conteoPasajeros,
+        paginated: {
+          total: total,
+          page,
+          lastPage: Math.ceil(total / limit),
+        },
+      };
+    } catch (error) {
+      throw new InternalServerErrorException({
+        message: 'Error al obtener conteo pasajeros por fecha y hora',
+      });
+    }
+  }
+
+  // 📊 4. OBTENER DATOS DE HOY
+  async findTodayPaginated(page: number, limit: number): Promise<ApiResponseCommon> {
+    try {
+      const today = new Date();
+      const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+      const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+
+      const [data, total] = await this.conteopasajeroRepository.findAndCount({
+        where: { fechaHora: Between(startOfDay, endOfDay) },
+        skip: (page - 1) * limit,
+        take: limit,
+        order: { fechaHora: 'DESC' },
+      });
+
+      const conteoPasajeros = data.map((item) => ({
+        ...item,
+        id: Number(item.id),
+      }));
+
+      return {
+        data: conteoPasajeros,
+        paginated: {
+          total: total,
+          page,
+          lastPage: Math.ceil(total / limit),
+        },
+      };
+    } catch (error) {
+      throw new InternalServerErrorException({
+        message: 'Error al obtener conteo pasajeros de hoy',
+      });
+    }
+  }
+
+  // 📅 5. OBTENER DATOS DE LA ÚLTIMA SEMANA
+  async findLastWeekPaginated(page: number, limit: number): Promise<ApiResponseCommon> {
+  try {
+    const today = new Date();
+    const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const [data, total] = await this.conteopasajeroRepository.findAndCount({
+      where: {
+        fechaHora: MoreThanOrEqual(lastWeek)
+      },
+      skip: (page - 1) * limit,
+      take: limit,
+      order: { fechaHora: 'DESC' }
+    });
+
+    const conteoPasajeros = data.map((item) => ({
+      ...item,
+      id: Number(item.id),
+    }));
+
+    return {
+      data: conteoPasajeros,
+      paginated: {
+        total: total,
+        page,
+        lastPage: Math.ceil(total / limit),
+      },
+    };
+  } catch (error) {
+    throw new InternalServerErrorException({
+      message: 'Error al obtener conteo pasajeros de la última semana',
+    });
+  }
+}
+
+  // 🔍 6. BUSCAR CON FILTROS ESPECÍFICOS + FECHA
+  async findByBlueVoxAndDatePaginated(
+    numeroSerie: string,
+    fechaInicio: string,
+    fechaFin: string,
+    page: number,
+    limit: number,
+  ): Promise<ApiResponseCommon> {
+    try {
+      const startDate = new Date(`${fechaInicio}T00:00:00`);
+      const endDate = new Date(`${fechaFin}T23:59:59`);
+
+      const [data, total] = await this.conteopasajeroRepository.findAndCount({
+        where: {
+          numeroSerieBlueVox: numeroSerie,
+          fechaHora: Between(startDate, endDate),
+        },
+        relations: ['numeroSerieBlueVox2'],
+        skip: (page - 1) * limit,
+        take: limit,
+        order: { fechaHora: 'DESC' },
+      });
+
+      const conteoPasajeros = data.map((item) => ({
+        ...item,
+        id: Number(item.id),
+      }));
+
+      return {
+        data: conteoPasajeros,
+        paginated: {
+          total: total,
+          page,
+          lastPage: Math.ceil(total / limit),
+        },
+      };
+    } catch (error) {
+      throw new InternalServerErrorException({
+        message: 'Error al obtener conteo pasajeros por BlueVox y fecha',
+      });
+    }
+  }
+
+  // 📈 7. OBTENER RESUMEN POR HORAS DE UN DÍA
+  async getHourlySummary(fecha: string): Promise<any[]> {
+    const startDate = `${fecha} 00:00:00`;
+    const endDate = `${fecha} 23:59:59`;
+
+    return await this.conteopasajeroRepository
+      .createQueryBuilder('cp')
+      .select([
+        'HOUR(cp.fechaHora) as hora',
+        'SUM(cp.entradas) as totalEntradas',
+        'SUM(cp.salidas) as totalSalidas',
+        'SUM(cp.diferencia) as totalDiferencia',
+        'COUNT(*) as registros',
+      ])
+      .where('cp.fechaHora BETWEEN :startDate AND :endDate', {
+        startDate,
+        endDate,
+      })
+      .groupBy('HOUR(cp.fechaHora)')
+      .orderBy('hora', 'ASC')
+      .getRawMany();
+  }
+
+  // 📊 8. OBTENER RESUMEN DIARIO DE UN MES
+  async getDailySummary(year: number, month: number): Promise<any[]> {
+    return await this.conteopasajeroRepository
+      .createQueryBuilder('cp')
+      .select([
+        'DATE(cp.fechaHora) as fecha',
+        'SUM(cp.entradas) as totalEntradas',
+        'SUM(cp.salidas) as totalSalidas',
+        'SUM(cp.diferencia) as totalDiferencia',
+        'COUNT(*) as registros',
+      ])
+      .where('YEAR(cp.fechaHora) = :year AND MONTH(cp.fechaHora) = :month', {
+        year,
+        month,
+      })
+      .groupBy('DATE(cp.fechaHora)')
+      .orderBy('fecha', 'ASC')
+      .getRawMany();
   }
 }

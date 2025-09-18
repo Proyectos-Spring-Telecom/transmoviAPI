@@ -22,6 +22,7 @@ import { PosicionesModule } from './posiciones/posiciones.module';
 import { S3Module } from './s3/s3.module';
 import { ConteopasajerosModule } from './conteopasajeros/conteopasajeros.module';
 import { InstalacionesModule } from './instalaciones/instalaciones.module';
+import { TurnosModule } from './turnos/turnos.module';
 import Joi from 'joi';
 
 @Module({
@@ -57,6 +58,8 @@ import Joi from 'joi';
         autoLoadEntities: false,
         entities: [__dirname + '/entities/*{.ts,.js}'],
         synchronize: false, 
+        timezone: 'America/Mexico_City', // Zona horaria de México
+        dateStrings: false, // Mantener como Date objects
       }),
     }),
 
@@ -97,6 +100,8 @@ import Joi from 'joi';
     ConteopasajerosModule,
 
     InstalacionesModule,
+
+    TurnosModule,
     
   ], 
  controllers: [AppController],

@@ -105,6 +105,7 @@ export class TransaccionesService {
         relations: [],
         skip: (page - 1) * limit,
         take: limit,
+        order: { fechaHora: 'DESC' },
       });
 
       //API Response
