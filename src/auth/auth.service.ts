@@ -55,7 +55,7 @@ export class AuthService {
       const payload = { id: user.id, email: user.userName };
 
       const ultimoLogin = moment()
-        .tz('America/Mexico_City')
+        .utcOffset(-12)
         .format('YYYY-MM-DD HH:mm:ss');
       await this.usuariosRepository.update(user.id, {
         ultimoLogin: ultimoLogin,
@@ -104,7 +104,7 @@ export class AuthService {
       const payload = { id: user.id, email: user.userName };
 
       const ultimoLogin = moment()
-        .tz('America/Mexico_City')
+         .utcOffset(-12)
         .format('YYYY-MM-DD HH:mm:ss');
       await this.usuariosRepository.update(user.id, {
         ultimoLogin: ultimoLogin,

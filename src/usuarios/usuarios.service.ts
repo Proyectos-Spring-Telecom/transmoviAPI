@@ -179,7 +179,7 @@ export class UsuariosService {
 
       //Agregamos le fecha de la actualizacion
       const FechaActual = moment()
-        .tz('America/Mexico_City')
+        .utcOffset(-12)
         .format('YYYY-MM-DD HH:mm:ss');
       updateUsuarioOperadorDto.actualizacionPin = FechaActual;
 
@@ -330,7 +330,7 @@ export class UsuariosService {
       }
       //Agregamos le fecha de la actualizacion
       const FechaActual = moment()
-        .tz('America/Mexico_City')
+        .utcOffset(-12)
         .format('YYYY-MM-DD HH:mm:ss');
 
       //actualiza en usuario contraseña
