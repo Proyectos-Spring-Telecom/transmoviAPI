@@ -13,106 +13,120 @@ import { Repository } from 'typeorm';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { UpdateInstalacioneEstatusDto } from './dto/update-instalacione-estatus.dto';
+import { UsuariosInstalaciones } from 'src/entities/UsuariosInstalaciones';
 
 @Injectable()
 export class InstalacionesService {
   constructor(
     @InjectRepository(Instalaciones)
     private readonly instalacionesRepository: Repository<Instalaciones>,
+    @InjectRepository(UsuariosInstalaciones)
+    private readonly usuariosinstalacionesRepository: Repository<Instalaciones>,
     private readonly bitacoraLogger: BitacoraLoggerService,
   ) {}
 
-async create(
-  idUser: string,
-  createInstalacioneDto: CreateInstalacionesDto,
-): Promise<ApiCrudResponse> {
-  try {
-    // ✅ VALIDACIÓN MEJORADA: Verificar todos los conflictos con relaciones
-    const errores: string[] = [];
+  async create(
+    idUser: string,
+    createInstalacioneDto: CreateInstalacionesDto,
+  ): Promise<ApiCrudResponse> {
+    try {
+      // ✅ VALIDACIÓN MEJORADA: Verificar todos los conflictos con relaciones
+      const errores: string[] = [];
 
-    // Verificar dispositivo CON relaciones
-    const dispositivoEnUso = await this.instalacionesRepository.findOne({
-      where: { idDispositivo: createInstalacioneDto.idDispositivo, estatus: 1 },
-      relations: ['dispositivos']
-    });
-    if (dispositivoEnUso) {
-      errores.push(`Dispositivo "${dispositivoEnUso.dispositivos.numeroSerie}" ya está en uso`);
-    }
+      // Verificar dispositivo CON relaciones
+      const dispositivoEnUso = await this.instalacionesRepository.findOne({
+        where: {
+          idDispositivo: createInstalacioneDto.idDispositivo,
+          estatus: 1,
+        },
+        relations: ['dispositivos'],
+      });
+      if (dispositivoEnUso) {
+        errores.push(
+          `Dispositivo "${dispositivoEnUso.dispositivos.numeroSerie}" ya está en uso`,
+        );
+      }
 
-    // Verificar BlueVox CON relaciones
-    const blueVoxEnUso = await this.instalacionesRepository.findOne({
-      where: { idBlueVox: createInstalacioneDto.idBlueVox, estatus: 1 },
-      relations: ['blueVoxs']
-    });
-    if (blueVoxEnUso) {
-      errores.push(`BlueVox "${blueVoxEnUso.blueVoxs.numeroSerie}" ya está en uso`);
-    }
+      // Verificar BlueVox CON relaciones
+      const blueVoxEnUso = await this.instalacionesRepository.findOne({
+        where: { idBlueVox: createInstalacioneDto.idBlueVox, estatus: 1 },
+        relations: ['blueVoxs'],
+      });
+      if (blueVoxEnUso) {
+        errores.push(
+          `BlueVox "${blueVoxEnUso.blueVoxs.numeroSerie}" ya está en uso`,
+        );
+      }
 
-    // Verificar Vehículo CON relaciones
-    const vehiculoEnUso = await this.instalacionesRepository.findOne({
-      where: { idVehiculo: createInstalacioneDto.idVehiculo, estatus: 1 },
-      relations: ['vehiculos']
-    });
-    if (vehiculoEnUso) {
-      errores.push(`Vehículo con placa "${vehiculoEnUso.vehiculos.placa}" ya está en uso`);
-    }
+      // Verificar Vehículo CON relaciones
+      const vehiculoEnUso = await this.instalacionesRepository.findOne({
+        where: { idVehiculo: createInstalacioneDto.idVehiculo, estatus: 1 },
+        relations: ['vehiculos'],
+      });
+      if (vehiculoEnUso) {
+        errores.push(
+          `Vehículo con placa "${vehiculoEnUso.vehiculos.placa}" ya está en uso`,
+        );
+      }
 
-    // Si hay conflictos, lanzar error con todos los detalles
-    if (errores.length > 0) {
-      throw new BadRequestException({
-        message: 'No se puede crear la instalación debido a los siguientes conflictos',
-        errors: errores,
-        conflictsCount: errores.length
+      // Si hay conflictos, lanzar error con todos los detalles
+      if (errores.length > 0) {
+        throw new BadRequestException({
+          message:
+            'No se puede crear la instalación debido a los siguientes conflictos',
+          errors: errores,
+          conflictsCount: errores.length,
+        });
+      }
+
+      // Crear instalación y guardarla en la base de datos
+      const newInstalaciones = await this.instalacionesRepository.create(
+        createInstalacioneDto,
+      );
+      const instalacionSave =
+        await this.instalacionesRepository.save(newInstalaciones);
+
+      // Registro en la bitácora (con mensaje corregido)
+      await this.bitacoraLogger.logToBitacora(
+        'Instalaciones',
+        `Se creó una Instalación con id: ${instalacionSave.id}`, // ✅ Corregido
+        'CREATE',
+        `INSERT INTO Instalaciones (...) VALUES (...) -> id: ${instalacionSave.id}, Estatus: ${instalacionSave.estatus}, IdDispositivo: ${instalacionSave.idDispositivo}, IdBlueVox: ${instalacionSave.idBlueVox}, IdVehiculo: ${instalacionSave.idVehiculo}, IdCliente: ${instalacionSave.idCliente}`,
+        Number(idUser),
+        13,
+      );
+
+      // API response (con mensajes corregidos)
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'Instalación creada correctamente', // ✅ Corregido
+        data: {
+          id: Number(instalacionSave.id),
+          nombre: `Instalación ${instalacionSave.id} - Dispositivo:${instalacionSave.idDispositivo} BlueVox:${instalacionSave.idBlueVox} Vehículo:${instalacionSave.idVehiculo}`, // ✅ Mejorado
+        },
+      };
+      return result;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      // ✅ Manejo específico para errores de FK (del error original que tenías)
+      if (error.code === 'ER_NO_REFERENCED_ROW_2') {
+        throw new BadRequestException({
+          message: 'Error de referencia en la base de datos',
+          details:
+            'Verifica que los IDs de Cliente, Dispositivo, BlueVox y Vehículo sean válidos y existan en el sistema',
+          sqlError: 'La combinación Cliente-Dispositivo no es válida',
+        });
+      }
+
+      throw new InternalServerErrorException({
+        message: 'Error al crear Instalación',
+        error: error.message, // ✅ Solo el mensaje, no todo el objeto
       });
     }
-
-    // Crear instalación y guardarla en la base de datos
-    const newInstalaciones = await this.instalacionesRepository.create(
-      createInstalacioneDto,
-    );
-    const instalacionSave = await this.instalacionesRepository.save(newInstalaciones);
-
-    // Registro en la bitácora (con mensaje corregido)
-    await this.bitacoraLogger.logToBitacora(
-      'Instalaciones',
-      `Se creó una Instalación con id: ${instalacionSave.id}`, // ✅ Corregido
-      'CREATE',
-      `INSERT INTO Instalaciones (...) VALUES (...) -> id: ${instalacionSave.id}, Estatus: ${instalacionSave.estatus}, IdDispositivo: ${instalacionSave.idDispositivo}, IdBlueVox: ${instalacionSave.idBlueVox}, IdVehiculo: ${instalacionSave.idVehiculo}, IdCliente: ${instalacionSave.idCliente}`,
-      Number(idUser),
-      13,
-    );
-
-    // API response (con mensajes corregidos)
-    const result: ApiCrudResponse = {
-      status: 'success',
-      message: 'Instalación creada correctamente', // ✅ Corregido
-      data: {
-        id: Number(instalacionSave.id),
-        nombre: `Instalación ${instalacionSave.id} - Dispositivo:${instalacionSave.idDispositivo} BlueVox:${instalacionSave.idBlueVox} Vehículo:${instalacionSave.idVehiculo}`, // ✅ Mejorado
-      },
-    };
-    return result;
-
-  } catch (error) {
-    if (error instanceof HttpException) {
-      throw error;
-    }
-    
-    // ✅ Manejo específico para errores de FK (del error original que tenías)
-    if (error.code === 'ER_NO_REFERENCED_ROW_2') {
-      throw new BadRequestException({
-        message: 'Error de referencia en la base de datos',
-        details: 'Verifica que los IDs de Cliente, Dispositivo, BlueVox y Vehículo sean válidos y existan en el sistema',
-        sqlError: 'La combinación Cliente-Dispositivo no es válida'
-      });
-    }
-
-    throw new InternalServerErrorException({
-      message: 'Error al crear Instalación',
-      error: error.message, // ✅ Solo el mensaje, no todo el objeto
-    });
   }
-}
 
   async findAll(page: number, limit: number): Promise<ApiResponseCommon> {
     try {
@@ -151,7 +165,9 @@ async create(
   async findAllList(): Promise<ApiResponseCommon> {
     try {
       //Obtenemos ConteoPasajeros
-      const instalaciones = await this.instalacionesRepository.find();
+      const instalaciones = await this.instalacionesRepository.find({
+        where: { estatus: 1 },
+      });
       if (instalaciones.length === 0) {
         throw new NotFoundException('Instalaciones no encontrado');
       }
@@ -258,7 +274,7 @@ async create(
     id: number,
     idUser: string,
     updateInstalacioneDto: UpdateInstalacioneDto,
-  ) {
+  ): Promise<ApiCrudResponse> {
     try {
       const instalacion = await this.instalacionesRepository.findOne({
         where: { id: id },
@@ -304,7 +320,7 @@ async create(
     }
   }
 
-  async remove(id: number, idUser: string) {
+  async remove(id: number, idUser: string): Promise<ApiCrudResponse> {
     try {
       const instalacion = await this.instalacionesRepository.findOne({
         where: { id: id },
@@ -340,6 +356,13 @@ async create(
         },
       };
       return result;
-    } catch (error) {}
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Error al eliminar de instalaciones con id: ${id}`,
+      );
+    }
   }
 }

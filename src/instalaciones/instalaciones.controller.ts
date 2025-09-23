@@ -15,7 +15,7 @@ import { InstalacionesService } from './instalaciones.service';
 import { CreateInstalacionesDto } from './dto/create-instalacione.dto';
 import { UpdateInstalacioneDto } from './dto/update-instalacione.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-import { ApiResponseCommon } from 'src/common/ApiResponse';
+import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { UpdateInstalacioneEstatusDto } from './dto/update-instalacione-estatus.dto';
 
 @UseGuards(JwtAuthGuard)
@@ -27,9 +27,9 @@ export class InstalacionesController {
   async create(
     @Body() createInstalacioneDto: CreateInstalacionesDto,
     @Request() req,
-  ) {
+  ): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
-    return this.instalacionesService.create(idUser, createInstalacioneDto);
+    return await this.instalacionesService.create(idUser, createInstalacioneDto);
   }
 
   @Get(':page/:limit')

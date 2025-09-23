@@ -29,6 +29,7 @@ export class ConteopasajerosService {
       );
       const conteoPasajeroSave = await this.conteopasajeroRepository.save(newConteoPasajero);
 
+      // Registro en la bitácora
       await this.bitacoraLogger.logToBitacora(
         'ConteoPasajeros',
         `Se creó un ConteoPasajeros con Numero de serie BlueVoxs: ${createConteopasajeroDto.numeroSerieBlueVox}`,

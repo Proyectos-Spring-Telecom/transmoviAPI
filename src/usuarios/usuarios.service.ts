@@ -126,6 +126,30 @@ export class UsuariosService {
     }
   }
 
+    //Obtener todos los usuarios por cliente
+  async getAllListUsuariosCliente(id:number): Promise<ApiResponseCommon> {
+    try {
+      const usuarios = await this.usuarioRepository.find({
+        where: { estatus: 1, idCliente: id },
+      });
+      if (usuarios.length === 0) {
+        throw new NotFoundException('Usuarios no encontrados');
+      }
+      const usuariosSinPassword = usuarios.map(
+        ({ passwordHash, ...rest }) => rest,
+      );
+      const result: ApiResponseCommon = {
+        data: usuariosSinPassword,
+      };
+      return result;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new BadRequestException({ message: 'Error al obtener Usuarios' });
+    }
+  }
+
   //Obtener el usuario por ID
   async getUsuarioByID(id: number) {
     try {

@@ -14,7 +14,7 @@ import { Usuarios } from "./Usuarios";
 @Entity("UsuariosInstalaciones", { schema: "TransmoviDev" })
 export class UsuariosInstalaciones {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
-  id: string;
+  id: number;
 
   @Column("datetime", {
     name: "FechaCreacion",
@@ -32,10 +32,10 @@ export class UsuariosInstalaciones {
   estatus: number;
 
   @Column("bigint", { name: "IdUsuario" })
-  idUsuario: string;
+  idUsuario: number;
 
   @Column("bigint", { name: "IdInstalacion" })
-  idInstalacion: string;
+  idInstalacion: number;
 
   @ManyToOne(
     () => Instalaciones,

@@ -32,7 +32,7 @@ export class AuthService {
         where: {
           userName: loginAuthPin.userName,
           dispositivoId: loginAuthPin.dispositivoId,
-          estatus: 1
+          estatus: 1,
         },
       });
       console.log({ data: user });
@@ -52,7 +52,11 @@ export class AuthService {
         where: { idUsuario: user.id, estatus: 1 },
       });
 
-      const payload = { id: user.id, email: user.userName };
+      const payload = {
+        id: user.id,
+        email: user.userName,
+        cliente: user.idCliente,
+      };
 
       const ultimoLogin = moment()
         .utcOffset(-12)
@@ -65,6 +69,8 @@ export class AuthService {
         nombre: `${user.nombre}`,
         apellidoPaterno: `${user.apellidoPaterno}`,
         apellidoMaterno: `${user.apellidoMaterno}`,
+        telefono: `${user.telefono}`,
+        fotoPerfil: `${user.fotoPerfil}`,
         userName: `${user.userName}`,
         rol: user.idRol2,
         token: this.jwtService.sign(payload),
@@ -82,7 +88,7 @@ export class AuthService {
     try {
       const user = await this.usuariosRepository.findOne({
         relations: ['idRol2'],
-        where: { userName: loginAuthDto.userName,estatus:1 },
+        where: { userName: loginAuthDto.userName, estatus: 1 },
       });
       console.log({ data: user });
       if (
@@ -101,7 +107,11 @@ export class AuthService {
         where: { idUsuario: user.id, estatus: 1 },
       });
 
-      const payload = { id: user.id, email: user.userName };
+      const payload = {
+        id: user.id,
+        email: user.userName,
+        cliente: user.idCliente,
+      };
 
       const ultimoLogin = moment()
          .utcOffset(-12)
@@ -114,6 +124,8 @@ export class AuthService {
         nombre: `${user.nombre}`,
         apellidoPaterno: `${user.apellidoPaterno}`,
         apellidoMaterno: `${user.apellidoMaterno}`,
+        telefono: `${user.telefono}`,
+        fotoPerfil: `${user.fotoPerfil}`,
         userName: `${user.userName}`,
         rol: user.idRol2,
         token: this.jwtService.sign(payload),

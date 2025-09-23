@@ -16,7 +16,7 @@ import { Dispositivos } from "./Dispositivos";
 @Entity("Posiciones", { schema: "TransmoviDev" })
 export class Posiciones {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
-  id: string;
+  id: number;
 
   @Column("varchar", { name: "Exactitud", length: 1 })
   exactitud: string;
@@ -25,16 +25,16 @@ export class Posiciones {
   estado: number;
 
   @Column("decimal", { name: "Velocidad", precision: 10, scale: 2 })
-  velocidad: string;
+  velocidad: number;
 
   @Column("decimal", { name: "Direccion", precision: 10, scale: 2 })
-  direccion: string;
+  direccion: number;
 
   @Column("decimal", { name: "Latitud", precision: 10, scale: 7 })
-  latitud: string;
+  latitud: number;
 
   @Column("decimal", { name: "Longitud", precision: 10, scale: 7 })
-  longitud: string;
+  longitud: number;
 
   @Column("datetime", { name: "FechaHora" })
   fechaHora: Date;

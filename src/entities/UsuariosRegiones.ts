@@ -14,7 +14,7 @@ import { Usuarios } from "./Usuarios";
 @Entity("UsuariosRegiones", { schema: "TransmoviDev" })
 export class UsuariosRegiones {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
-  id: string;
+  id: number;
 
   @Column("datetime", {
     name: "FechaCreacion",
@@ -32,10 +32,10 @@ export class UsuariosRegiones {
   estatus: number;
 
   @Column("bigint", { name: "IdUsuario" })
-  idUsuario: string;
+  idUsuario: number;
 
   @Column("bigint", { name: "IdRegion" })
-  idRegion: string;
+  idRegion: number;
 
   @ManyToOne(() => Regiones, (regiones) => regiones.usuariosRegiones, {
     onDelete: "NO ACTION",

@@ -28,13 +28,21 @@ import { UpdateUsuarioContrasena } from './dto/update-usuario-contrasena.dto';
 export class UsuariosController {
   constructor(private readonly usuariosService: UsuariosService) {}
 
-  //Obtener clientes paginado
+  // ===== CREATE =====
+  @Post()
+  @ApiOperation({ summary: 'Crear nuevo usuario' })
+  async createUsuario(
+    @Body() createUsuarioDto: CreateUsuarioDto,
+    @Request() req,
+  ): Promise<ApiCrudResponse> {
+    const idUser = req.user.userId;
+    return await this.usuariosService.createUsuario(createUsuarioDto, idUser);
+  }
+
+  // ===== READ =====
   @Get(':page/:limit')
-  @ApiOperation({ summary: 'Obtener todos los usuarios' })
-  @ApiResponse({
-    status: 200,
-    description: 'Lista de usuarios'
-  })
+  @ApiOperation({ summary: 'Obtener usuarios paginados' })
+  @ApiResponse({ status: 200, description: 'Lista de usuarios' })
   async findAll(
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,
@@ -42,91 +50,83 @@ export class UsuariosController {
     return await this.usuariosService.getAllUsuario(page, limit);
   }
 
-  //actualizar o crear pin
-  @Put('operador')
-  async updatePin(@Body()updateUsuarioOperadorDto:UpdateUsuarioOperadorDto,@Request() req): Promise<ApiCrudResponse> {
-    const idUser = req.user.userId;
-    const userName = req.user.email;
-    return await this.usuariosService.createPin(userName,idUser,updateUsuarioOperadorDto)
+  @Get('list')
+  @ApiOperation({ summary: 'Obtener todos los usuarios' })
+  async findAllList(): Promise<ApiResponseCommon> {
+    return await this.usuariosService.getAllListUsuarios();
   }
 
-  //actualizar estatus del usuario
+  @Get('list/rol/operador')
+  @ApiOperation({ summary: 'Obtener usuarios con rol operador' })
+  async findAllListOperador(): Promise<ApiResponseCommon> {
+    return await this.usuariosService.getAllListUsuariosRol();
+  }
+
+  @Get('list/cliente/:id')
+  @ApiOperation({ summary: 'Obtener usuarios por cliente' })
+  async findAllListUsuarioCliente(@Param('id', ParseIntPipe) id: number): Promise<ApiResponseCommon> {
+    return await this.usuariosService.getAllListUsuariosCliente(id);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Obtener usuario por ID' })
+  async findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.usuariosService.getUsuarioByID(id);
+  }
+
+  // ===== UPDATE =====
+  @Put(':id')
+  @ApiOperation({ summary: 'Actualizar usuario' })
+  async updateUsuario(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateUsuarioDto: UpdateUsuarioDto,
+    @Request() req,
+  ): Promise<ApiCrudResponse> {
+    const idUser = req.user.userId;
+    return await this.usuariosService.updateUsuario(id, updateUsuarioDto, idUser);
+  }
+
+  @Put('operador')
+  @ApiOperation({ summary: 'Actualizar o crear PIN de operador' })
+  async updatePin(
+    @Body() updateUsuarioOperadorDto: UpdateUsuarioOperadorDto,
+    @Request() req
+  ): Promise<ApiCrudResponse> {
+    const idUser = req.user.userId;
+    const userName = req.user.email;
+    return await this.usuariosService.createPin(userName, idUser, updateUsuarioOperadorDto);
+  }
+
+  @Put('actualizar/contrasena/:id')
+  @ApiOperation({ summary: 'Cambiar contraseña de usuario' })
+  async updateContrasena(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateUsuarioContrasena: UpdateUsuarioContrasena,
+    @Request() req
+  ): Promise<ApiCrudResponse> {
+    const idUser = req.user.userId;
+    return await this.usuariosService.updateContrasena(id, idUser, updateUsuarioContrasena);
+  }
+
   @Patch('estatus/:id')
+  @ApiOperation({ summary: 'Cambiar estatus del usuario' })
   async changeUsuarioEstatus(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateUsuarioEstatusDto: UpdateUsuarioEstatusDto,
     @Request() req,
   ): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
-    return await this.usuariosService.updateUsuarioEstatus(
-      id,
-      updateUsuarioEstatusDto,
-      idUser,
-    );
+    return await this.usuariosService.updateUsuarioEstatus(id, updateUsuarioEstatusDto, idUser);
   }
 
-  //Cambiar contraseña
-  @Put('actualizar/contrasena/:id')
-  async updateContrasena(
-    @Param('id', ParseIntPipe)id: number,
-    @Body()updateUsuarioContrasena: UpdateUsuarioContrasena,
-    @Request()req
-  ): Promise<ApiCrudResponse> {
-    const idUser = req.user.userId
-    return await this.usuariosService.updateContrasena(id,idUser,updateUsuarioContrasena)
-  }
-
-  //Obtener todos los usuario
-  @Get('list')
-  async findAllList(): Promise<ApiResponseCommon> {
-    return await this.usuariosService.getAllListUsuarios();
-  }
-
-  //Obtener todos los usuario por roles
-  @Get('list/rol/operador')
-  async findAllListOperador(): Promise<ApiResponseCommon> {
-    return await this.usuariosService.getAllListUsuariosRol();
-  }
-
-  //Obtener los usuario por Id
-  @Get('/:id')
-  findOne(@Param('id') id: string) {
-    return this.usuariosService.getUsuarioByID(+id);
-  }
-
-  //actualizar usuario
-  @Put(':id')
-  async updateUsuario(
-    @Param('id')
-    id: string,
-    @Body() updateUsuarioDto: UpdateUsuarioDto,
-    @Request() req,
-  ): Promise<ApiCrudResponse> {
-    const idUser = req.user.userId;
-    return await this.usuariosService.updateUsuario(
-      +id,
-      updateUsuarioDto,
-      idUser,
-    );
-  }
-
-  //eliminar usuario
-  @Delete('/:id')
+  // ===== DELETE =====
+  @Delete(':id')
+  @ApiOperation({ summary: 'Eliminar usuario' })
   async deleteUsuario(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Request() req,
   ): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
-    return await this.usuariosService.deleteUsuario(+id, idUser);
-  }  
-
-  //Crear usuario
-  @Post()
-  async createUsuario(
-    @Body() createUsuarioDto: CreateUsuarioDto,
-    @Request() req,
-  ): Promise<ApiCrudResponse> {
-    const idUser = req.user.userId;
-    return await this.usuariosService.createUsuario(createUsuarioDto, idUser);
+    return await this.usuariosService.deleteUsuario(id, idUser);
   }
 }

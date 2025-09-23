@@ -15,7 +15,7 @@ import { Viajes } from "./Viajes";
 @Entity("Derroteros", { schema: "TransmoviDev" })
 export class Derroteros {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
-  id: string;
+  id: number;
 
   @Column("varchar", { name: "Nombre", length: 100 })
   nombre: string;
@@ -54,7 +54,7 @@ export class Derroteros {
   estatus: number;
 
   @Column("bigint", { name: "IdRuta" })
-  idRuta: string;
+  idRuta: number;
 
   @ManyToOne(() => Rutas, (rutas) => rutas.derroteros, {
     onDelete: "NO ACTION",
