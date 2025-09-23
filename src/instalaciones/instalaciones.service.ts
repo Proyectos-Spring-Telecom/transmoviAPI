@@ -14,6 +14,7 @@ import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { UpdateInstalacioneEstatusDto } from './dto/update-instalacione-estatus.dto';
 import { UsuariosInstalaciones } from 'src/entities/UsuariosInstalaciones';
+import { error } from 'console';
 
 @Injectable()
 export class InstalacionesService {
@@ -21,7 +22,7 @@ export class InstalacionesService {
     @InjectRepository(Instalaciones)
     private readonly instalacionesRepository: Repository<Instalaciones>,
     @InjectRepository(UsuariosInstalaciones)
-    private readonly usuariosinstalacionesRepository: Repository<Instalaciones>,
+    private readonly usuariosinstalacionesRepository: Repository<UsuariosInstalaciones>,
     private readonly bitacoraLogger: BitacoraLoggerService,
   ) {}
 
@@ -86,6 +87,14 @@ export class InstalacionesService {
       const instalacionSave =
         await this.instalacionesRepository.save(newInstalaciones);
 
+      //Asignamos a root la region
+      const rootPermisos = {
+        estatus: 1,
+        idUsuario: 1, //Se asigna al usuario supremo
+        idInstalacion: instalacionSave.id,
+      };
+
+      await this.usuariosinstalacionesRepository.save(rootPermisos);
       // Registro en la bitácora (con mensaje corregido)
       await this.bitacoraLogger.logToBitacora(
         'Instalaciones',
@@ -128,12 +137,51 @@ export class InstalacionesService {
     }
   }
 
-  async findAll(page: number, limit: number): Promise<ApiResponseCommon> {
+  async findAll(
+    cliente: number,
+    idUser: number,
+    page: number,
+    limit: number,
+  ): Promise<ApiResponseCommon> {
     try {
-      const [data, total] = await this.instalacionesRepository.findAndCount({
-        skip: (page - 1) * limit,
-        take: limit,
-      });
+      let [data, total]: any[] = [];
+
+      switch (idUser) {
+        // Usuario administrador - obtiene todas las instalaciones
+        case 1:
+          [data, total] =
+            await this.usuariosinstalacionesRepository.findAndCount({
+              skip: (page - 1) * limit,
+              take: limit,
+              relations: ['idInstalacion2'],
+              where: {
+                idUsuario: idUser,
+                estatus: 1,
+              },
+            });
+          break;
+
+        default:
+          // Usuarios normales - solo sus instalaciones asignadas
+          [data, total] =
+            await this.usuariosinstalacionesRepository.findAndCount({
+              skip: (page - 1) * limit,
+              take: limit,
+              relations: ['idInstalacion2'],
+              where: {
+                idUsuario: idUser,
+                estatus: 1,
+                idInstalacion2: {
+                  idCliente: cliente,
+                },
+              },
+            });
+          break;
+      }
+
+      if (data.length === 0) {
+        throw new NotFoundException('Instalaciones no encontrado');
+      }
 
       //Forzamos a cambiar el id a number
       const instalaciones = data.map((item) => ({
@@ -162,12 +210,41 @@ export class InstalacionesService {
     }
   }
 
-  async findAllList(): Promise<ApiResponseCommon> {
+  async findAllList(
+    cliente: number,
+    idUser: number,
+  ): Promise<ApiResponseCommon> {
     try {
-      //Obtenemos ConteoPasajeros
-      const instalaciones = await this.instalacionesRepository.find({
-        where: { estatus: 1 },
-      });
+      let instalaciones: any[] = [];
+      switch (idUser) {
+        case 1:
+          // Usuario administrador - obtiene todas las instalaciones
+          instalaciones = await this.usuariosinstalacionesRepository.find({
+            relations: ['idInstalacion2'],
+            where: {
+              estatus: 1,
+              idUsuario: idUser,
+              idInstalacion2: { estatus: 1 },
+            },
+          });
+          break;
+
+        default:
+          // Usuarios normales - solo sus instalaciones asignadas
+          instalaciones = await this.usuariosinstalacionesRepository.find({
+            relations: ['idInstalacion2'],
+            where: {
+              idUsuario: idUser,
+              estatus: 1,
+              idInstalacion2: {
+                idCliente: cliente,
+                estatus: 1,
+              },
+            },
+          });
+          break;
+      }
+
       if (instalaciones.length === 0) {
         throw new NotFoundException('Instalaciones no encontrado');
       }
@@ -194,11 +271,30 @@ export class InstalacionesService {
     }
   }
 
-  async findOne(id: number) {
+  async findOne(id: number, idUser: number, cliente: number) {
     try {
-      const instalaciones = await this.instalacionesRepository.findOne({
-        where: { id: id },
-      });
+      let instalaciones;
+      switch (idUser) {
+        case 1:
+          // Usuario administrador - obtiene todas las instalaciones
+          instalaciones = await this.instalacionesRepository.findOne({
+            where: { id: id },
+          });
+          break;
+
+        default:
+          // Usuarios normales - solo sus instalaciones asignadas
+          const permiso = await this.usuariosinstalacionesRepository.find({
+            where: { idUsuario: idUser, idInstalacion: id, estatus: 1 },
+          });
+          if (permiso.length === 0)
+            throw new BadRequestException(`Acceso denegado`);
+
+          instalaciones = await this.instalacionesRepository.findOne({
+            where: { id: id, idCliente: cliente },
+          });
+          break;
+      }
       if (!instalaciones) {
         throw new NotFoundException('instalaciones no encontrado');
       }
@@ -220,13 +316,34 @@ export class InstalacionesService {
 
   async updateEstatus(
     id: number,
-    idUser: string,
+    idUser: number,
+    cliente: number,
     updateInstalacioneEstatusDto: UpdateInstalacioneEstatusDto,
   ) {
     try {
-      const instalacion = await this.instalacionesRepository.findOne({
-        where: { id: id },
-      });
+      let instalacion;
+      switch (idUser) {
+        case 1:
+          // Usuario administrador - obtiene todas las instalaciones
+          instalacion = await this.instalacionesRepository.findOne({
+            where: { id: id },
+          });
+          break;
+
+        default:
+          // Usuarios normales - solo sus instalaciones asignadas
+          const permiso = await this.usuariosinstalacionesRepository.find({
+            where: { idUsuario: idUser, idInstalacion: id, estatus: 1 },
+          });
+          if (permiso.length === 0)
+            throw new BadRequestException(`Acceso denegado`);
+
+          instalacion = await this.instalacionesRepository.findOne({
+            where: { id: id, idCliente: cliente },
+          });
+          break;
+      }
+
       if (!instalacion) {
         throw new NotFoundException(
           `Instalaciones con id: ${id} no encontrado`,
@@ -272,13 +389,36 @@ export class InstalacionesService {
 
   async update(
     id: number,
-    idUser: string,
+    idUser: number,
+    cliente: number,
     updateInstalacioneDto: UpdateInstalacioneDto,
   ): Promise<ApiCrudResponse> {
     try {
-      const instalacion = await this.instalacionesRepository.findOne({
-        where: { id: id },
-      });
+      let instalacion;
+      switch (idUser) {
+        case 1:
+          // Usuario administrador - obtiene todas las instalaciones
+          instalacion = await this.instalacionesRepository.findOne({
+            where: { id: id },
+          });
+          break;
+
+        default:
+          // Usuarios normales - solo sus instalaciones asignadas
+          const permiso = await this.usuariosinstalacionesRepository.find({
+            where: { idUsuario: idUser, idInstalacion: id, estatus: 1 },
+          });
+          if (permiso.length === 0)
+            throw new BadRequestException(`Acceso denegado`);
+
+          instalacion = await this.instalacionesRepository.findOne({
+            where: { id: id, idCliente: cliente },
+          });
+
+          //Se asigna el idCliente obtenido del Token
+          updateInstalacioneDto.idCliente = cliente;
+          break;
+      }
       if (!instalacion) {
         throw new NotFoundException(
           `Instalaciones con id: ${id} no encontrado`,
@@ -305,7 +445,7 @@ export class InstalacionesService {
         data: {
           id: id,
           nombre:
-            `${instalacion.id} dispositivo:${instalacion.idDispositivo} bluevox: ${instalacion.blueVoxs} vehiculo: ${instalacion.idVehiculo}` ||
+            `${instalacion.id} dispositivo:${instalacion.idDispositivo} bluevox: ${instalacion.idBlueVox} vehiculo: ${instalacion.idVehiculo}` ||
             '',
         },
       };
@@ -314,20 +454,44 @@ export class InstalacionesService {
       if (error instanceof HttpException) {
         throw error;
       }
-      throw new InternalServerErrorException(
-        `Error al actualizar de instalaciones con id: ${id}`,
-      );
+      throw new InternalServerErrorException({
+        message: 'Error al actualizar Instalación',
+        error: error, // ✅ Solo el mensaje, no todo el objeto
+      });
     }
   }
 
-  async remove(id: number, idUser: string): Promise<ApiCrudResponse> {
+  async remove(
+    id: number,
+    cliente: number,
+    idUser: number,
+  ): Promise<ApiCrudResponse> {
     try {
-      const instalacion = await this.instalacionesRepository.findOne({
-        where: { id: id },
-      });
+      let instalacion;
+      switch (idUser) {
+        case 1:
+          // Usuario administrador - obtiene todas las instalaciones
+          instalacion = await this.instalacionesRepository.findOne({
+            where: { id: id },
+          });
+          break;
+
+        default:
+          // Usuarios normales - solo sus instalaciones asignadas
+          const permiso = await this.usuariosinstalacionesRepository.find({
+            where: { idUsuario: idUser, idInstalacion: id, estatus: 1 },
+          });
+          if (permiso.length === 0)
+            throw new BadRequestException(`Acceso denegado`);
+
+          instalacion = await this.instalacionesRepository.findOne({
+            where: { id: id, idCliente: cliente },
+          });
+          break;
+      }
       if (!instalacion) {
         throw new NotFoundException(
-          `Instalaciones con id: ${id} no encontrado`,
+          `Instalaciones con id: ${id} no encontrado,`,
         );
       }
 

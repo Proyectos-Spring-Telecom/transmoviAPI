@@ -29,25 +29,35 @@ export class InstalacionesController {
     @Request() req,
   ): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
-    return await this.instalacionesService.create(idUser, createInstalacioneDto);
+    return await this.instalacionesService.create(
+      idUser,
+      createInstalacioneDto,
+    );
   }
 
   @Get(':page/:limit')
   async findAll(
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,
+    @Request() req,
   ): Promise<ApiResponseCommon> {
-    return await this.instalacionesService.findAll(page, limit);
+    const cliente = req.user.cliente;
+    const idUser = req.user.userId;
+    return await this.instalacionesService.findAll(+cliente,+idUser,page, limit);
   }
 
   @Get('list')
-  async findAllList(): Promise<ApiResponseCommon> {
-    return await this.instalacionesService.findAllList();
+  async findAllList(@Request() req): Promise<ApiResponseCommon> {
+    const cliente = req.user.cliente;
+    const idUser = req.user.userId;
+    return await this.instalacionesService.findAllList(+cliente,+idUser);
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return await this.instalacionesService.findOne(+id);
+  async findOne(@Param('id') id: string, @Request() req) {
+    const cliente = req.user.cliente;
+    const idUser = req.user.userId;
+    return await this.instalacionesService.findOne(+id,+idUser,+cliente);
   }
 
   @Patch('estatus/:id')
@@ -56,10 +66,12 @@ export class InstalacionesController {
     @Body() updateInstalacioneEstatusDto: UpdateInstalacioneEstatusDto,
     @Request() req,
   ) {
+    const cliente = req.user.cliente;
     const idUser = req.user.userId;
     return this.instalacionesService.updateEstatus(
       +id,
-      idUser,
+      +idUser,
+      +cliente,
       updateInstalacioneEstatusDto,
     );
   }
@@ -70,13 +82,20 @@ export class InstalacionesController {
     @Body() updateInstalacioneDto: UpdateInstalacioneDto,
     @Request() req,
   ) {
+    const cliente = req.user.cliente;
     const idUser = req.user.userId;
-    return await this.instalacionesService.update(+id, idUser, updateInstalacioneDto)
+    return await this.instalacionesService.update(
+      +id,
+      +idUser,
+      +cliente,
+      updateInstalacioneDto,
+    );
   }
 
   @Delete(':id')
   remove(@Param('id') id: string, @Request() req) {
+    const cliente = req.user.cliente;
     const idUser = req.user.userId;
-    return this.instalacionesService.remove(+id, idUser);
+    return this.instalacionesService.remove(+id, +cliente, +idUser);
   }
 }

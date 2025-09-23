@@ -153,7 +153,6 @@ export class RegionesService {
   async findAllList(cliente: number, idUser: number) {
     try {
       let regiones: any[] = [];
-      //Obtenemos ConteoPasajeros
       switch (idUser) {
         case 1:
           // Usuario administrador - obtiene todas las regiones
@@ -206,12 +205,12 @@ export class RegionesService {
 
   async findOne(idUser: number, id: number, cliente: number) {
     try {
-      let regiones: any[] = [];
+      let regiones;
       //Obtenemos ConteoPasajeros
       switch (idUser) {
         case 1:
           // Usuario administrador - obtiene todas las regiones
-          regiones = await this.regionesRepository.find({
+          regiones = await this.regionesRepository.findOne({
             where: { id: id },
           });
           break;
@@ -223,19 +222,21 @@ export class RegionesService {
           });
           if (permiso.length === 0)
             throw new BadRequestException(`Acceso denegado`);
-          regiones = await this.regionesRepository.find({
+
+          regiones = await this.regionesRepository.findOne({
             where: { id: id, idCliente: cliente },
           });
           break;
       }
-      //Forzamos a cambiar el id a number
-      const data = regiones.map((item) => ({
-        ...item,
-        id: Number(item.id),
-      }));
+      if (!regiones) {
+        throw new NotFoundException('instalaciones no encontrado');
+      }
+
+      //cambiamos el id a number
+      regiones.id = Number(regiones.id);
 
       const result: ApiResponseCommon = {
-        data: data,
+        data: regiones,
       };
 
       return result;
@@ -261,7 +262,7 @@ export class RegionesService {
       switch (idUser) {
         case 1:
           // Usuario administrador - obtiene todas las regiones
-          regiones = await this.regionesRepository.find({
+          regiones = await this.regionesRepository.findOne({
             where: { id: id },
           });
           break;
@@ -273,8 +274,8 @@ export class RegionesService {
           });
           if (permiso.length === 0)
             throw new BadRequestException(`Acceso denegado`);
-          regiones = await this.regionesRepository.find({
-            where: { id: id, idCliente: cliente, estatus: 1 },
+          regiones = await this.regionesRepository.findOne({
+            where: { id: id, idCliente: cliente, },
           });
           break;
       }
@@ -324,12 +325,12 @@ export class RegionesService {
     updateRegioneDto: UpdateRegioneDto,
   ): Promise<ApiCrudResponse> {
     try {
-      let regiones: any[] = [];
+      let regiones;
 
       switch (idUser) {
         case 1:
           // Usuario administrador - obtiene todas las regiones
-          regiones = await this.regionesRepository.find({
+          regiones = await this.regionesRepository.findOne({
             where: { id: id },
           });
           break;
@@ -341,7 +342,7 @@ export class RegionesService {
           });
           if (permiso.length === 0)
             throw new BadRequestException(`Acceso denegado`);
-          regiones = await this.regionesRepository.find({
+          regiones = await this.regionesRepository.findOne({
             where: { id: id, idCliente: cliente },
           });
           break;
@@ -390,7 +391,7 @@ export class RegionesService {
       switch (idUser) {
         case 1:
           // Usuario administrador - obtiene todas las regiones
-          regiones = await this.regionesRepository.find({
+          regiones = await this.regionesRepository.findOne({
             where: { id: id },
           });
           break;
@@ -403,7 +404,7 @@ export class RegionesService {
           if (permiso.length === 0)
             throw new BadRequestException(`Acceso denegado`);
           regiones = await this.regionesRepository.find({
-            where: { id: id, idCliente: cliente, estatus: 1 },
+            where: { id: id, idCliente: cliente },
           });
           break;
       }

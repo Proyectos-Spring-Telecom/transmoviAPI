@@ -43,8 +43,8 @@ export class UsuariosregionesController {
   }
 
   @Get('usuario/:idUsuario')
-  async findOneUsuario(@Param('idUsuario') id: string) {
-    return await this.usuariosregionesService.findOneUsuario(+id);
+  async findOneUsuario(@Param('idUsuario',ParseIntPipe) id: number) {
+    return await this.usuariosregionesService.findOneUsuario(id);
   }
 
   @Get(':page/:limit')
@@ -75,9 +75,9 @@ export class UsuariosregionesController {
     );
   }
 
-  @Put(':id')
+  @Put(':idUsuario')
   async update(
-    @Param('id') id: string,
+    @Param('idUsuario') id: string,
     @Body() updateUsuariosregioneDto: UpdateUsuariosregioneDto,
     @Request() req,
   ): Promise<ApiCrudResponse> {

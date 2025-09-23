@@ -109,7 +109,7 @@ export class UsuariosregionesService {
     }
   }
 
-  async findAllList() {
+  async findAllList(): Promise<ApiResponseCommon> {
     try {
       //Obtenemos ConteoPasajeros
       const usuariosregiones = await this.usuarioregionesRepository.find({
@@ -141,7 +141,7 @@ export class UsuariosregionesService {
     }
   }
 
-  async findAll(page: number, limit: number) {
+  async findAll(page: number, limit: number): Promise<ApiResponseCommon> {
     try {
       const [data, total] = await this.usuarioregionesRepository.findAndCount({
         skip: (page - 1) * limit,
@@ -177,17 +177,20 @@ export class UsuariosregionesService {
 
   async findOneUsuario(id: number) {
     try {
-      const usuariosregiones = await this.usuarioregionesRepository.findOne({
+      const usuariosregiones = await this.usuarioregionesRepository.find({
         where: { idUsuario: id },
       });
       if (!usuariosregiones) {
         throw new NotFoundException('usuariosregiones no encontrado');
       }
 
-      //cambiamos el id a number
-      usuariosregiones.id = Number(usuariosregiones.id);
+      //Forzamos a cambiar el id a number
+      const data = usuariosregiones.map((item) => ({
+        ...item,
+        id: Number(item.id),
+      }));
 
-      return { data: usuariosregiones };
+      return { data: data };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -302,7 +305,7 @@ export class UsuariosregionesService {
         'UPDATE',
         `UPDATE UsuariosRegiones Where IdUsuario=${id}`,
         Number(idUser),
-        2,
+        7,
       );
 
       // ----- Api response -----
@@ -333,7 +336,7 @@ export class UsuariosregionesService {
     id: number,
     idUser: string,
     updateUsuariosRegionesEstatusDto: UpdateUsuariosRegionesEstatusDto,
-  ) {
+  ): Promise<ApiCrudResponse> {
     try {
       const usuarioregion = await this.usuarioregionesRepository.findOne({
         where: { id: id },
@@ -382,7 +385,7 @@ export class UsuariosregionesService {
     }
   }
 
-  async remove(id: number, idUser: string) {
+  async remove(id: number, idUser: string): Promise<ApiCrudResponse> {
     try {
       const usuarioregion = await this.usuarioregionesRepository.findOne({
         where: { id: id },
