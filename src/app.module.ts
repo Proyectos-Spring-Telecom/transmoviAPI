@@ -60,8 +60,8 @@ import Joi from 'joi';
         database: config.get<string>('DB_DATABASE'),
         autoLoadEntities: false,
         entities: [__dirname + '/entities/*{.ts,.js}'],
-        synchronize: false, //No cambiar nunca
-        //dateStrings: false,
+        synchronize: false, 
+        //dateStrings: false, // Mantener como Date objects
         timezone: 'Z', // Zona horaria de México
       }),
     }),

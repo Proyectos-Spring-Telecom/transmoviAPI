@@ -58,7 +58,9 @@ export class AuthService {
         cliente: user.idCliente,
       };
 
-      const ultimoLogin = moment().utcOffset(-12).format('YYYY-MM-DD HH:mm:ss');
+      const ultimoLogin = moment()
+        .utcOffset(-12)
+        .format('YYYY-MM-DD HH:mm:ss');
       await this.usuariosRepository.update(user.id, {
         ultimoLogin: ultimoLogin,
       });
@@ -111,7 +113,9 @@ export class AuthService {
         cliente: user.idCliente,
       };
 
-      const ultimoLogin = moment().utcOffset(-12).format('YYYY-MM-DD HH:mm:ss');
+      const ultimoLogin = moment()
+         .utcOffset(-12)
+        .format('YYYY-MM-DD HH:mm:ss');
       await this.usuariosRepository.update(user.id, {
         ultimoLogin: ultimoLogin,
       });
