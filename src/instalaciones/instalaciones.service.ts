@@ -153,10 +153,37 @@ export class InstalacionesService {
             await this.usuariosinstalacionesRepository.findAndCount({
               skip: (page - 1) * limit,
               take: limit,
-              relations: ['idInstalacion2'],
+              relations: [
+                'idInstalacion2',
+                'idInstalacion2.dispositivos',
+                'idInstalacion2.blueVoxs',
+                'idInstalacion2.vehiculos',
+                'idInstalacion2.idCliente2',
+              ],
               where: {
                 idUsuario: idUser,
                 estatus: 1,
+              },
+              select: {
+                id: true,
+                idUsuario: true,
+                idInstalacion: true,
+                idInstalacion2: {
+                  id: true,
+                  fechaCreacion: true,
+                  fechaActualizacion: true,
+                  estatus: true,
+                  idCliente: true,
+                  dispositivos: { id: true, numeroSerie: true },
+                  blueVoxs: { id: true, numeroSerie: true },
+                  vehiculos: { id: true, placa: true },
+                  idCliente2: {
+                    id: true,
+                    nombre: true,
+                    apellidoPaterno: true,
+                    apellidoMaterno: true,
+                  },
+                },
               },
             });
           break;
@@ -167,12 +194,39 @@ export class InstalacionesService {
             await this.usuariosinstalacionesRepository.findAndCount({
               skip: (page - 1) * limit,
               take: limit,
-              relations: ['idInstalacion2'],
+              relations: [
+                'idInstalacion2',
+                'idInstalacion2.dispositivos',
+                'idInstalacion2.blueVoxs',
+                'idInstalacion2.vehiculos',
+                'idInstalacion2.idCliente2',
+              ],
               where: {
                 idUsuario: idUser,
                 estatus: 1,
                 idInstalacion2: {
                   idCliente: cliente,
+                },
+              },
+              select: {
+                id: true,
+                idUsuario: true,
+                idInstalacion: true,
+                idInstalacion2: {
+                  id: true,
+                  fechaCreacion: true,
+                  fechaActualizacion: true,
+                  estatus: true,
+                  idCliente: true,
+                  dispositivos: { id: true, numeroSerie: true },
+                  blueVoxs: { id: true, numeroSerie: true },
+                  vehiculos: { id: true, placa: true },
+                  idCliente2: {
+                    id: true,
+                    nombre: true,
+                    apellidoPaterno: true,
+                    apellidoMaterno: true,
+                  },
                 },
               },
             });
@@ -183,12 +237,46 @@ export class InstalacionesService {
         throw new NotFoundException('Instalaciones no encontrado');
       }
 
-      //Forzamos a cambiar el id a number
+      // 🔥 Transformación de datos (ids → number, nombreCompleto)
       const instalaciones = data.map((item) => ({
         ...item,
         id: Number(item.id),
+        idUsuario: Number(item.idUsuario),
+        idInstalacion: Number(item.idInstalacion),
+        idInstalacion2: item.idInstalacion2
+          ? {
+              ...item.idInstalacion2,
+              id: Number(item.idInstalacion2.id),
+              idCliente: Number(item.idInstalacion2.idCliente),
+              dispositivos: item.idInstalacion2.dispositivos
+                ? {
+                    ...item.idInstalacion2.dispositivos,
+                    id: Number(item.idInstalacion2.dispositivos.id),
+                  }
+                : null,
+              blueVoxs: item.idInstalacion2.blueVoxs
+                ? {
+                    ...item.idInstalacion2.blueVoxs,
+                    id: Number(item.idInstalacion2.blueVoxs.id),
+                  }
+                : null,
+              vehiculos: item.idInstalacion2.vehiculos
+                ? {
+                    ...item.idInstalacion2.vehiculos,
+                    id: Number(item.idInstalacion2.vehiculos.id),
+                  }
+                : null,
+              idCliente2: item.idInstalacion2.idCliente2
+                ? {
+                    ...item.idInstalacion2.idCliente2,
+                    id: Number(item.idInstalacion2.idCliente2.id),
+                    nombreCompleto:
+                      `${item.idInstalacion2.idCliente2.nombre ?? ''} ${item.idInstalacion2.idCliente2.apellidoPaterno ?? ''} ${item.idInstalacion2.idCliente2.apellidoMaterno ?? ''}`.trim(),
+                  }
+                : null,
+            }
+          : null,
       }));
-
       //APi response
       const result: ApiResponseCommon = {
         data: instalaciones,
@@ -220,11 +308,38 @@ export class InstalacionesService {
         case 1:
           // Usuario administrador - obtiene todas las instalaciones
           instalaciones = await this.usuariosinstalacionesRepository.find({
-            relations: ['idInstalacion2'],
+            relations: [
+              'idInstalacion2',
+              'idInstalacion2.dispositivos',
+              'idInstalacion2.blueVoxs',
+              'idInstalacion2.vehiculos',
+              'idInstalacion2.idCliente2',
+            ],
             where: {
               estatus: 1,
               idUsuario: idUser,
               idInstalacion2: { estatus: 1 },
+            },
+            select: {
+              id: true,
+              idUsuario: true,
+              idInstalacion: true,
+              idInstalacion2: {
+                id: true,
+                fechaCreacion: true,
+                fechaActualizacion: true,
+                estatus: true,
+                idCliente: true,
+                dispositivos: { id: true, numeroSerie: true },
+                blueVoxs: { id: true, numeroSerie: true },
+                vehiculos: { id: true, placa: true },
+                idCliente2: {
+                  id: true,
+                  nombre: true,
+                  apellidoPaterno: true,
+                  apellidoMaterno: true,
+                },
+              },
             },
           });
           break;
@@ -232,13 +347,40 @@ export class InstalacionesService {
         default:
           // Usuarios normales - solo sus instalaciones asignadas
           instalaciones = await this.usuariosinstalacionesRepository.find({
-            relations: ['idInstalacion2'],
+            relations: [
+              'idInstalacion2',
+              'idInstalacion2.dispositivos',
+              'idInstalacion2.blueVoxs',
+              'idInstalacion2.vehiculos',
+              'idInstalacion2.idCliente2',
+            ],
             where: {
               idUsuario: idUser,
               estatus: 1,
               idInstalacion2: {
                 idCliente: cliente,
                 estatus: 1,
+              },
+            },
+            select: {
+              id: true,
+              idUsuario: true,
+              idInstalacion: true,
+              idInstalacion2: {
+                id: true,
+                fechaCreacion: true,
+                fechaActualizacion: true,
+                estatus: true,
+                idCliente: true,
+                dispositivos: { id: true, numeroSerie: true },
+                blueVoxs: { id: true, numeroSerie: true },
+                vehiculos: { id: true, placa: true },
+                idCliente2: {
+                  id: true,
+                  nombre: true,
+                  apellidoPaterno: true,
+                  apellidoMaterno: true,
+                },
               },
             },
           });
@@ -249,10 +391,45 @@ export class InstalacionesService {
         throw new NotFoundException('Instalaciones no encontrado');
       }
 
-      //Forzamos a cambiar el id a number
+      // 🔥 Transformación de datos (ids → number, nombreCompleto)
       const data = instalaciones.map((item) => ({
         ...item,
         id: Number(item.id),
+        idUsuario: Number(item.idUsuario),
+        idInstalacion: Number(item.idInstalacion),
+        idInstalacion2: item.idInstalacion2
+          ? {
+              ...item.idInstalacion2,
+              id: Number(item.idInstalacion2.id),
+              idCliente: Number(item.idInstalacion2.idCliente),
+              dispositivos: item.idInstalacion2.dispositivos
+                ? {
+                    ...item.idInstalacion2.dispositivos,
+                    id: Number(item.idInstalacion2.dispositivos.id),
+                  }
+                : null,
+              blueVoxs: item.idInstalacion2.blueVoxs
+                ? {
+                    ...item.idInstalacion2.blueVoxs,
+                    id: Number(item.idInstalacion2.blueVoxs.id),
+                  }
+                : null,
+              vehiculos: item.idInstalacion2.vehiculos
+                ? {
+                    ...item.idInstalacion2.vehiculos,
+                    id: Number(item.idInstalacion2.vehiculos.id),
+                  }
+                : null,
+              idCliente2: item.idInstalacion2.idCliente2
+                ? {
+                    ...item.idInstalacion2.idCliente2,
+                    id: Number(item.idInstalacion2.idCliente2.id),
+                    nombreCompleto:
+                      `${item.idInstalacion2.idCliente2.nombre ?? ''} ${item.idInstalacion2.idCliente2.apellidoPaterno ?? ''} ${item.idInstalacion2.idCliente2.apellidoMaterno ?? ''}`.trim(),
+                  }
+                : null,
+            }
+          : null,
       }));
 
       const result: ApiResponseCommon = {
@@ -278,7 +455,23 @@ export class InstalacionesService {
         case 1:
           // Usuario administrador - obtiene todas las instalaciones
           instalaciones = await this.instalacionesRepository.findOne({
+            relations: ['blueVoxs', 'idCliente2', 'dispositivos', 'vehiculos'],
             where: { id: id },
+            select: {
+              id: true,
+              fechaCreacion: true,
+              fechaActualizacion: true,
+              estatus: true,
+              dispositivos: { id: true, numeroSerie: true },
+              blueVoxs: { id: true, numeroSerie: true },
+              vehiculos: { id: true, placa: true },
+              idCliente2: {
+                id: true,
+                nombre: true,
+                apellidoPaterno: true,
+                apellidoMaterno: true,
+              },
+            },
           });
           break;
 
@@ -291,7 +484,24 @@ export class InstalacionesService {
             throw new BadRequestException(`Acceso denegado`);
 
           instalaciones = await this.instalacionesRepository.findOne({
+            relations: ['blueVoxs', 'idCliente2', 'dispositivos', 'vehiculos'],
+
             where: { id: id, idCliente: cliente },
+            select: {
+              id: true,
+              fechaCreacion: true,
+              fechaActualizacion: true,
+              estatus: true,
+              dispositivos: { id: true, numeroSerie: true },
+              blueVoxs: { id: true, numeroSerie: true },
+              vehiculos: { id: true, placa: true },
+              idCliente2: {
+                id: true,
+                nombre: true,
+                apellidoPaterno: true,
+                apellidoMaterno: true,
+              },
+            },
           });
           break;
       }
@@ -299,10 +509,40 @@ export class InstalacionesService {
         throw new NotFoundException('instalaciones no encontrado');
       }
 
-      //cambiamos el id a number
-      instalaciones.id = Number(instalaciones.id);
+      // 🔥 Transformamos ids a number y añadimos nombreCompleto
+    const transformado = {
+      ...instalaciones,
+      id: Number(instalaciones.id),
+      dispositivos: instalaciones.dispositivos
+        ? {
+            ...instalaciones.dispositivos,
+            id: Number(instalaciones.dispositivos.id),
+          }
+        : null,
+      blueVoxs: instalaciones.blueVoxs
+        ? {
+            ...instalaciones.blueVoxs,
+            id: Number(instalaciones.blueVoxs.id),
+          }
+        : null,
+      vehiculos: instalaciones.vehiculos
+        ? {
+            ...instalaciones.vehiculos,
+            id: Number(instalaciones.vehiculos.id),
+          }
+        : null,
+      idCliente2: instalaciones.idCliente2
+        ? {
+            ...instalaciones.idCliente2,
+            id: Number(instalaciones.idCliente2.id),
+            nombreCompleto: `${instalaciones.idCliente2.nombre ?? ''} ${
+              instalaciones.idCliente2.apellidoPaterno ?? ''
+            } ${instalaciones.idCliente2.apellidoMaterno ?? ''}`.trim(),
+          }
+        : null,
+    };
 
-      return { data: instalaciones };
+    return { data: transformado };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;

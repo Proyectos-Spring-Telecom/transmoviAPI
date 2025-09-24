@@ -16,7 +16,7 @@ import { CreateOperadoreDto } from './dto/create-operadore.dto';
 import { UpdateOperadoreDto } from './dto/update-operadore.dto';
 import { UpdateOperadorStatusDto } from './dto/update-operadores-estatus.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-import { ApiResponseCommon } from 'src/common/ApiResponse';
+import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 
 @UseGuards(JwtAuthGuard)
 @Controller('operadores')
@@ -24,10 +24,12 @@ export class OperadoresController {
   constructor(private readonly operadoresService: OperadoresService) {}
 
   @Post()
-  createOperador(@Body() createOperadoreDto: CreateOperadoreDto,
-@Request() req,) {
+  createOperador(
+    @Body() createOperadoreDto: CreateOperadoreDto,
+    @Request() req,
+  ): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
-    return this.operadoresService.createOperador(createOperadoreDto,idUser);
+    return this.operadoresService.createOperador(createOperadoreDto, idUser);
   }
 
   @Get(':page/:limit')
@@ -35,7 +37,7 @@ export class OperadoresController {
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,
   ): Promise<ApiResponseCommon> {
-    return this.operadoresService.findAllOperadores(page,limit);
+    return this.operadoresService.findAllOperadores(page, limit);
   }
 
   @Get('list')
@@ -53,7 +55,7 @@ export class OperadoresController {
     @Param('id') id: string,
     @Request() req,
     @Body() updateOperadorStatusDto: UpdateOperadorStatusDto,
-  ) {
+  ): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
     return this.operadoresService.updateOperadorEstatus(
       +id,
@@ -67,14 +69,18 @@ export class OperadoresController {
     @Param('id') id: string,
     @Request() req,
     @Body() updateOperadoreDto: UpdateOperadoreDto,
-  ) {
+  ): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
-    return this.operadoresService.updateOperador(+id, idUser,updateOperadoreDto);
+    return this.operadoresService.updateOperador(
+      +id,
+      idUser,
+      updateOperadoreDto,
+    );
   }
 
   @Delete(':id')
-  removeOperador(@Param('id') id: string,@Request() req,) {
+  removeOperador(@Param('id') id: string, @Request() req) {
     const idUser = req.user.userId;
-    return this.operadoresService.removeOperador(+id,idUser);
+    return this.operadoresService.removeOperador(+id, idUser);
   }
 }
