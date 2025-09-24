@@ -21,7 +21,7 @@ import { Viajes } from "./Viajes";
 @Entity("Turnos", { schema: "TransmoviDev" })
 export class Turnos {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
-  id: string;
+  id: number;
 
   @Column("datetime", { name: "Inicio" })
   inicio: Date;
@@ -45,13 +45,13 @@ export class Turnos {
   estatus: number;
 
   @Column("bigint", { name: "IdCliente" })
-  idCliente: string;
+  idCliente: number;
 
   @Column("bigint", { name: "IdOperador" })
-  idOperador: string;
+  idOperador: number;
 
   @Column("bigint", { name: "IdInstalacion" })
-  idInstalacion: string;
+  idInstalacion: number;
 
   @ManyToOne(() => Clientes, (clientes) => clientes.turnos, {
     onDelete: "NO ACTION",

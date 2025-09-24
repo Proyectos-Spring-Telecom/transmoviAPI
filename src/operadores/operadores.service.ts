@@ -22,7 +22,10 @@ export class OperadoresService {
     private readonly bitacoraLogger: BitacoraLoggerService,
   ) {}
   //Crear operador
-  async createOperador(createOperadoreDto: CreateOperadoreDto, idUser: string) {
+  async createOperador(
+    createOperadoreDto: CreateOperadoreDto,
+    idUser: string,
+  ): Promise<ApiCrudResponse> {
     try {
       const operadorExistente = await this.operadoresRepository.findOne({
         where: { numeroLicencia: createOperadoreDto.numeroLicencia },
@@ -34,17 +37,20 @@ export class OperadoresService {
       }
 
       //creamos al operador
-      const operadorData =
+      const newOperador =
         await this.operadoresRepository.create(createOperadoreDto);
-      const operador = await this.operadoresRepository.save(operadorData);
+      const operador = await this.operadoresRepository.save(newOperador);
+
+      const operadorData = await this.operadoresRepository.findOne({
+        where: { id: operador.id },
+      });
 
       //-----Registro en la bitacora-----
       await this.bitacoraLogger.logToBitacora(
         'Operadores',
         `Se creó el operador con numero de licencia: ${createOperadoreDto.numeroLicencia}`,
         'CREATE',
-        //`INSERT Operadores SET ... Se creó el operador:${createOperadoreDto.nombre} ${createOperadoreDto.ApellidoPaterno} CREATE, INSERT INTO Operadores (Nombre, ApellidoPaterno, ApellidoMaterno, NumeroLicencia, FechaNacimiento, Correo, Telefono, Estatus) VALUES (${createOperadoreDto.Nombre}, ${createOperadoreDto.ApellidoPaterno}, ${createOperadoreDto.ApellidoMaterno}, ${createOperadoreDto.NumeroLicencia}, ${createOperadoreDto.FechaNacimiento}, ${createOperadoreDto.Correo}, ${createOperadoreDto.Telefono}, ${createOperadoreDto.Estatus})`,
-        `INSERT Operadores set`,
+        `INSERT INTO Operadores (Nombre, ApellidoPaterno, ApellidoMaterno, NumeroLicencia, FechaNacimiento, Correo, Telefono, Estatus) VALUES (${operador.idUsuario2.nombre}, ${operador.idUsuario2.apellidoPaterno}, ${operador.idUsuario2.apellidoMaterno}, ${operador.numeroLicencia}, ${operador.fechaNacimiento}, ${operador.idUsuario2.userName}, ${operador.idUsuario2.telefono}, ${operador.idUsuario2.estatus})`,
         Number(idUser),
         9,
       );
@@ -100,8 +106,15 @@ export class OperadoresService {
         .take(limit);
 
       const [data, total] = await query.getManyAndCount();
+
+      //Forzamos a cambiar el id a number
+      const operadores = data.map((item) => ({
+        ...item,
+        id: Number(item.id),
+      }));
+
       const result: ApiResponseCommon = {
-        data,
+        data: operadores,
         paginated: {
           total: total,
           page,
@@ -147,8 +160,14 @@ export class OperadoresService {
       if (operadores.length === 0) {
         throw new BadRequestException('Operadores no encontrado o null');
       }
+
+      //Forzamos a cambiar el id a number
+      const data = operadores.map((item) => ({
+        ...item,
+        id: Number(item.id),
+      }));
       const result: ApiResponseCommon = {
-        data: operadores,
+        data: data,
       };
       return result;
     } catch (error) {
@@ -183,10 +202,11 @@ export class OperadoresService {
         ])
         .where('operador.id = :id', { id })
         .getOne();
-
       if (!operador) {
         throw new NotFoundException(`Operador con id: ${id} no encontrado`);
       }
+      operador.id = Number(operador.id)
+
       return {
         data: operador,
       };
@@ -202,7 +222,7 @@ export class OperadoresService {
     id: number,
     idUser: string,
     updateOperadorStatusDto: UpdateOperadorStatusDto,
-  ) {
+  ): Promise<ApiCrudResponse> {
     try {
       const operador = await this.operadoresRepository.findOne({
         where: { id: id },
