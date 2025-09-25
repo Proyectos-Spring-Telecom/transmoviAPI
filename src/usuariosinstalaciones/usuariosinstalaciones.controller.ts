@@ -66,7 +66,7 @@ export class UsuariosinstalacionesController {
   ): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
     return await this.usuariosinstalacionesService.create(
-      idUser,
+      +idUser,
       createUsuariosInstalacionesDto,
     );
   }

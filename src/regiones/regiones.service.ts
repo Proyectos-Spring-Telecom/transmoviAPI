@@ -95,10 +95,30 @@ export class RegionesService {
           [data, total] = await this.usuarioregionesRepository.findAndCount({
             skip: (page - 1) * limit,
             take: limit,
-            relations: ['idRegion2'],
+            relations: ['idRegion2', 'idRegion2.idCliente2'],
             where: {
               idUsuario: idUser,
               estatus: 1,
+            },
+            select: {
+              id: true,
+              idUsuario: true,
+              idRegion: true,
+              idRegion2: {
+                id: true,
+                nombre: true,
+                descripcion: true,
+                fechaCreacion: true,
+                fechaActualizacion: true,
+                estatus: true,
+                idCliente: true,
+                idCliente2: {
+                  id: true,
+                  nombre: true,
+                  apellidoPaterno: true,
+                  apellidoMaterno: true,
+                },
+              },
             },
           });
           break;
@@ -108,12 +128,32 @@ export class RegionesService {
           [data, total] = await this.usuarioregionesRepository.findAndCount({
             skip: (page - 1) * limit,
             take: limit,
-            relations: ['idRegion2'],
+            relations: ['idRegion2', 'idRegion2.idCliente2'],
             where: {
               idUsuario: idUser,
               estatus: 1,
               idRegion2: {
                 idCliente: cliente,
+              },
+            },
+            select: {
+              id: true,
+              idUsuario: true,
+              idRegion: true,
+              idRegion2: {
+                id: true,
+                nombre: true,
+                descripcion: true,
+                fechaCreacion: true,
+                fechaActualizacion: true,
+                estatus: true,
+                idCliente: true,
+                idCliente2: {
+                  id: true,
+                  nombre: true,
+                  apellidoPaterno: true,
+                  apellidoMaterno: true,
+                },
               },
             },
           });
@@ -122,10 +162,30 @@ export class RegionesService {
       if (data.length === 0) {
         throw new NotFoundException('Region no encontrado');
       }
-      //Forzamos a cambiar el id a number
+
+      // 🔥 Normalizamos ids y agregamos nombreCompleto
       const regiones = data.map((item) => ({
         ...item,
         id: Number(item.id),
+        idUsuario: Number(item.idUsuario),
+        idRegion: Number(item.idRegion),
+        idRegion2: item.idRegion2
+          ? {
+              ...item.idRegion2,
+              id: Number(item.idRegion2.id),
+              idCliente: Number(item.idRegion2.idCliente),
+              idCliente2: item.idRegion2.idCliente2
+                ? {
+                    ...item.idRegion2.idCliente2,
+                    id: Number(item.idRegion2.idCliente2.id),
+                    nombreCompleto:
+                      `${item.idRegion2.idCliente2.nombre ?? ''} ${
+                        item.idRegion2.idCliente2.apellidoPaterno ?? ''
+                      } ${item.idRegion2.idCliente2.apellidoMaterno ?? ''}`.trim(),
+                  }
+                : null,
+            }
+          : null,
       }));
 
       //APi response
@@ -157,21 +217,61 @@ export class RegionesService {
         case 1:
           // Usuario administrador - obtiene todas las regiones
           regiones = await this.usuarioregionesRepository.find({
-            relations: ['idRegion2'],
+            relations: ['idRegion2', 'idRegion2.idCliente2'],
             where: { estatus: 1, idUsuario: idUser, idRegion2: { estatus: 1 } },
+            select: {
+              id: true,
+              idUsuario: true,
+              idRegion: true,
+              idRegion2: {
+                id: true,
+                nombre: true,
+                descripcion: true,
+                fechaCreacion: true,
+                fechaActualizacion: true,
+                estatus: true,
+                idCliente: true,
+                idCliente2: {
+                  id: true,
+                  nombre: true,
+                  apellidoPaterno: true,
+                  apellidoMaterno: true,
+                },
+              },
+            },
           });
           break;
 
         default:
           // Usuarios normales - solo sus regiones asignadas
           regiones = await this.usuarioregionesRepository.find({
-            relations: ['idRegion2'],
+            relations: ['idRegion2', 'idRegion2.idCliente2'],
             where: {
               idUsuario: idUser,
               estatus: 1,
               idRegion2: {
                 idCliente: cliente,
                 estatus: 1,
+              },
+            },
+            select: {
+              id: true,
+              idUsuario: true,
+              idRegion: true,
+              idRegion2: {
+                id: true,
+                nombre: true,
+                descripcion: true,
+                fechaCreacion: true,
+                fechaActualizacion: true,
+                estatus: true,
+                idCliente: true,
+                idCliente2: {
+                  id: true,
+                  nombre: true,
+                  apellidoPaterno: true,
+                  apellidoMaterno: true,
+                },
               },
             },
           });
@@ -181,10 +281,30 @@ export class RegionesService {
       if (regiones.length == 0) {
         throw new NotFoundException('Regiones no encontrado');
       }
-      //Forzamos a cambiar el id a number
+
+      // 🔥 Forzamos ids a number y agregamos nombreCompleto
       const data = regiones.map((item) => ({
         ...item,
         id: Number(item.id),
+        idUsuario: Number(item.idUsuario),
+        idRegion: Number(item.idRegion),
+        idRegion2: item.idRegion2
+          ? {
+              ...item.idRegion2,
+              id: Number(item.idRegion2.id),
+              idCliente: Number(item.idRegion2.idCliente),
+              idCliente2: item.idRegion2.idCliente2
+                ? {
+                    ...item.idRegion2.idCliente2,
+                    id: Number(item.idRegion2.idCliente2.id),
+                    nombreCompleto:
+                      `${item.idRegion2.idCliente2.nombre ?? ''} ${
+                        item.idRegion2.idCliente2.apellidoPaterno ?? ''
+                      } ${item.idRegion2.idCliente2.apellidoMaterno ?? ''}`.trim(),
+                  }
+                : null,
+            }
+          : null,
       }));
 
       const result: ApiResponseCommon = {
@@ -210,18 +330,59 @@ export class RegionesService {
       switch (idUser) {
         case 1:
           // Usuario administrador - obtiene todas las regiones
-          regiones = await this.regionesRepository.findOne({
-            where: { id: id },
+          regiones = await this.usuarioregionesRepository.findOne({
+            relations: ['idRegion2', 'idRegion2.idCliente2'],
+            where: { idUsuario: idUser, idRegion: id },
+            select: {
+              id: true,
+              idUsuario: true,
+              idRegion: true,
+              idRegion2: {
+                id: true,
+                nombre: true,
+                descripcion: true,
+                fechaCreacion: true,
+                fechaActualizacion: true,
+                estatus: true,
+                idCliente: true,
+                idCliente2: {
+                  id: true,
+                  nombre: true,
+                  apellidoPaterno: true,
+                  apellidoMaterno: true,
+                },
+              },
+            },
           });
           break;
 
         default:
           // Usuarios normales - solo sus regiones asignadas
-          const permiso = await this.usuarioregionesRepository.find({
+          const permiso = await this.usuarioregionesRepository.findOne({
+            relations: ['idRegion2', 'idRegion2.idCliente2'],
             where: { idUsuario: idUser, idRegion: id, estatus: 1 },
+            select: {
+              id: true,
+              idUsuario: true,
+              idRegion: true,
+              idRegion2: {
+                id: true,
+                nombre: true,
+                descripcion: true,
+                fechaCreacion: true,
+                fechaActualizacion: true,
+                estatus: true,
+                idCliente: true,
+                idCliente2: {
+                  id: true,
+                  nombre: true,
+                  apellidoPaterno: true,
+                  apellidoMaterno: true,
+                },
+              },
+            },
           });
-          if (permiso.length === 0)
-            throw new BadRequestException(`Acceso denegado`);
+          if (!permiso) throw new BadRequestException(`Acceso denegado`);
 
           regiones = await this.regionesRepository.findOne({
             where: { id: id, idCliente: cliente },
@@ -232,11 +393,33 @@ export class RegionesService {
         throw new NotFoundException('instalaciones no encontrado');
       }
 
-      //cambiamos el id a number
-      regiones.id = Number(regiones.id);
+      // 🔥 Transformación: IDs como number + nombreCompleto en cliente
+      const data = {
+        ...regiones,
+        id: Number(regiones.id),
+        idUsuario: Number(regiones.idUsuario),
+        idRegion: Number(regiones.idRegion),
+        idRegion2: regiones.idRegion2
+          ? {
+              ...regiones.idRegion2,
+              id: Number(regiones.idRegion2.id),
+              idCliente: Number(regiones.idRegion2.idCliente),
+              idCliente2: regiones.idRegion2.idCliente2
+                ? {
+                    ...regiones.idRegion2.idCliente2,
+                    id: Number(regiones.idRegion2.idCliente2.id),
+                    nombreCompleto:
+                      `${regiones.idRegion2.idCliente2.nombre ?? ''} ${
+                        regiones.idRegion2.idCliente2.apellidoPaterno ?? ''
+                      } ${regiones.idRegion2.idCliente2.apellidoMaterno ?? ''}`.trim(),
+                  }
+                : null,
+            }
+          : null,
+      };
 
       const result: ApiResponseCommon = {
-        data: regiones,
+        data: data,
       };
 
       return result;
@@ -275,7 +458,7 @@ export class RegionesService {
           if (permiso.length === 0)
             throw new BadRequestException(`Acceso denegado`);
           regiones = await this.regionesRepository.findOne({
-            where: { id: id, idCliente: cliente, },
+            where: { id: id, idCliente: cliente },
           });
           break;
       }

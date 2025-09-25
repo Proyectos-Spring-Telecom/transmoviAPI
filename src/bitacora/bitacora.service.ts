@@ -24,7 +24,11 @@ export class BitacoraLoggerService {
 
   async findAllListBitacora() {
     try {
-      const bitacora = await this.bitacoraRepository.find();
+      const bitacora = await this.bitacoraRepository.find({
+        order: {
+          id: 'DESC',
+        },
+      });
       if (bitacora.length === 0) {
         throw new BadRequestException('Bitacoras no encontradas');
       }
@@ -46,11 +50,14 @@ export class BitacoraLoggerService {
         relations: [],
         skip: (page - 1) * limit,
         take: limit,
+        order: {
+          id: 'DESC',
+        },
       });
       const result: ApiResponseCommon = {
         data,
         paginated: {
-          total:total,
+          total: total,
           page,
           lastPage: Math.ceil(total / limit),
         },
@@ -72,7 +79,7 @@ export class BitacoraLoggerService {
       if (!bitacora) {
         throw new NotFoundException(`Bitacora con ID:${id} no encontrado`);
       }
-      return {data: bitacora};
+      return { data: bitacora };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -91,9 +98,11 @@ export class BitacoraLoggerService {
     idUsuario: number,
     idModulo: number,
   ) {
-    const FechaActual = moment()
-      .tz('America/Mexico_City')
-      .format('YYYY-MM-DD HH:mm:ss');
+    function pad(n: number) {
+      return n < 10 ? '0' + n : n;
+    }
+    const ahora = new Date();
+    const FechaActual = `${ahora.getFullYear()}-${pad(ahora.getMonth() + 1)}-${pad(ahora.getDate())} ${pad(ahora.getHours())}:${pad(ahora.getMinutes())}:${pad(ahora.getSeconds())}`;
 
     const registro = this.bitacoraRepository.create({
       modulo: modulo,

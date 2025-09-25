@@ -32,7 +32,7 @@ export class UsuariosregionesController {
   ): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
     return await this.usuariosregionesService.create(
-      idUser,
+      +idUser,
       createUsuariosRegionesDto,
     );
   }

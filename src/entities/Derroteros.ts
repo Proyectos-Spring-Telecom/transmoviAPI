@@ -36,7 +36,7 @@ export class Derroteros {
     scale: 2,
     default: () => "'0.00'",
   })
-  distanciaKm: string | null;
+  distanciaKm: number | null;
 
   @Column("datetime", {
     name: "FechaCreacion",

@@ -58,11 +58,15 @@ export class AuthService {
         cliente: user.idCliente,
       };
 
-      const ultimoLogin = moment()
-        .utcOffset(-12)
-        .format('YYYY-MM-DD HH:mm:ss');
+      function pad(n: number) {
+        return n < 10 ? '0' + n : n;
+      }
+      const ahora = new Date();
+      const fechaActual = `${ahora.getFullYear()}-${pad(ahora.getMonth() + 1)}-${pad(ahora.getDate())} ${pad(ahora.getHours())}:${pad(ahora.getMinutes())}:${pad(ahora.getSeconds())}`;
+      console.log(fechaActual)
+
       await this.usuariosRepository.update(user.id, {
-        ultimoLogin: ultimoLogin,
+        ultimoLogin: fechaActual,
       });
       return {
         message: `login exitoso`,
@@ -113,11 +117,15 @@ export class AuthService {
         cliente: user.idCliente,
       };
 
-      const ultimoLogin = moment()
-         .utcOffset(-12)
-        .format('YYYY-MM-DD HH:mm:ss');
+      function pad(n: number) {
+        return n < 10 ? '0' + n : n;
+      }
+      const ahora = new Date();
+      const fechaActual = `${ahora.getFullYear()}-${pad(ahora.getMonth() + 1)}-${pad(ahora.getDate())} ${pad(ahora.getHours())}:${pad(ahora.getMinutes())}:${pad(ahora.getSeconds())}`;
+      console.log(fechaActual)
+
       await this.usuariosRepository.update(user.id, {
-        ultimoLogin: ultimoLogin,
+        ultimoLogin: fechaActual,
       });
       return {
         message: `login exitoso`,

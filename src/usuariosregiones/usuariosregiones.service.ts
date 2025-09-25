@@ -29,11 +29,10 @@ export class UsuariosregionesService {
   ) {}
 
   async create(
-    idUser: string,
+    idUser: number,
     createUsuariosRegionesDto: CreateUsuariosRegionesDto,
   ) {
     try {
-      
       const usuario = await this.usuariosRepository.findOne({
         where: {
           id: createUsuariosRegionesDto.idUsuario,
@@ -47,19 +46,27 @@ export class UsuariosregionesService {
       }
       const idUsuarioCliente = usuario.idCliente;
 
-      for (const i of createUsuariosRegionesDto.idsRegiones) {
-        const region = await this.regionesRepository.findOne({
-          where: { id: i },
-          select: { idCliente: true },
-        });
-        if (!region) {
-        throw new NotFoundException(`Región con ID ${i} no encontrada`);
-      }
-        if (idUsuarioCliente !== region.idCliente) {
-          throw new BadRequestException(
-            `La región ${i} no pertenece al mismo cliente que el usuario`,
-          );
-        }
+      switch (idUser) {
+        case 1:
+          break;
+          // Usuario administrador - obtiene todas las instalaciones
+        default:
+          // Usuarios normales - solo sus instalaciones asignadas
+          for (const i of createUsuariosRegionesDto.idsRegiones) {
+            const region = await this.regionesRepository.findOne({
+              where: { id: i },
+              select: { idCliente: true },
+            });
+            if (!region) {
+              throw new NotFoundException(`Región con ID ${i} no encontrada`);
+            }
+            if (idUsuarioCliente !== region.idCliente) {
+              throw new BadRequestException(
+                `La región ${i} no pertenece al mismo cliente que el usuario`,
+              );
+            }
+          }
+          break;
       }
 
       //Creamos y guardamos el permiso para usuarios en region del usuario

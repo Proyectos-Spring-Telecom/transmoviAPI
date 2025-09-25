@@ -29,7 +29,7 @@ export class UsuariosinstalacionesService {
   ) {}
 
   async create(
-    idUser: string,
+    idUser: number,
     createUsuariosInstalacionesDto: CreateUsuariosInstalacionesDto,
   ): Promise<ApiCrudResponse> {
     try {
@@ -46,19 +46,28 @@ export class UsuariosinstalacionesService {
       }
       const idUsuarioCliente = usuario.idCliente;
 
-      for (const i of createUsuariosInstalacionesDto.idsInstalaciones) {
-        const region = await this.instalacionesRepository.findOne({
-          where: { id: i },
-          select: { idCliente: true },
-        });
-        if (!region) {
-          throw new NotFoundException(`Región con ID ${i} no encontrada`);
-        }
-        if (idUsuarioCliente !== region.idCliente) {
-          throw new BadRequestException(
-            `La instalacion ${i} no pertenece al mismo cliente que el usuario`,
-          );
-        }
+      switch (idUser) {
+        case 1:
+          // Usuario administrador - obtiene todas las instalaciones
+          break;
+
+        default:
+          // Usuarios normales - solo sus instalaciones asignadas
+          for (const i of createUsuariosInstalacionesDto.idsInstalaciones) {
+            const region = await this.instalacionesRepository.findOne({
+              where: { id: i },
+              select: { idCliente: true },
+            });
+            if (!region) {
+              throw new NotFoundException(`Región con ID ${i} no encontrada`);
+            }
+            if (idUsuarioCliente !== region.idCliente) {
+              throw new BadRequestException(
+                `La instalacion ${i} no pertenece al mismo cliente que el usuario`,
+              );
+            }
+          }
+          break;
       }
 
       // Crear y guardar permisos para usuarios en instalaciones
@@ -82,7 +91,7 @@ export class UsuariosinstalacionesService {
         `Se crearon permisos para usuario: ${createUsuariosInstalacionesDto.idUsuario} con instalaciones: ${createUsuariosInstalacionesDto.idsInstalaciones.join(', ')}`,
         'CREATE',
         `INSERT INTO UsuariosInstalaciones (IdUsuario, IdInstalacion)`,
-        Number(idUser),
+        idUser,
         8,
       );
 

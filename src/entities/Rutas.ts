@@ -14,7 +14,7 @@ import { Regiones } from "./Regiones";
 @Entity("Rutas", { schema: "TransmoviDev" })
 export class Rutas {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
-  id: string;
+  id: number;
 
   @Column("varchar", { name: "Nombre", length: 100 })
   nombre: string;
@@ -41,7 +41,7 @@ export class Rutas {
   estatus: number;
 
   @Column("bigint", { name: "IdRegion" })
-  idRegion: string;
+  idRegion: number;
 
   @OneToMany(() => Derroteros, (derroteros) => derroteros.idRuta2)
   derroteros: Derroteros[];
