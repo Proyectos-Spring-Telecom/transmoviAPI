@@ -116,11 +116,24 @@ export class RutasService {
       if (rutas.length === 0) {
         throw new NotFoundException('Rutas no encontrado');
       }
-      //Forzamos a cambiar el id a number
-      const data = rutas.map((item) => ({
+
+      // Limpieza y conversión de tipos
+    const data = rutas.map((item) => {
+      const region = item.idRegion2;
+
+      return {
         ...item,
         id: Number(item.id),
-      }));
+        idRegion: Number(item.idRegion),
+        idRegion2: region
+          ? {
+              ...region,
+              id: Number(region.id),
+              idCliente: Number(region.idCliente),
+            }
+          : null,
+      };
+    });
 
       //APi response
       const result: ApiResponseCommon = {
@@ -176,11 +189,24 @@ export class RutasService {
       if (data.length === 0) {
         throw new NotFoundException('Rutas no encontrado');
       }
-      //Forzamos a cambiar el id a number
-      const rutas = data.map((item) => ({
+      
+       // Conversión de IDs
+    const rutas = data.map((item) => {
+      const region = item.idRegion2;
+
+      return {
         ...item,
         id: Number(item.id),
-      }));
+        idRegion: Number(item.idRegion),
+        idRegion2: region
+          ? {
+              ...region,
+              id: Number(region.id),
+              idCliente: Number(region.idCliente),
+            }
+          : null,
+      };
+    });
 
       //APi response
       const result: ApiResponseCommon = {
@@ -206,11 +232,11 @@ export class RutasService {
 
   async findOne(id: number, idUser: number, cliente: number) {
     try {
-      let rutas;
+      let ruta;
       switch (idUser) {
         case 1:
           // Usuario administrador - obtiene todas las regiones
-          rutas = await this.rutasRepository.findOne({
+          ruta = await this.rutasRepository.findOne({
             relations: ['idRegion2'],
             where: {
               id: id,
@@ -220,7 +246,7 @@ export class RutasService {
 
         default:
           // Usuarios normales - solo sus regiones asignadas
-          rutas = await this.rutasRepository.find({
+          ruta = await this.rutasRepository.findOne({
             relations: ['idRegion2'],
             where: {
               id: id,
@@ -233,14 +259,25 @@ export class RutasService {
           break;
       }
 
-      if (rutas.length === 0) {
+      if (!ruta) {
         throw new NotFoundException('Rutas no encontrado');
       }
-      //Forzamos a cambiar el id a number
-      const data = rutas.map((item) => ({
-        ...item,
-        id: Number(item.id),
-      }));
+      
+      // Conversión directa de IDs
+    const region = ruta.idRegion2;
+
+    const data = {
+      ...ruta,
+      id: Number(ruta.id),
+      idRegion: Number(ruta.idRegion),
+      idRegion2: region
+        ? {
+            ...region,
+            id: Number(region.id),
+            idCliente: Number(region.idCliente),
+          }
+        : null,
+    };
 
       //APi response
       const result: ApiResponseCommon = {
