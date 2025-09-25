@@ -28,6 +28,15 @@ export class CreateRutaDto {
   @IsObject()
   puntoInicio?: object | null;
 
+  @ApiProperty({
+    description: 'Nombre de la direccion de punto inicio',
+    example: 'Centro ',
+    maxLength: 100,
+  })
+  @IsString()
+  @IsOptional()
+  nombreInicio?: string;
+
   @ApiPropertyOptional({
     description: 'Punto final en formato JSON (ejemplo: coordenadas)',
     example: { lat: 18.54321, lng: -99.54321 },
@@ -35,6 +44,15 @@ export class CreateRutaDto {
   @IsOptional()
   @IsObject()
   puntoFin?: object | null;
+
+  @ApiProperty({
+    description: 'Nombre de la direccion de punto final',
+    example: 'Norte ',
+    maxLength: 100,
+  })
+  @IsString()
+  @IsOptional()
+  nombreFinal?: string;
 
   @ApiProperty({
     description: 'Estatus de la ruta (1 = activo, 0 = inactivo)',

@@ -186,7 +186,6 @@ export class UsuariosService {
       const usuario = await this.usuarioRepository.findOne({
         where: { userName: userName, id: Number(idUser) },
       });
-      console.log('entro en service usuario', usuario);
       if (!usuario) {
         throw new NotFoundException(`Usuario con ID:${userName} no encontrado`);
       }

@@ -22,8 +22,14 @@ export class Rutas {
   @Column("json", { name: "PuntoInicio", nullable: true })
   puntoInicio: object | null;
 
+  @Column("varchar", { name: "NombreInicio", length: 100, nullable: true })
+  nombreInicio: string | null;
+
   @Column("json", { name: "PuntoFin", nullable: true })
   puntoFin: object | null;
+
+  @Column("varchar", { name: "NombreFinal", length: 100, nullable: true })
+  nombreFinal: string | null;
 
   @Column("datetime", {
     name: "FechaCreacion",

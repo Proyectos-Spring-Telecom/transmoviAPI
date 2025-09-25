@@ -26,6 +26,7 @@ import { TurnosModule } from './turnos/turnos.module';
 import { RegionesModule } from './regiones/regiones.module';
 import { UsuariosregionesModule } from './usuariosregiones/usuariosregiones.module';
 import { UsuariosinstalacionesModule } from './usuariosinstalaciones/usuariosinstalaciones.module';
+import { DerroterosModule } from './derroteros/derroteros.module';
 import Joi from 'joi';
 
 @Module({
@@ -61,8 +62,8 @@ import Joi from 'joi';
         autoLoadEntities: false,
         entities: [__dirname + '/entities/*{.ts,.js}'],
         synchronize: false, //Nunca poner en true 
-        //dateStrings: true,
-        timezone: 'Z'
+        dateStrings: true,
+        //timezone: 'Z'
       }),
     }),
 
@@ -111,6 +112,8 @@ import Joi from 'joi';
     UsuariosregionesModule,
 
     UsuariosinstalacionesModule,
+
+    DerroterosModule,
     
   ], 
  controllers: [AppController],
