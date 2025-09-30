@@ -83,8 +83,8 @@ export class Usuarios {
   @Column("bigint", { name: "IdRol" })
   idRol: number;
 
-  @Column("bigint", { name: "IdCliente" })
-  idCliente: number;
+  @Column("bigint", { name: "IdCliente", nullable: true })
+  idCliente: number | null;
 
   @OneToMany(() => Bitacora, (bitacora) => bitacora.idUsuario2)
   bitacoras: Bitacora[];
@@ -97,7 +97,7 @@ export class Usuarios {
     onUpdate: "NO ACTION",
   })
   @JoinColumn([{ name: "IdCliente", referencedColumnName: "id" }])
-  idCliente2: Clientes;
+  idCliente2: Clientes | null;
 
   @ManyToOne(() => Roles, (roles) => roles.usuarios, {
     onDelete: "NO ACTION",

@@ -258,11 +258,6 @@ export class UsuariosService {
       if (existUsuario) {
         throw new BadRequestException('El usuario ya existe');
       }
-      const cliente = await this.clientesService.getOneCliente(
-        //Buscamos si existe el cliente
-        createUsuarioDto.idCliente,
-      );
-      if (!cliente) throw new BadRequestException('Cliente Invalido');
 
       const hashedPassword = await bcrypt.hash(
         createUsuarioDto.passwordHash,

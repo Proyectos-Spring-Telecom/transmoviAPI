@@ -124,53 +124,63 @@ export class RutasService {
         // Consulta de datos paginados Usuario SuperAdministrador
         data = await this.usuarioregionesRepository.query(
           `
-    SELECT 
-      ru.Id AS idRuta,
-      ru.Nombre AS nombreRuta,
-      ru.NombreInicio AS nombreInicio,
-      ru.NombreFinal AS nombreFinal,
-      ru.FechaCreacion AS fechaCreacionRuta,
-      ru.Estatus AS estatusRuta,
+  SELECT 
+    ru.Id AS id,
+    ru.Nombre AS nombreRuta,
+    ru.NombreInicio AS nombreInicio,
+    ru.NombreFin AS nombreFin,
+    ru.FechaCreacion AS fechaCreacionRuta,
+    ru.Estatus AS estatusRuta,
+    ru.IdRegionFin AS idRegionFin,
 
-      r.Id AS idRegion,
-      r.Nombre AS nombreRegion,
-      r.Descripcion AS descripcionRegion,
-      r.FechaCreacion AS fechaCreacionRegion,
-      r.FechaActualizacion AS fechaActualizacionRegion,
-      r.Estatus AS estatusRegion,
+    -- Datos de la región inicial
+    r.Id AS idRegion,
+    r.Nombre AS nombreRegion,
+    r.Descripcion AS descripcionRegion,
+    r.FechaCreacion AS fechaCreacionRegion,
+    r.FechaActualizacion AS fechaActualizacionRegion,
+    r.Estatus AS estatusRegion,
 
-      c.Id AS idCliente,
-      c.Nombre AS nombreCliente,
-      c.ApellidoPaterno AS apellidoPaternoCliente,
-      c.ApellidoMaterno AS apellidoMaternoCliente
+    -- Datos de la región final (si existe)
+    rf.Id AS idRegionFinDetalle,
+    rf.Nombre AS nombreRegionFinDetalle,
+    rf.Descripcion AS descripcionRegionFin,
+    rf.FechaCreacion AS fechaCreacionRegionFin,
+    rf.FechaActualizacion AS fechaActualizacionRegionFin,
+    rf.Estatus AS estatusRegionFin,
 
-    FROM UsuariosRegiones ur
-    INNER JOIN Regiones r ON ur.IdRegion = r.Id
-    INNER JOIN Rutas ru ON ru.IdRegion = r.Id
-    INNER JOIN Clientes c ON r.IdCliente = c.Id
+    -- Datos del cliente
+    c.Id AS idCliente,
+    CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
-    WHERE ur.IdUsuario = ?
-      AND ur.Estatus = 1
-      AND r.Estatus = 1
-      AND ru.Estatus = 1
+  FROM UsuariosRegiones ur
+  INNER JOIN Regiones r ON ur.IdRegion = r.Id
+  INNER JOIN Rutas ru ON ru.IdRegion = r.Id
+  LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+  INNER JOIN Clientes c ON r.IdCliente = c.Id
 
-    ORDER BY ru.FechaCreacion DESC
-    LIMIT ? OFFSET ?
-    `,
+  WHERE ur.IdUsuario = ?
+    AND ur.Estatus = 1
+    AND r.Estatus = 1
+  
+  ORDER BY ru.Id DESC
+  LIMIT ? OFFSET ?;
+  `,
           [idUser, limit, offset],
         );
 
+        // Query para total (sin paginación)
         totalResult = await this.usuarioregionesRepository.query(
           `
-    SELECT COUNT(*) AS total
-    FROM UsuariosRegiones ur
-    INNER JOIN Regiones r ON ur.IdRegion = r.Id
-    INNER JOIN Rutas ru ON ru.IdRegion = r.Id
-    WHERE ur.IdUsuario = ?
-      AND ur.Estatus = 1
-      AND r.Estatus = 1
-      AND ru.Estatus = 1
-    `,
+  SELECT COUNT(*) AS total
+  FROM UsuariosRegiones ur
+  INNER JOIN Regiones r ON ur.IdRegion = r.Id
+  INNER JOIN Rutas ru ON ru.IdRegion = r.Id
+  WHERE ur.IdUsuario = ?
+    AND ur.Estatus = 1
+    AND r.Estatus = 1
+    AND ru.Estatus = 1
+  `,
           [idUser],
         );
         break;
@@ -180,13 +190,15 @@ export class RutasService {
         data = await this.usuarioregionesRepository.query(
           `
   SELECT 
-    ru.Id AS idRuta,
+    ru.Id AS id,
     ru.Nombre AS nombreRuta,
     ru.NombreInicio AS nombreInicio,
-    ru.NombreFinal AS nombreFinal,
+    ru.NombreFin AS nombreFin,
     ru.FechaCreacion AS fechaCreacionRuta,
     ru.Estatus AS estatusRuta,
+    ru.IdRegionFin AS idRegionFin,
 
+    -- Datos de la región inicial
     r.Id AS idRegion,
     r.Nombre AS nombreRegion,
     r.Descripcion AS descripcionRegion,
@@ -194,28 +206,36 @@ export class RutasService {
     r.FechaActualizacion AS fechaActualizacionRegion,
     r.Estatus AS estatusRegion,
 
+    -- Datos de la región final (si existe)
+    rf.Id AS idRegionFinDetalle,
+    rf.Nombre AS nombreRegionFinDetalle,
+    rf.Descripcion AS descripcionRegionFin,
+    rf.FechaCreacion AS fechaCreacionRegionFin,
+    rf.FechaActualizacion AS fechaActualizacionRegionFin,
+    rf.Estatus AS estatusRegionFin,
+
+    -- Datos del cliente
     c.Id AS idCliente,
-    c.Nombre AS nombreCliente,
-    c.ApellidoPaterno AS apellidoPaternoCliente,
-    c.ApellidoMaterno AS apellidoMaternoCliente
+    CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
   FROM UsuariosRegiones ur
   INNER JOIN Regiones r ON ur.IdRegion = r.Id
   INNER JOIN Rutas ru ON ru.IdRegion = r.Id
+  LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
   INNER JOIN Clientes c ON r.IdCliente = c.Id
 
   WHERE ur.IdUsuario = ?
     AND ur.Estatus = 1
     AND r.Estatus = 1
-    AND ru.Estatus = 1
-    AND c.Id = ?  -- 🧩 Filtro por cliente agregado
-
-  ORDER BY ru.FechaCreacion DESC
-  LIMIT ? OFFSET ?
+    AND c.Id = ?
+  
+  ORDER BY ru.Id DESC
+  LIMIT ? OFFSET ?;
   `,
-          [idUser, cliente, limit, offset], // 🔄 Recuerda pasar `idCliente` en los parámetros
+          [idUser, cliente, limit, offset],
         );
 
+        // Query para total (sin paginación)
         totalResult = await this.usuarioregionesRepository.query(
           `
   SELECT COUNT(*) AS total
@@ -228,7 +248,7 @@ export class RutasService {
     AND ru.Estatus = 1
     AND r.IdCliente = ?
   `,
-          [idUser, cliente], // 👈 Nuevo parámetro
+          [idUser, cliente],
         );
         break;
 
@@ -237,13 +257,15 @@ export class RutasService {
         data = await this.usuarioregionesRepository.query(
           `
   SELECT 
-    ru.Id AS idRuta,
+    ru.Id AS id,
     ru.Nombre AS nombreRuta,
     ru.NombreInicio AS nombreInicio,
-    ru.NombreFinal AS nombreFinal,
+    ru.NombreFin AS nombreFin,
     ru.FechaCreacion AS fechaCreacionRuta,
     ru.Estatus AS estatusRuta,
+    ru.IdRegionFin AS idRegionFin,
 
+    -- Datos de la región inicial
     r.Id AS idRegion,
     r.Nombre AS nombreRegion,
     r.Descripcion AS descripcionRegion,
@@ -251,28 +273,36 @@ export class RutasService {
     r.FechaActualizacion AS fechaActualizacionRegion,
     r.Estatus AS estatusRegion,
 
+    -- Datos de la región final (si existe)
+    rf.Id AS idRegionFinDetalle,
+    rf.Nombre AS nombreRegionFinDetalle,
+    rf.Descripcion AS descripcionRegionFin,
+    rf.FechaCreacion AS fechaCreacionRegionFin,
+    rf.FechaActualizacion AS fechaActualizacionRegionFin,
+    rf.Estatus AS estatusRegionFin,
+
+    -- Datos del cliente
     c.Id AS idCliente,
-    c.Nombre AS nombreCliente,
-    c.ApellidoPaterno AS apellidoPaternoCliente,
-    c.ApellidoMaterno AS apellidoMaternoCliente
+    CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
   FROM UsuariosRegiones ur
   INNER JOIN Regiones r ON ur.IdRegion = r.Id
   INNER JOIN Rutas ru ON ru.IdRegion = r.Id
+  LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
   INNER JOIN Clientes c ON r.IdCliente = c.Id
 
   WHERE ur.IdUsuario = ?
     AND ur.Estatus = 1
     AND r.Estatus = 1
-    AND ru.Estatus = 1
-    AND c.Id = ?  -- 🧩 Filtro por cliente agregado
-
-  ORDER BY ru.FechaCreacion DESC
-  LIMIT ? OFFSET ?
+    AND c.Id = ?
+  
+  ORDER BY ru.Id DESC
+  LIMIT ? OFFSET ?;
   `,
-          [idUser, cliente, limit, offset], // 🔄 Recuerda pasar `idCliente` en los parámetros
+          [idUser, cliente, limit, offset],
         );
 
+        // Query para total (sin paginación)
         totalResult = await this.usuarioregionesRepository.query(
           `
   SELECT COUNT(*) AS total
@@ -285,18 +315,23 @@ export class RutasService {
     AND ru.Estatus = 1
     AND r.IdCliente = ?
   `,
-          [idUser, cliente], // 👈 Nuevo parámetro
+          [idUser, cliente],
         );
         break;
     }
 
     const total = Number(totalResult[0]?.total || 0);
 
-    const rutas = data.map((ruta) => ({
-      ...ruta,
-      idRuta: Number(ruta.idRuta),
-      idRegion: Number(ruta.idRegion),
-      idCliente: Number(ruta.idCliente),
+    // Mapeo de resultados con conversión de tipos y manejo de idRegionFin
+    const rutas = data.map((item) => ({
+      ...item,
+      id: item.id ? Number(item.id) : null,
+      idRegion: item.idRegion ? Number(item.idRegion) : null,
+      idRegionFin: item.idRegionFin ? Number(item.idRegionFin) : null,
+      idRegionFinDetalle: item.idRegionFinDetalle
+        ? Number(item.idRegionFinDetalle)
+        : null,
+      idCliente: item.idCliente ? Number(item.idCliente) : null,
     }));
 
     return {
@@ -304,7 +339,6 @@ export class RutasService {
       pagination: {
         total,
         page,
-        limit,
         lastPage: Math.ceil(total / limit),
       },
     };
@@ -315,114 +349,143 @@ export class RutasService {
       let rutas;
       switch (rol) {
         case 1:
-          rutas = await this.usuarioregionesRepository
-            .createQueryBuilder('ur') // UsuariosRegiones
-            .innerJoin('ur.idRegion2', 'r') // Relación con Regiones
-            .innerJoin('r.rutas', 'ru') // Relación con Rutas
-            .innerJoin('r.idCliente2', 'c') // Relación con Cliente
-            .where('ur.idUsuario = :idUsuario', { idUsuario: idUser })
-            .andWhere('ur.estatus = 1') // usuario-región activa
-            .andWhere('r.estatus = 1') // región activa
-            //.andWhere('r.idCliente = :idCliente',{ idCliente: cliente }) // región que pertenezcan al cliente
-            .andWhere('ru.estatus = 1') // ruta activa
-            .select([
-              // Datos de Ruta
-              'ru.id AS idRuta',
-              'ru.nombre AS nombreRuta',
-              'ru.nombreInicio AS nombreInicio',
-              'ru.nombreFinal AS nombreFinal',
-              'ru.fechaCreacion AS fechaCreacionRuta',
-              'ru.estatus AS estatusRuta',
+          rutas = await this.usuarioregionesRepository.query(
+            `
+            SELECT 
+    ru.Id AS id,
+    ru.Nombre AS nombreRuta,
+    ru.NombreInicio AS nombreInicio,
+    ru.NombreFin AS nombreFin,
+    ru.IdRegionFin AS idRegionFin,
+    
+    r.Id AS idRegion,
+    r.Nombre AS nombreRegion,
+    r.Descripcion AS descripcionRegion,
+    r.FechaCreacion AS fechaCreacionRegion,
+    r.FechaActualizacion AS fechaActualizacionRegion,
+    r.Estatus AS estatusRegion,
+    
+    rf.Id AS idRegionFinDetalle,
+    rf.Nombre AS nombreRegionFinDetalle,
+    rf.Descripcion AS descripcionRegionFin,
+    rf.FechaCreacion AS fechaCreacionRegionFin,
+    rf.FechaActualizacion AS fechaActualizacionRegionFin,
+    rf.Estatus AS estatusRegionFin,
+    
+    c.Id AS idCliente,
+    c.Nombre AS nombreCliente,
+    CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
-              // Datos de Región
-              'r.id AS idRegion',
-              'r.nombre AS nombreRegion',
-              'r.descripcion AS descripcionRegion',
-              'r.fechaCreacion AS fechaCreacionRegion',
-              'r.fechaActualizacion AS fechaActualizacionRegion',
-              'r.estatus AS estatusRegion',
+FROM UsuariosRegiones ur
+INNER JOIN Regiones r ON ur.IdRegion = r.Id            -- Región inicial
+INNER JOIN Rutas ru ON ru.IdRegion = r.Id              -- Ruta
+LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id        -- Región final (puede ser null)
+INNER JOIN Clientes c ON r.IdCliente = c.Id            -- Cliente
 
-              // Datos del Cliente de la región
-              'c.id AS idCliente',
-              'c.nombre AS nombreCliente',
-              'c.apellidoPaterno AS apellidoPaternoCliente',
-              'c.apellidoMaterno AS apellidoMaternoCliente',
-            ])
-            .getRawMany();
+WHERE ur.IdUsuario = ?
+  AND ur.Estatus = 1
+  AND r.Estatus = 1
+  AND ru.Estatus = 1
+
+ORDER BY ru.Id DESC;
+
+            `,
+            [idUser],
+          );
           break;
 
         case 2:
-          rutas = await this.usuarioregionesRepository
-            .createQueryBuilder('ur') // UsuariosRegiones
-            .innerJoin('ur.idRegion2', 'r') // Relación con Regiones
-            .innerJoin('r.rutas', 'ru') // Relación con Rutas
-            .innerJoin('r.idCliente2', 'c') // Relación con Cliente
-            .where('ur.idUsuario = :idUsuario', { idUsuario: idUser })
-            .andWhere('ur.estatus = 1') // usuario-región activa
-            .andWhere('r.estatus = 1') // región activa
-            .andWhere('r.idCliente = :idCliente', { idCliente: cliente }) // región que pertenezcan al cliente
-            .andWhere('ru.estatus = 1') // ruta activa
-            .select([
-              // Datos de Ruta
-              'ru.id AS idRuta',
-              'ru.nombre AS nombreRuta',
-              'ru.nombreInicio AS nombreInicio',
-              'ru.nombreFinal AS nombreFinal',
-              'ru.fechaCreacion AS fechaCreacionRuta',
-              'ru.estatus AS estatusRuta',
+          rutas = await this.usuarioregionesRepository.query(
+            `
+            SELECT 
+    ru.Id AS id,
+    ru.Nombre AS nombreRuta,
+    ru.NombreInicio AS nombreInicio,
+    ru.NombreFin AS nombreFin,
+    ru.IdRegionFin AS idRegionFin,
+    
+    r.Id AS idRegion,
+    r.Nombre AS nombreRegion,
+    r.Descripcion AS descripcionRegion,
+    r.FechaCreacion AS fechaCreacionRegion,
+    r.FechaActualizacion AS fechaActualizacionRegion,
+    r.Estatus AS estatusRegion,
+    
+    rf.Id AS idRegionFinDetalle,
+    rf.Nombre AS nombreRegionFinDetalle,
+    rf.Descripcion AS descripcionRegionFin,
+    rf.FechaCreacion AS fechaCreacionRegionFin,
+    rf.FechaActualizacion AS fechaActualizacionRegionFin,
+    rf.Estatus AS estatusRegionFin,
+    
+    c.Id AS idCliente,
+    c.Nombre AS nombreCliente,
+    CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
-              // Datos de Región
-              'r.id AS idRegion',
-              'r.nombre AS nombreRegion',
-              'r.descripcion AS descripcionRegion',
-              'r.fechaCreacion AS fechaCreacionRegion',
-              'r.fechaActualizacion AS fechaActualizacionRegion',
-              'r.estatus AS estatusRegion',
+FROM UsuariosRegiones ur
+INNER JOIN Regiones r ON ur.IdRegion = r.Id            -- Región inicial
+INNER JOIN Rutas ru ON ru.IdRegion = r.Id              -- Ruta
+LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id        -- Región final (puede ser null)
+INNER JOIN Clientes c ON r.IdCliente = c.Id            -- Cliente
 
-              // Datos del Cliente de la región
-              'c.id AS idCliente',
-              'c.nombre AS nombreCliente',
-              'c.apellidoPaterno AS apellidoPaternoCliente',
-              'c.apellidoMaterno AS apellidoMaternoCliente',
-            ])
-            .getRawMany();
+WHERE ur.IdUsuario = ?
+  AND ur.Estatus = 1
+  AND r.Estatus = 1
+  AND ru.Estatus = 1
+  AND c.Id = ? -- filtro por cliente
+
+ORDER BY ru.Id DESC;
+
+            `,
+            [idUser, cliente],
+          );
           break;
 
         default:
-          rutas = await this.usuarioregionesRepository
-            .createQueryBuilder('ur') // UsuariosRegiones
-            .innerJoin('ur.idRegion2', 'r') // Relación con Regiones
-            .innerJoin('r.rutas', 'ru') // Relación con Rutas
-            .innerJoin('r.idCliente2', 'c') // Relación con Cliente
-            .where('ur.idUsuario = :idUsuario', { idUsuario: idUser })
-            .andWhere('ur.estatus = 1') // usuario-región activa
-            .andWhere('r.estatus = 1') // región activa
-            .andWhere('r.idCliente = :idCliente', { idCliente: cliente }) // región que pertenezcan al cliente
-            .andWhere('ru.estatus = 1') // ruta activa
-            .select([
-              // Datos de Ruta
-              'ru.id AS idRuta',
-              'ru.nombre AS nombreRuta',
-              'ru.nombreInicio AS nombreInicio',
-              'ru.nombreFinal AS nombreFinal',
-              'ru.fechaCreacion AS fechaCreacionRuta',
-              'ru.estatus AS estatusRuta',
+          rutas = await this.usuarioregionesRepository.query(
+            `
+            SELECT 
+    ru.Id AS id,
+    ru.Nombre AS nombreRuta,
+    ru.NombreInicio AS nombreInicio,
+    ru.NombreFin AS nombreFin,
+    ru.IdRegionFin AS idRegionFin,
+    
+    r.Id AS idRegion,
+    r.Nombre AS nombreRegion,
+    r.Descripcion AS descripcionRegion,
+    r.FechaCreacion AS fechaCreacionRegion,
+    r.FechaActualizacion AS fechaActualizacionRegion,
+    r.Estatus AS estatusRegion,
+    
+    rf.Id AS idRegionFinDetalle,
+    rf.Nombre AS nombreRegionFinDetalle,
+    rf.Descripcion AS descripcionRegionFin,
+    rf.FechaCreacion AS fechaCreacionRegionFin,
+    rf.FechaActualizacion AS fechaActualizacionRegionFin,
+    rf.Estatus AS estatusRegionFin,
+    
+    c.Id AS idCliente,
+    c.Nombre AS nombreCliente,
+    CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
-              // Datos de Región
-              'r.id AS idRegion',
-              'r.nombre AS nombreRegion',
-              'r.descripcion AS descripcionRegion',
-              'r.fechaCreacion AS fechaCreacionRegion',
-              'r.fechaActualizacion AS fechaActualizacionRegion',
-              'r.estatus AS estatusRegion',
+FROM UsuariosRegiones ur
+INNER JOIN Regiones r ON ur.IdRegion = r.Id            -- Región inicial
+INNER JOIN Rutas ru ON ru.IdRegion = r.Id              -- Ruta
+LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id        -- Región final (puede ser null)
+INNER JOIN Clientes c ON r.IdCliente = c.Id            -- Cliente
 
-              // Datos del Cliente de la región
-              'c.id AS idCliente',
-              'c.nombre AS nombreCliente',
-              'c.apellidoPaterno AS apellidoPaternoCliente',
-              'c.apellidoMaterno AS apellidoMaternoCliente',
-            ])
-            .getRawMany();
+WHERE ur.IdUsuario = ?
+  AND ur.Estatus = 1
+  AND r.Estatus = 1
+  AND ru.Estatus = 1
+  AND c.Id = ? -- filtro por cliente
+
+ORDER BY ru.Id DESC;
+
+            `,
+            [idUser, cliente],
+          );
           break;
       }
 
@@ -430,35 +493,21 @@ export class RutasService {
         throw new NotFoundException('Rutas no encontradas');
       }
 
-      // Limpieza y conversión de tipos
-      const data = rutas.map((r) => ({
-        idRuta: Number(r.idRuta),
-        nombreRuta: r.nombreRuta,
-        nombreInicio: r.nombreInicio,
-        nombreFinal: r.nombreFinal,
-        fechaCreacionRuta: r.fechaCreacionRuta,
-        estatusRuta: Number(r.estatusRuta),
-        region: {
-          idRegion: Number(r.idRegion),
-          nombre: r.nombreRegion,
-          descripcion: r.descripcionRegion,
-          fechaCreacion: r.fechaCreacionRegion,
-          fechaActualizacion: r.fechaActualizacionRegion,
-          estatus: Number(r.estatusRegion),
-          cliente: {
-            idCliente: Number(r.idCliente),
-            nombre: r.nombreCliente,
-            apellidoPaterno: r.apellidoPaternoCliente,
-            apellidoMaterno: r.apellidoMaternoCliente,
-            nombreCompleto:
-              `${r.nombreCliente} ${r.apellidoPaternoCliente ?? ''} ${r.apellidoMaternoCliente ?? ''}`.trim(),
-          },
-        },
-      }));
+      // Mapeo de resultados con conversión de tipos y manejo de idRegionFin
+    const data = rutas.map((item) => ({
+      ...item,
+      id: item.id ? Number(item.id) : null,
+      idRegion: item.idRegion ? Number(item.idRegion) : null,
+      idRegionFin: item.idRegionFin ? Number(item.idRegionFin) : null,
+      idRegionFinDetalle: item.idRegionFinDetalle
+        ? Number(item.idRegionFinDetalle)
+        : null,
+      idCliente: item.idCliente ? Number(item.idCliente) : null,
+    }));
 
       // API response
       const result: ApiResponseCommon = {
-        data,
+        data:data,
       };
 
       return result;
@@ -578,7 +627,7 @@ export class RutasService {
         `UPDATE FROM Rutas SET Estatus = ${estatus} WHERE Id= ${id}`,
         idUser,
         17,
-        EstatusEnumBitcora.SUCCESS
+        EstatusEnumBitcora.SUCCESS,
       );
 
       // API response (con mensajes corregidos)
@@ -624,11 +673,11 @@ export class RutasService {
       if (!ruta) throw new NotFoundException('Ruta no encontrada');
       switch (idUser) {
         case 1:
-          // Usuario SuperAdministrador 
+          // Usuario SuperAdministrador
           break;
 
         case 2:
-          // Usuario Administrador 
+          // Usuario Administrador
           break;
 
         default:
@@ -651,7 +700,7 @@ export class RutasService {
         `${updateRutaDto}`,
         idUser,
         17,
-        EstatusEnumBitcora.SUCCESS
+        EstatusEnumBitcora.SUCCESS,
       );
 
       // API response (con mensajes corregidos)
@@ -660,7 +709,7 @@ export class RutasService {
         message: 'Ruta actualizada correctamente',
         data: {
           id: id,
-          nombre: `Ruta ${id} `, 
+          nombre: `Ruta ${id} `,
         },
       };
       return result;

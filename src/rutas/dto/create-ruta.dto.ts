@@ -5,7 +5,6 @@ import {
   IsOptional,
   IsNumber,
   IsObject,
-  IsDate,
   IsInt,
   IsIn,
 } from 'class-validator';
@@ -28,13 +27,13 @@ export class CreateRutaDto {
   @IsObject()
   puntoInicio?: object | null;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Nombre de la direccion de punto inicio',
-    example: 'Centro ',
+    example: 'Centro',
     maxLength: 100,
   })
-  @IsString()
   @IsOptional()
+  @IsString()
   nombreInicio?: string;
 
   @ApiPropertyOptional({
@@ -45,14 +44,14 @@ export class CreateRutaDto {
   @IsObject()
   puntoFin?: object | null;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Nombre de la direccion de punto final',
-    example: 'Norte ',
+    example: 'Norte',
     maxLength: 100,
   })
-  @IsString()
   @IsOptional()
-  nombreFinal?: string;
+  @IsString()
+  nombreFin?: string;
 
   @ApiProperty({
     description: 'Estatus de la ruta (1 = activo, 0 = inactivo)',
@@ -65,9 +64,18 @@ export class CreateRutaDto {
   estatus: number = 1;
 
   @ApiProperty({
-    description: 'Identificador de la región asociada',
+    description: 'Identificador de la región de inicio asociada',
     example: 2,
   })
   @IsNumber()
+  @IsNotEmpty()
   idRegion: number;
+
+  @ApiPropertyOptional({
+    description: 'Identificador de la región final asociada (opcional)',
+    example: 3,
+  })
+  @IsOptional()
+  @IsNumber()
+  idRegionFin?: number | null;
 }

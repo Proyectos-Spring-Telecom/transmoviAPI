@@ -273,6 +273,115 @@ export class DerroterosService {
     updateDerroterosEstatusDto: UpdateDerroterosEstatusDto,
   ) {
     try {
+      let derrotero;
+      switch (rol) {
+        case 1:
+          // Usuario SuperAdministrador
+          derrotero = await this.derroterosRepository.findOne({
+            where: { id: id },
+          });
+          if (!derrotero)
+            throw new NotFoundException('Derrotero no encontrado');
+          break;
+
+        case 2:
+          // Usuario Administrador
+          derrotero = await this.derroterosRepository.findOne({
+            relations: ['idRuta2', 'idRegion2'],
+            where: {
+              id: id,
+              idRuta2: {
+                idRegion2: {
+                  idCliente: cliente,
+                },
+              },
+            },
+          });
+          if (!derrotero)
+            throw new NotFoundException('Derrotero no encontrado');
+          break;
+
+        default:
+          derrotero = await this.derroterosRepository.findOne({
+            where: { id: id },
+            select: {
+              idRuta: true,
+              nombre: true,
+              distanciaKm: true,
+              estatus: true,
+            },
+          });
+          const idRuta = derrotero?.idRuta;
+          const region = await this.rutasRepository.findOne({
+            where: { id: idRuta },
+            select: {
+              idRegion: true,
+            },
+          });
+          const idRegion = region?.idRegion;
+          const permiso = await this.usuariosregionesRepository.findOne({
+            where: { idUsuario: idUser, idRegion: idRegion },
+          });
+
+          if (!permiso) throw new BadRequestException(`Acceso denegado`);
+          break;
+      }
+
+      //actualizacion de estatus
+      const estatus = updateDerroterosEstatusDto.estatus;
+      await this.derroterosRepository.update(id, { estatus: estatus });
+
+      // Registro en la bitácora SUCCESS
+      await this.bitacoraLogger.logToBitacora(
+        'Derroteros',
+        `Se actualizo estatus a ${updateDerroterosEstatusDto.estatus} de un derrotero con nombre: ${derrotero.nombre}`,
+        'UPDATE',
+        `UPDATE FROM Rutas SET Estatus = ${updateDerroterosEstatusDto.estatus} WHERE Id= ${id}`,
+        idUser,
+        18,
+        EstatusEnumBitcora.SUCCESS,
+      );
+
+      //API response
+      const result: ApiDerroteroResponse = {
+        status: 'succes',
+        message: 'Se actualiz correctamente estatus del derrotero',
+        id: Number(derrotero.id),
+        nombre: derrotero.nombre,
+        distancia: Number(derrotero.distanciaKm),
+        estatus: estatus,
+      };
+
+      return result;
+    } catch (error) {
+      // Registro en la bitácora ERROR
+      await this.bitacoraLogger.logToBitacora(
+        'Derroteros',
+        `Se actualizo estatus a ${updateDerroterosEstatusDto.estatus} de un derrotero con ID: ${id}`,
+        'UPDATE',
+        `UPDATE FROM Rutas SET Estatus = ${updateDerroterosEstatusDto.estatus} WHERE Id= ${id}`,
+        idUser,
+        18,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
+      if (error instanceof HttpException) throw error;
+
+      throw new InternalServerErrorException({
+        message: 'Error al actualizar estatus derroteros',
+        error: error.message,
+      });
+    }
+  }
+
+  async update(
+    id: number,
+    idUser: number,
+    cliente: number,
+    rol: number,
+    updateDerroteroDto: UpdateDerroteroDto,
+  ) {
+    try {
       switch (rol) {
         case 1:
           // Usuario SuperAdministrador
@@ -280,18 +389,184 @@ export class DerroterosService {
 
         case 2:
           // Usuario Administrador
-         
+          break;
+
+        default:
+          // Usuarios normales - solo sus instalaciones asignadas
+          const region = await this.rutasRepository.findOne({
+            where: { id: updateDerroteroDto.idRuta },
+            select: {
+              idRegion: true,
+            },
+          });
+          const idRegion = region?.idRegion;
+          const permiso = await this.usuariosregionesRepository.findOne({
+            where: { idUsuario: idUser, idRegion: idRegion },
+          });
+
+          if (!permiso) throw new BadRequestException(`Acceso denegado`);
 
           break;
       }
-    } catch (error) {}
+
+      let newDerrotero = this.derroterosRepository.create(updateDerroteroDto);
+
+      if (Array.isArray(updateDerroteroDto.recorridoDetallado) && updateDerroteroDto.recorridoDetallado.length > 0) {
+        const puntos = updateDerroteroDto.recorridoDetallado;
+
+        const { recorridoDetallado: nuevoRecorrido, distanciaKm } =
+          await generarRecorridoDetallado(puntos as any);
+
+        newDerrotero.recorridoDetallado = nuevoRecorrido;
+        newDerrotero.distanciaKm = distanciaKm;
+      }
+
+
+      const derroteroSave = await this.derroterosRepository.save(newDerrotero);
+
+      // Registro en la bitácora SUCCESS
+      await this.bitacoraLogger.logToBitacora(
+        'Derroteros',
+        `Se actualizo un derrotero con nombre: ${derroteroSave.nombre}`,
+        'UPDATE',
+        `${updateDerroteroDto}`,
+        idUser,
+        18,
+        EstatusEnumBitcora.SUCCESS,
+      );
+
+      //API response
+      const result: ApiDerroteroResponse = {
+        status: 'succes',
+        message: 'Se creo correctamente derrotero',
+        id: Number(derroteroSave.id),
+        nombre: derroteroSave.nombre,
+        distancia: Number(derroteroSave.distanciaKm),
+        estatus: derroteroSave.estatus,
+      };
+
+      return result;
+    } catch (error) {
+      // Registro en la bitácora ERROR
+      await this.bitacoraLogger.logToBitacora(
+        'Derroteros',
+        `Se actualizo un derrotero con ID: ${id}`,
+        'UPDATE',
+        `${updateDerroteroDto}`,
+        idUser,
+        18,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Error al crear derrotero',
+        error: error.message,
+      });
+    }
   }
 
-  update(id: number, updateDerroteroDto: UpdateDerroteroDto) {
-    return `This action updates a #${id} derrotero`;
-  }
+  async remove(id: number, idUser: number, cliente: number, rol: number) {
+    try {
+      let derrotero;
+      switch (rol) {
+        case 1:
+          // Usuario SuperAdministrador
+          derrotero = await this.derroterosRepository.findOne({
+            where: { id: id },
+          });
+          if (!derrotero)
+            throw new NotFoundException('Derrotero no encontrado');
+          break;
 
-  remove(id: number) {
-    return `This action removes a #${id} derrotero`;
+        case 2:
+          // Usuario Administrador
+          derrotero = await this.derroterosRepository.findOne({
+            relations: ['idRuta2', 'idRegion2'],
+            where: {
+              id: id,
+              idRuta2: {
+                idRegion2: {
+                  idCliente: cliente,
+                },
+              },
+            },
+          });
+          if (!derrotero)
+            throw new NotFoundException('Derrotero no encontrado');
+          break;
+
+        default:
+          derrotero = await this.derroterosRepository.findOne({
+            where: { id: id },
+            select: {
+              idRuta: true,
+              nombre: true,
+              distanciaKm: true,
+              estatus: true,
+            },
+          });
+          const idRuta = derrotero?.idRuta;
+          const region = await this.rutasRepository.findOne({
+            where: { id: idRuta },
+            select: {
+              idRegion: true,
+            },
+          });
+          const idRegion = region?.idRegion;
+          const permiso = await this.usuariosregionesRepository.findOne({
+            where: { idUsuario: idUser, idRegion: idRegion },
+          });
+
+          if (!permiso) throw new BadRequestException(`Acceso denegado`);
+          break;
+      }
+
+      //eliminado logico 
+      await this.derroterosRepository.update(id, { estatus: 0 });
+
+      // Registro en la bitácora SUCCESS
+      await this.bitacoraLogger.logToBitacora(
+        'Derroteros',
+        `Se elimino estatus a ${0} de un derrotero con nombre: ${derrotero.nombre}`,
+        'UPDATE',
+        `UPDATE FROM Rutas SET Estatus = ${0} WHERE Id= ${id}`,
+        idUser,
+        18,
+        EstatusEnumBitcora.SUCCESS,
+      );
+
+      //API response
+      const result: ApiDerroteroResponse = {
+        status: 'succes',
+        message: 'Se actualiz correctamente estatus del derrotero',
+        id: Number(derrotero.id),
+        nombre: derrotero.nombre,
+        distancia: Number(derrotero.distanciaKm),
+        estatus: 0,
+      };
+
+      return result;
+    } catch (error) {
+      // Registro en la bitácora SUCCESS
+      await this.bitacoraLogger.logToBitacora(
+        'Derroteros',
+        `Se elimino estatus a ${0} de un derrotero con ID: ${id}`,
+        'UPDATE',
+        `UPDATE FROM Rutas SET Estatus = ${0} WHERE Id= ${id}`,
+        idUser,
+        18,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
+      if (error instanceof HttpException) throw error;
+
+      throw new InternalServerErrorException({
+        message: 'Error al actualizar estatus derroteros',
+        error: error.message,
+      });
+    }
   }
 }
