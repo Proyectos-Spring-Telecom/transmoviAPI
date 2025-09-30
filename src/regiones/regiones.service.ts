@@ -11,7 +11,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Regiones } from 'src/entities/Regiones';
 import { Repository } from 'typeorm';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
-import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
+import {
+  ApiCrudResponse,
+  ApiResponseCommon,
+  EstatusEnumBitcora,
+} from 'src/common/ApiResponse';
 import { UsuariosRegiones } from 'src/entities/UsuariosRegiones';
 import { UpdateRegionesEstatusDto } from './dto/update-regione-estatus.dto';
 
@@ -26,41 +30,58 @@ export class RegionesService {
   ) {}
 
   async create(
-    idUser: string,
+    idUser: number,
+    cliente: number,
+    rol: number,
     createRegionesDto: CreateRegionesDto,
   ): Promise<ApiCrudResponse> {
     try {
-      const nombre = createRegionesDto.nombre.toUpperCase();
-      const region = await this.regionesRepository.find({
-        where: { nombre: nombre },
-      });
-      if ((region.length = 0)) {
-        throw new BadRequestException(
-          `Region con nombre: ${nombre} ha sido registrada`,
-        );
-      }
-
-      createRegionesDto.nombre = nombre;
+      createRegionesDto.nombre = createRegionesDto.nombre.toUpperCase();
 
       const newRegion = await this.regionesRepository.create(createRegionesDto);
-      const regionSave = await this.regionesRepository.save(createRegionesDto);
+      const regionSave = await this.regionesRepository.save(newRegion);
 
       //Asignamos a root la region
-      const rootPermisos = {
-        idUsuario: 1, //Se asigna al usuario supremo
-        idRegion: regionSave.id,
-      };
+      switch (rol) {
+        case 1:
+          let rootPermisos = {
+            idUsuario: 1, //Se asigna al usuario supremo
+            idRegion: regionSave.id,
+          };
+          await this.usuarioregionesRepository.save(rootPermisos);
+          break;
 
-      await this.usuarioregionesRepository.save(rootPermisos);
+        case 2:
+          rootPermisos = {
+            idUsuario: 1, //Se asigna al usuario supremo SuperAdministrador
+            idRegion: regionSave.id,
+          };
+          await this.usuarioregionesRepository.save(rootPermisos);
+          const userPermisos = {
+            idUsuario: idUser, //Se asigna al Administrador
+            idRegion: regionSave.id,
+          };
+          await this.usuarioregionesRepository.save(userPermisos);
+          break;
 
-      // Registro en la bitácora (con mensaje corregido)
+        default:
+          rootPermisos = {
+            idUsuario: 1, //Se asigna al usuario supremo SuperAdministrador
+            idRegion: regionSave.id,
+          };
+          await this.usuarioregionesRepository.save(rootPermisos);
+          break;
+      }
+
+      // Registro en la bitácora SUCCESS
       await this.bitacoraLogger.logToBitacora(
         'Regiones',
         `Se creó una Region con nombre: ${regionSave.nombre}`,
         'CREATE',
-        `INSERT INTO Regiones (...) VALUES (...) -> id: ${regionSave.id}, Nombre: ${regionSave.nombre}, Descripcion: ${regionSave.descripcion}, Estatus: ${regionSave.estatus}, IdCliente: ${regionSave.idCliente}`,
-        Number(idUser),
+        `${createRegionesDto}`,
+        idUser,
         16,
+        EstatusEnumBitcora.SUCCESS,
       );
 
       // API response (con mensajes corregidos)
@@ -74,6 +95,17 @@ export class RegionesService {
       };
       return result;
     } catch (error) {
+      // Registro en la bitácora en caso ERROR
+      await this.bitacoraLogger.logToBitacora(
+        'Regiones',
+        `Se creó una Region con nombre: ${createRegionesDto.nombre}`,
+        'CREATE',
+        `${createRegionesDto}`,
+        idUser,
+        16,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
       if (error instanceof HttpException) {
         throw error;
       }
@@ -85,20 +117,62 @@ export class RegionesService {
     }
   }
 
-  async findAll(cliente: number, idUser: number, page: number, limit: number) {
+  async findAll(
+    cliente: number,
+    idUser: number,
+    rol: number,
+    page: number,
+    limit: number,
+  ) {
     try {
       let [data, total]: any[] = [];
       //Obtenemos ConteoPasajeros
-      switch (idUser) {
+      switch (rol) {
         case 1:
-          // Usuario administrador - obtiene todas las regiones
+          // Usuario SuperAdministrador - obtiene todas las regiones
           [data, total] = await this.usuarioregionesRepository.findAndCount({
             skip: (page - 1) * limit,
             take: limit,
             relations: ['idRegion2', 'idRegion2.idCliente2'],
+            order: { idRegion2: { id: 'DESC' } },
             where: {
               idUsuario: idUser,
-              estatus: 1,
+            },
+            select: {
+              id: true,
+              idUsuario: true,
+              idRegion: true,
+              idRegion2: {
+                id: true,
+                nombre: true,
+                descripcion: true,
+                fechaCreacion: true,
+                fechaActualizacion: true,
+                estatus: true,
+                idCliente: true,
+                idCliente2: {
+                  id: true,
+                  nombre: true,
+                  apellidoPaterno: true,
+                  apellidoMaterno: true,
+                },
+              },
+            },
+          });
+          break;
+
+        case 2:
+          // Usuarios Administrador - solo sus regiones asignadas
+          [data, total] = await this.usuarioregionesRepository.findAndCount({
+            skip: (page - 1) * limit,
+            take: limit,
+            relations: ['idRegion2', 'idRegion2.idCliente2'],
+            order: { idRegion2: { id: 'DESC' } },
+            where: {
+              idUsuario: idUser,
+              idRegion2: {
+                idCliente: cliente,
+              },
             },
             select: {
               id: true,
@@ -129,6 +203,7 @@ export class RegionesService {
             skip: (page - 1) * limit,
             take: limit,
             relations: ['idRegion2', 'idRegion2.idCliente2'],
+            order: { idRegion2: { id: 'DESC' } },
             where: {
               idUsuario: idUser,
               estatus: 1,
@@ -205,20 +280,21 @@ export class RegionesService {
       }
       throw new InternalServerErrorException({
         message: 'Error al obtener paginado Regiones',
-        error,
+        error: error.message,
       });
     }
   }
 
-  async findAllList(cliente: number, idUser: number) {
+  async findAllList(cliente: number, idUser: number, rol: number) {
     try {
       let regiones: any[] = [];
-      switch (idUser) {
+      switch (rol) {
         case 1:
           // Usuario administrador - obtiene todas las regiones
           regiones = await this.usuarioregionesRepository.find({
             relations: ['idRegion2', 'idRegion2.idCliente2'],
             where: { estatus: 1, idUsuario: idUser, idRegion2: { estatus: 1 } },
+            order: { idRegion2: { id: 'DESC' } },
             select: {
               id: true,
               idUsuario: true,
@@ -246,6 +322,7 @@ export class RegionesService {
           // Usuarios normales - solo sus regiones asignadas
           regiones = await this.usuarioregionesRepository.find({
             relations: ['idRegion2', 'idRegion2.idCliente2'],
+            order: { idRegion2: { id: 'DESC' } },
             where: {
               idUsuario: idUser,
               estatus: 1,
@@ -318,39 +395,54 @@ export class RegionesService {
       }
       throw new InternalServerErrorException({
         message: 'Error al obtener listado Regiones',
-        error,
+        error: error.message,
       });
     }
   }
 
-  async findOne(idUser: number, id: number, cliente: number) {
+  async findOne(idUser: number, id: number, cliente: number, rol: number) {
     try {
       let regiones;
       //Obtenemos ConteoPasajeros
-      switch (idUser) {
+      switch (rol) {
         case 1:
           // Usuario administrador - obtiene todas las regiones
-          regiones = await this.usuarioregionesRepository.findOne({
-            relations: ['idRegion2', 'idRegion2.idCliente2'],
-            where: { idUsuario: idUser, idRegion: id },
+          regiones = await this.regionesRepository.findOne({
+            relations: ['idCliente2'],
+            where: { id: id },
             select: {
               id: true,
-              idUsuario: true,
-              idRegion: true,
-              idRegion2: {
+              nombre: true,
+              descripcion: true,
+              fechaCreacion: true,
+              fechaActualizacion: true,
+              estatus: true,
+              idCliente2: {
                 id: true,
                 nombre: true,
-                descripcion: true,
-                fechaCreacion: true,
-                fechaActualizacion: true,
-                estatus: true,
-                idCliente: true,
-                idCliente2: {
-                  id: true,
-                  nombre: true,
-                  apellidoPaterno: true,
-                  apellidoMaterno: true,
-                },
+                apellidoPaterno: true,
+                apellidoMaterno: true,
+              },
+            },
+          });
+          break;
+
+        case 2:
+          regiones = await this.regionesRepository.findOne({
+            relations: ['idCliente2'],
+            where: { id: id, idCliente: cliente },
+            select: {
+              id: true,
+              nombre: true,
+              descripcion: true,
+              fechaCreacion: true,
+              fechaActualizacion: true,
+              estatus: true,
+              idCliente2: {
+                id: true,
+                nombre: true,
+                apellidoPaterno: true,
+                apellidoMaterno: true,
               },
             },
           });
@@ -361,59 +453,50 @@ export class RegionesService {
           const permiso = await this.usuarioregionesRepository.findOne({
             relations: ['idRegion2', 'idRegion2.idCliente2'],
             where: { idUsuario: idUser, idRegion: id, estatus: 1 },
-            select: {
-              id: true,
-              idUsuario: true,
-              idRegion: true,
-              idRegion2: {
-                id: true,
-                nombre: true,
-                descripcion: true,
-                fechaCreacion: true,
-                fechaActualizacion: true,
-                estatus: true,
-                idCliente: true,
-                idCliente2: {
-                  id: true,
-                  nombre: true,
-                  apellidoPaterno: true,
-                  apellidoMaterno: true,
-                },
-              },
-            },
           });
           if (!permiso) throw new BadRequestException(`Acceso denegado`);
 
           regiones = await this.regionesRepository.findOne({
+            relations: ['idCliente2'],
             where: { id: id, idCliente: cliente },
+            select: {
+              id: true,
+              nombre: true,
+              descripcion: true,
+              fechaCreacion: true,
+              fechaActualizacion: true,
+              estatus: true,
+              idCliente2: {
+                id: true,
+                nombre: true,
+                apellidoPaterno: true,
+                apellidoMaterno: true,
+              },
+            },
           });
           break;
       }
+
       if (!regiones) {
-        throw new NotFoundException('instalaciones no encontrado');
+        throw new NotFoundException('regiones no encontrado');
       }
 
       // 🔥 Transformación: IDs como number + nombreCompleto en cliente
       const data = {
         ...regiones,
-        id: Number(regiones.id),
-        idUsuario: Number(regiones.idUsuario),
-        idRegion: Number(regiones.idRegion),
-        idRegion2: regiones.idRegion2
+        id: Number(regiones.id), // Convertir id a number
+        idCliente2: regiones.idCliente2
           ? {
-              ...regiones.idRegion2,
-              id: Number(regiones.idRegion2.id),
-              idCliente: Number(regiones.idRegion2.idCliente),
-              idCliente2: regiones.idRegion2.idCliente2
-                ? {
-                    ...regiones.idRegion2.idCliente2,
-                    id: Number(regiones.idRegion2.idCliente2.id),
-                    nombreCompleto:
-                      `${regiones.idRegion2.idCliente2.nombre ?? ''} ${
-                        regiones.idRegion2.idCliente2.apellidoPaterno ?? ''
-                      } ${regiones.idRegion2.idCliente2.apellidoMaterno ?? ''}`.trim(),
-                  }
-                : null,
+              ...regiones.idCliente2,
+              id: Number(regiones.idCliente2.id), // Convertir idCliente2.id a number
+              nombreCompleto: [
+                regiones.idCliente2.nombre,
+                regiones.idCliente2.apellidoPaterno,
+                regiones.idCliente2.apellidoMaterno,
+              ]
+                .filter(Boolean)
+                .join(' ')
+                .trim(), // Generar nombreCompleto
             }
           : null,
       };
@@ -429,7 +512,7 @@ export class RegionesService {
       }
       throw new InternalServerErrorException({
         message: 'Error al obtener una region',
-        error,
+        error: error.message,
       });
     }
   }
@@ -438,15 +521,23 @@ export class RegionesService {
     id: number,
     idUser: number,
     cliente: number,
+    rol: number,
     updateRegionesEstatusDto: UpdateRegionesEstatusDto,
   ) {
     try {
       let regiones;
-      switch (idUser) {
+      switch (rol) {
         case 1:
-          // Usuario administrador - obtiene todas las regiones
+          // Usuario SuperAdministrador - obtiene todas las regiones
           regiones = await this.regionesRepository.findOne({
             where: { id: id },
+          });
+          break;
+
+        case 2:
+          // Usuario administrador - obtiene todas las regiones
+          regiones = await this.regionesRepository.findOne({
+            where: { id: id, idCliente: cliente },
           });
           break;
 
@@ -470,14 +561,15 @@ export class RegionesService {
 
       await this.regionesRepository.update(id, { estatus: estatus });
 
-      // Registro en la bitácora (con mensaje corregido)
+      // Registro en la bitácora SUCESS
       await this.bitacoraLogger.logToBitacora(
         'Regiones',
         `Se actualizo estatus a ${estatus} en Region con nombre: ${regiones.nombre}`,
         'UPDATE',
         `UPDATE FROM Regiones SET Estatus= ${estatus} WHERE Id=${id}`,
-        Number(idUser),
+        idUser,
         16,
+        EstatusEnumBitcora.SUCCESS,
       );
 
       // API response (con mensajes corregidos)
@@ -491,12 +583,23 @@ export class RegionesService {
       };
       return result;
     } catch (error) {
+      // Registro en la bitácora ERROR
+      await this.bitacoraLogger.logToBitacora(
+        'Regiones',
+        `Se actualizo estatus a ${updateRegionesEstatusDto.estatus} en Region con ID: ${id}`,
+        'UPDATE',
+        `UPDATE FROM Regiones SET Estatus= ${updateRegionesEstatusDto.estatus} WHERE Id=${id}`,
+        idUser,
+        16,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
       if (error instanceof HttpException) {
         throw error;
       }
       throw new InternalServerErrorException({
         message: 'Error al actualizar estatus de una region',
-        error,
+        error: error.message,
       });
     }
   }
@@ -505,16 +608,24 @@ export class RegionesService {
     id: number,
     cliente: number,
     idUser: number,
+    rol: number,
     updateRegioneDto: UpdateRegioneDto,
   ): Promise<ApiCrudResponse> {
     try {
       let regiones;
 
-      switch (idUser) {
+      switch (rol) {
         case 1:
-          // Usuario administrador - obtiene todas las regiones
+          // Usuario SuperAdministrador - obtiene todas las regiones
           regiones = await this.regionesRepository.findOne({
             where: { id: id },
+          });
+          break;
+
+        case 2:
+          // Usuario Administrador - obtiene todas las regiones
+          regiones = await this.regionesRepository.findOne({
+            where: { id: id, idCliente: cliente },
           });
           break;
 
@@ -537,17 +648,18 @@ export class RegionesService {
       //actualizamos datos
       await this.regionesRepository.update(id, updateRegioneDto);
 
-      // Registro en la bitácora (con mensaje corregido)
+      // Registro en la bitácora SUCCESS
       await this.bitacoraLogger.logToBitacora(
         'Regiones',
-        `Se creó una Region con nombre: ${updateRegioneDto.nombre}`,
+        `Se actualizo una Region con nombre: ${updateRegioneDto.nombre}`,
         'UPDATE',
-        `UPDATE Regiones (...) VALUES (...) -> id: ${id}, Nombre: ${updateRegioneDto.nombre}, Descripcion: ${updateRegioneDto.descripcion}, IdCliente: ${updateRegioneDto.idCliente}`,
-        Number(idUser),
+        `${updateRegioneDto}`,
+        idUser,
         16,
+        EstatusEnumBitcora.SUCCESS,
       );
 
-      // API response (con mensajes corregidos)
+      // API response
       const result: ApiCrudResponse = {
         status: 'success',
         message: 'Region actualizada correctamente', // ✅ Corregido
@@ -558,24 +670,42 @@ export class RegionesService {
       };
       return result;
     } catch (error) {
+      // Registro en la bitácora ERROR
+      await this.bitacoraLogger.logToBitacora(
+        'Regiones',
+        `Se actualizo una Region con nombre: ${updateRegioneDto.nombre}`,
+        'UPDATE',
+        `${updateRegioneDto}`,
+        idUser,
+        16,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
       if (error instanceof HttpException) {
         throw error;
       }
       throw new InternalServerErrorException({
         message: 'Error al actualizar una region',
-        error,
+        error: error.message,
       });
     }
   }
 
-  async remove(id: number, cliente: number, idUser: number) {
+  async remove(id: number, cliente: number, idUser: number, rol: number) {
     try {
       let regiones;
       switch (idUser) {
         case 1:
-          // Usuario administrador - obtiene todas las regiones
+          // Usuario SuperAdministrador - obtiene todas las regiones
           regiones = await this.regionesRepository.findOne({
             where: { id: id },
+          });
+          break;
+
+        case 2:
+          // Usuario administrador - obtiene todas las regiones
+          regiones = await this.regionesRepository.findOne({
+            where: { id: id, idCliente: cliente },
           });
           break;
 
@@ -597,14 +727,15 @@ export class RegionesService {
 
       await this.regionesRepository.update(id, { estatus: 0 });
 
-      // Registro en la bitácora (con mensaje corregido)
+      // Registro en la bitácora SUCCESS
       await this.bitacoraLogger.logToBitacora(
         'Regiones',
         `Se elimino una Region con nombre: ${regiones.nombre}`,
         'DELETE',
-        `DELETE Regiones (...) VALUES (...) -> id: ${id}, Nombre: ${regiones.nombre}, Descripcion: ${regiones.descripcion}, IdCliente: ${regiones.idCliente}`,
-        Number(idUser),
+        `DELETE FROM Regiones WHERE Id=${id}`,
+        idUser,
         16,
+        EstatusEnumBitcora.SUCCESS,
       );
 
       // API response (con mensajes corregidos)
@@ -618,12 +749,23 @@ export class RegionesService {
       };
       return result;
     } catch (error) {
+      // Registro en la bitácora ERROR
+      await this.bitacoraLogger.logToBitacora(
+        'Regiones',
+        `Se elimino una Region con ID: ${id}`,
+        'DELETE',
+        `DELETE FROM Regiones WHERE Id=${id}`,
+        idUser,
+        16,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
       if (error instanceof HttpException) {
         throw error;
       }
       throw new InternalServerErrorException({
         message: 'Error al eliminar una region',
-        error,
+        error: error.message,
       });
     }
   }

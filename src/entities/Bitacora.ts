@@ -35,6 +35,12 @@ export class Bitacora {
   })
   fechaCreacion: Date | null;
 
+  @Column("varchar", { name: "Estatus", nullable: true, length: 20 })
+  estatus: string | null;
+
+  @Column("varchar", { name: "Error", nullable: true, length: 1000 })
+  error: string | null;
+
   @Column("bigint", { name: "IdUsuario" })
   idUsuario: number;
 

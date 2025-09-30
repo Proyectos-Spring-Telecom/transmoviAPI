@@ -26,52 +26,75 @@ export class RutasController {
   async create(@Body() createRutaDto: CreateRutaDto, @Request() req) {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
-    return await this.rutasService.create(+idUser, +cliente, createRutaDto);
+    const rol = req.user.rol;
+    return await this.rutasService.create(+idUser, +cliente, +rol, createRutaDto);
   }
 
   @Get('list')
   findAllList(@Request() req) {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
-    return this.rutasService.findAllList(+idUser, +cliente);
+    const rol = req.user.rol;
+    return this.rutasService.findAllList(+idUser, +cliente, +rol);
   }
 
   @Get(':page/:limit')
-  findAll(
-    @Param('page', ParseIntPipe) page: number,
-    @Param('limit', ParseIntPipe) limit: number,
+  async getRutasUsuario(
+    @Request() req,
+    @Param('page', ParseIntPipe) page,
+    @Param('limit', ParseIntPipe) limit,
+  ) {
+    const cliente = req.user.cliente;
+    const idUser = req.user.userId;
+    const rol = req.user.rol;
+    return this.rutasService.obtenerRutasPorUsuarioSQL(+idUser, +cliente, +rol, +page, +limit);
+  }
+
+
+
+  @Get(':id')
+  findOne(@Param('id', ParseIntPipe) id: number, @Request() req) {
+    const cliente = req.user.cliente;
+    const idUser = req.user.userId;
+    const rol = req.user.rol;
+    return this.rutasService.findOne(id, +idUser, +cliente, +rol);
+  }
+
+  @Put(':id')
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateRutaDto: UpdateRutaDto,
     @Request() req,
   ) {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
-    return this.rutasService.findAll(+cliente,+idUser,page,limit);
-  }
-
-  @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number, @Request() req,) {
-    const cliente = req.user.cliente;
-    const idUser = req.user.userId;
-    return this.rutasService.findOne(id, +idUser, +cliente);
-  }
-
-  @Put(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() updateRutaDto: UpdateRutaDto, @Request() req) {
-    const cliente = req.user.cliente;
-    const idUser = req.user.userId;
+    const rol = req.user.rol;
     return this.rutasService.update(id, idUser, cliente, updateRutaDto);
   }
 
   @Patch('estatus/:id')
-  updateEstatus(@Param('id', ParseIntPipe)id: number, @Body() updateRutasEstatusDto: UpdateRutasEstatusDto, @Request() req) {
+  updateEstatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateRutasEstatusDto: UpdateRutasEstatusDto,
+    @Request() req,
+  ) {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
-    return this.rutasService.updateEstatus(id,+idUser,+cliente,updateRutasEstatusDto)
+    const rol = req.user.rol;
+    return this.rutasService.updateEstatus(
+      id,
+      +idUser,
+      +cliente,
+      +rol,
+      updateRutasEstatusDto,
+    );
   }
 
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number, @Request() req) {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
+    const rol = req.user.rol;
     return this.rutasService.remove(id, idUser);
   }
 }

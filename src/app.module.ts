@@ -62,8 +62,8 @@ import Joi from 'joi';
         autoLoadEntities: false,
         entities: [__dirname + '/entities/*{.ts,.js}'],
         synchronize: false, //Nunca poner en true 
-        dateStrings: true,
-        //timezone: 'Z'
+        dateStrings: false,
+        timezone: 'Z'
       }),
     }),
 

@@ -1,14 +1,5 @@
 import haversine from 'haversine-distance';
-
-interface Punto {
-  lat: number;
-  lng: number;
-}
-
-interface ResultadoRecorrido {
-  recorridoDetallado: Punto[];
-  distanciaKm: number;
-}
+import { Punto, ResultadoRecorrido } from '../common/ApiResponse';
 
 function interpolar(p1: Punto, p2: Punto, distancia: number): Punto[] {
   const puntos: Punto[] = [];
@@ -26,7 +17,7 @@ function interpolar(p1: Punto, p2: Punto, distancia: number): Punto[] {
 
 export async function generarRecorridoDetallado(
   recorrido: Punto[],
-  distanciaInterpolacion = 100 // en metros
+  distanciaInterpolacion = 100
 ): Promise<ResultadoRecorrido> {
   if (!recorrido || recorrido.length < 2) {
     throw new Error('El recorrido debe tener al menos dos puntos.');
@@ -40,13 +31,13 @@ export async function generarRecorridoDetallado(
     const p2 = recorrido[i + 1];
     const puntos = interpolar(p1, p2, distanciaInterpolacion);
 
-    distanciaTotal += haversine(p1, p2); // metros
+    distanciaTotal += haversine(p1, p2);
     resultado = resultado.concat(puntos);
     resultado.push(p2);
   }
 
   return {
     recorridoDetallado: resultado,
-    distanciaKm: parseFloat((distanciaTotal / 1000).toFixed(2)), // km
+    distanciaKm: parseFloat((distanciaTotal / 1000).toFixed(2)),
   };
 }

@@ -14,7 +14,6 @@ import { CreateUsuarioDto } from './dto/create-usuario.dto';
 import { UpdateUsuarioDto } from './dto/update-usuario.dto';
 import { UpdateUsuarioEstatusDto } from './dto/update-usuario-estatus.dto';
 import * as bcrypt from 'bcrypt';
-import moment from 'moment-timezone';
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import { ClientesService } from 'src/clientes/clientes.service';
@@ -201,10 +200,13 @@ export class UsuariosService {
       updateUsuarioOperadorDto.pinHash = pinPassword;
 
       //Agregamos le fecha de la actualizacion
-      const FechaActual = moment()
-        .utcOffset(-12)
-        .format('YYYY-MM-DD HH:mm:ss');
-      updateUsuarioOperadorDto.actualizacionPin = FechaActual;
+      function pad(n: number) {
+        return n < 10 ? '0' + n : n;
+      }
+      const ahora = new Date();
+      const fechaActual = `${ahora.getFullYear()}-${pad(ahora.getMonth() + 1)}-${pad(ahora.getDate())} ${pad(ahora.getHours())}:${pad(ahora.getMinutes())}:${pad(ahora.getSeconds())}`;
+      console.log(fechaActual);
+      updateUsuarioOperadorDto.actualizacionPin = fechaActual;
 
       //Agregamos el pin al updateUsuarioOperadorDto
       const newPin = await this.usuarioRepository.update(
@@ -352,9 +354,12 @@ export class UsuariosService {
         updateUsuarioContrasena.passwordNueva = hashedPassword;
       }
       //Agregamos le fecha de la actualizacion
-      const FechaActual = moment()
-        .utcOffset(-12)
-        .format('YYYY-MM-DD HH:mm:ss');
+      function pad(n: number) {
+        return n < 10 ? '0' + n : n;
+      }
+      const ahora = new Date();
+      const fechaActual = `${ahora.getFullYear()}-${pad(ahora.getMonth() + 1)}-${pad(ahora.getDate())} ${pad(ahora.getHours())}:${pad(ahora.getMinutes())}:${pad(ahora.getSeconds())}`;
+      console.log(fechaActual);
 
       //actualiza en usuario contraseña
       await this.usuarioRepository.update(id, {
@@ -362,7 +367,7 @@ export class UsuariosService {
       });
 
       await this.usuarioRepository.update(id, {
-        actualizacionPassword: FechaActual,
+        actualizacionPassword: fechaActual,
       });
 
       //Api response

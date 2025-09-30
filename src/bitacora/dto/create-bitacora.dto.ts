@@ -43,6 +43,26 @@ export class CreateBitacoraDto {
   query?: string;
 
   @ApiProperty({
+    description: 'Se describe el estatus del servicio',
+    example: 'succes | error',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  estatus?: string;
+
+  @ApiProperty({
+    description: 'Descripcion del error',
+    example: 'error insert ik usuario no valid...',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  error?: string;
+
+  @ApiProperty({
     description: 'ID del usuario que generó la acción',
     example: 1,
   })

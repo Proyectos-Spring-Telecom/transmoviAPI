@@ -25,14 +25,22 @@ export class RegionesController {
   @Post()
   create(@Body() createRegionesDto: CreateRegionesDto, @Request() req) {
     const idUser = req.user.userId;
-    return this.regionesService.create(idUser, createRegionesDto);
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+    return this.regionesService.create(
+      +idUser,
+      +cliente,
+      +rol,
+      createRegionesDto,
+    );
   }
 
   @Get('list')
   async findAllList(@Request() req) {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
-    return await this.regionesService.findAllList(+cliente, +idUser);
+    const rol = req.user.rol;
+    return await this.regionesService.findAllList(+cliente, +idUser, +rol);
   }
 
   @Get(':page/:limit')
@@ -43,38 +51,59 @@ export class RegionesController {
   ) {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
-    return this.regionesService.findAll(+cliente,+idUser,page,limit);
+    const rol = req.user.rol;
+    return this.regionesService.findAll(+cliente, +idUser, +rol, page, limit);
   }
 
   @Get(':id')
   findOne(@Param('id') id: string, @Request() req) {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
-    return this.regionesService.findOne(+idUser, +id, +cliente);
+    const rol = req.user.rol;
+    return this.regionesService.findOne(+idUser, +id, +cliente, +rol);
   }
 
   @Patch('estatus/:id')
   async updateEstatus(
     @Param('id') id: string,
     @Body() updateRegionesEstatusDto: UpdateRegionesEstatusDto,
-    @Request() req
+    @Request() req,
   ) {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
-    return await this.regionesService.updateEstatus(+id, +idUser, +cliente, updateRegionesEstatusDto);
+    const rol = req.user.rol;
+    return await this.regionesService.updateEstatus(
+      +id,
+      +idUser,
+      +cliente,
+      +rol,
+      updateRegionesEstatusDto,
+    );
   }
 
   @Put(':id')
-  update(@Param('id') id: string, @Body() updateRegioneDto: UpdateRegioneDto,@Request() req) {
+  update(
+    @Param('id') id: string,
+    @Body() updateRegioneDto: UpdateRegioneDto,
+    @Request() req,
+  ) {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
-    return this.regionesService.update(+id,+cliente, +idUser, updateRegioneDto);
+    const rol = req.user.rol;
+    return this.regionesService.update(
+      +id,
+      +cliente,
+      +idUser,
+      +rol,
+      updateRegioneDto,
+    );
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string,@Request() req) {
+  remove(@Param('id') id: string, @Request() req) {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
-    return this.regionesService.remove(+id,+cliente,+idUser);
+    const rol = req.user.rol;
+    return this.regionesService.remove(+id, +cliente, +idUser, +rol);
   }
 }
