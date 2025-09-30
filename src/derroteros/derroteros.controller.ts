@@ -47,7 +47,7 @@ export class DerroterosController {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
     const rol = req.user.rol;
-    return this.derroterosService.findAll(+cliente, +idUser, page, limit);
+    return this.derroterosService.findAll(+idUser, +cliente, +rol, page, limit);
   }
 
   @Get(':id')

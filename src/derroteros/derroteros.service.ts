@@ -126,70 +126,96 @@ export class DerroterosService {
   }
 
   async findAll(
-    cliente: number, // por ahora no lo usas, pero queda disponible
     idUser: number,
+    cliente: number,
+    rol: number,
     page: number,
     limit: number,
   ): Promise<ApiResponseCommon> {
     try {
-      const offset = (page - 1) * limit; // cálculo del desplazamiento
-
-      // Query principal: obtiene los derroteros relacionados al usuario
-      const data = await this.usuariosregionesRepository.query(
+      const offset = (page - 1) * limit;
+      let data;
+      let totalResult;
+      // Consulta de datos paginados Usuario SuperAdministrador
+      data = await this.derroterosRepository.query(
         `
-      SELECT 
-        d.Id AS idDerrotero, 
-        d.Nombre AS nombreDerrotero, 
-        d.DistanciaKm AS distanciaKm, 
-        d.FechaCreacion AS fechaCreacionDerrotero, 
-        d.FechaActualizacion AS fechaActualizacionDerrotero, 
-        d.Estatus AS estatusDerrotero, 
-        d.IdRuta AS idRuta
-      FROM UsuariosRegiones ur
-      INNER JOIN Regiones r ON ur.IdRegion = r.Id
-      INNER JOIN Rutas ru ON ru.IdRegion = r.Id
-      INNER JOIN Derroteros d ON d.IdRuta = ru.Id
-      WHERE ur.IdUsuario = ?
-        AND ur.Estatus = 1
-        AND r.Estatus = 1
-        AND ru.Estatus = 1
-        AND d.Estatus = 1
-      ORDER BY d.FechaCreacion DESC
-      LIMIT ? OFFSET ?
-      `,
-        [idUser, limit, offset], // parámetros seguros
+  SELECT 
+    -- Datos del derrotero (datos principales)
+    d.Id AS id,
+    d.Nombre AS nombreDerrotero,
+    d.DistanciaKm AS distanciaKm,
+    d.FechaCreacion AS fechaCreacionDerrotero,
+    d.Estatus AS estatusDerrotero,
+
+    -- Datos de la ruta asociada
+    ru.Id AS idRuta,
+    ru.Nombre AS nombreRuta,
+    ru.NombreInicio AS nombreInicio,
+    ru.NombreFin AS nombreFin,
+    ru.FechaCreacion AS fechaCreacionRuta,
+    ru.Estatus AS estatusRuta,
+
+    -- Región de inicio
+    r.Id AS idRegionInicio,
+    r.Nombre AS nombreRegionInicio,
+    r.Descripcion AS descripcionRegionInicio,
+    r.FechaCreacion AS fechaCreacionRegionInicio,
+    r.FechaActualizacion AS fechaActualizacionRegionInicio,
+    r.Estatus AS estatusRegionInicio,
+
+    -- Región de fin
+    rf.Id AS idRegionFin,
+    rf.Nombre AS nombreRegionFin,
+    rf.Descripcion AS descripcionRegionFin,
+    rf.FechaCreacion AS fechaCreacionRegionFin,
+    rf.FechaActualizacion AS fechaActualizacionRegionFin,
+    rf.Estatus AS estatusRegionFin,
+
+    -- Cliente relacionado
+    c.Id AS idCliente,
+    CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
+
+  FROM Derroteros d
+  INNER JOIN Rutas ru ON d.IdRuta = ru.Id
+  INNER JOIN Regiones r ON ru.IdRegion = r.Id
+  LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+  INNER JOIN Clientes c ON r.IdCliente = c.Id
+  INNER JOIN UsuariosRegiones ur ON ur.IdRegion = r.Id
+
+  WHERE ur.IdUsuario = ?
+    AND ur.Estatus = 1
+    AND r.Estatus = 1
+    AND ru.Estatus = 1
+    AND d.Estatus = 1
+    AND c.Id = ? -- Discriminacion de clientes
+
+  ORDER BY d.Id DESC
+  LIMIT ? OFFSET ?
+  `,
+        [idUser, cliente, limit, offset],
       );
 
-      // Query para el total de registros (sin paginación)
-      const totalResult = await this.usuariosregionesRepository.query(
+      // Query para total (sin paginación)
+      totalResult = await this.usuariosregionesRepository.query(
         `
-      SELECT COUNT(*) AS total
-      FROM UsuariosRegiones ur
-      INNER JOIN Regiones r ON ur.IdRegion = r.Id
-      INNER JOIN Rutas ru ON ru.IdRegion = r.Id
-      INNER JOIN Derroteros d ON d.IdRuta = ru.Id
-      WHERE ur.IdUsuario = ?
-        AND ur.Estatus = 1
-        AND r.Estatus = 1
-        AND ru.Estatus = 1
-        AND d.Estatus = 1
-      `,
-        [idUser],
+  SELECT COUNT(*) AS total
+  FROM UsuariosRegiones ur
+  INNER JOIN Regiones r ON ur.IdRegion = r.Id
+  INNER JOIN Rutas ru ON ru.IdRegion = r.Id
+  WHERE ur.IdUsuario = ?
+    AND ur.Estatus = 1
+    AND r.Estatus = 1
+    AND ru.Estatus = 1
+    AND r.IdCliente = ?
+  `,
+        [idUser, cliente],
       );
 
       const total = Number(totalResult[0]?.total ?? 0);
 
       // Transformación de resultados
       const result: ApiResponseCommon = {
-        data: data.map((d) => ({
-          idDerrotero: Number(d.idDerrotero),
-          nombreDerrotero: d.nombreDerrotero,
-          distanciaKm: d.distanciaKm !== null ? Number(d.distanciaKm) : null,
-          fechaCreacionDerrotero: d.fechaCreacionDerrotero,
-          fechaActualizacionDerrotero: d.fechaActualizacionDerrotero,
-          estatusDerrotero: Number(d.estatusDerrotero),
-          idRuta: Number(d.idRuta),
-        })),
+        data: data,
         paginated: {
           total,
           page,
@@ -411,7 +437,10 @@ export class DerroterosService {
 
       let newDerrotero = this.derroterosRepository.create(updateDerroteroDto);
 
-      if (Array.isArray(updateDerroteroDto.recorridoDetallado) && updateDerroteroDto.recorridoDetallado.length > 0) {
+      if (
+        Array.isArray(updateDerroteroDto.recorridoDetallado) &&
+        updateDerroteroDto.recorridoDetallado.length > 0
+      ) {
         const puntos = updateDerroteroDto.recorridoDetallado;
 
         const { recorridoDetallado: nuevoRecorrido, distanciaKm } =
@@ -420,7 +449,6 @@ export class DerroterosService {
         newDerrotero.recorridoDetallado = nuevoRecorrido;
         newDerrotero.distanciaKm = distanciaKm;
       }
-
 
       const derroteroSave = await this.derroterosRepository.save(newDerrotero);
 
@@ -524,7 +552,7 @@ export class DerroterosService {
           break;
       }
 
-      //eliminado logico 
+      //eliminado logico
       await this.derroterosRepository.update(id, { estatus: 0 });
 
       // Registro en la bitácora SUCCESS

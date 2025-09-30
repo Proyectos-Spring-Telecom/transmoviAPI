@@ -126,8 +126,10 @@ export class RutasService {
           `
   SELECT 
     ru.Id AS id,
-    ru.Nombre AS nombreRuta,
+    ru.Nombre AS nombre,
+    ru.PuntoInicio AS puntoInicio,
     ru.NombreInicio AS nombreInicio,
+    ru.PuntoFin AS puntoFin,
     ru.NombreFin AS nombreFin,
     ru.FechaCreacion AS fechaCreacionRuta,
     ru.Estatus AS estatusRuta,
@@ -191,8 +193,10 @@ export class RutasService {
           `
   SELECT 
     ru.Id AS id,
-    ru.Nombre AS nombreRuta,
+    ru.Nombre AS nombre,
+    ru.PuntoInicio AS puntoInicio,
     ru.NombreInicio AS nombreInicio,
+    ru.PuntoFin AS puntoFin,
     ru.NombreFin AS nombreFin,
     ru.FechaCreacion AS fechaCreacionRuta,
     ru.Estatus AS estatusRuta,
@@ -258,8 +262,10 @@ export class RutasService {
           `
   SELECT 
     ru.Id AS id,
-    ru.Nombre AS nombreRuta,
+    ru.Nombre AS nombre,
+    ru.PuntoInicio AS puntoInicio,
     ru.NombreInicio AS nombreInicio,
+    ru.PuntoFin AS puntoFin,
     ru.NombreFin AS nombreFin,
     ru.FechaCreacion AS fechaCreacionRuta,
     ru.Estatus AS estatusRuta,
@@ -353,9 +359,13 @@ export class RutasService {
             `
             SELECT 
     ru.Id AS id,
-    ru.Nombre AS nombreRuta,
+    ru.Nombre AS nombre,
+    ru.PuntoInicio AS puntoInicio,
     ru.NombreInicio AS nombreInicio,
+    ru.PuntoFin AS puntoFin,
     ru.NombreFin AS nombreFin,
+    ru.FechaCreacion AS fechaCreacionRuta,
+    ru.Estatus AS estatusRuta,
     ru.IdRegionFin AS idRegionFin,
     
     r.Id AS idRegion,
@@ -399,9 +409,13 @@ ORDER BY ru.Id DESC;
             `
             SELECT 
     ru.Id AS id,
-    ru.Nombre AS nombreRuta,
+    ru.Nombre AS nombre,
+    ru.PuntoInicio AS puntoInicio,
     ru.NombreInicio AS nombreInicio,
+    ru.PuntoFin AS puntoFin,
     ru.NombreFin AS nombreFin,
+    ru.FechaCreacion AS fechaCreacionRuta,
+    ru.Estatus AS estatusRuta,
     ru.IdRegionFin AS idRegionFin,
     
     r.Id AS idRegion,
@@ -446,9 +460,13 @@ ORDER BY ru.Id DESC;
             `
             SELECT 
     ru.Id AS id,
-    ru.Nombre AS nombreRuta,
+    ru.Nombre AS nombre,
+    ru.PuntoInicio AS puntoInicio,
     ru.NombreInicio AS nombreInicio,
+    ru.PuntoFin AS puntoFin,
     ru.NombreFin AS nombreFin,
+    ru.FechaCreacion AS fechaCreacionRuta,
+    ru.Estatus AS estatusRuta,
     ru.IdRegionFin AS idRegionFin,
     
     r.Id AS idRegion,
