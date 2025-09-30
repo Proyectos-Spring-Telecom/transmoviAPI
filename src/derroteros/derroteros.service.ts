@@ -136,13 +136,18 @@ export class DerroterosService {
       const offset = (page - 1) * limit;
       let data;
       let totalResult;
-      // Consulta de datos paginados Usuario SuperAdministrador
-      data = await this.derroterosRepository.query(
+      switch (rol) {
+        case 1:
+          // Consulta de datos paginados Usuario SuperAdministrador
+      data = await this.usuariosregionesRepository.query(
         `
   SELECT 
     -- Datos del derrotero (datos principales)
     d.Id AS id,
     d.Nombre AS nombreDerrotero,
+    d.PuntoInicio AS puntoInicio,
+    d.PuntoFin AS puntoFin,
+    d.RecorridoDetallado AS recorridoDetallado,
     d.DistanciaKm AS distanciaKm,
     d.FechaCreacion AS fechaCreacionDerrotero,
     d.Estatus AS estatusDerrotero,
@@ -186,7 +191,84 @@ export class DerroterosService {
     AND ur.Estatus = 1
     AND r.Estatus = 1
     AND ru.Estatus = 1
-    AND d.Estatus = 1
+
+  ORDER BY d.Id DESC
+  LIMIT ? OFFSET ?
+  `,
+        [idUser, limit, offset],
+      );
+
+      // Query para total (sin paginación)
+      totalResult = await this.usuariosregionesRepository.query(
+        `
+SELECT COUNT(*) AS total
+FROM Derroteros d
+INNER JOIN Rutas ru ON d.IdRuta = ru.Id
+INNER JOIN Regiones r ON ru.IdRegion = r.Id
+INNER JOIN UsuariosRegiones ur ON ur.IdRegion = r.Id
+WHERE ur.IdUsuario = ?
+  AND ur.Estatus = 1
+  AND r.Estatus = 1
+  AND ru.Estatus = 1
+  `,
+        [idUser],
+      );
+          break;
+
+        case 2:
+          // Consulta de datos paginados Usuario Administrador
+      data = await this.usuariosregionesRepository.query(
+        `
+  SELECT 
+    -- Datos del derrotero (datos principales)
+    d.Id AS id,
+    d.Nombre AS nombreDerrotero,
+    d.PuntoInicio AS puntoInicio,
+    d.PuntoFin AS puntoFin,
+    d.RecorridoDetallado AS recorridoDetallado,
+    d.DistanciaKm AS distanciaKm,
+    d.FechaCreacion AS fechaCreacionDerrotero,
+    d.Estatus AS estatusDerrotero,
+
+    -- Datos de la ruta asociada
+    ru.Id AS idRuta,
+    ru.Nombre AS nombreRuta,
+    ru.NombreInicio AS nombreInicio,
+    ru.NombreFin AS nombreFin,
+    ru.FechaCreacion AS fechaCreacionRuta,
+    ru.Estatus AS estatusRuta,
+
+    -- Región de inicio
+    r.Id AS idRegionInicio,
+    r.Nombre AS nombreRegionInicio,
+    r.Descripcion AS descripcionRegionInicio,
+    r.FechaCreacion AS fechaCreacionRegionInicio,
+    r.FechaActualizacion AS fechaActualizacionRegionInicio,
+    r.Estatus AS estatusRegionInicio,
+
+    -- Región de fin
+    rf.Id AS idRegionFin,
+    rf.Nombre AS nombreRegionFin,
+    rf.Descripcion AS descripcionRegionFin,
+    rf.FechaCreacion AS fechaCreacionRegionFin,
+    rf.FechaActualizacion AS fechaActualizacionRegionFin,
+    rf.Estatus AS estatusRegionFin,
+
+    -- Cliente relacionado
+    c.Id AS idCliente,
+    CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
+
+  FROM Derroteros d
+  INNER JOIN Rutas ru ON d.IdRuta = ru.Id
+  INNER JOIN Regiones r ON ru.IdRegion = r.Id
+  LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+  INNER JOIN Clientes c ON r.IdCliente = c.Id
+  INNER JOIN UsuariosRegiones ur ON ur.IdRegion = r.Id
+
+  WHERE ur.IdUsuario = ?
+    AND ur.Estatus = 1
+    AND r.Estatus = 1
+    AND ru.Estatus = 1
     AND c.Id = ? -- Discriminacion de clientes
 
   ORDER BY d.Id DESC
@@ -198,18 +280,101 @@ export class DerroterosService {
       // Query para total (sin paginación)
       totalResult = await this.usuariosregionesRepository.query(
         `
-  SELECT COUNT(*) AS total
-  FROM UsuariosRegiones ur
-  INNER JOIN Regiones r ON ur.IdRegion = r.Id
-  INNER JOIN Rutas ru ON ru.IdRegion = r.Id
+SELECT COUNT(*) AS total
+FROM Derroteros d
+INNER JOIN Rutas ru ON d.IdRuta = ru.Id
+INNER JOIN Regiones r ON ru.IdRegion = r.Id
+INNER JOIN UsuariosRegiones ur ON ur.IdRegion = r.Id
+WHERE ur.IdUsuario = ?
+  AND ur.Estatus = 1
+  AND r.Estatus = 1
+  AND ru.Estatus = 1
+  AND r.IdCliente = ?
+  `,
+        [idUser, cliente],
+      );
+          break;
+      
+        default:
+          // Consulta de datos paginados Usuario
+      data = await this.usuariosregionesRepository.query(
+        `
+  SELECT 
+    -- Datos del derrotero (datos principales)
+    d.Id AS id,
+    d.Nombre AS nombreDerrotero,
+    d.PuntoInicio AS puntoInicio,
+    d.PuntoFin AS puntoFin,
+    d.RecorridoDetallado AS recorridoDetallado,
+    d.DistanciaKm AS distanciaKm,
+    d.FechaCreacion AS fechaCreacionDerrotero,
+    d.Estatus AS estatusDerrotero,
+
+    -- Datos de la ruta asociada
+    ru.Id AS idRuta,
+    ru.Nombre AS nombreRuta,
+    ru.NombreInicio AS nombreInicio,
+    ru.NombreFin AS nombreFin,
+    ru.FechaCreacion AS fechaCreacionRuta,
+    ru.Estatus AS estatusRuta,
+
+    -- Región de inicio
+    r.Id AS idRegionInicio,
+    r.Nombre AS nombreRegionInicio,
+    r.Descripcion AS descripcionRegionInicio,
+    r.FechaCreacion AS fechaCreacionRegionInicio,
+    r.FechaActualizacion AS fechaActualizacionRegionInicio,
+    r.Estatus AS estatusRegionInicio,
+
+    -- Región de fin
+    rf.Id AS idRegionFin,
+    rf.Nombre AS nombreRegionFin,
+    rf.Descripcion AS descripcionRegionFin,
+    rf.FechaCreacion AS fechaCreacionRegionFin,
+    rf.FechaActualizacion AS fechaActualizacionRegionFin,
+    rf.Estatus AS estatusRegionFin,
+
+    -- Cliente relacionado
+    c.Id AS idCliente,
+    CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
+
+  FROM Derroteros d
+  INNER JOIN Rutas ru ON d.IdRuta = ru.Id
+  INNER JOIN Regiones r ON ru.IdRegion = r.Id
+  LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+  INNER JOIN Clientes c ON r.IdCliente = c.Id
+  INNER JOIN UsuariosRegiones ur ON ur.IdRegion = r.Id
+
   WHERE ur.IdUsuario = ?
     AND ur.Estatus = 1
     AND r.Estatus = 1
     AND ru.Estatus = 1
-    AND r.IdCliente = ?
+    AND c.Id = ? -- Discriminacion de clientes
+
+  ORDER BY d.Id DESC
+  LIMIT ? OFFSET ?
+  `,
+        [idUser, cliente, limit, offset],
+      );
+
+      // Query para total (sin paginación)
+      totalResult = await this.usuariosregionesRepository.query(
+        `
+SELECT COUNT(*) AS total
+FROM Derroteros d
+INNER JOIN Rutas ru ON d.IdRuta = ru.Id
+INNER JOIN Regiones r ON ru.IdRegion = r.Id
+INNER JOIN UsuariosRegiones ur ON ur.IdRegion = r.Id
+WHERE ur.IdUsuario = ?
+  AND ur.Estatus = 1
+  AND r.Estatus = 1
+  AND ru.Estatus = 1
+  AND r.IdCliente = ?
   `,
         [idUser, cliente],
       );
+          break;
+      }
 
       const total = Number(totalResult[0]?.total ?? 0);
 
