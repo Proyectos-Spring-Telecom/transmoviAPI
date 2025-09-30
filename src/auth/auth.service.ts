@@ -11,8 +11,6 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { LoginAuthDto } from './dto/login-auth.dto';
 import { UsuariosPermisos } from 'src/entities/UsuariosPermisos';
-
-import moment from 'moment-timezone';
 import { LoginAuthPinDto } from './dto/login-pin.dto';
 
 @Injectable()
@@ -41,10 +39,6 @@ export class AuthService {
         !user.pinHash ||
         !(await bcrypt.compare(loginAuthPin.pinHash, user.pinHash))
       ) {
-        console.log({
-          user: user,
-          message: 'Entro a verificar los valores y no son iguales',
-        });
         throw new UnauthorizedException('Credenciales invalidas');
       }
       const permisos = await this.permisosRepository.find({
@@ -56,6 +50,7 @@ export class AuthService {
         id: user.id,
         email: user.userName,
         cliente: user.idCliente,
+        rol: user.idRol
       };
 
       function pad(n: number) {
@@ -63,7 +58,7 @@ export class AuthService {
       }
       const ahora = new Date();
       const fechaActual = `${ahora.getFullYear()}-${pad(ahora.getMonth() + 1)}-${pad(ahora.getDate())} ${pad(ahora.getHours())}:${pad(ahora.getMinutes())}:${pad(ahora.getSeconds())}`;
-      console.log(fechaActual)
+      console.log(fechaActual);
 
       await this.usuariosRepository.update(user.id, {
         ultimoLogin: fechaActual,
@@ -74,6 +69,8 @@ export class AuthService {
         apellidoPaterno: `${user.apellidoPaterno}`,
         apellidoMaterno: `${user.apellidoMaterno}`,
         telefono: `${user.telefono}`,
+        ultimoLogin: `${user.ultimoLogin}`,
+        fechaCreacion: `${user.fechaCreacion}`,
         fotoPerfil: `${user.fotoPerfil}`,
         userName: `${user.userName}`,
         rol: user.idRol2,
@@ -115,6 +112,7 @@ export class AuthService {
         id: user.id,
         email: user.userName,
         cliente: user.idCliente,
+        rol: user.idRol
       };
 
       function pad(n: number) {
@@ -122,7 +120,7 @@ export class AuthService {
       }
       const ahora = new Date();
       const fechaActual = `${ahora.getFullYear()}-${pad(ahora.getMonth() + 1)}-${pad(ahora.getDate())} ${pad(ahora.getHours())}:${pad(ahora.getMinutes())}:${pad(ahora.getSeconds())}`;
-      console.log(fechaActual)
+      console.log(fechaActual);
 
       await this.usuariosRepository.update(user.id, {
         ultimoLogin: fechaActual,
@@ -133,6 +131,8 @@ export class AuthService {
         apellidoPaterno: `${user.apellidoPaterno}`,
         apellidoMaterno: `${user.apellidoMaterno}`,
         telefono: `${user.telefono}`,
+        ultimoLogin: `${user.ultimoLogin}`,
+        fechaCreacion: `${user.fechaCreacion}`,
         fotoPerfil: `${user.fotoPerfil}`,
         userName: `${user.userName}`,
         rol: user.idRol2,

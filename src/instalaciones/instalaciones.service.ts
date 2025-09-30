@@ -14,7 +14,6 @@ import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { UpdateInstalacioneEstatusDto } from './dto/update-instalacione-estatus.dto';
 import { UsuariosInstalaciones } from 'src/entities/UsuariosInstalaciones';
-import { error } from 'console';
 
 @Injectable()
 export class InstalacionesService {

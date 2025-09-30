@@ -1,9 +1,9 @@
 import { Controller, Get, Post, Body, UseGuards, Param, ParseIntPipe } from '@nestjs/common';
 import { BitacoraLoggerService } from './bitacora.service';
 import { CreateBitacoraDto } from './dto/create-bitacora.dto';
-import { UpdateBitacoraDto } from './dto/update-bitacora.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
+
 @UseGuards(JwtAuthGuard)
 @Controller('bitacora')
 export class BitacoraController {
@@ -14,7 +14,7 @@ export class BitacoraController {
     return this.bitacoraService.createBitacora(createBitacoraDto);
   }
 
-  @Get('list')
+  @Get('list') //Obseleto
   async findAllListBitacora(): Promise<ApiResponseCommon> {
     return await this.bitacoraService.findAllListBitacora();
   }

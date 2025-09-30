@@ -9,7 +9,6 @@ import { CreateBitacoraDto } from './dto/create-bitacora.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Bitacora } from 'src/entities/Bitacora';
 import { Repository } from 'typeorm';
-import moment from 'moment-timezone';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
 
 @Injectable()
@@ -97,6 +96,8 @@ export class BitacoraLoggerService {
     query: string,
     idUsuario: number,
     idModulo: number,
+    estatus?: string,
+    error?: string,
   ) {
     function pad(n: number) {
       return n < 10 ? '0' + n : n;
@@ -109,6 +110,8 @@ export class BitacoraLoggerService {
       descripcion: descripcion,
       accion: accion,
       query: query,
+      estatus: estatus ?? null,
+    error: error ?? null,
       idUsuario: idUsuario,
       idModulo: idModulo,
     });

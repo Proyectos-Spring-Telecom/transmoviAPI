@@ -14,7 +14,6 @@ import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import { ClientesService } from 'src/clientes/clientes.service';
 import { PasajerosService } from 'src/pasajeros/pasajeros.service';
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
-import moment from 'moment-timezone';
 
 @Injectable()
 export class MonederosService {
@@ -42,12 +41,15 @@ export class MonederosService {
       }
 
       //Agregamos la fecha actual
-      const FechaActual = moment()
-        .tz('America/Mexico_City')
-        .format('YYYY-MM-DD HH:mm:ss');
+      function pad(n: number) {
+        return n < 10 ? '0' + n : n;
+      }
+      const ahora = new Date();
+      const fechaActual = `${ahora.getFullYear()}-${pad(ahora.getMonth() + 1)}-${pad(ahora.getDate())} ${pad(ahora.getHours())}:${pad(ahora.getMinutes())}:${pad(ahora.getSeconds())}`;
+      console.log(fechaActual);
 
       //Añadimos fecha
-      createMonederoDto.fechaActivacion = FechaActual;
+      createMonederoDto.fechaActivacion = fechaActual;
 
       //Guardamos el monedero
       const newMonedero =
