@@ -76,7 +76,7 @@ export class DerroterosService {
       const { recorridoDetallado, distanciaKm } =
         await generarRecorridoDetallado(puntos as any);
 
-      newDerrotero.recorridoDetallado = recorridoDetallado;
+      newDerrotero.recorridoInterpolar = recorridoDetallado;
 
       const derroteroSave = await this.derroterosRepository.save(newDerrotero);
 
@@ -1000,7 +1000,7 @@ WHERE ur.IdUsuario = ?
         const { recorridoDetallado: nuevoRecorrido, distanciaKm } =
           await generarRecorridoDetallado(puntos as any);
 
-        newDerrotero.recorridoDetallado = nuevoRecorrido;
+        newDerrotero.recorridoInterpolar = nuevoRecorrido;
       }
 
       const derroteroSave = await this.derroterosRepository.save(newDerrotero);

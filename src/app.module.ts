@@ -27,6 +27,7 @@ import { RegionesModule } from './regiones/regiones.module';
 import { UsuariosregionesModule } from './usuariosregiones/usuariosregiones.module';
 import { UsuariosinstalacionesModule } from './usuariosinstalaciones/usuariosinstalaciones.module';
 import { DerroterosModule } from './derroteros/derroteros.module';
+import { TarifasModule } from './tarifas/tarifas.module';
 import Joi from 'joi';
 
 @Module({
@@ -114,6 +115,8 @@ import Joi from 'joi';
     UsuariosinstalacionesModule,
 
     DerroterosModule,
+
+    TarifasModule,
     
   ], 
  controllers: [AppController],

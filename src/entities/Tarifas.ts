@@ -12,19 +12,19 @@ import { Derroteros } from "./Derroteros";
 @Entity("Tarifas", { schema: "TransmoviDev" })
 export class Tarifas {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
-  id: string;
+  id: number;
 
   @Column("decimal", { name: "TarifaBase", precision: 10, scale: 2 })
-  tarifaBase: string;
+  tarifaBase: number;
 
   @Column("decimal", { name: "DistanciaBaseKm", precision: 10, scale: 2 })
-  distanciaBaseKm: string;
+  distanciaBaseKm: number;
 
   @Column("int", { name: "IncrementoCadaMetros" })
   incrementoCadaMetros: number;
 
   @Column("decimal", { name: "CostoAdicional", precision: 10, scale: 2 })
-  costoAdicional: string;
+  costoAdicional: number;
 
   @Column("datetime", {
     name: "FechaCreacion",
@@ -42,7 +42,7 @@ export class Tarifas {
   estatus: number;
 
   @Column("bigint", { name: "IdDerrotero" })
-  idDerrotero: string;
+  idDerrotero: number;
 
   @ManyToOne(() => Derroteros, (derroteros) => derroteros.tarifas, {
     onDelete: "NO ACTION",

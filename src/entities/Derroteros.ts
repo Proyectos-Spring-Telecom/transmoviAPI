@@ -29,6 +29,9 @@ export class Derroteros {
   @Column("json", { name: "RecorridoDetallado", nullable: true })
   recorridoDetallado: object | null;
 
+  @Column("json", { name: "RecorridoInterpolar", nullable: true })
+  recorridoInterpolar: object | null;
+
   @Column("decimal", {
     name: "DistanciaKm",
     nullable: true,
