@@ -1003,12 +1003,12 @@ WHERE ur.IdUsuario = ?
         newDerrotero.recorridoInterpolar = nuevoRecorrido;
       }
 
-      const derroteroSave = await this.derroterosRepository.save(newDerrotero);
+      await this.derroterosRepository.update(id,newDerrotero);
 
       // Registro en la bitácora SUCCESS
       await this.bitacoraLogger.logToBitacora(
         'Derroteros',
-        `Se actualizo un derrotero con nombre: ${derroteroSave.nombre}`,
+        `Se actualizo un derrotero con nombre: ${newDerrotero.nombre}`,
         'UPDATE',
         `${updateDerroteroDto}`,
         idUser,
@@ -1019,11 +1019,11 @@ WHERE ur.IdUsuario = ?
       //API response
       const result: ApiDerroteroResponse = {
         status: 'succes',
-        message: 'Se creo correctamente derrotero',
-        id: Number(derroteroSave.id),
-        nombre: derroteroSave.nombre,
-        distancia: Number(derroteroSave.distanciaKm),
-        estatus: derroteroSave.estatus,
+        message: 'Se actualizo correctamente derrotero',
+        id: id,
+        nombre: newDerrotero.nombre,
+        distancia: Number(newDerrotero.distanciaKm),
+        estatus: newDerrotero.estatus,
       };
 
       return result;
@@ -1113,7 +1113,7 @@ WHERE ur.IdUsuario = ?
         'Derroteros',
         `Se elimino estatus a ${0} de un derrotero con nombre: ${derrotero.nombre}`,
         'UPDATE',
-        `UPDATE FROM Rutas SET Estatus = ${0} WHERE Id= ${id}`,
+        `UPDATE FROM Derroteros SET Estatus = ${0} WHERE Id= ${id}`,
         idUser,
         18,
         EstatusEnumBitcora.SUCCESS,
@@ -1122,7 +1122,7 @@ WHERE ur.IdUsuario = ?
       //API response
       const result: ApiDerroteroResponse = {
         status: 'succes',
-        message: 'Se actualiz correctamente estatus del derrotero',
+        message: 'Se elimino correctamente el derrotero',
         id: Number(derrotero.id),
         nombre: derrotero.nombre,
         distancia: Number(derrotero.distanciaKm),
@@ -1136,7 +1136,72 @@ WHERE ur.IdUsuario = ?
         'Derroteros',
         `Se elimino estatus a ${0} de un derrotero con ID: ${id}`,
         'UPDATE',
-        `UPDATE FROM Rutas SET Estatus = ${0} WHERE Id= ${id}`,
+        `UPDATE FROM Derroteros SET Estatus = ${0} WHERE Id= ${id}`,
+        idUser,
+        18,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
+      if (error instanceof HttpException) throw error;
+
+      throw new InternalServerErrorException({
+        message: 'Error al actualizar estatus derroteros',
+        error: error.message,
+      });
+    }
+  }
+
+  async removeTotal(id: number, idUser: number, cliente: number, rol: number) {
+    try {
+      let derrotero;
+      switch (rol) {
+        case 1:
+          // Usuario SuperAdministrador
+          derrotero = await this.derroterosRepository.findOne({
+            where: { id: id },
+          });
+          if (!derrotero)
+            throw new NotFoundException('Derrotero no encontrado');
+          break;
+
+
+        default:
+          throw new BadRequestException(`Acceso denegado`);
+          break;
+      }
+
+      //eliminado completo
+      await this.derroterosRepository.delete({id:id});
+
+      // Registro en la bitácora SUCCESS
+      await this.bitacoraLogger.logToBitacora(
+        'Derroteros',
+        `Se elimino  un derrotero con nombre: ${derrotero.nombre}`,
+        'DELETE',
+        `DELETE FROM Derrotero WHERE Id= ${id}`,
+        idUser,
+        18,
+        EstatusEnumBitcora.SUCCESS,
+      );
+
+      //API response
+      const result: ApiDerroteroResponse = {
+        status: 'succes',
+        message: 'Se elimino correctamente el derrotero',
+        id: Number(derrotero.id),
+        nombre: derrotero.nombre,
+        distancia: Number(derrotero.distanciaKm),
+        estatus: 0,
+      };
+
+      return result;
+    } catch (error) {
+      // Registro en la bitácora SUCCESS
+      await this.bitacoraLogger.logToBitacora(
+        'Derroteros',
+        `Se elimino derrotero con ID: ${id}`,
+        'DELETE',
+        `DELETE FROM Derrotero WHERE Id= ${id}`,
         idUser,
         18,
         EstatusEnumBitcora.ERROR,
