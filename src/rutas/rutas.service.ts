@@ -355,6 +355,7 @@ export class RutasService {
       let rutas;
       switch (rol) {
         case 1:
+          // Consulta de datos paginados Usuario SuperAdministrador
           rutas = await this.usuarioregionesRepository.query(
             `
             SELECT 
@@ -405,6 +406,7 @@ ORDER BY ru.Id DESC;
           break;
 
         case 2:
+          // Consulta de datos paginados Usuario Administrador
           rutas = await this.usuarioregionesRepository.query(
             `
             SELECT 
@@ -456,6 +458,7 @@ ORDER BY ru.Id DESC;
           break;
 
         default:
+          // Consulta de datos paginados Usuario
           rutas = await this.usuarioregionesRepository.query(
             `
             SELECT 
@@ -512,20 +515,20 @@ ORDER BY ru.Id DESC;
       }
 
       // Mapeo de resultados con conversión de tipos y manejo de idRegionFin
-    const data = rutas.map((item) => ({
-      ...item,
-      id: item.id ? Number(item.id) : null,
-      idRegion: item.idRegion ? Number(item.idRegion) : null,
-      idRegionFin: item.idRegionFin ? Number(item.idRegionFin) : null,
-      idRegionFinDetalle: item.idRegionFinDetalle
-        ? Number(item.idRegionFinDetalle)
-        : null,
-      idCliente: item.idCliente ? Number(item.idCliente) : null,
-    }));
+      const data = rutas.map((item) => ({
+        ...item,
+        id: item.id ? Number(item.id) : null,
+        idRegion: item.idRegion ? Number(item.idRegion) : null,
+        idRegionFin: item.idRegionFin ? Number(item.idRegionFin) : null,
+        idRegionFinDetalle: item.idRegionFinDetalle
+          ? Number(item.idRegionFinDetalle)
+          : null,
+        idCliente: item.idCliente ? Number(item.idCliente) : null,
+      }));
 
       // API response
       const result: ApiResponseCommon = {
-        data:data,
+        data: data,
       };
 
       return result;
@@ -545,49 +548,124 @@ ORDER BY ru.Id DESC;
       let ruta;
       switch (rol) {
         case 1:
-          // Usuario administrador
-          ruta = await this.rutasRepository.findOne({
-            relations: ['idRegion2'],
-            where: {
-              id: id,
-            },
-          });
+          // Consulta de datos paginados Usuario SuperAdministrador
+          ruta = await this.usuarioregionesRepository.query(
+            `
+            SELECT 
+    ru.Id AS id,
+    ru.Nombre AS nombre,
+    ru.PuntoInicio AS puntoInicio,
+    ru.NombreInicio AS nombreInicio,
+    ru.PuntoFin AS puntoFin,
+    ru.NombreFin AS nombreFin,
+    ru.FechaCreacion AS fechaCreacionRuta,
+    ru.Estatus AS estatusRuta,
+    ru.IdRegionFin AS idRegionFin,
+    
+    r.Id AS idRegion,
+    r.Nombre AS nombreRegion,
+    r.Descripcion AS descripcionRegion,
+    r.FechaCreacion AS fechaCreacionRegion,
+    r.FechaActualizacion AS fechaActualizacionRegion,
+    r.Estatus AS estatusRegion,
+    
+    rf.Id AS idRegionFinDetalle,
+    rf.Nombre AS nombreRegionFinDetalle,
+    rf.Descripcion AS descripcionRegionFin,
+    rf.FechaCreacion AS fechaCreacionRegionFin,
+    rf.FechaActualizacion AS fechaActualizacionRegionFin,
+    rf.Estatus AS estatusRegionFin,
+    
+    c.Id AS idCliente,
+    c.Nombre AS nombreCliente,
+    CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
+
+FROM UsuariosRegiones ur
+INNER JOIN Regiones r ON ur.IdRegion = r.Id            -- Región inicial
+INNER JOIN Rutas ru ON ru.IdRegion = r.Id              -- Ruta
+LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id        -- Región final (puede ser null)
+INNER JOIN Clientes c ON r.IdCliente = c.Id            -- Cliente
+
+WHERE ur.IdUsuario = ?
+  AND ur.Estatus = 1
+  AND r.Estatus = 1
+  AND ru.Estatus = 1
+  AND ru.Id = ? -- id ruta
+ORDER BY ru.Id DESC;
+
+            `,
+            [idUser, id],
+          );
           break;
 
         default:
-          // Usuarios normales - solo sus regiones asignadas
-          ruta = await this.rutasRepository.findOne({
-            relations: ['idRegion2'],
-            where: {
-              id: id,
-              idRegion2: {
-                idCliente: cliente,
-                estatus: 1,
-              },
-            },
-          });
+          // Consulta de datos paginados Usuario SuperAdministrador
+          ruta = await this.usuarioregionesRepository.query(
+            `
+            SELECT 
+    ru.Id AS id,
+    ru.Nombre AS nombre,
+    ru.PuntoInicio AS puntoInicio,
+    ru.NombreInicio AS nombreInicio,
+    ru.PuntoFin AS puntoFin,
+    ru.NombreFin AS nombreFin,
+    ru.FechaCreacion AS fechaCreacionRuta,
+    ru.Estatus AS estatusRuta,
+    ru.IdRegionFin AS idRegionFin,
+    
+    r.Id AS idRegion,
+    r.Nombre AS nombreRegion,
+    r.Descripcion AS descripcionRegion,
+    r.FechaCreacion AS fechaCreacionRegion,
+    r.FechaActualizacion AS fechaActualizacionRegion,
+    r.Estatus AS estatusRegion,
+    
+    rf.Id AS idRegionFinDetalle,
+    rf.Nombre AS nombreRegionFinDetalle,
+    rf.Descripcion AS descripcionRegionFin,
+    rf.FechaCreacion AS fechaCreacionRegionFin,
+    rf.FechaActualizacion AS fechaActualizacionRegionFin,
+    rf.Estatus AS estatusRegionFin,
+    
+    c.Id AS idCliente,
+    c.Nombre AS nombreCliente,
+    CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
+
+FROM UsuariosRegiones ur
+INNER JOIN Regiones r ON ur.IdRegion = r.Id            -- Región inicial
+INNER JOIN Rutas ru ON ru.IdRegion = r.Id              -- Ruta
+LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id        -- Región final (puede ser null)
+INNER JOIN Clientes c ON r.IdCliente = c.Id            -- Cliente
+
+WHERE ur.IdUsuario = ?
+  AND ur.Estatus = 1
+  AND r.Estatus = 1
+  AND ru.Estatus = 1
+  AND ru.Id = ? -- id ruta
+  AND c.Id = ? -- filtro por cliente
+ORDER BY ru.Id DESC;
+
+            `,
+            [idUser, id, cliente],
+          );
           break;
       }
 
-      if (!ruta) {
-        throw new NotFoundException('Rutas no encontrado');
+      if (ruta.length == 0) {
+        throw new NotFoundException('Ruta no encontrado');
       }
 
       // Conversión directa de IDs
       const region = ruta.idRegion2;
 
-      const data = {
-        ...ruta,
-        id: Number(ruta.id),
-        idRegion: Number(ruta.idRegion),
-        idRegion2: region
-          ? {
-              ...region,
-              id: Number(region.id),
-              idCliente: Number(region.idCliente),
-            }
-          : null,
-      };
+      const data = ruta.map((item) => ({
+        ...item,
+        id: Number(item.id),
+        idRegion: Number(item.idRegion),
+        idRegionFin: Number(item.idRegionFin),
+        idRegionFinDetalle: Number(item.idRegionFinDetalle),
+        idCliente: Number(item.idCliente),
+      }));
 
       //APi response
       const result: ApiResponseCommon = {

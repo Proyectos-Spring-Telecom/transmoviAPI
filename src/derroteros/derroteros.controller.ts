@@ -35,7 +35,7 @@ export class DerroterosController {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
     const rol = req.user.rol;
-    return this.derroterosService.findAllList(+cliente, +idUser);
+    return this.derroterosService.findAllList(+idUser, +cliente, +rol);
   }
 
   @Get(':page/:limit')
@@ -55,7 +55,7 @@ export class DerroterosController {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
     const rol = req.user.rol;
-    return this.derroterosService.findOne(+id);
+    return this.derroterosService.findOne(+id, +idUser, +cliente, +rol);
   }
 
   @Patch(':id')
