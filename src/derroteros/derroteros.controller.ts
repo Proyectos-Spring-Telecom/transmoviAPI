@@ -58,7 +58,7 @@ export class DerroterosController {
     return this.derroterosService.findOne(+id, +idUser, +cliente, +rol);
   }
 
-  @Patch(':id')
+  @Patch('estatus/:id')
   updateEstatus(
     @Param('id') id: string,
     @Body() updateDerroterosEstatusDto: UpdateDerroterosEstatusDto,
@@ -82,6 +82,14 @@ export class DerroterosController {
     return this.derroterosService.update(+id, +idUser, +cliente, +rol, updateDerroteroDto);
   }
 
+  @Delete('eliminado/total/:id')
+  removeTotal(@Param('id') id: string, @Request() req) {
+    const cliente = req.user.cliente;
+    const idUser = req.user.userId;
+    const rol = req.user.rol;
+    return this.derroterosService.removeTotal(+id, +idUser, +cliente, +rol);
+  }
+
   @Delete(':id')
   remove(@Param('id') id: string, @Request() req) {
     const cliente = req.user.cliente;
@@ -89,4 +97,5 @@ export class DerroterosController {
     const rol = req.user.rol;
     return this.derroterosService.remove(+id, +idUser, +cliente, +rol);
   }
+
 }
