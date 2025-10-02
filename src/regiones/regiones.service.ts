@@ -74,11 +74,12 @@ export class RegionesService {
       }
 
       // Registro en la bitácora SUCCESS
+      const querylogger =  {createRegionesDto}
       await this.bitacoraLogger.logToBitacora(
         'Regiones',
         `Se creó una Region con nombre: ${regionSave.nombre}`,
         'CREATE',
-        `${createRegionesDto}`,
+        `${querylogger}`,
         idUser,
         16,
         EstatusEnumBitcora.SUCCESS,
@@ -96,11 +97,12 @@ export class RegionesService {
       return result;
     } catch (error) {
       // Registro en la bitácora en caso ERROR
+      const querylogger =  {createRegionesDto}
       await this.bitacoraLogger.logToBitacora(
         'Regiones',
         `Se creó una Region con nombre: ${createRegionesDto.nombre}`,
         'CREATE',
-        `${createRegionesDto}`,
+        `${querylogger}`,
         idUser,
         16,
         EstatusEnumBitcora.ERROR,
@@ -562,11 +564,12 @@ export class RegionesService {
       await this.regionesRepository.update(id, { estatus: estatus });
 
       // Registro en la bitácora SUCESS
+      const querylogger =  {updateRegionesEstatusDto}
       await this.bitacoraLogger.logToBitacora(
         'Regiones',
-        `Se actualizo estatus a ${estatus} en Region con nombre: ${regiones.nombre}`,
+        `Se actualizo estatus a ${estatus} una Region con nombre: ${regiones.nombre}  y Id ${id}`,
         'UPDATE',
-        `UPDATE FROM Regiones SET Estatus= ${estatus} WHERE Id=${id}`,
+        `${querylogger}`,
         idUser,
         16,
         EstatusEnumBitcora.SUCCESS,
@@ -584,11 +587,12 @@ export class RegionesService {
       return result;
     } catch (error) {
       // Registro en la bitácora ERROR
+      const querylogger =  {updateRegionesEstatusDto}
       await this.bitacoraLogger.logToBitacora(
         'Regiones',
         `Se actualizo estatus a ${updateRegionesEstatusDto.estatus} en Region con ID: ${id}`,
         'UPDATE',
-        `UPDATE FROM Regiones SET Estatus= ${updateRegionesEstatusDto.estatus} WHERE Id=${id}`,
+        `${querylogger}`,
         idUser,
         16,
         EstatusEnumBitcora.ERROR,
@@ -649,11 +653,12 @@ export class RegionesService {
       await this.regionesRepository.update(id, updateRegioneDto);
 
       // Registro en la bitácora SUCCESS
+      const querylogger =  {updateRegioneDto}
       await this.bitacoraLogger.logToBitacora(
         'Regiones',
-        `Se actualizo una Region con nombre: ${updateRegioneDto.nombre}`,
+        `Se actualizo una Region con nombre: ${updateRegioneDto.nombre} y Id ${id}`,
         'UPDATE',
-        `${updateRegioneDto}`,
+        `${querylogger}`,
         idUser,
         16,
         EstatusEnumBitcora.SUCCESS,
@@ -671,11 +676,12 @@ export class RegionesService {
       return result;
     } catch (error) {
       // Registro en la bitácora ERROR
+      const querylogger =  {updateRegioneDto}
       await this.bitacoraLogger.logToBitacora(
         'Regiones',
-        `Se actualizo una Region con nombre: ${updateRegioneDto.nombre}`,
+        `Se actualizo una Region con nombre: ${updateRegioneDto.nombre}  y Id ${id}`,
         'UPDATE',
-        `${updateRegioneDto}`,
+        `${querylogger}`,
         idUser,
         16,
         EstatusEnumBitcora.ERROR,
@@ -694,7 +700,7 @@ export class RegionesService {
   async remove(id: number, cliente: number, idUser: number, rol: number) {
     try {
       let regiones;
-      switch (idUser) {
+      switch (rol) {
         case 1:
           // Usuario SuperAdministrador - obtiene todas las regiones
           regiones = await this.regionesRepository.findOne({
@@ -728,11 +734,12 @@ export class RegionesService {
       await this.regionesRepository.update(id, { estatus: 0 });
 
       // Registro en la bitácora SUCCESS
+      const querylogger =  { id: id, estatus: 0 }
       await this.bitacoraLogger.logToBitacora(
         'Regiones',
-        `Se elimino una Region con nombre: ${regiones.nombre}`,
-        'DELETE',
-        `DELETE FROM Regiones WHERE Id=${id}`,
+        `Se elimino una Region con nombre: ${regiones.nombre} y Id ${id}`,
+        'UPDATE',
+        `${querylogger}`,
         idUser,
         16,
         EstatusEnumBitcora.SUCCESS,
@@ -750,11 +757,12 @@ export class RegionesService {
       return result;
     } catch (error) {
       // Registro en la bitácora ERROR
+      const querylogger =  { id: id, estatus: 0 }
       await this.bitacoraLogger.logToBitacora(
         'Regiones',
         `Se elimino una Region con ID: ${id}`,
-        'DELETE',
-        `DELETE FROM Regiones WHERE Id=${id}`,
+        'UPDATE',
+        `${querylogger}`,
         idUser,
         16,
         EstatusEnumBitcora.ERROR,

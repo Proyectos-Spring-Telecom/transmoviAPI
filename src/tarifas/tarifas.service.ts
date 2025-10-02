@@ -340,7 +340,7 @@ ORDER BY t.Id DESC;
         throw error;
       }
       throw new InternalServerErrorException({
-        message: 'Error al obtner un listado Tarifas',
+        message: 'Error al obtener un listado Tarifas',
         error: error.message,
       });
     }
@@ -563,7 +563,7 @@ WHERE ur.IdUsuario = ?
       }
 
       throw new InternalServerErrorException({
-        message: 'Error al obtner un paginado Tarifas',
+        message: 'Error al obtener un paginado Tarifas',
         error: error.message,
       });
     }
@@ -734,7 +734,7 @@ ORDER BY t.Id DESC
       }
 
       throw new InternalServerErrorException({
-        message: 'Error al obtner un paginado Tarifas',
+        message: 'Error al obtener una Tarifas',
         error: error.message,
       });
     }

@@ -81,11 +81,12 @@ export class DerroterosService {
       const derroteroSave = await this.derroterosRepository.save(newDerrotero);
 
       // Registro en la bitácora SUCCESS
+      const querylogger =  {createDerroteroDto}
       await this.bitacoraLogger.logToBitacora(
         'Derroteros',
-        `Se creó un derrotero con nombre: ${derroteroSave.nombre}`,
+        `Se creó un derrotero con nombre: ${derroteroSave.nombre} y Id: ${derroteroSave.id}`,
         'CREATE',
-        `${createDerroteroDto}`,
+        `${querylogger}`,
         idUser,
         18,
         EstatusEnumBitcora.SUCCESS,
@@ -104,11 +105,12 @@ export class DerroterosService {
       return result;
     } catch (error) {
       // Registro en la bitácora ERROR
+      const querylogger =  {createDerroteroDto}
       await this.bitacoraLogger.logToBitacora(
         'Derroteros',
         `Se creó un derrotero con nombre: ${createDerroteroDto.nombre}`,
         'CREATE',
-        `${createDerroteroDto}`,
+        `${querylogger}`,
         idUser,
         18,
         EstatusEnumBitcora.ERROR,
@@ -645,6 +647,7 @@ ORDER BY d.Id DESC;
   d.PuntoInicio AS puntoInicio,
   d.PuntoFin AS puntoFin,
   d.RecorridoDetallado AS recorridoDetallado,
+  d.RecorridoInterpolar AS recorridoInterpolar,
   d.DistanciaKm AS distanciaKm,
   d.FechaCreacion AS fechaCreacionDerrotero,
   d.FechaActualizacion AS fechaActualizacion,
@@ -706,6 +709,7 @@ WHERE ur.IdUsuario = ?
   d.PuntoInicio AS puntoInicio,
   d.PuntoFin AS puntoFin,
   d.RecorridoDetallado AS recorridoDetallado,
+  d.RecorridoInterpolar AS recorridoInterpolar,
   d.DistanciaKm AS distanciaKm,
   d.FechaCreacion AS fechaCreacionDerrotero,
   d.FechaActualizacion AS fechaActualizacion,
@@ -768,6 +772,7 @@ WHERE ur.IdUsuario = ?
   d.PuntoInicio AS puntoInicio,
   d.PuntoFin AS puntoFin,
   d.RecorridoDetallado AS recorridoDetallado,
+  d.RecorridoInterpolar AS recorridoInterpolar,
   d.DistanciaKm AS distanciaKm,
   d.FechaCreacion AS fechaCreacionDerrotero,
   d.FechaActualizacion AS fechaActualizacion,
@@ -912,11 +917,12 @@ WHERE ur.IdUsuario = ?
       await this.derroterosRepository.update(id, { estatus: estatus });
 
       // Registro en la bitácora SUCCESS
+      const querylogger =  {updateDerroterosEstatusDto}
       await this.bitacoraLogger.logToBitacora(
         'Derroteros',
-        `Se actualizo estatus a ${updateDerroterosEstatusDto.estatus} de un derrotero con nombre: ${derrotero.nombre}`,
+        `Se actualizo estatus a ${updateDerroterosEstatusDto.estatus} de un derrotero con nombre: ${derrotero.nombre}  y Id ${id}`,
         'UPDATE',
-        `UPDATE FROM Rutas SET Estatus = ${updateDerroterosEstatusDto.estatus} WHERE Id= ${id}`,
+        `${querylogger}`,
         idUser,
         18,
         EstatusEnumBitcora.SUCCESS,
@@ -924,8 +930,8 @@ WHERE ur.IdUsuario = ?
 
       //API response
       const result: ApiDerroteroResponse = {
-        status: 'succes',
-        message: 'Se actualiz correctamente estatus del derrotero',
+        status: 'success',
+        message: 'Se actualizo correctamente estatus del derrotero',
         id: Number(derrotero.id),
         nombre: derrotero.nombre,
         distancia: Number(derrotero.distanciaKm),
@@ -935,11 +941,12 @@ WHERE ur.IdUsuario = ?
       return result;
     } catch (error) {
       // Registro en la bitácora ERROR
+      const querylogger =  {updateDerroterosEstatusDto}
       await this.bitacoraLogger.logToBitacora(
         'Derroteros',
-        `Se actualizo estatus a ${updateDerroterosEstatusDto.estatus} de un derrotero con ID: ${id}`,
+        `Se actualizo estatus a ${updateDerroterosEstatusDto.estatus} de un derrotero con ID: ${id} y Id ${id}`,
         'UPDATE',
-        `UPDATE FROM Rutas SET Estatus = ${updateDerroterosEstatusDto.estatus} WHERE Id= ${id}`,
+        `${querylogger}`,
         idUser,
         18,
         EstatusEnumBitcora.ERROR,
@@ -1006,11 +1013,12 @@ WHERE ur.IdUsuario = ?
       await this.derroterosRepository.update(id,newDerrotero);
 
       // Registro en la bitácora SUCCESS
+      const querylogger =  {updateDerroteroDto}
       await this.bitacoraLogger.logToBitacora(
         'Derroteros',
-        `Se actualizo un derrotero con nombre: ${newDerrotero.nombre}`,
+        `Se actualizo un derrotero con nombre: ${newDerrotero.nombre} y Id ${id}`,
         'UPDATE',
-        `${updateDerroteroDto}`,
+        `${querylogger}`,
         idUser,
         18,
         EstatusEnumBitcora.SUCCESS,
@@ -1029,11 +1037,12 @@ WHERE ur.IdUsuario = ?
       return result;
     } catch (error) {
       // Registro en la bitácora ERROR
+      const querylogger =  {updateDerroteroDto}
       await this.bitacoraLogger.logToBitacora(
         'Derroteros',
         `Se actualizo un derrotero con ID: ${id}`,
         'UPDATE',
-        `${updateDerroteroDto}`,
+        `${querylogger}`,
         idUser,
         18,
         EstatusEnumBitcora.ERROR,
@@ -1043,7 +1052,7 @@ WHERE ur.IdUsuario = ?
         throw error;
       }
       throw new InternalServerErrorException({
-        message: 'Error al crear derrotero',
+        message: 'Error al actualizar derrotero',
         error: error.message,
       });
     }
@@ -1109,11 +1118,12 @@ WHERE ur.IdUsuario = ?
       await this.derroterosRepository.update(id, { estatus: 0 });
 
       // Registro en la bitácora SUCCESS
+      const querylogger =  { id: id, estatus: 0 }
       await this.bitacoraLogger.logToBitacora(
         'Derroteros',
-        `Se elimino estatus a ${0} de un derrotero con nombre: ${derrotero.nombre}`,
+        `Se elimino estatus a ${0} de un derrotero con nombre: ${derrotero.nombre} y Id ${id}`,
         'UPDATE',
-        `UPDATE FROM Derroteros SET Estatus = ${0} WHERE Id= ${id}`,
+        `${querylogger}`,
         idUser,
         18,
         EstatusEnumBitcora.SUCCESS,
@@ -1132,11 +1142,12 @@ WHERE ur.IdUsuario = ?
       return result;
     } catch (error) {
       // Registro en la bitácora SUCCESS
+      const querylogger =  { id: id, estatus: 0 }
       await this.bitacoraLogger.logToBitacora(
         'Derroteros',
-        `Se elimino estatus a ${0} de un derrotero con ID: ${id}`,
+        `Se elimino a estatus a ${0} de un derrotero con ID: ${id}`,
         'UPDATE',
-        `UPDATE FROM Derroteros SET Estatus = ${0} WHERE Id= ${id}`,
+        `${querylogger}`,
         idUser,
         18,
         EstatusEnumBitcora.ERROR,
@@ -1145,7 +1156,7 @@ WHERE ur.IdUsuario = ?
       if (error instanceof HttpException) throw error;
 
       throw new InternalServerErrorException({
-        message: 'Error al actualizar estatus derroteros',
+        message: 'Error al eliminado logico derroteros',
         error: error.message,
       });
     }
@@ -1174,11 +1185,12 @@ WHERE ur.IdUsuario = ?
       await this.derroterosRepository.delete({id:id});
 
       // Registro en la bitácora SUCCESS
+      const querylogger =  { id: id, estatus: 0 }
       await this.bitacoraLogger.logToBitacora(
         'Derroteros',
-        `Se elimino  un derrotero con nombre: ${derrotero.nombre}`,
+        `Se elimino  un derrotero con nombre: ${derrotero.nombre} y Id ${id}`,
         'DELETE',
-        `DELETE FROM Derrotero WHERE Id= ${id}`,
+        `${querylogger}`,
         idUser,
         18,
         EstatusEnumBitcora.SUCCESS,
@@ -1197,11 +1209,12 @@ WHERE ur.IdUsuario = ?
       return result;
     } catch (error) {
       // Registro en la bitácora SUCCESS
+      const querylogger =  { id: id, estatus: 0 }
       await this.bitacoraLogger.logToBitacora(
         'Derroteros',
         `Se elimino derrotero con ID: ${id}`,
         'DELETE',
-        `DELETE FROM Derrotero WHERE Id= ${id}`,
+        `${querylogger}`,
         idUser,
         18,
         EstatusEnumBitcora.ERROR,
@@ -1210,7 +1223,7 @@ WHERE ur.IdUsuario = ?
       if (error instanceof HttpException) throw error;
 
       throw new InternalServerErrorException({
-        message: 'Error al actualizar estatus derroteros',
+        message: 'Error al eliminado total derroteros',
         error: error.message,
       });
     }
