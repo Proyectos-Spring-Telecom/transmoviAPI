@@ -17,6 +17,7 @@ import { UpdateMonederoDto } from './dto/update-monedero.dto';
 import { UpdateMonederoEstatusDto } from './dto/update-monedero-estatus.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
+
 @UseGuards(JwtAuthGuard)
 @Controller('monederos')
 export class MonederosController {
@@ -25,6 +26,8 @@ export class MonederosController {
   @Post()
   createMonedero(@Body() createMonederoDto: CreateMonederoDto, @Request() req) {
     const idUser = req.user.userId;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
     return this.monederosService.createMonedero(createMonederoDto, idUser);
   }
 
@@ -32,22 +35,35 @@ export class MonederosController {
   findAllMonederos(
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,
+    @Request() req
   ): Promise<ApiResponseCommon> {
+    const idUser = req.user.userId;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
     return this.monederosService.findAllMonederos(page,limit);
   }
 
   @Get('list')
-  findAllListMonederos(): Promise<ApiResponseCommon> {
-    return this.monederosService.findAllListMonederos();
+  findAllListMonederos(@Request() req): Promise<ApiResponseCommon> {
+    const idUser = req.user.userId;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+    return this.monederosService.findAllListMonederos(+ idUser, +cliente, +rol);
   }
 
   @Get(':id')
-  findOneMonedero(@Param('id') id: string) {
+  findOneMonedero(@Param('id') id: string, @Request() req) {
+    const idUser = req.user.userId;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
     return this.monederosService.findOneMonedero(+id);
   }
 
   @Get('numero/serie/:numeroSerie')
-  findOneMonederoBySerie(@Param('numeroSerie') id: string) {
+  findOneMonederoBySerie(@Param('numeroSerie') id: string, @Request() req) {
+    const idUser = req.user.userId;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
     return this.monederosService.findOneMonederoBySerie(id);
   }
 
@@ -58,6 +74,8 @@ export class MonederosController {
     @Body() updateMonederoEstatusDto: UpdateMonederoEstatusDto,
   ) {
     const idUser = req.user.userId;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
     return this.monederosService.updateMonederoEstatus(
       +id,
       idUser,
@@ -72,12 +90,16 @@ export class MonederosController {
     @Body() updateMonederoDto: UpdateMonederoDto,
   ) {
     const idUser = req.user.userId;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
     return this.monederosService.updateMonedero(+id, idUser, updateMonederoDto);
   }
 
   @Delete(':id')
   removeMonedero(@Param('id') id: string, @Request() req) {
     const idUser = req.user.userId;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
     return this.monederosService.removeMonedero(+id, idUser);
   }
 }

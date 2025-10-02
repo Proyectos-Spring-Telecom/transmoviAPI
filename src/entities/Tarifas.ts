@@ -45,7 +45,7 @@ export class Tarifas {
   idDerrotero: number;
 
   @ManyToOne(() => Derroteros, (derroteros) => derroteros.tarifas, {
-    onDelete: "NO ACTION",
+    onDelete: "CASCADE",
     onUpdate: "NO ACTION",
   })
   @JoinColumn([{ name: "IdDerrotero", referencedColumnName: "id" }])

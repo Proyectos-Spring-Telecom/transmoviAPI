@@ -116,18 +116,106 @@ export class MonederosService {
   }
 
   //Obtener todos los monederos
-  async findAllListMonederos(): Promise<ApiResponseCommon> {
+  async findAllListMonederos(
+    idUser: number,
+    cliente: number,
+    rol: number,
+  ): Promise<ApiResponseCommon> {
     try {
-      const monederos = await this.monederoRepository.find({
-        where: { estatus: 1 },
-      });
+      let monederos;
+      switch (rol) {
+        case 1:
+          // Consulta de datos listado Usuario SuperAdministrador
+          monederos = await this.monederoRepository.query(
+            `
+SELECT 
+    m.Id AS id,
+    m.NumeroSerie AS numeroSerie,
+    m.Saldo AS saldo,
+    m.FechaActivacion AS fechaActivacion,
+    m.FechaCreacion AS fechaCreacion,
+    m.FechaActualizacion AS fechaActualizacion,
+    m.Estatus AS estatusMonedero,
+
+    p.Id AS pasajeroId,
+    p.Nombre AS pasajeroNombre,
+    p.ApellidoPaterno AS pasajeroApellidoPaterno,
+    p.ApellidoMaterno AS pasajeroApellidoMaterno,
+    CONCAT(p.Nombre, ' ', p.ApellidoPaterno, ' ', p.ApellidoMaterno) AS nombreCompletoPasajero,
+
+    c.Id AS clienteId,
+    c.Nombre AS clienteNombre,
+    c.ApellidoPaterno AS clienteApellidoPaterno,
+    c.ApellidoMaterno AS clienteApellidoMaterno,
+    CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
+
+FROM Monederos m
+LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
+INNER JOIN Clientes c ON m.IdCliente = c.Id
+
+WHERE m.Estatus = 1 -- estatus activo
+
+ORDER BY m.Id DESC;
+
+            `,
+          );
+          break;
+
+        default:
+          // Consulta de datos listado Usuario
+          monederos = await this.monederoRepository.query(
+            `
+SELECT 
+    m.Id AS id,
+    m.NumeroSerie AS numeroSerie,
+    m.Saldo AS saldo,
+    m.FechaActivacion AS fechaActivacion,
+    m.FechaCreacion AS fechaCreacion,
+    m.FechaActualizacion AS fechaActualizacion,
+    m.Estatus AS estatusMonedero,
+
+    p.Id AS pasajeroId,
+    p.Nombre AS pasajeroNombre,
+    p.ApellidoPaterno AS pasajeroApellidoPaterno,
+    p.ApellidoMaterno AS pasajeroApellidoMaterno,
+    CONCAT(p.Nombre, ' ', p.ApellidoPaterno, ' ', p.ApellidoMaterno) AS nombreCompletoPasajero,
+
+    c.Id AS clienteId,
+    c.Nombre AS clienteNombre,
+    c.ApellidoPaterno AS clienteApellidoPaterno,
+    c.ApellidoMaterno AS clienteApellidoMaterno,
+    CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
+
+FROM Monederos m
+LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
+INNER JOIN Clientes c ON m.IdCliente = c.Id
+
+WHERE m.IdCliente = ? -- filtro por cliente
+AND m.Estatus = 1 -- estatus activo
+
+ORDER BY m.Id DESC;
+
+            `,
+            [cliente],
+          );
+          break;
+      }
+
       if (monederos.length === 0) {
         throw new NotFoundException('Monederos no encontrados');
       }
 
+      const data = monederos.map((item) => ({
+        ...item,
+        id: Number(item.id),
+        saldo: Number(item.saldo),
+        pasajeroId: Number(item.pasajeroId),
+        clienteId: Number(item.clienteId),
+      }));
+
       //Api response
       const result: ApiResponseCommon = {
-        data: monederos,
+        data: data,
       };
       return result;
     } catch (error) {

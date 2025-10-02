@@ -63,15 +63,16 @@ export class RutasService {
           break;
       }
 
-      const newRuta = await this.rutasRepository.create(createRutaDto);
+      const newRuta = this.rutasRepository.create(createRutaDto);
       const rutaSave = await this.rutasRepository.save(newRuta);
 
       // Registro en la bitácora SUCCESS
+      const querylogger = { createRutaDto };
       await this.bitacoraLogger.logToBitacora(
         'Rutas',
-        `Se creó una ruta con nombre: ${rutaSave.nombre}`,
+        `Se creó una ruta con nombre: ${rutaSave.nombre}  y Id ${rutaSave.id}`,
         'CREATE',
-        `${createRutaDto}`,
+        `${querylogger}`,
         idUser,
         17,
         EstatusEnumBitcora.SUCCESS,
@@ -80,20 +81,21 @@ export class RutasService {
       // API response (con mensajes corregidos)
       const result: ApiCrudResponse = {
         status: 'success',
-        message: 'Ruta creada correctamente', // ✅ Corregido
+        message: 'Ruta creada correctamente',
         data: {
           id: Number(rutaSave.id),
-          nombre: `Ruta ${rutaSave.id} Nombre: ${rutaSave.nombre}`, // ✅ Mejorado
+          nombre: `Ruta ${rutaSave.id} Nombre: ${rutaSave.nombre}`,
         },
       };
       return result;
     } catch (error) {
       // Registro en la bitácora ERROR
+      const querylogger = { createRutaDto };
       await this.bitacoraLogger.logToBitacora(
         'Rutas',
         `Se creó una ruta con nombre: ${createRutaDto.nombre}`,
         'CREATE',
-        `${createRutaDto}`,
+        `${querylogger}`,
         idUser,
         17,
         EstatusEnumBitcora.ERROR,
@@ -716,11 +718,12 @@ ORDER BY ru.Id DESC;
       await this.rutasRepository.update(id, { estatus: estatus });
 
       // Registro en la bitácora SUCCESS
+      const querylogger = { updateRutasEstatusDto };
       await this.bitacoraLogger.logToBitacora(
         'Rutas',
-        `Se actualizo estatus a ${estatus}  de una Region con nombre: ${ruta.id}`,
+        `Se actualizo estatus a ${estatus}  de una Ruta con Id: ${ruta.id}`,
         'UPDATE',
-        `UPDATE FROM Rutas SET Estatus = ${estatus} WHERE Id= ${id}`,
+        ` ${querylogger}`,
         idUser,
         17,
         EstatusEnumBitcora.SUCCESS,
@@ -729,20 +732,21 @@ ORDER BY ru.Id DESC;
       // API response (con mensajes corregidos)
       const result: ApiCrudResponse = {
         status: 'success',
-        message: 'Estatus de la ruta actualizada correctamente', // ✅ Corregido
+        message: 'Estatus de la ruta actualizada correctamente',
         data: {
           id: id,
-          nombre: `Ruta ${id} `, // ✅ Mejorado
+          nombre: `Ruta ${id} `,
         },
       };
       return result;
     } catch (error) {
       // Registro en la bitácora ERROR
+      const querylogger = { updateRutasEstatusDto };
       await this.bitacoraLogger.logToBitacora(
         'Rutas',
-        `Se actualizo estatus a ${updateRutasEstatusDto.estatus}  de una Region con ID: ${id}`,
+        `Se actualizo estatus a ${updateRutasEstatusDto.estatus}  de una Ruta con ID: ${id}`,
         'UPDATE',
-        `UPDATE FROM Rutas SET Estatus = ${updateRutasEstatusDto.estatus} WHERE Id= ${id}`,
+        `${querylogger}`,
         idUser,
         17,
         EstatusEnumBitcora.ERROR,
@@ -752,7 +756,7 @@ ORDER BY ru.Id DESC;
         throw error;
       }
       throw new InternalServerErrorException({
-        message: 'Error al actualizar una ruta',
+        message: 'Error al actualizar estatus de una ruta',
         error: error.message,
       });
     }
@@ -762,12 +766,13 @@ ORDER BY ru.Id DESC;
     id: number,
     idUser: number,
     cliente: number,
+    rol: number,
     updateRutaDto: UpdateRutaDto,
   ) {
     try {
       const ruta = await this.rutasRepository.findOne({ where: { id: id } });
       if (!ruta) throw new NotFoundException('Ruta no encontrada');
-      switch (idUser) {
+      switch (rol) {
         case 1:
           // Usuario SuperAdministrador
           break;
@@ -789,17 +794,18 @@ ORDER BY ru.Id DESC;
       await this.rutasRepository.update(id, updateRutaDto);
 
       // Registro en la bitácora SUCCESS
+      const querylogger = { updateRutaDto };
       await this.bitacoraLogger.logToBitacora(
         'Rutas',
-        `Se actualizo una Region con nombre: ${ruta.id}`,
+        `Se actualizo una Rutas con Id: ${ruta.id}`,
         'UPDATE',
-        `${updateRutaDto}`,
+        `${querylogger}`,
         idUser,
         17,
         EstatusEnumBitcora.SUCCESS,
       );
 
-      // API response (con mensajes corregidos)
+      // API response
       const result: ApiCrudResponse = {
         status: 'success',
         message: 'Ruta actualizada correctamente',
@@ -811,11 +817,12 @@ ORDER BY ru.Id DESC;
       return result;
     } catch (error) {
       // Registro en la bitácora ERROR
+      const querylogger = { updateRutaDto };
       await this.bitacoraLogger.logToBitacora(
         'Rutas',
-        `Se actualizo una Region con ID: ${id}`,
+        `Se actualizo una Ruta con ID: ${id}`,
         'UPDATE',
-        `${updateRutaDto}`,
+        `${querylogger}`,
         idUser,
         17,
         EstatusEnumBitcora.ERROR,
@@ -831,11 +838,11 @@ ORDER BY ru.Id DESC;
     }
   }
 
-  async remove(id: number, idUser: number) {
+  async remove(id: number, idUser: number, rol: number) {
     try {
       const ruta = await this.rutasRepository.findOne({ where: { id: id } });
       if (!ruta) throw new NotFoundException('Ruta no encontrada');
-      switch (idUser) {
+      switch (rol) {
         case 1:
           // Usuario SuperAdministrador
           break;
@@ -857,11 +864,77 @@ ORDER BY ru.Id DESC;
       await this.rutasRepository.update(id, { estatus: 0 });
 
       // Registro en la bitácora SUCCESS
+      const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(
         'Rutas',
-        `Se elimino una Region con nombre: ${ruta.id}`,
+        `Se elimino una Ruta con Id: ${ruta.id}`,
+        'UPDATE',
+        `${querylogger}`,
+        idUser,
+        17,
+        EstatusEnumBitcora.SUCCESS,
+      );
+
+      // API response (con mensajes corregidos)
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'Ruta eliminada logicamente correctamente',
+        data: {
+          id: id,
+          nombre: `Ruta ${id}, Nombre: ${ruta.nombre} `,
+        },
+      };
+      return result;
+    } catch (error) {
+      // Registro en la bitácora SUCCESS
+      const querylogger = { id: id, estatus: 0 };
+      await this.bitacoraLogger.logToBitacora(
+        'Rutas',
+        `Se elimino una Ruta con ID: ${id}`,
+        'UPDATE',
+        `${querylogger}`,
+        idUser,
+        17,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Error al eliminado logico una ruta',
+        error: error.message,
+      });
+    }
+  }
+
+  async removeTotal(id: number, idUser: number, rol: number) {
+    try {
+      let ruta;
+      switch (rol) {
+        case 1:
+          // Usuario SuperAdministrador
+          ruta = await this.rutasRepository.findOne({
+            where: { id: id },
+          });
+          if (!ruta) throw new NotFoundException('Ruta no encontrada');
+          break;
+
+        default:
+          // Usuarios normales - solo sus regiones asignadas
+          throw new BadRequestException(`Acceso denegado`);
+          break;
+      }
+
+      await this.rutasRepository.delete({ id: id });
+
+      // Registro en la bitácora SUCCESS
+      const querylogger = { id: id, estatus: 0 };
+      await this.bitacoraLogger.logToBitacora(
+        'Rutas',
+        `Se elimino una Ruta con Id: ${ruta.id}`,
         'DELETE',
-        `DELETE FROM Rutas WHERE Id= ${id}`,
+        `${querylogger}`,
         idUser,
         17,
         EstatusEnumBitcora.SUCCESS,
@@ -879,11 +952,12 @@ ORDER BY ru.Id DESC;
       return result;
     } catch (error) {
       // Registro en la bitácora SUCCESS
+      const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(
         'Rutas',
-        `Se elimino una Region con ID: ${id}`,
+        `Se elimino una Ruta con Id: ${id}`,
         'DELETE',
-        `DELETE FROM Rutas WHERE Id= ${id}`,
+        `${querylogger}`,
         idUser,
         17,
         EstatusEnumBitcora.ERROR,
@@ -893,7 +967,7 @@ ORDER BY ru.Id DESC;
         throw error;
       }
       throw new InternalServerErrorException({
-        message: 'Error al actualizar una ruta',
+        message: 'Error al eliminado permanente una ruta',
         error: error.message,
       });
     }

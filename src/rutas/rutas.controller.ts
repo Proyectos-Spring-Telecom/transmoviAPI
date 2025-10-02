@@ -69,7 +69,7 @@ export class RutasController {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
     const rol = req.user.rol;
-    return this.rutasService.update(id, idUser, cliente, updateRutaDto);
+    return this.rutasService.update(id, +idUser, +cliente, +rol, updateRutaDto);
   }
 
   @Patch('estatus/:id')
@@ -95,6 +95,6 @@ export class RutasController {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
     const rol = req.user.rol;
-    return this.rutasService.remove(id, idUser);
+    return this.rutasService.remove(id, +idUser, +rol);
   }
 }
