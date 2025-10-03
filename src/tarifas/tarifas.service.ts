@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   HttpException,
   Injectable,
   InternalServerErrorException,
@@ -44,7 +45,7 @@ export class TarifasService {
             where: { id: createTarifaDto.idDerrotero },
           });
           if (!derrotero)
-            throw new NotFoundException(`Derrotero no encontrado`);
+            throw new NotFoundException(`El derrotero no fue encontrado.`);
           break;
 
         case 2:
@@ -52,7 +53,7 @@ export class TarifasService {
             where: { id: createTarifaDto.idDerrotero },
           });
           if (!derrotero)
-            throw new NotFoundException(`Derrotero no encontrado`);
+            throw new NotFoundException(`El derrotero no fue encontrado.`);
           break;
 
         default:
@@ -60,7 +61,7 @@ export class TarifasService {
             where: { id: createTarifaDto.idDerrotero },
           });
           if (!derrotero)
-            throw new NotFoundException(`Derrotero no encontrado`);
+            throw new NotFoundException(`El derrotero no fue encontrado.`);
           break;
       }
 
@@ -68,11 +69,12 @@ export class TarifasService {
       const tarifaSave = await this.tarifasRepository.save(newTarifas);
 
       // Registro en la bitácora SUCCESS
+      const querylogger =  {createTarifaDto}
       await this.bitacoraLogger.logToBitacora(
-        'Regiones',
-        `Se creó una Tarifa con Id: ${tarifaSave.id}`,
+        'Tarifas',
+        `Se creó una tarifa con ID: ${tarifaSave.id}.`,
         'CREATE',
-        `${createTarifaDto}`,
+        `${querylogger}`,
         idUser,
         19,
         EstatusEnumBitcora.SUCCESS,
@@ -81,20 +83,21 @@ export class TarifasService {
       // API response
       const result: ApiCrudResponse = {
         status: 'success',
-        message: 'Region creada correctamente', // ✅ Corregido
+        message: 'La tarifa se creó correctamente.',
         data: {
           id: Number(tarifaSave.id),
-          nombre: `Tarifa con Id: ${tarifaSave.id} tarifaBase:${tarifaSave.tarifaBase}`, // ✅ Mejorado
+          nombre: `Tarifa con ID: ${tarifaSave.id}, tarifa base: ${tarifaSave.tarifaBase}.`,
         },
       };
       return result;
     } catch (error) {
       // Registro en la bitácora ERROR
+      const querylogger =  {createTarifaDto}
       await this.bitacoraLogger.logToBitacora(
-        'Regiones',
-        `Se creó una Tarifa con IdDerrotero: ${createTarifaDto.idDerrotero}`,
+        'Tarifas',
+        `Se creó una tarifa con ID de derrotero: ${createTarifaDto.idDerrotero}.`,
         'CREATE',
-        `${createTarifaDto}`,
+        `${querylogger}`,
         idUser,
         19,
         EstatusEnumBitcora.ERROR,
@@ -105,7 +108,7 @@ export class TarifasService {
       }
 
       throw new InternalServerErrorException({
-        message: 'Error al crear Tarifa',
+        message: 'Error al crear la tarifa.',
         error: error.message,
       });
     }
@@ -311,7 +314,7 @@ ORDER BY t.Id DESC;
       }
 
       if (data.length === 0) {
-        throw new NotFoundException('No se encontraron Tarifas');
+        throw new NotFoundException('No se localizaron tarifas en el sistema.');
       }
 
       const tarifas = data.map((item) => ({
@@ -340,7 +343,7 @@ ORDER BY t.Id DESC;
         throw error;
       }
       throw new InternalServerErrorException({
-        message: 'Error al obtener un listado Tarifas',
+        message: 'Ocurrió un error al intentar obtener el listado de tarifas.',
         error: error.message,
       });
     }
@@ -563,7 +566,7 @@ WHERE ur.IdUsuario = ?
       }
 
       throw new InternalServerErrorException({
-        message: 'Error al obtener un paginado Tarifas',
+        message: 'Error al obtener las tarifas paginadas.',
         error: error.message,
       });
     }
@@ -703,7 +706,7 @@ ORDER BY t.Id DESC
       }
 
       if (data.length === 0) {
-        throw new NotFoundException('No se encontraron tarifas');
+        throw new NotFoundException('No se encontro Tarifa');
       }
 
       const tarifas = data.map((item) => ({
@@ -734,7 +737,7 @@ ORDER BY t.Id DESC
       }
 
       throw new InternalServerErrorException({
-        message: 'Error al obtener una Tarifas',
+        message: 'Error al obtener una tarifa.',
         error: error.message,
       });
     }
@@ -749,18 +752,19 @@ ORDER BY t.Id DESC
       const tarifa = await this.tarifasRepository.findOne({
         where: { id: id },
       });
-      if (!tarifa) throw new NotFoundException(`Tarifa no encontrado`);
+      if (!tarifa) throw new NotFoundException(`Error al obtener una tarifa.`);
 
       //actualizacion de estatus
       const estatus = updateTarifasEstatusDto.estatus;
       await this.tarifasRepository.update(id, { estatus: estatus });
 
       // Registro en la bitácora SUCCESS
+      const querylogger =  {updateTarifasEstatusDto}
       await this.bitacoraLogger.logToBitacora(
-        'Regiones',
-        `Se actualizo el estatus: ${estatus} de una Tarifa con Id: ${tarifa.id}`,
+        'Tarifas',
+        `Se actualizó el estatus a ${estatus} de la tarifa con ID: ${tarifa.id}.`,
         'UPDATE',
-        `UPDATE FROM Tarifas SET Estatus = ${updateTarifasEstatusDto.estatus} WHERE Id = ${id}`,
+        `${querylogger}`,
         idUser,
         19,
         EstatusEnumBitcora.SUCCESS,
@@ -779,11 +783,12 @@ ORDER BY t.Id DESC
       return result;
     } catch (error) {
       // Registro en la bitácora Error
+      const querylogger =  {updateTarifasEstatusDto}
       await this.bitacoraLogger.logToBitacora(
         'Regiones',
         `Se actualizo el estatus: ${updateTarifasEstatusDto.estatus} de una Tarifa con Id: ${id}`,
         'UPDATE',
-        `UPDATE FROM Tarifas SET Estatus = ${updateTarifasEstatusDto.estatus} WHERE Id = ${id}`,
+        `${querylogger}`,
         idUser,
         19,
         EstatusEnumBitcora.ERROR,
@@ -793,7 +798,7 @@ ORDER BY t.Id DESC
         throw error;
       }
       throw new InternalServerErrorException({
-        message: 'Error al actualizar estatus de una tarifa',
+        message: 'Error al actualizar el estatus de la tarifa.',
         error: error.message,
       });
     }
@@ -804,17 +809,18 @@ ORDER BY t.Id DESC
       const tarifa = await this.tarifasRepository.findOne({
         where: { id: id },
       });
-      if (!tarifa) throw new NotFoundException(`Tarifa no encontrado`);
+      if (!tarifa) throw new NotFoundException(`Tarifa no encontrada.`);
 
       //actualizacion de tarifa
       await this.tarifasRepository.update(id, updateTarifaDto);
 
       // Registro en la bitácora SUCCESS
+      const querylogger =  {updateTarifaDto}
       await this.bitacoraLogger.logToBitacora(
-        'Regiones',
-        `Se actualizo una Tarifa con Id: ${tarifa.id}`,
+        'Tarifas',
+        `Se actualizó una tarifa con ID: ${tarifa.id}.`,
         'UPDATE',
-        `${updateTarifaDto}`,
+        `${querylogger}`,
         idUser,
         19,
         EstatusEnumBitcora.SUCCESS,
@@ -823,20 +829,21 @@ ORDER BY t.Id DESC
       // API response
       const result: ApiCrudResponse = {
         status: 'success',
-        message: 'Tarifa actualizado correctamente',
+        message: 'Tarifa actualizada correctamente.',
         data: {
           id: id,
-          nombre: `Tarifa con Id: ${id} tarifaBase:${tarifa.tarifaBase}`,
+          nombre: `Tarifa con ID: ${id}, tarifa base: ${tarifa.tarifaBase}.`,
         },
       };
       return result;
     } catch (error) {
       // Registro en la bitácora Error
+      const querylogger =  {updateTarifaDto}
       await this.bitacoraLogger.logToBitacora(
-        'Regiones',
-        `Se actualizo una Tarifa con Id: ${id}`,
+        'Tarifas',
+        `Se actualizó una tarifa con ID: ${id}.`,
         'UPDATE',
-        `${updateTarifaDto}`,
+        `${querylogger}`,
         idUser,
         19,
         EstatusEnumBitcora.ERROR,
@@ -846,7 +853,7 @@ ORDER BY t.Id DESC
         throw error;
       }
       throw new InternalServerErrorException({
-        message: 'Error al actualizar una tarifa',
+        message: 'Error al actualizar la tarifa.',
         error: error.message,
       });
     }
@@ -857,17 +864,18 @@ ORDER BY t.Id DESC
       const tarifa = await this.tarifasRepository.findOne({
         where: { id: id },
       });
-      if (!tarifa) throw new NotFoundException(`Tarifa no encontrado`);
+      if (!tarifa) throw new NotFoundException(`Tarifa no encontrada.`);
 
       //eliminado logico de estatus
       await this.tarifasRepository.update(id, { estatus: 0 });
 
       // Registro en la bitácora SUCCESS
+      const querylogger =  { id: id, estatus: 0}
       await this.bitacoraLogger.logToBitacora(
-        'Regiones',
-        `Se actualizo el estatus: ${0} de una Tarifa con Id: ${tarifa.id}`,
+        'Tarifas',
+        `Se actualizó el estatus a ${0} de la tarifa con ID: ${tarifa.id}.`,
         'UPDATE',
-        `UPDATE FROM Tarifas SET Estatus = ${0} WHERE Id = ${id}`,
+        `${querylogger}`,
         idUser,
         19,
         EstatusEnumBitcora.SUCCESS,
@@ -876,20 +884,21 @@ ORDER BY t.Id DESC
       // API response
       const result: ApiCrudResponse = {
         status: 'success',
-        message: 'Tarifa eliminado correctamente correctamente',
+        message: 'Tarifa eliminada lógicamente correctamente.',
         data: {
           id: id,
-          nombre: `Tarifa con Id: ${id} tarifaBase:${tarifa.tarifaBase}`,
+          nombre: `Tarifa con ID: ${id}, tarifa base: ${tarifa.tarifaBase}.`,
         },
       };
       return result;
     } catch (error) {
       // Registro en la bitácora Error
+      const querylogger =  { id: id, estatus: 0}
       await this.bitacoraLogger.logToBitacora(
-        'Regiones',
-        `Se actualizo el estatus: ${0} de una Tarifa con Id: ${id}`,
+        'Tarifas',
+        `Se actualizó el estatus a ${0} de la tarifa con ID: ${id}.`,
         'UPDATE',
-        `UPDATE FROM Tarifas SET Estatus = ${0} WHERE Id = ${id}`,
+        `${querylogger}`,
         idUser,
         19,
         EstatusEnumBitcora.ERROR,
@@ -899,7 +908,72 @@ ORDER BY t.Id DESC
         throw error;
       }
       throw new InternalServerErrorException({
-        message: 'Error al eliminado logico de una tarifa',
+        message: 'Hubo un error al eliminar lógicamente la tarifa.',
+        error: error.message,
+      });
+    }
+  }
+
+  async removeTotal(id: number, idUser: number, rol: number) {
+    try {
+      let tarifa;
+      switch (rol) {
+        case 1:
+          // Usuario SuperAdministrador
+          tarifa = await this.tarifasRepository.findOne({
+            where: { id: id },
+          });
+          if (!tarifa) throw new NotFoundException(`Tarifa no encontrada.`);
+          break;
+
+        default:
+          throw new BadRequestException(`Acceso denegado.`);
+          break;
+      }
+
+      //eliminado permanente
+      await this.tarifasRepository.delete({ id: id });
+
+      // Registro en la bitácora SUCCESS
+      const querylogger =  { query: `DELETE FROM Tarifas WHERE Id = ${id}`}
+      await this.bitacoraLogger.logToBitacora(
+        'Tarifas',
+        `Se eliminó una tarifa con ID: ${id}.`,
+        'DELETE',
+        `${querylogger}`,
+        idUser,
+        19,
+        EstatusEnumBitcora.SUCCESS,
+      );
+
+      // API response
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'Tarifa eliminada permanentemente correctamente.',
+        data: {
+          id: id,
+          nombre: `Tarifa con ID: ${id}, tarifa base: ${tarifa.tarifaBase}.`,
+        },
+      };
+      return result;
+    } catch (error) {
+      // Registro en la bitácora Error
+      const querylogger =  { query: `DELETE FROM Tarifas WHERE Id = ${id}`}
+      await this.bitacoraLogger.logToBitacora(
+        'Tarifas',
+        `Se eliminó una tarifa con ID: ${id}.`,
+        'DELETE',
+        `${querylogger}`,
+        idUser,
+        19,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Hubo un problema al eliminar la tarifa permanentemente.',
         error: error.message,
       });
     }

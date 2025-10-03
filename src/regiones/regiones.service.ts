@@ -88,7 +88,7 @@ export class RegionesService {
       // API response (con mensajes corregidos)
       const result: ApiCrudResponse = {
         status: 'success',
-        message: 'Region creada correctamente', // ✅ Corregido
+        message: 'Region creada correctamente',
         data: {
           id: Number(regionSave.id),
           nombre: `Region ${regionSave.id} Nombre: ${regionSave.nombre} Descripción:${regionSave.descripcion}`, // ✅ Mejorado

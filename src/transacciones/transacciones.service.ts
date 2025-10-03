@@ -26,7 +26,7 @@ export class TransaccionesService {
   ) {}
   async createTransaccion(
     createTransaccioneDto: CreateTransaccioneDto,
-    idUser: string,
+    idUser: number,
   ): Promise<ApiCrudResponse> {
     try {
       //Buscamos el monedero
