@@ -24,9 +24,11 @@ export class TransaccionesController {
     @Request() req,
   ): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
     return this.transaccionesService.createTransaccion(
       createTransaccioneDto,
-      idUser,
+      +idUser,
     );
   }
 

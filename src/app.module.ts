@@ -28,6 +28,9 @@ import { UsuariosregionesModule } from './usuariosregiones/usuariosregiones.modu
 import { UsuariosinstalacionesModule } from './usuariosinstalaciones/usuariosinstalaciones.module';
 import { DerroterosModule } from './derroteros/derroteros.module';
 import { TarifasModule } from './tarifas/tarifas.module';
+import { ViajesModule } from './viajes/viajes.module';
+import { ViajesconteosModule } from './viajesconteos/viajesconteos.module';
+import { ViajestransaccionesModule } from './viajestransacciones/viajestransacciones.module';
 import Joi from 'joi';
 
 @Module({
@@ -117,6 +120,12 @@ import Joi from 'joi';
     DerroterosModule,
 
     TarifasModule,
+
+    ViajesModule,
+
+    ViajesconteosModule,
+
+    ViajestransaccionesModule,
     
   ], 
  controllers: [AppController],

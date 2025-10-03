@@ -51,7 +51,7 @@ export class TarifasController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string, @Request() req,) {
+  findOne(@Param('id') id: string, @Request() req) {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
     const rol = req.user.rol;
@@ -67,19 +67,35 @@ export class TarifasController {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
     const rol = req.user.rol;
-    return this.tarifasService.updateEstatus(+id, +idUser, updateTarifasEstatusDto);
+    return this.tarifasService.updateEstatus(
+      +id,
+      +idUser,
+      updateTarifasEstatusDto,
+    );
   }
 
   @Put(':id')
-  update(@Param('id') id: string, @Body() updateTarifaDto: UpdateTarifaDto, @Request() req,) {
+  update(
+    @Param('id') id: string,
+    @Body() updateTarifaDto: UpdateTarifaDto,
+    @Request() req,
+  ) {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
     const rol = req.user.rol;
     return this.tarifasService.update(+id, +idUser, updateTarifaDto);
   }
 
+  @Delete('eliminado/total/:id')
+  removeTotal(@Param('id') id: string, @Request() req) {
+    const cliente = req.user.cliente;
+    const idUser = req.user.userId;
+    const rol = req.user.rol;
+    return this.tarifasService.removeTotal(+id, +idUser, +rol);
+  }
+
   @Delete(':id')
-  remove(@Param('id') id: string, @Request() req,) {
+  remove(@Param('id') id: string, @Request() req) {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
     const rol = req.user.rol;
