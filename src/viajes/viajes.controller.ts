@@ -4,12 +4,15 @@ import {
   Post,
   Body,
   Param,
-  Delete,
   Request,
+  ParseIntPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { ViajesService } from './viajes.service';
 import { CreateViajeDto } from './dto/create-viaje.dto';
+import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 
+@UseGuards(JwtAuthGuard)
 @Controller('viajes')
 export class ViajesController {
   constructor(private readonly viajesService: ViajesService) {}
@@ -20,14 +23,17 @@ export class ViajesController {
     return this.viajesService.create(+idUser, createViajeDto);
   }
 
-  @Get()
+  @Get('list')
   findAllList() {
-    return this.viajesService.findAll();
+    return this.viajesService.findAllList();
   }
 
-  @Get()
-  findAll() {
-    return this.viajesService.findAll();
+  @Get(':page/:limit')
+  findAll(
+    @Param('page', ParseIntPipe) page: number,
+    @Param('limit', ParseIntPipe) limit: number,
+  ) {
+    return this.viajesService.findAll(page,limit);
   }
 
   @Get(':id')
@@ -35,8 +41,4 @@ export class ViajesController {
     return this.viajesService.findOne(+id);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.viajesService.remove(+id);
-  }
 }

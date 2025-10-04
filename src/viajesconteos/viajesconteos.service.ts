@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { CreateViajesconteoDto } from './dto/create-viajesconteo.dto';
-import { UpdateViajesconteoDto } from './dto/update-viajesconteo.dto';
 
 @Injectable()
 export class ViajesconteosService {
@@ -16,11 +15,4 @@ export class ViajesconteosService {
     return `This action returns a #${id} viajesconteo`;
   }
 
-  update(id: number, updateViajesconteoDto: UpdateViajesconteoDto) {
-    return `This action updates a #${id} viajesconteo`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} viajesconteo`;
-  }
 }
