@@ -65,6 +65,7 @@ export class AuthService {
       });
       return {
         message: `login exitoso`,
+        id: Number(`${user.id}`),
         nombre: `${user.nombre}`,
         apellidoPaterno: `${user.apellidoPaterno}`,
         apellidoMaterno: `${user.apellidoMaterno}`,
@@ -127,6 +128,7 @@ export class AuthService {
       });
       return {
         message: `login exitoso`,
+        id: Number(`${user.id}`),
         nombre: `${user.nombre}`,
         apellidoPaterno: `${user.apellidoPaterno}`,
         apellidoMaterno: `${user.apellidoMaterno}`,
