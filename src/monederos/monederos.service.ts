@@ -105,6 +105,7 @@ export class MonederosService {
     }
   }
 
+
   //Obtener todos los monederos paginado
   async findAllMonederos(
     page: number,
@@ -280,6 +281,7 @@ ORDER BY m.Id DESC;
       );
     }
   }
+
   //Actualizar el estatus del monedero
   async updateMonederoEstatus(
     id: number,
@@ -311,6 +313,7 @@ ORDER BY m.Id DESC;
         20,
         EstatusEnumBitcora.SUCCESS,
       );
+
       //API response
       const result: ApiCrudResponse = {
         status: 'success',
@@ -321,7 +324,9 @@ ORDER BY m.Id DESC;
           nombre: `${monedero.numeroSerie} ${monedero.saldo} ` || '',
         },
       };
+
       return result;
+      
     } catch (error) {
       // --- Registro en la bitácora --- ERROR
       const querylogger = { updateMonederoEstatusDto };

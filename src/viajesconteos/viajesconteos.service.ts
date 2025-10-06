@@ -7,6 +7,10 @@ export class ViajesconteosService {
     return 'This action adds a new viajesconteo';
   }
 
+  findAllList() {
+    return `This action returns all viajesconteos`;
+  }
+
   findAll() {
     return `This action returns all viajesconteos`;
   }
