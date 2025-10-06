@@ -105,6 +105,7 @@ export class MonederosService {
     }
   }
 
+
   //Obtener todos los monederos paginado
   async findAllMonederos(
     page: number,
@@ -325,6 +326,7 @@ ORDER BY m.Id DESC;
       };
 
       return result;
+      
     } catch (error) {
       // --- Registro en la bitácora --- ERROR
       const querylogger = { updateMonederoEstatusDto };
