@@ -12,8 +12,6 @@ import {
   ApiDerroteroResponse,
   ApiResponseCommon,
   EstatusEnumBitcora,
-  Punto,
-  ResultadoRecorrido,
 } from '../common/ApiResponse';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Rutas } from 'src/entities/Rutas';
@@ -81,7 +79,7 @@ export class DerroterosService {
       const derroteroSave = await this.derroterosRepository.save(newDerrotero);
 
       // Registro en la bitácora SUCCESS
-      const querylogger =  {createDerroteroDto}
+      const querylogger = { createDerroteroDto };
       await this.bitacoraLogger.logToBitacora(
         'Derroteros',
         `Se creó un derrotero con nombre: ${derroteroSave.nombre} y Id: ${derroteroSave.id}`,
@@ -105,7 +103,7 @@ export class DerroterosService {
       return result;
     } catch (error) {
       // Registro en la bitácora ERROR
-      const querylogger =  {createDerroteroDto}
+      const querylogger = { createDerroteroDto };
       await this.bitacoraLogger.logToBitacora(
         'Derroteros',
         `Se creó un derrotero con nombre: ${createDerroteroDto.nombre}`,
@@ -190,8 +188,6 @@ export class DerroterosService {
 
   WHERE ur.IdUsuario = ?
     AND ur.Estatus = 1
-    AND r.Estatus = 1
-    AND ru.Estatus = 1
 
   ORDER BY d.Id DESC
   LIMIT ? OFFSET ?
@@ -209,8 +205,6 @@ INNER JOIN Regiones r ON ru.IdRegion = r.Id
 INNER JOIN UsuariosRegiones ur ON ur.IdRegion = r.Id
 WHERE ur.IdUsuario = ?
   AND ur.Estatus = 1
-  AND r.Estatus = 1
-  AND ru.Estatus = 1
   `,
             [idUser],
           );
@@ -268,8 +262,6 @@ WHERE ur.IdUsuario = ?
 
   WHERE ur.IdUsuario = ?
     AND ur.Estatus = 1
-    AND r.Estatus = 1
-    AND ru.Estatus = 1
     AND c.Id = ? -- Discriminacion de clientes
 
   ORDER BY d.Id DESC
@@ -288,8 +280,6 @@ INNER JOIN Regiones r ON ru.IdRegion = r.Id
 INNER JOIN UsuariosRegiones ur ON ur.IdRegion = r.Id
 WHERE ur.IdUsuario = ?
   AND ur.Estatus = 1
-  AND r.Estatus = 1
-  AND ru.Estatus = 1
   AND r.IdCliente = ?
   `,
             [idUser, cliente],
@@ -540,7 +530,7 @@ ORDER BY d.Id DESC;
           break;
 
         default:
-          // Consulta de datos paginados Usuario 
+          // Consulta de datos paginados Usuario
           data = await this.usuariosregionesRepository.query(
             `
       SELECT 
@@ -634,7 +624,7 @@ ORDER BY d.Id DESC;
 
   async findOne(id: number, idUser: number, cliente: number, rol: number) {
     try {
-            let data;
+      let data;
       switch (rol) {
         case 1:
           // Consulta de datos paginados Usuario SuperAdministrador
@@ -823,23 +813,23 @@ WHERE ur.IdUsuario = ?
             [idUser, id, cliente], // parámetro seguro
           );
           break;
-        }
+      }
 
-        if (data.length === 0) {
+      if (data.length === 0) {
         throw new NotFoundException('Derrotero no encontradas');
       }
 
-        const derrotero = data.map(item => ({
-  ...item,
-  id: Number(item.id),
-  idRuta: Number(item.idRuta),
-  idRegionInicio: Number(item.idRegionInicio),
-  idRegionFin: item.idRegionFin ? Number(item.idRegionFin) : null,
-  idCliente: Number(item.idCliente),
-  distanciaKm: Number(item.distanciaKm),
-}));
+      const derrotero = data.map((item) => ({
+        ...item,
+        id: Number(item.id),
+        idRuta: Number(item.idRuta),
+        idRegionInicio: Number(item.idRegionInicio),
+        idRegionFin: item.idRegionFin ? Number(item.idRegionFin) : null,
+        idCliente: Number(item.idCliente),
+        distanciaKm: Number(item.distanciaKm),
+      }));
 
-        return {data: derrotero}
+      return { data: derrotero };
     } catch (error) {
       if (error instanceof HttpException) throw error;
 
@@ -917,7 +907,7 @@ WHERE ur.IdUsuario = ?
       await this.derroterosRepository.update(id, { estatus: estatus });
 
       // Registro en la bitácora SUCCESS
-      const querylogger =  {updateDerroterosEstatusDto}
+      const querylogger = { updateDerroterosEstatusDto };
       await this.bitacoraLogger.logToBitacora(
         'Derroteros',
         `Se actualizo estatus a ${updateDerroterosEstatusDto.estatus} de un derrotero con nombre: ${derrotero.nombre}  y Id ${id}`,
@@ -941,7 +931,7 @@ WHERE ur.IdUsuario = ?
       return result;
     } catch (error) {
       // Registro en la bitácora ERROR
-      const querylogger =  {updateDerroterosEstatusDto}
+      const querylogger = { updateDerroterosEstatusDto };
       await this.bitacoraLogger.logToBitacora(
         'Derroteros',
         `Se actualizo estatus a ${updateDerroterosEstatusDto.estatus} de un derrotero con ID: ${id} y Id ${id}`,
@@ -1010,10 +1000,10 @@ WHERE ur.IdUsuario = ?
         newDerrotero.recorridoInterpolar = nuevoRecorrido;
       }
 
-      await this.derroterosRepository.update(id,newDerrotero);
+      await this.derroterosRepository.update(id, newDerrotero);
 
       // Registro en la bitácora SUCCESS
-      const querylogger =  {updateDerroteroDto}
+      const querylogger = { updateDerroteroDto };
       await this.bitacoraLogger.logToBitacora(
         'Derroteros',
         `Se actualizo un derrotero con nombre: ${newDerrotero.nombre} y Id ${id}`,
@@ -1037,7 +1027,7 @@ WHERE ur.IdUsuario = ?
       return result;
     } catch (error) {
       // Registro en la bitácora ERROR
-      const querylogger =  {updateDerroteroDto}
+      const querylogger = { updateDerroteroDto };
       await this.bitacoraLogger.logToBitacora(
         'Derroteros',
         `Se actualizo un derrotero con ID: ${id}`,
@@ -1118,7 +1108,7 @@ WHERE ur.IdUsuario = ?
       await this.derroterosRepository.update(id, { estatus: 0 });
 
       // Registro en la bitácora SUCCESS
-      const querylogger =  { id: id, estatus: 0 }
+      const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(
         'Derroteros',
         `Se elimino estatus a ${0} de un derrotero con nombre: ${derrotero.nombre} y Id ${id}`,
@@ -1142,7 +1132,7 @@ WHERE ur.IdUsuario = ?
       return result;
     } catch (error) {
       // Registro en la bitácora SUCCESS
-      const querylogger =  { id: id, estatus: 0 }
+      const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(
         'Derroteros',
         `Se elimino a estatus a ${0} de un derrotero con ID: ${id}`,
@@ -1175,17 +1165,16 @@ WHERE ur.IdUsuario = ?
             throw new NotFoundException('Derrotero no encontrado');
           break;
 
-
         default:
           throw new BadRequestException(`Acceso denegado`);
           break;
       }
 
       //eliminado completo
-      await this.derroterosRepository.delete({id:id});
+      await this.derroterosRepository.delete({ id: id });
 
       // Registro en la bitácora SUCCESS
-      const querylogger =  { id: id, estatus: 0 }
+      const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(
         'Derroteros',
         `Se elimino  un derrotero con nombre: ${derrotero.nombre} y Id ${id}`,
@@ -1209,7 +1198,7 @@ WHERE ur.IdUsuario = ?
       return result;
     } catch (error) {
       // Registro en la bitácora SUCCESS
-      const querylogger =  { id: id, estatus: 0 }
+      const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(
         'Derroteros',
         `Se elimino derrotero con ID: ${id}`,

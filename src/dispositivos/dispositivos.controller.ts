@@ -1,4 +1,3 @@
-
 import {
   Controller,
   Get,
@@ -32,35 +31,47 @@ export class DispositivosController {
     const idUser = req.user.userId;
     return this.dispositivosService.createDispositivo(
       createDispositivoDto,
-      idUser,
+      +idUser,
     );
   }
 
-  // ✅ RUTAS ESPECÍFICAS PRIMERO (sin parámetros dinámicos)
   @Get('list')
-  findAllListDispositivos(): Promise<ApiResponseCommon> {
-    return this.dispositivosService.findAllListDispositivos();
+  findAllListDispositivos(@Request() req): Promise<ApiResponseCommon> {
+    const idUser = req.user.userId;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+    return this.dispositivosService.findAllList(+cliente, +rol);
   }
 
   @Get('/clientes/:id')
   async findAllDispositivosClientes(
     @Param('id', ParseIntPipe) id: number,
+    @Request() req,
   ): Promise<ApiResponseCommon> {
-    return await this.dispositivosService.findAllListDispositivosClientes(id);
+    const idUser = req.user.userId;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+    return await this.dispositivosService.findAllListDispositivosClientes(+id);
   }
 
-  // ✅ RUTAS CON PARÁMETROS DINÁMICOS AL FINAL
   @Get(':page/:limit')
   async findAllDispositivos(
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,
+    @Request() req,
   ): Promise<ApiResponseCommon> {
-    return this.dispositivosService.findAllDispositivos(page, limit);
+    const idUser = req.user.userId;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+    return this.dispositivosService.findAll(+cliente, +rol, page, limit);
   }
 
   @Get(':id')
-  findOneDispositivo(@Param('id') id: string) {
-    return this.dispositivosService.findOneDispositivo(+id);
+  findOneDispositivo(@Param('id') id: string, @Request() req) {
+    const idUser = req.user.userId;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+    return this.dispositivosService.findOneDispositivo(+id, +cliente, +rol);
   }
 
   @Patch('estatus/:id')
@@ -72,7 +83,7 @@ export class DispositivosController {
     const idUser = req.user.userId;
     return this.dispositivosService.updateDispositivoEstatus(
       +id,
-      idUser,
+      +idUser,
       updateDispositivoEstatusDto,
     );
   }
@@ -86,7 +97,7 @@ export class DispositivosController {
     const idUser = req.user.userId;
     return this.dispositivosService.updateDispositivo(
       +id,
-      idUser,
+      +idUser,
       updateDispositivoDto,
     );
   }
@@ -94,6 +105,6 @@ export class DispositivosController {
   @Delete(':id')
   removeDispositivo(@Param('id') id: string, @Request() req) {
     const idUser = req.user.userId;
-    return this.dispositivosService.removeDispositivo(+id, idUser);
+    return this.dispositivosService.removeDispositivo(+id, +idUser);
   }
 }

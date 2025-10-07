@@ -164,9 +164,7 @@ export class RutasService {
   INNER JOIN Clientes c ON r.IdCliente = c.Id
 
   WHERE ur.IdUsuario = ?
-    AND ur.Estatus = 1
-    AND r.Estatus = 1
-  
+  AND ur.Estatus = 1
   ORDER BY ru.Id DESC
   LIMIT ? OFFSET ?;
   `,
@@ -182,8 +180,6 @@ export class RutasService {
   INNER JOIN Rutas ru ON ru.IdRegion = r.Id
   WHERE ur.IdUsuario = ?
     AND ur.Estatus = 1
-    AND r.Estatus = 1
-    AND ru.Estatus = 1
   `,
           [idUser],
         );
@@ -232,7 +228,6 @@ export class RutasService {
 
   WHERE ur.IdUsuario = ?
     AND ur.Estatus = 1
-    AND r.Estatus = 1
     AND c.Id = ?
   
   ORDER BY ru.Id DESC
@@ -250,8 +245,6 @@ export class RutasService {
   INNER JOIN Rutas ru ON ru.IdRegion = r.Id
   WHERE ur.IdUsuario = ?
     AND ur.Estatus = 1
-    AND r.Estatus = 1
-    AND ru.Estatus = 1
     AND r.IdCliente = ?
   `,
           [idUser, cliente],

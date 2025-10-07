@@ -471,9 +471,10 @@ ORDER BY m.Id DESC;
       if (error instanceof HttpException) {
         throw error;
       }
-      throw new InternalServerErrorException(
-        'Hubo un error al actualizar el monedero.',
-      );
+      throw new InternalServerErrorException({
+        message: 'Error al actualizar monedero',
+        error: error.message,
+      });
     }
   }
 

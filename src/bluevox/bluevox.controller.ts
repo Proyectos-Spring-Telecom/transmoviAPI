@@ -29,33 +29,46 @@ export class BluevoxController {
     @Request() req,
   ): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
-    return await this.bluevoxService.create(idUser, createBlueVoxsDto);
+    return await this.bluevoxService.create(+idUser, createBlueVoxsDto);
   }
 
   @Get('list')
-  async findAllList(): Promise<ApiResponseCommon> {
-    return this.bluevoxService.findAllList();
+  async findAllList(@Request() req,): Promise<ApiResponseCommon> {
+    const idUser = req.user.userId;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+    return this.bluevoxService.findAllList(+cliente, +rol);
   }
 
   @Get('clientes/:id')
   async findAllDispositivosClientes(
     @Param('id', ParseIntPipe) id: number,
+    @Request() req,
   ): Promise<ApiResponseCommon> {
+    const idUser = req.user.userId;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
     return await this.bluevoxService.findAllListClientes(id);
   }
 
-  // ✅ RUTAS CON PARÁMETROS DINÁMICOS DESPUÉS
   @Get(':page/:limit')
   async findAll(
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,
+    @Request() req,
   ): Promise<ApiResponseCommon> {
-    return await this.bluevoxService.findAll(page, limit);
+    const idUser = req.user.userId;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+    return await this.bluevoxService.findAll(+cliente, +rol, page, limit);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.bluevoxService.findOne(+id);
+  findOne(@Param('id') id: string, @Request() req,) {
+    const idUser = req.user.userId;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+    return this.bluevoxService.findOne(+id, +cliente, +rol);
   }
 
   @Put(':id')
@@ -65,7 +78,7 @@ export class BluevoxController {
     @Body() updateVehiculoDto: UpdateBluevoxDto,
   ) {
     const idUser = req.user.userId;
-    return this.bluevoxService.update(+id, idUser, updateVehiculoDto);
+    return this.bluevoxService.update(+id, +idUser, updateVehiculoDto);
   }
 
   @Patch('estatus/:id')
@@ -77,7 +90,7 @@ export class BluevoxController {
     const idUser = req.user.userId;
     return this.bluevoxService.updateEstatus(
       +id,
-      idUser,
+      +idUser,
       updateBlueVoxEstatusDto,
     );
   }
@@ -85,6 +98,6 @@ export class BluevoxController {
   @Delete(':id')
   remove(@Param('id') id: string, @Request() req) {
     const idUser = req.user.userId;
-    return this.bluevoxService.remove(+id, idUser);
+    return this.bluevoxService.remove(+id, +idUser);
   }
 }
