@@ -7,7 +7,11 @@ import {
 } from '@nestjs/common';
 import { CreateBlueVoxsDto } from './dto/create-bluevox.dto';
 import { UpdateBluevoxDto } from './dto/update-bluevox.dto';
-import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
+import {
+  ApiCrudResponse,
+  ApiResponseCommon,
+  EstatusEnumBitcora,
+} from 'src/common/ApiResponse';
 import { InjectRepository } from '@nestjs/typeorm';
 import { BlueVoxs } from 'src/entities/BlueVoxs';
 import { Repository } from 'typeorm';
@@ -24,7 +28,7 @@ export class BluevoxService {
 
   //Crear Bluevoxs
   async create(
-    idUser: string,
+    idUser: number,
     createBlueVoxDto: CreateBlueVoxsDto,
   ): Promise<ApiCrudResponse> {
     try {
@@ -33,7 +37,7 @@ export class BluevoxService {
       });
       if (blueVoxs) {
         throw new BadRequestException(
-          `Bluevox registrado con Numero de Serie: ${blueVoxs.numeroSerie}, ingrese otro bluevoxs`,
+          `BlueVox registrado con número de serie: ${blueVoxs.numeroSerie}.`,
         );
       }
 
@@ -41,30 +45,50 @@ export class BluevoxService {
       const newBlueVoxs =
         await this.bluevoxsRepository.create(createBlueVoxDto);
       const bluevoxSave = await this.bluevoxsRepository.save(newBlueVoxs);
-      //-----Registro en la bitacora-----
+
+      //-----Registro en la bitacora----- SUCCESS
+      const querylogger = { createBlueVoxDto };
       await this.bitacoraLogger.logToBitacora(
         'Bluevoxs',
-        `Se creó un bluevoxs con numero de serie ${bluevoxSave.numeroSerie}`,
+        `Se creó un BlueVox con número de serie: ${bluevoxSave.numeroSerie}.`,
         'CREATE',
-        `INSERT INTO Bluevoxs (...) VALUES (...) -> Numero Serie: ${bluevoxSave.numeroSerie}, Marca: ${bluevoxSave.marca}, Modelo: ${bluevoxSave.modelo}, Estatus: ${bluevoxSave.estatus}, IdCliente: ${bluevoxSave.idCliente}`,
-        Number(idUser),
+        `${querylogger}`,
+        idUser,
         12,
+        EstatusEnumBitcora.SUCCESS,
       );
+
       //Api response
       const result: ApiCrudResponse = {
         status: 'success',
-        message: 'BlueVoxs creado correctamente',
+        message: 'BlueVox creado correctamente.',
         data: {
           id: Number(bluevoxSave.id),
           nombre: `${bluevoxSave.marca} ${bluevoxSave.numeroSerie} ` || '',
         },
       };
+
       return result;
     } catch (error) {
+      //-----Registro en la bitacora----- ERROR
+      const querylogger = { createBlueVoxDto };
+      await this.bitacoraLogger.logToBitacora(
+        'Bluevoxs',
+        `Se creó un BlueVox con número de serie: ${createBlueVoxDto.numeroSerie}.`,
+        'CREATE',
+        `${querylogger}`,
+        idUser,
+        12,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
       if (error instanceof HttpException) {
         throw error;
       }
-      throw new InternalServerErrorException('Error al crear un bluevoxs');
+      throw new InternalServerErrorException({
+        message: 'Ocurrió un error al intentar crear un BlueVox.',
+        error: error.message,
+      });
     }
   }
 
@@ -75,7 +99,7 @@ export class BluevoxService {
         where: { idCliente: id, estatus: 1 },
       });
       if (bluevox.length === 0) {
-        throw new NotFoundException(`BlueVoxs no encontrados`);
+        throw new NotFoundException(`No se encontraron BlueVoxs.`);
       }
 
       //Forzamos a cambiar el id a number
@@ -92,19 +116,114 @@ export class BluevoxService {
       if (error instanceof HttpException) {
         throw error;
       }
-      throw new InternalServerErrorException(
-        `Error al obtener los bluevoxs de un cliente en especifico`,
-      );
+      throw new InternalServerErrorException({
+        message: `Error al obtener los bluevoxs.`,
+        error: error.message,
+      });
     }
   }
 
   //Obtner paginado
-  async findAll(page: number, limit: number): Promise<ApiResponseCommon> {
+  async findAll(
+    cliente: number,
+    rol: number,
+    page: number,
+    limit: number,
+  ): Promise<ApiResponseCommon> {
     try {
-      const [data, total] = await this.bluevoxsRepository.findAndCount({
-        skip: (page - 1) * limit,
-        take: limit,
-      });
+      const offset = (page - 1) * limit;
+      let bluevoxs;
+      let totalResult;
+      switch (rol) {
+        case 1:
+          // Consulta de datos paginados Usuario SuperAdministrador
+          bluevoxs = await this.bluevoxsRepository.query(
+            `
+SELECT
+  -- Datos del BlueVox
+  b.Id AS id,
+  b.NumeroSerie AS numeroSerie,
+  b.Marca AS marca,
+  b.Modelo AS modelo,
+  b.FechaCreacion AS fechaCreacion,
+  b.FechaActualizacion AS fechaActualizacion,
+  b.Estatus AS estatus,
+
+  -- Datos del Cliente
+  c.Id AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente
+
+FROM BlueVoxs b
+INNER JOIN Clientes c ON b.IdCliente = c.Id
+
+ORDER BY b.Id DESC;
+        `,
+          );
+
+          // Query para total (sin paginación)
+          totalResult = await this.bluevoxsRepository.query(
+            `
+  SELECT COUNT(*) AS total
+  FROM BlueVoxs b
+  `,
+          );
+          break;
+
+        default:
+          // Consulta de datos paginados resto Usuario
+          bluevoxs = await this.bluevoxsRepository.query(
+            `
+SELECT
+  -- Datos del BlueVox
+  b.Id AS id,
+  b.NumeroSerie AS numeroSerie,
+  b.Marca AS marca,
+  b.Modelo AS modelo,
+  b.FechaCreacion AS fechaCreacion,
+  b.FechaActualizacion AS fechaActualizacion,
+  b.Estatus AS estatus,
+
+  -- Datos del Cliente
+  c.Id AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente
+
+FROM BlueVoxs b
+INNER JOIN Clientes c ON b.IdCliente = c.Id
+WHERE b.IdCliente = ?
+
+ORDER BY b.Id DESC;
+        `,
+            [cliente],
+          );
+
+          // Query para total (sin paginación)
+          totalResult = await this.bluevoxsRepository.query(
+            `
+  SELECT COUNT(*) AS total
+  FROM BlueVoxs b
+  WHERE b.IdCliente = ?
+  `,
+            [cliente],
+          );
+          break;
+      }
+
+      if (bluevoxs.length === 0) {
+        throw new NotFoundException(`Bluevoxs no encontrados.`);
+      }
+      const data = bluevoxs.map((item) => ({
+        ...item,
+        id: Number(item.id),
+        idCliente: Number(item.idCliente),
+      }));
+
+      const total = Number(totalResult[0]?.total ?? 0);
       //Apis response
       const result: ApiResponseCommon = {
         data: data,
@@ -120,20 +239,89 @@ export class BluevoxService {
       if (error instanceof HttpException) {
         throw error;
       }
-      throw new BadRequestException({ message: 'Error al obtener BlueVoxs' });
+      throw new InternalServerErrorException({
+        message: `Error al obtener paginado BlueVoxs.`,
+        error: error.message,
+      });
     }
   }
 
-  async findAllList(): Promise<ApiResponseCommon> {
+  async findAllList(cliente: number, rol: number): Promise<ApiResponseCommon> {
     try {
-      const blueVoxs = await this.bluevoxsRepository.find({
-        where: { estatus: 1 },
-      });
-      if (blueVoxs.length === 0) {
+      let bluevoxs;
+      switch (rol) {
+        case 1:
+          // Consulta de datos listado Usuario SuperAdministrador
+          bluevoxs = await this.bluevoxsRepository.query(
+            `
+SELECT
+  -- Datos del BlueVox
+  b.Id AS id,
+  b.NumeroSerie AS numeroSerie,
+  b.Marca AS marca,
+  b.Modelo AS modelo,
+  b.FechaCreacion AS fechaCreacion,
+  b.FechaActualizacion AS fechaActualizacion,
+  b.Estatus AS estatus,
+
+  -- Datos del Cliente
+  c.Id AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente
+
+FROM BlueVoxs b
+INNER JOIN Clientes c ON b.IdCliente = c.Id
+WHERE b.Estatus = 1
+ORDER BY b.Id DESC;
+        `,
+          );
+          break;
+
+        default:
+          // Consulta de datos listado resto Usuario
+          bluevoxs = await this.bluevoxsRepository.query(
+            `
+SELECT
+  -- Datos del BlueVox
+  b.Id AS id,
+  b.NumeroSerie AS numeroSerie,
+  b.Marca AS marca,
+  b.Modelo AS modelo,
+  b.FechaCreacion AS fechaCreacion,
+  b.FechaActualizacion AS fechaActualizacion,
+  b.Estatus AS estatus,
+
+  -- Datos del Cliente
+  c.Id AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente
+
+FROM BlueVoxs b
+INNER JOIN Clientes c ON b.IdCliente = c.Id
+WHERE b.IdCliente = ?
+AND b.Estatus = 1
+ORDER BY b.Id DESC;
+        `,
+            [cliente],
+          );
+          break;
+      }
+
+      const data = bluevoxs.map((item) => ({
+        ...item,
+        id: Number(item.id),
+        idCliente: Number(item.idCliente),
+      }));
+
+      if (bluevoxs.length === 0) {
         throw new NotFoundException('BlueVoxs no encontrados');
       }
       const result: ApiResponseCommon = {
-        data: blueVoxs,
+        data: data,
       };
       return result;
     } catch (error) {
@@ -144,15 +332,81 @@ export class BluevoxService {
     }
   }
 
-  async findOne(id: number) {
+  async findOne(id: number, cliente: number, rol: number) {
     try {
-      const bluevox = await this.bluevoxsRepository.findOne({
-        where: { id: id },
-      });
-      if (!bluevox) {
-        throw new NotFoundException(`BlueVoxs con ID:${id} no encontrado`);
+      let bluevoxs;
+      switch (rol) {
+        case 1:
+          bluevoxs = await this.bluevoxsRepository.query(
+            `
+SELECT
+  -- Datos del BlueVox
+  b.Id AS id,
+  b.NumeroSerie AS numeroSerie,
+  b.Marca AS marca,
+  b.Modelo AS modelo,
+  b.FechaCreacion AS fechaCreacion,
+  b.FechaActualizacion AS fechaActualizacion,
+  b.Estatus AS estatus,
+
+  -- Datos del Cliente
+  c.Id AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente
+
+FROM BlueVoxs b
+INNER JOIN Clientes c ON b.IdCliente = c.Id
+WHERE b.Id = ?
+ORDER BY b.Id DESC;
+        `,
+            [id],
+          );
+          break;
+
+        default:
+          bluevoxs = await this.bluevoxsRepository.query(
+            `
+SELECT
+  -- Datos del BlueVox
+  b.Id AS id,
+  b.NumeroSerie AS numeroSerie,
+  b.Marca AS marca,
+  b.Modelo AS modelo,
+  b.FechaCreacion AS fechaCreacion,
+  b.FechaActualizacion AS fechaActualizacion,
+  b.Estatus AS estatus,
+
+  -- Datos del Cliente
+  c.Id AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente
+
+FROM BlueVoxs b
+INNER JOIN Clientes c ON b.IdCliente = c.Id
+WHERE b.IdCliente = ?
+AND b.Id = ?
+ORDER BY b.Id DESC;
+        `,
+            [cliente, id],
+          );
+          break;
       }
-      return bluevox;
+
+      if (bluevoxs.length == 0) {
+        throw new NotFoundException(`BlueVox con ID:${id} no encontrado`);
+      }
+
+      const data = bluevoxs.map((item) => ({
+        ...item,
+        id: Number(item.id),
+        idCliente: Number(item.idCliente),
+      }));
+
+      return data;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -163,7 +417,7 @@ export class BluevoxService {
     }
   }
 
-  async update(id: number, idUser: string, updateBluevoxDto: UpdateBluevoxDto) {
+  async update(id: number, idUser: number, updateBluevoxDto: UpdateBluevoxDto) {
     try {
       const bluevox = await this.bluevoxsRepository.findOne({
         where: { id: id },
@@ -171,14 +425,16 @@ export class BluevoxService {
       if (!bluevox) throw new NotFoundException('BlueVox no encontrado');
       await this.bluevoxsRepository.update(id, updateBluevoxDto);
 
-      //-----Registro en la bitacora-----
+      //-----Registro en la bitacora----- SUCCESS
+      const querylogger = { updateBluevoxDto };
       await this.bitacoraLogger.logToBitacora(
         'BlueVoxs',
         `Se actualizo el bluevox con ID: ${id}`,
         'UPDATE',
-        `INSERT INTO Bluevoxs (...) VALUES (...) -> Numero Serie: ${updateBluevoxDto.numeroSerie}, Marca: ${updateBluevoxDto.marca}, Modelo: ${updateBluevoxDto.modelo}, IdCliente: ${updateBluevoxDto.idCliente}`,
-        Number(idUser),
+        `${querylogger}`,
+        idUser,
         12,
+        EstatusEnumBitcora.SUCCESS,
       );
 
       // ----- Api response -----
@@ -194,16 +450,31 @@ export class BluevoxService {
       };
       return result;
     } catch (error) {
+      //-----Registro en la bitacora----- ERROR
+      const querylogger = { updateBluevoxDto };
+      await this.bitacoraLogger.logToBitacora(
+        'BlueVoxs',
+        `Se actualizo el bluevox con ID: ${id}`,
+        'UPDATE',
+        `${querylogger}`,
+        idUser,
+        12,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
       if (error instanceof HttpException) {
         throw error;
       }
-      throw new InternalServerErrorException(`Error al actualizar bluevox`);
+      throw new InternalServerErrorException({
+        message: 'Ocurrió un error al intentar actualizar bluevoxs.',
+        error: error.message,
+      });
     }
   }
 
   async updateEstatus(
     id: number,
-    idUser: string,
+    idUser: number,
     updateBlueVoxEstatusDto: UpdateBlueVoxEstatusDto,
   ) {
     try {
@@ -214,14 +485,16 @@ export class BluevoxService {
       const estatus = updateBlueVoxEstatusDto.estatus;
       await this.bluevoxsRepository.update(id, { estatus: estatus });
 
-      //-----Registro en la bitacora-----
+      //-----Registro en la bitacora----- SUCCESS
+      const querylogger = { updateBlueVoxEstatusDto };
       await this.bitacoraLogger.logToBitacora(
         'BlueVoxs',
         `Se actualizo el estatus del bluevoxs con ID: ${id}`,
         'UPDATE',
-        `UPDATE BlueVoxs SET Estatus = ${estatus} WHERE id=${id}`,
-        Number(idUser),
+        `${querylogger}`,
+        idUser,
         12,
+        EstatusEnumBitcora.SUCCESS,
       );
 
       // ----- Api response -----
@@ -236,16 +509,29 @@ export class BluevoxService {
       };
       return result;
     } catch (error) {
+      //-----Registro en la bitacora----- SUCCESS
+      const querylogger = { updateBlueVoxEstatusDto };
+      await this.bitacoraLogger.logToBitacora(
+        'BlueVoxs',
+        `Se actualizo el estatus del bluevoxs con ID: ${id}`,
+        'UPDATE',
+        `${querylogger}`,
+        idUser,
+        12,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
       if (error instanceof HttpException) {
         throw error;
       }
-      throw new InternalServerErrorException(
-        `Error al actualizar estatus del bluevoxs`,
-      );
+      throw new InternalServerErrorException({
+        message: 'Error al actualizar estatus del bluevoxs.',
+        error: error.message,
+      });
     }
   }
 
-  async remove(id: number, idUser: string) {
+  async remove(id: number, idUser: number) {
     try {
       const bluevoxs = await this.bluevoxsRepository.findOne({
         where: { id: id },
@@ -254,14 +540,16 @@ export class BluevoxService {
 
       await this.bluevoxsRepository.update(id, { estatus: 0 });
 
-      //-----Registro en la bitacora-----
+      //-----Registro en la bitacora----- SUCCESS
+      const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(
         'BlueVoxs',
         `Se eliminó el bluevoxs con ID: ${id}`,
-        'DELETE',
-        `DELETE Bluevoxs (...) VALUES (...) -> Numero Serie: ${bluevoxs.numeroSerie}, Marca: ${bluevoxs.marca}, Modelo: ${bluevoxs.modelo}, Estatus: ${bluevoxs.estatus}, IdCliente: ${bluevoxs.idCliente}`, //, IdOperador=${bluevoxs.idOperador}, IdDispositivo=${bluevoxs.idDispositivo} WHERE id=${id}`,
-        Number(idUser),
+        'UPDATE',
+        `${querylogger}`,
+        idUser,
         12,
+        EstatusEnumBitcora.SUCCESS,
       );
 
       // ----- Api response -----
@@ -275,10 +563,25 @@ export class BluevoxService {
       };
       return result;
     } catch (error) {
+      //-----Registro en la bitacora----- ERROR
+      const querylogger = { id: id, estatus: 0 };
+      await this.bitacoraLogger.logToBitacora(
+        'BlueVoxs',
+        `Se eliminó el bluevoxs con ID: ${id}`,
+        'UPDATE',
+        `${querylogger}`,
+        idUser,
+        12,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
       if (error instanceof HttpException) {
         throw error;
       }
-      throw new InternalServerErrorException(`Error al eliminar al bluevoxs`);
+      throw new InternalServerErrorException({
+        message: 'Ocurrió un error al intentar eliminar el bluevoxs.',
+        error: error.message,
+      });
     }
   }
 }

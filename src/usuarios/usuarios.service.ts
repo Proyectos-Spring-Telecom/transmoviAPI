@@ -5,7 +5,6 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -340,7 +339,7 @@ export class UsuariosService {
             user: usuario,
             message: 'Entro a verificar los valores y no son iguales',
           });
-          throw new UnauthorizedException('Credenciales invalidas');
+          throw new BadRequestException('Credenciales invalidas');
         }
         const hashedPassword = await bcrypt.hash(
           updateUsuarioContrasena.passwordNueva,

@@ -29,25 +29,32 @@ export class OperadoresController {
     @Request() req,
   ): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
-    return this.operadoresService.createOperador(createOperadoreDto, idUser);
+    return this.operadoresService.createOperador(createOperadoreDto, +idUser);
   }
 
   @Get(':page/:limit')
   findAllOperador(
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,
+    @Request() req,
   ): Promise<ApiResponseCommon> {
-    return this.operadoresService.findAllOperadores(page, limit);
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+    return this.operadoresService.findAllOperadores(+cliente, +rol, page, limit);
   }
 
   @Get('list')
-  findAllListOperador(): Promise<ApiResponseCommon> {
-    return this.operadoresService.findAllListOperadores();
+  findAllListOperador(@Request() req,): Promise<ApiResponseCommon> {
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+    return this.operadoresService.findAllListOperadores(+cliente, +rol,);
   }
 
   @Get(':id')
-  findOneOperador(@Param('id') id: string) {
-    return this.operadoresService.findOneOperador(+id);
+  findOneOperador(@Param('id') id: string,@Request() req) {
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+    return this.operadoresService.findOneOperador(+id, +cliente, + rol);
   }
 
   @Patch('estatus/:id')
@@ -59,7 +66,7 @@ export class OperadoresController {
     const idUser = req.user.userId;
     return this.operadoresService.updateOperadorEstatus(
       +id,
-      idUser,
+      +idUser,
       updateOperadorStatusDto,
     );
   }
@@ -73,7 +80,7 @@ export class OperadoresController {
     const idUser = req.user.userId;
     return this.operadoresService.updateOperador(
       +id,
-      idUser,
+      +idUser,
       updateOperadoreDto,
     );
   }
@@ -81,6 +88,6 @@ export class OperadoresController {
   @Delete(':id')
   removeOperador(@Param('id') id: string, @Request() req) {
     const idUser = req.user.userId;
-    return this.operadoresService.removeOperador(+id, idUser);
+    return this.operadoresService.removeOperador(+id, +idUser);
   }
 }

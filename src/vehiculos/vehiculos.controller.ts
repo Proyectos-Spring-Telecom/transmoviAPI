@@ -26,12 +26,14 @@ export class VehiculosController {
   @Post()
   create(@Body() createVehiculoDto: CreateVehiculoDto, @Request() req) {
     const idUser = req.user.userId;
-    return this.vehiculosService.create(createVehiculoDto, idUser);
+    return this.vehiculosService.create(createVehiculoDto, +idUser);
   }
 
   @Get('list')
-  async findAllList(): Promise<ApiResponseCommon> {
-    return await this.vehiculosService.findAllList();
+  async findAllList(@Request() req,): Promise<ApiResponseCommon> {
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+    return await this.vehiculosService.findAllList(+cliente, +rol);
   }
 
   @Get('clientes/:id')
@@ -45,13 +47,18 @@ export class VehiculosController {
   async findAll(
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,
+    @Request() req,
   ): Promise<ApiResponseCommon> {
-    return await this.vehiculosService.findAll(page, limit);
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+    return await this.vehiculosService.findAll(page, limit, +cliente, +rol);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.vehiculosService.findOne(+id);
+  findOne(@Param('id') id: string, @Request() req,) {
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+    return this.vehiculosService.findOne(+id, +cliente, +rol);
   }
 
   @Put(':id')
@@ -61,7 +68,7 @@ export class VehiculosController {
     @Body() updateVehiculoDto: UpdateVehiculoDto,
   ) {
     const idUser = req.user.userId;
-    return this.vehiculosService.update(+id, idUser, updateVehiculoDto);
+    return this.vehiculosService.update(+id, +idUser, updateVehiculoDto);
   }
 
   @Patch('estatus/:id')
@@ -81,6 +88,6 @@ export class VehiculosController {
   @Delete(':id')
   remove(@Param('id') id: string, @Request() req) {
     const idUser = req.user.userId;
-    return this.vehiculosService.remove(+id, idUser);
+    return this.vehiculosService.remove(+id, +idUser);
   }
 }

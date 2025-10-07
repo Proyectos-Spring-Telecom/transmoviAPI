@@ -26,10 +26,13 @@ export class InstalacionesService {
   ) {}
 
   async create(
-    idUser: string,
+    idUser: number,
+    cliente: number,
+    rol: number,
     createInstalacioneDto: CreateInstalacionesDto,
   ): Promise<ApiCrudResponse> {
     try {
+      let permiso;
       // ✅ VALIDACIÓN MEJORADA: Verificar todos los conflictos con relaciones
       const errores: string[] = [];
 
@@ -87,14 +90,42 @@ export class InstalacionesService {
         await this.instalacionesRepository.save(newInstalaciones);
 
       //Asignamos a root la region
-      const rootPermisos = {
-        estatus: 1,
-        idUsuario: 1, //Se asigna al usuario supremo
-        idInstalacion: instalacionSave.id,
-      };
+      switch (rol) {
+        case 1:
+          permiso = {
+            estatus: 1,
+            idUsuario: 1, //Se asigna al usuario supremo
+            idInstalacion: instalacionSave.id,
+          };
+          await this.usuariosinstalacionesRepository.save(permiso);
+          break;
 
-      await this.usuariosinstalacionesRepository.save(rootPermisos);
-      // Registro en la bitácora (con mensaje corregido)
+        case 2:
+          permiso = {
+            estatus: 1,
+            idUsuario: 1, //Se asigna al usuario supremo
+            idInstalacion: instalacionSave.id,
+          };
+          await this.usuariosinstalacionesRepository.save(permiso);
+          permiso = {
+            estatus: 1,
+            idUsuario: idUser, //Se asigna al Administrador
+            idInstalacion: instalacionSave.id,
+          };
+          await this.usuariosinstalacionesRepository.save(permiso);
+          break;
+
+        default:
+          permiso = {
+            estatus: 1,
+            idUsuario: 1, //Se asigna al usuario supremo SuperAdministrador
+            idInstalacion: instalacionSave.id,
+          };
+          await this.usuariosinstalacionesRepository.save(permiso);
+          break;
+      }
+
+      // Registro en la bitácora
       await this.bitacoraLogger.logToBitacora(
         'Instalaciones',
         `Se creó una Instalación con id: ${instalacionSave.id}`, // ✅ Corregido
@@ -113,7 +144,9 @@ export class InstalacionesService {
           nombre: `Instalación ${instalacionSave.id} - Dispositivo:${instalacionSave.idDispositivo} BlueVox:${instalacionSave.idBlueVox} Vehículo:${instalacionSave.idVehiculo}`, // ✅ Mejorado
         },
       };
+
       return result;
+      
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -144,47 +177,53 @@ export class InstalacionesService {
   ): Promise<ApiResponseCommon> {
     try {
       let [data, total]: any[] = [];
-
+      const offset = (page - 1) * limit;
       switch (idUser) {
         // Usuario administrador - obtiene todas las instalaciones
         case 1:
-          [data, total] =
-            await this.usuariosinstalacionesRepository.findAndCount({
-              skip: (page - 1) * limit,
-              take: limit,
-              relations: [
-                'idInstalacion2',
-                'idInstalacion2.dispositivos',
-                'idInstalacion2.blueVoxs',
-                'idInstalacion2.vehiculos',
-                'idInstalacion2.idCliente2',
-              ],
-              where: {
-                idUsuario: idUser,
-                estatus: 1,
-              },
-              select: {
-                id: true,
-                idUsuario: true,
-                idInstalacion: true,
-                idInstalacion2: {
-                  id: true,
-                  fechaCreacion: true,
-                  fechaActualizacion: true,
-                  estatus: true,
-                  idCliente: true,
-                  dispositivos: { id: true, numeroSerie: true },
-                  blueVoxs: { id: true, numeroSerie: true },
-                  vehiculos: { id: true, placa: true },
-                  idCliente2: {
-                    id: true,
-                    nombre: true,
-                    apellidoPaterno: true,
-                    apellidoMaterno: true,
-                  },
-                },
-              },
-            });
+          data = await this.usuariosinstalacionesRepository.query(
+            `
+SELECT
+  -- Instalación
+  i.Id AS id,
+  i.FechaCreacion AS fechaCreacion,
+  i.FechaActualizacion AS fechaActualizacion,
+  i.Estatus AS estatus,
+  
+  -- Dispositivo
+  i.IdDispositivo AS idDispositivo,
+  d.NumeroSerie AS numeroSerieDispositivo,
+  
+  -- BlueVox
+  i.IdBlueVox AS idBlueVox,
+  b.NumeroSerie AS numeroSerieBlueVox,
+  
+  -- Vehículo
+  i.IdVehiculo AS idVehiculo,
+  v.Placa AS placaVehiculo,
+  
+  -- Cliente
+  i.IdCliente AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente
+
+FROM UsuariosInstalaciones ui
+INNER JOIN Instalaciones i ON ui.IdInstalacion = i.Id
+INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
+INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+
+WHERE ui.IdUsuario = 1
+  AND ui.Estatus = 1
+  AND c.Estatus = 1
+
+ORDER BY i.Id DESC;
+
+  `,
+            [idUser, limit, offset],
+          );
           break;
 
         default:
@@ -278,7 +317,7 @@ export class InstalacionesService {
       }));
       //APi response
       const result: ApiResponseCommon = {
-        data: instalaciones,
+        data: data,
         paginated: {
           total: total,
           page,
@@ -509,39 +548,39 @@ export class InstalacionesService {
       }
 
       // 🔥 Transformamos ids a number y añadimos nombreCompleto
-    const transformado = {
-      ...instalaciones,
-      id: Number(instalaciones.id),
-      dispositivos: instalaciones.dispositivos
-        ? {
-            ...instalaciones.dispositivos,
-            id: Number(instalaciones.dispositivos.id),
-          }
-        : null,
-      blueVoxs: instalaciones.blueVoxs
-        ? {
-            ...instalaciones.blueVoxs,
-            id: Number(instalaciones.blueVoxs.id),
-          }
-        : null,
-      vehiculos: instalaciones.vehiculos
-        ? {
-            ...instalaciones.vehiculos,
-            id: Number(instalaciones.vehiculos.id),
-          }
-        : null,
-      idCliente2: instalaciones.idCliente2
-        ? {
-            ...instalaciones.idCliente2,
-            id: Number(instalaciones.idCliente2.id),
-            nombreCompleto: `${instalaciones.idCliente2.nombre ?? ''} ${
-              instalaciones.idCliente2.apellidoPaterno ?? ''
-            } ${instalaciones.idCliente2.apellidoMaterno ?? ''}`.trim(),
-          }
-        : null,
-    };
+      const transformado = {
+        ...instalaciones,
+        id: Number(instalaciones.id),
+        dispositivos: instalaciones.dispositivos
+          ? {
+              ...instalaciones.dispositivos,
+              id: Number(instalaciones.dispositivos.id),
+            }
+          : null,
+        blueVoxs: instalaciones.blueVoxs
+          ? {
+              ...instalaciones.blueVoxs,
+              id: Number(instalaciones.blueVoxs.id),
+            }
+          : null,
+        vehiculos: instalaciones.vehiculos
+          ? {
+              ...instalaciones.vehiculos,
+              id: Number(instalaciones.vehiculos.id),
+            }
+          : null,
+        idCliente2: instalaciones.idCliente2
+          ? {
+              ...instalaciones.idCliente2,
+              id: Number(instalaciones.idCliente2.id),
+              nombreCompleto: `${instalaciones.idCliente2.nombre ?? ''} ${
+                instalaciones.idCliente2.apellidoPaterno ?? ''
+              } ${instalaciones.idCliente2.apellidoMaterno ?? ''}`.trim(),
+            }
+          : null,
+      };
 
-    return { data: transformado };
+      return { data: transformado };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;

@@ -29,8 +29,12 @@ export class InstalacionesController {
     @Request() req,
   ): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
     return await this.instalacionesService.create(
-      idUser,
+      +idUser,
+      +cliente,
+      +rol,
       createInstalacioneDto,
     );
   }

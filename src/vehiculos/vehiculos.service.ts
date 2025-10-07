@@ -11,7 +11,11 @@ import { Repository } from 'typeorm';
 import { Vehiculos } from 'src/entities/Vehiculos';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
+import {
+  ApiCrudResponse,
+  ApiResponseCommon,
+  EstatusEnumBitcora,
+} from 'src/common/ApiResponse';
 import { UpdateVehiculoEstatusDto } from './dto/update-vehiculos-estatus.dto';
 
 @Injectable()
@@ -21,7 +25,7 @@ export class VehiculosService {
     private readonly vehiculoRepository: Repository<Vehiculos>,
     private readonly bitacoraLogger: BitacoraLoggerService,
   ) {}
-  async create(createVehiculoDto: CreateVehiculoDto, idUser: string) {
+  async create(createVehiculoDto: CreateVehiculoDto, idUser: number) {
     try {
       const vehiculoExist = await this.vehiculoRepository.findOne({
         where: { placa: createVehiculoDto.placa },
@@ -34,20 +38,22 @@ export class VehiculosService {
         await this.vehiculoRepository.create(createVehiculoDto);
       const vehiculo = await this.vehiculoRepository.save(vehiculoData);
 
-      //-----Registro en la bitacora-----
+      //-----Registro en la bitacora----- SUCCESS
+      const querylogger = { createVehiculoDto };
       await this.bitacoraLogger.logToBitacora(
         'Vehiculos',
-        `Se creó el vehiculo con placas: ${createVehiculoDto.placa}`,
+        `Se creó el vehículo con placas: ${createVehiculoDto.placa}`,
         'CREATE',
-        `INSERT INTO Vehiculos (Marca, Modelo, Ano, Placa, NumeroEconomico, Estatus, IdOperador, IdDispositivo) VALUES ('${createVehiculoDto.marca}', '${createVehiculoDto.modelo}', ${createVehiculoDto.ano}, '${createVehiculoDto.placa}', '${createVehiculoDto.numeroEconomico}', ${createVehiculoDto.estatus}, ${vehiculo.id})`,
-        Number(idUser),
+        `${querylogger}`,
+        idUser,
         10,
+        EstatusEnumBitcora.SUCCESS,
       );
 
       // ----- Api response -----
       const result: ApiCrudResponse = {
         status: 'success',
-        message: 'Vehiculo creado correctamente',
+        message: 'El vehículo ha sido creado exitosamente.',
         data: {
           id: Number(vehiculo.id),
           nombre: `${vehiculo.modelo} ${vehiculo.placa} ` || '',
@@ -55,12 +61,24 @@ export class VehiculosService {
       };
       return result;
     } catch (error) {
+      //-----Registro en la bitacora----- ERROR
+      const querylogger = { createVehiculoDto };
+      await this.bitacoraLogger.logToBitacora(
+        'Vehiculos',
+        `Se creó el vehículo con placas: ${createVehiculoDto.placa}`,
+        'CREATE',
+        `${querylogger}`,
+        idUser,
+        10,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
       if (error instanceof HttpException) {
         throw error;
       }
       throw new InternalServerErrorException({
-        message: `Error al crear al vehiculo`,
-        error,
+        message: `Se produjo un error al crear el vehículo.`,
+        error: error.message,
       });
     }
   }
@@ -72,7 +90,7 @@ export class VehiculosService {
         where: { idCliente: id, estatus: 1 },
       });
       if (vehiculos.length === 0) {
-        throw new NotFoundException(`Vehiculos no encontrados`);
+        throw new NotFoundException(`No se encontraron vehículos.`);
       }
 
       //Forzamos a cambiar el id a number
@@ -89,24 +107,132 @@ export class VehiculosService {
       if (error instanceof HttpException) {
         throw error;
       }
-      throw new InternalServerErrorException(
-        `Error al obtener los vehiculos de un cliente en especifico`,
-      );
+      throw new InternalServerErrorException({
+        message: `Se produjo un error al obtener el listado de vehículos.`,
+        error: error.message,
+      });
     }
   }
 
-  async findAll(page: number, limit: number): Promise<ApiResponseCommon> {
+  async findAll(
+    page: number,
+    limit: number,
+    cliente: number,
+    rol: number,
+  ): Promise<ApiResponseCommon> {
     try {
-      const vehiculos = await this.vehiculoRepository.find();
-      if (vehiculos.length === 0)
-        throw new NotFoundException('vehiculos no encontrados');
-      const [data, total] = await this.vehiculoRepository.findAndCount({
-        relations: [],
-        skip: (page - 1) * limit,
-        take: limit,
-      });
+      const offset = (page - 1) * limit;
+      let vehiculos;
+      let totalResult;
+
+      switch (rol) {
+        case 1:
+          // Consulta de datos paginados Usuario SuperAdministrador
+          vehiculos = await this.vehiculoRepository.query(
+            `
+SELECT
+  -- Datos del Vehículo
+  v.Id AS id,
+  v.Marca AS marca,
+  v.Modelo AS modelo,
+  v.Ano AS ano,
+  v.Placa AS placa,
+  v.NumeroEconomico AS numeroEconomico,
+  v.TarjetaCirculacion AS tarjetaCirculacion,
+  v.PolizaSeguro AS polizaSeguro,
+  v.PermisoConcesion AS permisoConcesion,
+  v.InspeccionMecanica AS inspeccionMecanica,
+  v.Foto AS foto,
+  v.FechaCreacion AS fechaCreacion,
+  v.FechaActualizacion AS fechaActualizacion,
+  v.Estatus AS estatus,
+
+  -- Datos del Cliente
+  c.Id AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternocliente,
+  c.ApellidoMaterno AS apellidoMaternocliente,
+  c.Estatus AS estatusCliente
+
+FROM Vehiculos v
+INNER JOIN Clientes c ON v.IdCliente = c.Id
+ORDER BY v.Id DESC
+LIMIT ? OFFSET ?;
+        `,
+            [limit, offset],
+          );
+
+          // Query para total (sin paginación)
+          totalResult = await this.vehiculoRepository.query(
+            `
+  SELECT COUNT(*) AS total
+  FROM Vehiculos v
+  INNER JOIN Clientes c ON v.IdCliente = c.Id
+  `,
+          );
+          break;
+
+        default:
+          // Consulta de datos paginados resto Usuario
+          vehiculos = await this.vehiculoRepository.query(
+            `
+SELECT
+  -- Datos del Vehículo
+  v.Id AS id,
+  v.Marca AS marca,
+  v.Modelo AS modelo,
+  v.Ano AS ano,
+  v.Placa AS placa,
+  v.NumeroEconomico AS numeroEconomico,
+  v.TarjetaCirculacion AS tarjetaCirculacion,
+  v.PolizaSeguro AS polizaSeguro,
+  v.PermisoConcesion AS permisoConcesion,
+  v.InspeccionMecanica AS inspeccionMecanica,
+  v.Foto AS foto,
+  v.FechaCreacion AS fechaCreacion,
+  v.FechaActualizacion AS fechaActualizacion,
+  v.Estatus AS estatus,
+
+  -- Datos del Cliente
+  c.Id AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternocliente,
+  c.ApellidoMaterno AS apellidoMaternocliente,
+  c.Estatus AS estatusCliente
+
+FROM Vehiculos v
+INNER JOIN Clientes c ON v.IdCliente = c.Id
+WHERE c.Id = ?
+ORDER BY v.Id DESC
+LIMIT ? OFFSET ?;
+        `,
+            [cliente, limit, offset],
+          );
+
+          // Query para total (sin paginación)
+          totalResult = await this.vehiculoRepository.query(
+            `
+  SELECT COUNT(*) AS total
+  FROM Vehiculos v
+  INNER JOIN Clientes c ON v.IdCliente = c.Id
+	WHERE c.Id = ?
+  `,
+            [cliente],
+          );
+          break;
+      }
+      if (vehiculos.length === 0) {
+        throw new NotFoundException(`No se encontraron vehículos.`);
+      }
+      const total = Number(totalResult[0]?.total || 0);
+      const data = vehiculos.map((item) => ({
+        ...item,
+        id: Number(item.id),
+        idCliente: Number(item.idCliente),
+      }));
+
       const result: ApiResponseCommon = {
-        data,
+        data: data,
         paginated: {
           total: total,
           page,
@@ -118,72 +244,248 @@ export class VehiculosService {
       if (error instanceof HttpException) {
         throw error;
       }
-      throw new BadRequestException(error.message || 'Error fetching data');
+      throw new InternalServerErrorException({
+        message: `Se produjo un error al obtener la paginación de vehículos.`,
+        error: error.message,
+      });
     }
   }
 
-  async findAllList(): Promise<ApiResponseCommon> {
+  async findAllList(cliente: number, rol: number): Promise<ApiResponseCommon> {
     try {
-      const vehiculos = await this.vehiculoRepository.find({
-        where: { estatus: 1 },
-      });
+      let vehiculos;
+
+      switch (rol) {
+        case 1:
+          // Consulta de datos listado Usuario SuperAdministrador
+          vehiculos = await this.vehiculoRepository.query(
+            `
+SELECT
+  -- Datos del Vehículo
+  v.Id AS id,
+  v.Marca AS marca,
+  v.Modelo AS modelo,
+  v.Ano AS ano,
+  v.Placa AS placa,
+  v.NumeroEconomico AS numeroEconomico,
+  v.TarjetaCirculacion AS tarjetaCirculacion,
+  v.PolizaSeguro AS polizaSeguro,
+  v.PermisoConcesion AS permisoConcesion,
+  v.InspeccionMecanica AS inspeccionMecanica,
+  v.Foto AS foto,
+  v.FechaCreacion AS fechaCreacion,
+  v.FechaActualizacion AS fechaActualizacion,
+  v.Estatus AS estatus,
+
+  -- Datos del Cliente
+  c.Id AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternocliente,
+  c.ApellidoMaterno AS apellidoMaternocliente,
+  c.Estatus AS estatusCliente
+
+FROM Vehiculos v
+INNER JOIN Clientes c ON v.IdCliente = c.Id
+WHERE v.Estatus = 1
+ORDER BY v.Id DESC;
+        `,
+          );
+          break;
+
+        default:
+          // Consulta de datos listado resto Usuario
+          vehiculos = await this.vehiculoRepository.query(
+            `
+SELECT
+  -- Datos del Vehículo
+  v.Id AS id,
+  v.Marca AS marca,
+  v.Modelo AS modelo,
+  v.Ano AS ano,
+  v.Placa AS placa,
+  v.NumeroEconomico AS numeroEconomico,
+  v.TarjetaCirculacion AS tarjetaCirculacion,
+  v.PolizaSeguro AS polizaSeguro,
+  v.PermisoConcesion AS permisoConcesion,
+  v.InspeccionMecanica AS inspeccionMecanica,
+  v.Foto AS foto,
+  v.FechaCreacion AS fechaCreacion,
+  v.FechaActualizacion AS fechaActualizacion,
+  v.Estatus AS estatus,
+
+  -- Datos del Cliente
+  c.Id AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternocliente,
+  c.ApellidoMaterno AS apellidoMaternocliente,
+  c.Estatus AS estatusCliente
+
+FROM Vehiculos v
+INNER JOIN Clientes c ON v.IdCliente = c.Id
+WHERE c.Id = ?
+AND v.Estatus = 1
+ORDER BY v.Id DESC;
+        `,
+            [cliente],
+          );
+          break;
+      }
+
       if (vehiculos.length === 0)
-        throw new NotFoundException('vehiculos no encontrados');
+        throw new NotFoundException('No se encontraron vehículos.');
+
+      const data = vehiculos.map((item) => ({
+        ...item,
+        id: Number(item.id),
+        idCliente: Number(item.idCliente),
+      }));
 
       //APi response
       const result: ApiResponseCommon = {
-        data: vehiculos,
+        data: data,
       };
       return result;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
       }
-      throw new BadRequestException(error.message || 'Error fetching data');
+      throw new InternalServerErrorException({
+        message:
+          'Ocurrió un error al intentar obtener un listado de vehiculos.',
+        error: error.message,
+      });
     }
   }
 
-  async findOne(id: number) {
+  async findOne(id: number, cliente: number, rol: number) {
     try {
-      const vehiculo = await this.vehiculoRepository.findOne({
-        where: { id: id },
-      });
-      if (!vehiculo) throw new NotFoundException('Vehiculo no encontrado');
-      return { data: vehiculo };
+      let vehiculos;
+
+      switch (rol) {
+        case 1:
+          vehiculos = await this.vehiculoRepository.query(
+            `
+SELECT
+  -- Datos del Vehículo
+  v.Id AS id,
+  v.Marca AS marca,
+  v.Modelo AS modelo,
+  v.Ano AS ano,
+  v.Placa AS placa,
+  v.NumeroEconomico AS numeroEconomico,
+  v.TarjetaCirculacion AS tarjetaCirculacion,
+  v.PolizaSeguro AS polizaSeguro,
+  v.PermisoConcesion AS permisoConcesion,
+  v.InspeccionMecanica AS inspeccionMecanica,
+  v.Foto AS foto,
+  v.FechaCreacion AS fechaCreacion,
+  v.FechaActualizacion AS fechaActualizacion,
+  v.Estatus AS estatus,
+
+  -- Datos del Cliente
+  c.Id AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternocliente,
+  c.ApellidoMaterno AS apellidoMaternocliente,
+  c.Estatus AS estatusCliente
+
+FROM Vehiculos v
+INNER JOIN Clientes c ON v.IdCliente = c.Id
+WHERE v.Id = ?
+ORDER BY v.Id DESC;
+        `,
+            [id],
+          );
+          break;
+
+        default:
+          vehiculos = await this.vehiculoRepository.query(
+            `
+SELECT
+  -- Datos del Vehículo
+  v.Id AS id,
+  v.Marca AS marca,
+  v.Modelo AS modelo,
+  v.Ano AS ano,
+  v.Placa AS placa,
+  v.NumeroEconomico AS numeroEconomico,
+  v.TarjetaCirculacion AS tarjetaCirculacion,
+  v.PolizaSeguro AS polizaSeguro,
+  v.PermisoConcesion AS permisoConcesion,
+  v.InspeccionMecanica AS inspeccionMecanica,
+  v.Foto AS foto,
+  v.FechaCreacion AS fechaCreacion,
+  v.FechaActualizacion AS fechaActualizacion,
+  v.Estatus AS estatus,
+
+  -- Datos del Cliente
+  c.Id AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternocliente,
+  c.ApellidoMaterno AS apellidoMaternocliente,
+  c.Estatus AS estatusCliente
+
+FROM Vehiculos v
+INNER JOIN Clientes c ON v.IdCliente = c.Id
+WHERE v.Id = ?
+AND c.Id = ?
+ORDER BY v.Id DESC;
+        `,
+            [id, cliente],
+          );
+          break;
+      }
+
+      if (vehiculos.length == 0)
+        throw new NotFoundException('Vehículo no encontrado.');
+
+      const data = vehiculos.map((item) => ({
+        ...item,
+        id: Number(item.id),
+        idCliente: Number(item.idCliente),
+      }));
+
+      return { data: data };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
       }
-      throw new InternalServerErrorException(`Error al obtener al vehiculo`);
+      throw new InternalServerErrorException({
+        message: 'Error al obtener el vehículo.',
+        error: error.message,
+      });
     }
   }
 
   async updateEstatus(
     id: number,
-    idUser: string,
+    idUser: number,
     updateVehiculoEstausDto: UpdateVehiculoEstatusDto,
   ) {
     try {
       const vehiculo = await this.vehiculoRepository.findOne({
         where: { id: id },
       });
-      if (!vehiculo) throw new NotFoundException('Vehiculo no encontrado');
+      if (!vehiculo) throw new NotFoundException('Vehículo no encontrado.');
       const estatus = updateVehiculoEstausDto.estatus;
       await this.vehiculoRepository.update(id, { estatus: estatus });
-      //-----Registro en la bitacora-----
+
+      //-----Registro en la bitacora----- SUCCESS
+      const querylogger = { updateVehiculoEstausDto };
       await this.bitacoraLogger.logToBitacora(
         'Vehiculos',
-        `Se actualizo el estatus del vehiculo con ID: ${id}`,
+        `Se actualizó el estatus del vehículo con ID: ${id}.`,
         'UPDATE',
-        `UPDATE Vehiculo SET Estatus = ${estatus} WHERE id=${id}`,
-        Number(idUser),
+        `${querylogger}`,
+        idUser,
         10,
+        EstatusEnumBitcora.SUCCESS,
       );
 
       // ----- Api response -----
       const result: ApiCrudResponse = {
         status: 'success',
-        message: 'Estatus de vehiculo actualizado correctamente',
+        message: 'Estatus del vehículo actualizado correctamente.',
         estatus: { estatus: estatus },
         data: {
           id: id,
@@ -192,18 +494,31 @@ export class VehiculosService {
       };
       return result;
     } catch (error) {
+      //-----Registro en la bitacora----- ERROR
+      const querylogger = { updateVehiculoEstausDto };
+      await this.bitacoraLogger.logToBitacora(
+        'Vehiculos',
+        `Se actualizó el estatus del vehículo con ID: ${id}.`,
+        'UPDATE',
+        `${querylogger}`,
+        idUser,
+        10,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
       if (error instanceof HttpException) {
         throw error;
       }
-      throw new InternalServerErrorException(
-        `Error al actualizar estatus del vehiculo`,
-      );
+      throw new InternalServerErrorException({
+        message: 'Error al actualizar el estatus del vehículo.',
+        error: error.message,
+      });
     }
   }
 
   async update(
     id: number,
-    idUser: string,
+    idUser: number,
     updateVehiculoDto: UpdateVehiculoDto,
   ) {
     try {
@@ -216,20 +531,22 @@ export class VehiculosService {
         updateVehiculoDto,
       );
 
-      //-----Registro en la bitacora-----
+      //-----Registro en la bitacora----- SUCCESS
+      const querylogger = { updateVehiculoDto };
       await this.bitacoraLogger.logToBitacora(
         'Vehiculos',
-        `Se actualizo el vehiculo con ID: ${id}`,
+        `Se actualizó el vehículo con ID: ${id}.`,
         'UPDATE',
-        `UPDATE Vehiculos SET Marca='${updateVehiculoDto.marca}', Modelo='${updateVehiculoDto.modelo}', Ano=${updateVehiculoDto.ano}, Placa='${updateVehiculoDto.placa}', NumeroEconomico='${updateVehiculoDto.numeroEconomico}', Estatus=${updateVehiculoDto.estatus}, IdOperador=${vehiculo.id}, WHERE id=${id}`,
-        Number(idUser),
+        `${querylogger}`,
+        idUser,
         10,
+        EstatusEnumBitcora.SUCCESS,
       );
 
       // ----- Api response -----
       const result: ApiCrudResponse = {
         status: 'success',
-        message: 'Vehiculo actualizado correctamente',
+        message: 'Vehículo actualizado correctamente.',
         data: {
           id: id,
           nombre:
@@ -239,28 +556,47 @@ export class VehiculosService {
       };
       return result;
     } catch (error) {
+      //-----Registro en la bitacora----- ERROR
+      const querylogger = { updateVehiculoDto };
+      await this.bitacoraLogger.logToBitacora(
+        'Vehiculos',
+        `Se actualizó el vehículo con ID: ${id}.`,
+        'UPDATE',
+        `${querylogger}`,
+        idUser,
+        10,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
+
       if (error instanceof HttpException) {
         throw error;
       }
-      throw new InternalServerErrorException(`Error al actualizar vehiculo`);
+      throw new InternalServerErrorException({
+        message: 'Error al actualizar el vehículo.',
+        error: error.message,
+      });
     }
   }
 
-  async remove(id: number, idUser: string) {
+  async remove(id: number, idUser: number) {
     try {
       const vehiculo = await this.vehiculoRepository.findOne({
         where: { id: id },
       });
-      if (!vehiculo) throw new NotFoundException('Vehiculo no encontrado');
+      if (!vehiculo) throw new NotFoundException('Vehículo no encontrado.');
       await this.vehiculoRepository.update(id, { estatus: 0 });
-      //-----Registro en la bitacora-----
+
+      //-----Registro en la bitacora----- SUCCESS
+      const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(
         'Vehiculos',
-        `Se eliminó el vehiculo con ID: ${id}`,
-        'DELETE',
-        `DELETE Vehiculos SET Marca='${vehiculo.marca}', Modelo='${vehiculo.modelo}', Ano=${vehiculo.ano}, Placa='${vehiculo.placa}', NumeroEconomico='${vehiculo.numeroEconomico}', Estatus=${vehiculo.estatus}`, //, IdOperador=${vehiculo.idOperador}, IdDispositivo=${vehiculo.idDispositivo} WHERE id=${id}`,
-        Number(idUser),
+        `Se eliminó el vehículo con ID: ${id}.`,
+        'UPDATE',
+        `${querylogger}`,
+        idUser,
         10,
+        EstatusEnumBitcora.SUCCESS,
       );
 
       // ----- Api response -----
@@ -269,17 +605,30 @@ export class VehiculosService {
         message: 'Vehiculo eliminado correctamente',
         data: {
           id: id,
-          nombre:
-            `${vehiculo.modelo} ${vehiculo.placa} ` ||
-            '',
+          nombre: `${vehiculo.modelo} ${vehiculo.placa} ` || '',
         },
       };
       return result;
     } catch (error) {
+      //-----Registro en la bitacora----- ERROR
+      const querylogger = { id: id, estatus: 0 };
+      await this.bitacoraLogger.logToBitacora(
+        'Vehiculos',
+        `Se eliminó el vehículo con ID: ${id}.`,
+        'UPDATE',
+        `${querylogger}`,
+        idUser,
+        10,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
       if (error instanceof HttpException) {
         throw error;
       }
-      throw new InternalServerErrorException(`Error al eliminar al vehiculo`);
+      throw new InternalServerErrorException({
+        message: 'Error al eliminar el vehículo.',
+        error: error.message,
+      });
     }
   }
 }

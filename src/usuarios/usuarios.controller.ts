@@ -28,7 +28,7 @@ import { UpdateUsuarioContrasena } from './dto/update-usuario-contrasena.dto';
 export class UsuariosController {
   constructor(private readonly usuariosService: UsuariosService) {}
 
-  // ===== CREATE =====
+
   @Post()
   @ApiOperation({ summary: 'Crear nuevo usuario' })
   async createUsuario(
@@ -39,7 +39,7 @@ export class UsuariosController {
     return await this.usuariosService.createUsuario(createUsuarioDto, idUser);
   }
 
-  // ===== READ =====
+
   @Get(':page/:limit')
   @ApiOperation({ summary: 'Obtener usuarios paginados' })
   @ApiResponse({ status: 200, description: 'Lista de usuarios' })
@@ -74,7 +74,7 @@ export class UsuariosController {
     return this.usuariosService.getUsuarioByID(id);
   }
 
-  // ===== UPDATE =====
+
   @Put(':id')
   @ApiOperation({ summary: 'Actualizar usuario' })
   async updateUsuario(
@@ -119,7 +119,7 @@ export class UsuariosController {
     return await this.usuariosService.updateUsuarioEstatus(id, updateUsuarioEstatusDto, idUser);
   }
 
-  // ===== DELETE =====
+
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar usuario' })
   async deleteUsuario(
