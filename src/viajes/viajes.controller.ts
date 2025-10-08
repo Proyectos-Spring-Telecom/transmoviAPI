@@ -20,11 +20,16 @@ export class ViajesController {
   @Post()
   create(@Body() createViajeDto: CreateViajeDto, @Request() req) {
     const idUser = req.user.userId;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
     return this.viajesService.create(+idUser, createViajeDto);
   }
 
   @Get('list')
-  findAllList() {
+  findAllList(@Request() req) {
+    const idUser = req.user.userId;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
     return this.viajesService.findAllList();
   }
 
@@ -32,12 +37,19 @@ export class ViajesController {
   findAll(
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,
+    @Request() req
   ) {
+    const idUser = req.user.userId;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
     return this.viajesService.findAll(page,limit);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id') id: string, @Request() req) {
+    const idUser = req.user.userId;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
     return this.viajesService.findOne(+id);
   }
 

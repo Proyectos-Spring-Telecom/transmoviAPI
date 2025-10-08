@@ -59,7 +59,7 @@ export class InstalacionesService {
       });
       if (dispositivoEnUso) {
         errores.push(
-          `Dispositivo "${dispositivoEnUso.dispositivos.numeroSerie}" ya está en uso`,
+          ` Dispositivo ${dispositivoEnUso.dispositivos.numeroSerie} ya está en uso.`,
         );
       }
 
@@ -70,7 +70,7 @@ export class InstalacionesService {
       });
       if (blueVoxEnUso) {
         errores.push(
-          `BlueVox "${blueVoxEnUso.blueVoxs.numeroSerie}" ya está en uso`,
+          ` BlueVox ${blueVoxEnUso.blueVoxs.numeroSerie} ya está en uso.`,
         );
       }
 
@@ -81,14 +81,14 @@ export class InstalacionesService {
       });
       if (vehiculoEnUso) {
         errores.push(
-          `Vehículo con placa "${vehiculoEnUso.vehiculos.placa}" ya está en uso`,
+          ` Vehículo con placa ${vehiculoEnUso.vehiculos.placa} ya está en uso.`,
         );
       }
 
       // Si hay conflictos, lanzar error con todos los detalles
       if (errores.length > 0) {
         throw new BadRequestException({
-          message: `No se puede crear la instalación debido a los siguientes conflictos`,
+          message: `No se puede crear la instalación debido a los siguientes conflictos: ${errores[0]}`,
           errors: errores,
           conflictsCount: errores.length,
         });
