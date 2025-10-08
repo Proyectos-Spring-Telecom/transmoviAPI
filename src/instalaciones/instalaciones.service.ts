@@ -1119,6 +1119,15 @@ ORDER BY i.Id DESC;
       //Actualizamos datos
       await this.instalacionesRepository.update(id, { estatus: 0 });
 
+      // Desactivar instalación → activar componentes
+        const body = { estatus: 1 };
+        await this.dispositivosRepository.update(
+          instalacion.idDispositivo,
+          body
+        );
+        await this.bluevoxsRepository.update(instalacion.idBlueVox, body);
+        await this.vehiculosRepository.update(instalacion.idVehiculo, body);
+
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(
