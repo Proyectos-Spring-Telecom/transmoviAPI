@@ -201,9 +201,6 @@ ORDER BY d.Id DESC;
           break;
       }
 
-      if (dispositivo.length === 0) {
-        throw new NotFoundException(`Dispositivos no encontrados.`);
-      }
 
       const data = dispositivo.map((item) => ({
         ...item,
@@ -320,9 +317,6 @@ LIMIT ? OFFSET ?;
           break;
       }
 
-      if (dispositivo.length === 0) {
-        throw new NotFoundException(`Dispositivos no encontrados.`);
-      }
 
       const data = dispositivo.map((item) => ({
         ...item,

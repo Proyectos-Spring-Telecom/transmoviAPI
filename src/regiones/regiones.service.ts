@@ -237,9 +237,7 @@ export class RegionesService {
           });
           break;
       }
-      if (data.length === 0) {
-        throw new NotFoundException('Region no encontrado');
-      }
+      
 
       // 🔥 Normalizamos ids y agregamos nombreCompleto
       const regiones = data.map((item) => ({
@@ -358,9 +356,7 @@ export class RegionesService {
           break;
       }
 
-      if (regiones.length == 0) {
-        throw new NotFoundException('Regiones no encontrado');
-      }
+      
 
       // 🔥 Forzamos ids a number y agregamos nombreCompleto
       const data = regiones.map((item) => ({

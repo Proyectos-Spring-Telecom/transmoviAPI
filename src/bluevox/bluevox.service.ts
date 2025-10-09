@@ -214,9 +214,6 @@ ORDER BY b.Id DESC;
           break;
       }
 
-      if (bluevoxs.length === 0) {
-        throw new NotFoundException(`Bluevoxs no encontrados.`);
-      }
       const data = bluevoxs.map((item) => ({
         ...item,
         id: Number(item.id),
@@ -317,9 +314,6 @@ ORDER BY b.Id DESC;
         idCliente: Number(item.idCliente),
       }));
 
-      if (bluevoxs.length === 0) {
-        throw new NotFoundException('BlueVoxs no encontrados');
-      }
       const result: ApiResponseCommon = {
         data: data,
       };

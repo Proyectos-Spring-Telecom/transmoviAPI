@@ -39,15 +39,21 @@ export class RutasService {
     createRutaDto: CreateRutaDto,
   ): Promise<ApiCrudResponse> {
     try {
+      let region;
       const idRegionRuta = createRutaDto.idRegion;
       switch (rol) {
         case 1:
           // Usuario SuperAdministrador
+          region = await this.regionesRepository.findOne({
+            where: { id: createRutaDto.idRegion },
+          });
+          if (!region) throw new NotFoundException('Region no encontrada');
+          
           break;
 
         case 2:
           // Usuario Administrador
-          const region = await this.regionesRepository.findOne({
+          region = await this.regionesRepository.findOne({
             where: { id: createRutaDto.idRegion, idCliente: cliente },
           });
           if (!region) throw new NotFoundException('Region no encontrada');
@@ -60,6 +66,10 @@ export class RutasService {
           });
           if (permiso.length === 0)
             throw new BadRequestException(`Acceso denegado`);
+          region = await this.regionesRepository.findOne({
+            where: { id: createRutaDto.idRegion, idCliente: cliente },
+          });
+          if (!region) throw new NotFoundException('Region no encontrada');
           break;
       }
 
