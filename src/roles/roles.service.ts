@@ -4,15 +4,17 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  Res,
 } from '@nestjs/common';
 import { CreateRolDto } from './dto/create-rol.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Not } from 'typeorm';
 import { Roles } from 'src/entities/Roles';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { UpdateRolEstatusDto } from './dto/update-rol.dto';
+import { Response } from 'express';
 
 @Injectable()
 export class RolesService {
@@ -30,7 +32,6 @@ export class RolesService {
       const rol = await this.rolesRepository.find({
         where: { nombre: createRoleDto.nombre },
       });
-      console.log(rol.length);
       if (rol.length !== 0) {
         throw new BadRequestException('El rol ya existe');
       }
@@ -67,11 +68,31 @@ export class RolesService {
     }
   }
 
-  async findAll(page: number, limit: number): Promise<ApiResponseCommon> {
-    const [data, total] = await this.rolesRepository.findAndCount({
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+  async findAll(
+    rol: number,
+    page: number,
+    limit: number,
+  ): Promise<ApiResponseCommon> {
+    let data;
+    let total;
+    switch (rol) {
+      case 1:
+        [data, total] = await this.rolesRepository.findAndCount({
+          skip: (page - 1) * limit,
+          take: limit,
+        });
+        break;
+
+      default:
+        [data, total] = await this.rolesRepository.findAndCount({
+          skip: (page - 1) * limit,
+          take: limit,
+          where: {
+            id: Not(1), 
+          },
+        });
+        break;
+    }
 
     const result: ApiResponseCommon = {
       data: data,
@@ -85,8 +106,23 @@ export class RolesService {
     return result;
   }
 
-  async findAllList(): Promise<ApiResponseCommon> {
-    const permisos = await this.rolesRepository.find({where:{estatus:1}});
+  async findAllList(rol: number): Promise<ApiResponseCommon> {
+    let permisos;
+    switch (rol) {
+      case 1:
+        permisos = await this.rolesRepository.find({ where: { estatus: 1 } });
+        break;
+
+      default:
+        permisos = await this.rolesRepository.find({
+          where: {
+            estatus: 1,
+            id: Not(1),
+          },
+        });
+        break;
+    }
+
     const result: ApiResponseCommon = {
       data: permisos,
     };

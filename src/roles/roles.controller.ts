@@ -10,6 +10,7 @@ import {
   Request,
   Put,
   UseGuards,
+  Res,
 } from '@nestjs/common';
 import { RolesService } from './roles.service';
 import { CreateRolDto } from './dto/create-rol.dto';
@@ -17,6 +18,7 @@ import { UpdateRoleDto } from './dto/update-role.dto';
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { UpdateRolEstatusDto } from './dto/update-rol.dto';
+import type { Response } from 'express';
 
 @Controller('roles')
 @UseGuards(JwtAuthGuard)
@@ -26,6 +28,8 @@ export class RolesController {
   @Post()
   create(@Body() createRoleDto: CreateRolDto, @Request() req) {
     const idUser = req.user.userId;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
     return this.rolesService.create(idUser, createRoleDto);
   }
 
@@ -33,14 +37,22 @@ export class RolesController {
   async findAll(
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,
+    @Request() req
   ): Promise<ApiResponseCommon> {
-    return await this.rolesService.findAll(page, limit);
+    const idUser = req.user.userId;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+    return await this.rolesService.findAll(+rol, page, limit);
   }
 
   @Get('list')
-  async findAllList(): Promise<ApiResponseCommon> {
-    return await this.rolesService.findAllList();
+  async findAllList(@Request() req): Promise<ApiResponseCommon> {
+    const idUser = req.user.userId;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+    return await this.rolesService.findAllList(+rol);
   }
+
 
   @Get(':id')
   async findOne(@Param('id', ParseIntPipe) id: number) {
