@@ -66,6 +66,7 @@ export class AuthService {
       return {
         message: `login exitoso`,
         id: Number(`${user.id}`),
+        idCliente:Number(`${user.idCliente}`),
         nombre: `${user.nombre}`,
         apellidoPaterno: `${user.apellidoPaterno}`,
         apellidoMaterno: `${user.apellidoMaterno}`,
@@ -129,6 +130,7 @@ export class AuthService {
       return {
         message: `login exitoso`,
         id: Number(`${user.id}`),
+        idCliente:Number(`${user.idCliente}`), 
         nombre: `${user.nombre}`,
         apellidoPaterno: `${user.apellidoPaterno}`,
         apellidoMaterno: `${user.apellidoMaterno}`,
