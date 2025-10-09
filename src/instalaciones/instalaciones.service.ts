@@ -427,9 +427,7 @@ INNER JOIN Clientes c ON i.IdCliente = c.Id
 
       const total = Number(totalResult[0]?.total || 0);
 
-      if (instalaciones.length === 0) {
-        throw new NotFoundException('No se encontraron instalaciones.');
-      }
+      
 
       // 🔥 Transformación de datos (ids → number, nombreCompleto)
       const data = instalaciones.map((item) => ({
@@ -631,9 +629,6 @@ ORDER BY i.Id DESC;
           break;
       }
 
-      if (instalaciones.length === 0) {
-        throw new NotFoundException('No se encontraron instalaciones.');
-      }
 
       // 🔥 Transformación de datos (ids → number, nombreCompleto)
       const data = instalaciones.map((item) => ({
@@ -824,7 +819,8 @@ ORDER BY i.Id DESC;
           );
           break;
       }
-      if (!instalaciones) {
+      
+      if (instalaciones.length === 0) {
         throw new NotFoundException('No se encontraron instalaciones.');
       }
 

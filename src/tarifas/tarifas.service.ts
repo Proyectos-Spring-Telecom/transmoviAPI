@@ -313,9 +313,6 @@ ORDER BY t.Id DESC;
           break;
       }
 
-      if (data.length === 0) {
-        throw new NotFoundException('No se localizaron tarifas en el sistema.');
-      }
 
       const tarifas = data.map((item) => ({
         ...item,
@@ -530,9 +527,6 @@ WHERE ur.IdUsuario = ?
 
       const total = Number(totalResult[0]?.total ?? 0);
 
-      if (data.length === 0) {
-        throw new NotFoundException('No se encontraron Tarifas');
-      }
       const tarifas = data.map((item) => ({
         ...item,
         id: Number(item.id),

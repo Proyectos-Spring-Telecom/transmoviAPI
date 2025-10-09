@@ -593,9 +593,6 @@ ORDER BY d.Id DESC;
           break;
       }
 
-      if (data.length === 0) {
-        throw new NotFoundException('No se encontraron derroteros activos');
-      }
 
       const derroteros = data.map((item) => ({
         ...item,

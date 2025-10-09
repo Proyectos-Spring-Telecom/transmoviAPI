@@ -178,9 +178,6 @@ ORDER BY v.Id DESC;
             `,
       );
 
-      if (viajes.length === 0) {
-        throw new NotFoundException('No se encontraron viajes.');
-      }
 
       const data = viajes.map((item) => ({
         ...item,
@@ -337,9 +334,6 @@ LIMIT ? OFFSET ?;
   `,
       );
 
-      if (viajes.length === 0) {
-        throw new NotFoundException('No se encontraron viajes.');
-      }
 
       const data = viajes.map((item) => ({
         ...item,

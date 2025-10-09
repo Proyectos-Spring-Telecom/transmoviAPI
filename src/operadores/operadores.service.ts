@@ -209,9 +209,6 @@ LIMIT ? OFFSET ?;
           );
           break;
       }
-      if (operadores.length == 0) {
-        throw new NotFoundException(`Operadores encontrados.`);
-      }
 
       const total = Number(totalResult[0]?.total || 0);
       //Forzamos a cambiar el id a number
@@ -336,9 +333,6 @@ ORDER BY o.Id DESC;
           break;
       }
 
-      if (operadores.length === 0) {
-        throw new BadRequestException('No se encontraron operadores.');
-      }
 
       //Forzamos a cambiar el id a number
       const data = operadores.map((item) => ({

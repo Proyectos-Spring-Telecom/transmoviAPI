@@ -319,19 +319,24 @@ SELECT
   u.ApellidoPaterno AS apellidoPaternoOperador,
   u.ApellidoMaterno AS apellidoMaternoOperador
 
-FROM Turnos t
-INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id
-INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id
-INNER JOIN Clientes c ON t.IdCliente = c.Id
-INNER JOIN Operadores o ON t.IdOperador = o.Id
-INNER JOIN Usuarios u ON o.IdUsuario = u.Id
+FROM UsuariosInstalaciones ui
+INNER JOIN Instalaciones i ON ui.IdInstalacion = i.Id
+INNER JOIN Turnos t ON t.IdInstalacion = i.Id
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+LEFT JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+LEFT JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
+LEFT JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
+LEFT JOIN Operadores o ON t.IdOperador = o.Id
+LEFT JOIN Usuarios u ON o.IdUsuario = u.Id
 
-WHERE ui.IdUsuario = ?
+WHERE 
+  ui.IdUsuario = ?        -- 🔹 filtra por usuario
   AND ui.Estatus = 1
+  AND t.Estatus = 1
   AND i.Estatus = 1
-ORDER BY t.Id DESC
+
+ORDER BY t.Inicio DESC
+
   LIMIT ? OFFSET ?;
             `,
             [idUser, limit, offset],
@@ -360,11 +365,6 @@ WHERE ui.IdUsuario = ?
           break;
       }
 
-      if (turnos.length === 0) {
-        throw new NotFoundException(
-          'No se hallaron turnos o los valores están vacíos.',
-        );
-      }
 
       const total = Number(totalResult[0]?.total || 0);
 
@@ -617,11 +617,6 @@ ORDER BY t.Id DESC;
           break;
       }
 
-      if (turnos.length === 0) {
-        throw new NotFoundException(
-          'No fue posible localizar turnos, o los datos son nulos.',
-        );
-      }
 
       // 🔥 Transformación con map
       const data = turnos.map((item) => ({
