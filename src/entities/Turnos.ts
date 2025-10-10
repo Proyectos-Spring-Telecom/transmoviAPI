@@ -18,7 +18,7 @@ import { Viajes } from "./Viajes";
 @Index("FK_Turnos_Clientes", ["idCliente"], {})
 @Index("FK_Turnos_Operadores", ["idOperador"], {})
 @Index("FK_Turnos_Instalaciones", ["idInstalacion"], {})
-@Entity("Turnos", { schema: "TransmoviDev" })
+@Entity("Turnos", { schema: `${process.env.DB_DATABASE}` })
 export class Turnos {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;

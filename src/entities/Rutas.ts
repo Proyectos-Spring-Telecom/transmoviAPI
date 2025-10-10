@@ -11,7 +11,7 @@ import { Derroteros } from './Derroteros';
 import { Regiones } from './Regiones';
 
 @Index('FK_Rutas_Regiones', ['idRegion'], {})
-@Entity('Rutas', { schema: 'TransmoviDev' })
+@Entity('Rutas', { schema: `${process.env.DB_DATABASE}` })
 export class Rutas {
   @PrimaryGeneratedColumn({ type: 'bigint', name: 'Id' })
   id: number;

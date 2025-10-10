@@ -12,7 +12,7 @@ import { UsuariosPermisos } from "./UsuariosPermisos";
 
 @Index("UQ_Permisos_IdModulo_Nombre", ["nombre", "idModulo"], { unique: true })
 @Index("FK_Permisos_Modulo", ["idModulo"], {})
-@Entity("Permisos", { schema: "TransmoviDev" })
+@Entity("Permisos", { schema: `${process.env.DB_DATABASE}` })
 export class Permisos {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;

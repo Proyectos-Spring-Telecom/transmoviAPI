@@ -8,7 +8,7 @@ import {
 import { Usuarios } from "./Usuarios";
 
 @Index("UQ_Roles_Nombre", ["nombre"], { unique: true })
-@Entity("Roles", { schema: "TransmoviDev" })
+@Entity("Roles", { schema: `${process.env.DB_DATABASE}` })
 export class Roles {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;

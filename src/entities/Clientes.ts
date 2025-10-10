@@ -19,7 +19,7 @@ import { Viajes } from "./Viajes";
 
 @Index("UQ_Clientes_RFC", ["rfc"], { unique: true })
 @Index("IX_Clientes_IdPadre", ["idPadre"], {})
-@Entity("Clientes", { schema: "TransmoviDev" })
+@Entity("Clientes", { schema: `${process.env.DB_DATABASE}` })
 export class Clientes {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;

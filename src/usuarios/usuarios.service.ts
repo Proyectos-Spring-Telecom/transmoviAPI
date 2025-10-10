@@ -23,6 +23,9 @@ import { ClientesService } from 'src/clientes/clientes.service';
 import { UsuariosPermisos } from 'src/entities/UsuariosPermisos';
 import { UpdateUsuarioOperadorDto } from './dto/update-usuario-operador.dto';
 import { UpdateUsuarioContrasena } from './dto/update-usuario-contrasena.dto';
+import { MailService } from 'src/mail/mail.service'; 
+import { JwtService } from '@nestjs/jwt';
+
 @Injectable()
 export class UsuariosService {
   constructor(
@@ -32,7 +35,29 @@ export class UsuariosService {
     private readonly clientesService: ClientesService,
     @InjectRepository(UsuariosPermisos)
     private usuariosPermisosRepository: Repository<UsuariosPermisos>,
+    private readonly emailService: MailService,
+    private readonly jwtService: JwtService,
   ) {}
+
+  async recuperarContrasena() {
+    try {
+      const user = 'osmarmartinezmov1122@gmail.com'
+      const payload = { 
+        id: 1,
+        email: 'osmarmartinezmov1122@gmail.com',
+      }
+      const token = this.jwtService.sign(payload, { expiresIn: `${process.env.JWT_CONFIRMACION}` })
+      await this.emailService.sendConfirmationEmail(user, token);
+      return token
+    } catch (error) {
+      console.log(error)
+      throw new InternalServerErrorException({
+        message: 'Ocurrió un error al confirmar el usuario.',
+        error: error.message,
+      });
+    }
+  }
+
   // Obtener todos los usuarios con paginación
   async getAllUsuario(
     cliente: number,
@@ -578,7 +603,6 @@ ORDER BY u.Id DESC
       const newUser = await this.usuarioRepository.create(createUsuarioDto);
 
       const userSave = await this.usuarioRepository.save(newUser); //creamos el usuario
-      console.log(newUser.id);
 
       if (createUsuarioDto.permisosIds.length > 0) {
         const usuariosPermisos = createUsuarioDto.permisosIds.map((permisoId) =>
@@ -590,6 +614,13 @@ ORDER BY u.Id DESC
 
         await this.usuariosPermisosRepository.save(usuariosPermisos);
       }
+
+      const payload = { 
+        id: userSave.id,
+        email: userSave.userName,
+      }
+      const token = this.jwtService.sign(payload, { expiresIn: `${process.env.JWT_CONFIRMACION}` })
+      await this.emailService.sendConfirmationEmail(userSave.userName, token);
 
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { createUsuarioDto };

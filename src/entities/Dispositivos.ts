@@ -15,7 +15,7 @@ import { Transacciones } from "./Transacciones";
 @Index("UQ_Dispositivos_NumeroSerie", ["numeroSerie"], { unique: true })
 @Index("UQ_Dispositivos_IdCliente_Id", ["id", "idCliente"], { unique: true })
 @Index("FK_Dispositivos_Clientes", ["idCliente"], {})
-@Entity("Dispositivos", { schema: "TransmoviDev" })
+@Entity("Dispositivos", { schema: `${process.env.DB_DATABASE}` })
 export class Dispositivos {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;

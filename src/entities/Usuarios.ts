@@ -21,7 +21,7 @@ import { UsuariosRegiones } from "./UsuariosRegiones";
 })
 @Index("FK_Usuarios_Roles", ["idRol"], {})
 @Index("FK_Usuarios_Clientes", ["idCliente"], {})
-@Entity("Usuarios", { schema: "TransmoviDev" })
+@Entity("Usuarios", { schema: `${process.env.DB_DATABASE}` })
 export class Usuarios {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;

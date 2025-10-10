@@ -18,7 +18,7 @@ import { ViajesConteos } from './ViajesConteos';
   ['fechaHora', 'numeroSerieBlueVox'],
   {},
 )
-@Entity('ConteoPasajeros', { schema: 'TransmoviDev' })
+@Entity('ConteoPasajeros', { schema: `${process.env.DB_DATABASE}` })
 export class ConteoPasajeros {
   @PrimaryGeneratedColumn({ type: 'bigint', name: 'Id' })
   id: number;

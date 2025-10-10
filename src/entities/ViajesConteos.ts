@@ -4,7 +4,7 @@ import { ConteoPasajeros } from './ConteoPasajeros';
 
 // Definir el índice para el campo "idConteo" según la tabla de la base de datos
 @Index('IX_ViajesConteos_Conteo', ['idConteo'])
-@Entity('ViajesConteos', { schema: 'TransmoviDev' })
+@Entity('ViajesConteos', { schema: `${process.env.DB_DATABASE}` })
 export class ViajesConteos {
   // Clave primaria compuesta (IdViaje, IdConteo)
   @PrimaryColumn('bigint', { name: 'IdViaje' })

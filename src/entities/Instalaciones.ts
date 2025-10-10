@@ -22,7 +22,7 @@ import { UsuariosInstalaciones } from "./UsuariosInstalaciones";
 @Index("IX_Instalaciones_IdCliente_IdBlueVox", ["idBlueVox", "idCliente"], {})
 @Index("IX_Instalaciones_IdCliente_IdVehiculo", ["idVehiculo", "idCliente"], {})
 @Index("FK_Instalaciones_Clientes", ["idCliente"], {})
-@Entity("Instalaciones", { schema: "TransmoviDev" })
+@Entity("Instalaciones", { schema: `${process.env.DB_DATABASE}` })
 export class Instalaciones {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;

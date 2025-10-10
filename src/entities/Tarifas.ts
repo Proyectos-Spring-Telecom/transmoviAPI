@@ -9,7 +9,7 @@ import {
 import { Derroteros } from "./Derroteros";
 
 @Index("FK_Tarifas_Derroteros", ["idDerrotero"], {})
-@Entity("Tarifas", { schema: "TransmoviDev" })
+@Entity("Tarifas", { schema: `${process.env.DB_DATABASE}` })
 export class Tarifas {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;

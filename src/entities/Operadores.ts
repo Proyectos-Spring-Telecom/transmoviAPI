@@ -13,7 +13,7 @@ import { Viajes } from "./Viajes";
 
 @Index("UQ_Operadores_NumeroLicencia", ["numeroLicencia"], { unique: true })
 @Index("UQ_Operadores_IdUsuario", ["idUsuario"], { unique: true })
-@Entity("Operadores", { schema: "TransmoviDev" })
+@Entity("Operadores", { schema: `${process.env.DB_DATABASE}` })
 export class Operadores {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;

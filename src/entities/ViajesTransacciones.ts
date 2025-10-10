@@ -8,7 +8,7 @@ import {
 import { Viajes } from './Viajes';
 import { Transacciones } from './Transacciones';
 
-@Entity('ViajesTransacciones', { schema: 'TransmoviDev' })
+@Entity('ViajesTransacciones', { schema: `${process.env.DB_DATABASE}` })
 export class ViajesTransacciones {
   @PrimaryColumn('bigint', { name: 'IdViaje' })
   idViaje: number;

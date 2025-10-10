@@ -21,7 +21,7 @@ import { ViajesConteos } from './ViajesConteos';
 @Index('IX_Viajes_IdCliente_Inicio', ['inicio', 'idCliente'], {})
 @Index('FK_Viajes_Derroteros', ['idDerrotero'], {})
 @Index('FK_Viajes_Clientes', ['idCliente'], {})
-@Entity('Viajes', { schema: 'TransmoviDev' })
+@Entity('Viajes', { schema: `${process.env.DB_DATABASE}` })
 export class Viajes {
   @PrimaryGeneratedColumn({ type: 'bigint', name: 'Id' })
   id: number;

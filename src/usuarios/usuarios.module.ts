@@ -8,6 +8,8 @@ import { BitacoraModule } from 'src/bitacora/bitacora.module';
 import { ClientesModule } from 'src/clientes/clientes.module';
 import { PermisosModule } from 'src/permisos/permisos.module';
 import { UsuariosPermisos } from 'src/entities/UsuariosPermisos'; 
+import { MailModule } from 'src/mail/mail.module';
+import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
   imports: [
@@ -15,6 +17,8 @@ import { UsuariosPermisos } from 'src/entities/UsuariosPermisos';
     BitacoraModule,
     ClientesModule,
     PermisosModule,
+    MailModule,
+    AuthModule
   ],
   controllers: [UsuariosController],
   providers: [UsuariosService],

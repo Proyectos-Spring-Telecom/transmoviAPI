@@ -9,7 +9,7 @@ import { Bitacora } from "./Bitacora";
 import { Permisos } from "./Permisos";
 
 @Index("UQ_Modulos_Nombre", ["nombre"], { unique: true })
-@Entity("Modulos", { schema: "TransmoviDev" })
+@Entity("Modulos", { schema: `${process.env.DB_DATABASE}` })
 export class Modulos {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;
