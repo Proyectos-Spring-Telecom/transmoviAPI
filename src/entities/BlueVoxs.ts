@@ -14,7 +14,7 @@ import { Instalaciones } from "./Instalaciones";
 @Index("UQ_BlueVoxs_NumeroSerie", ["numeroSerie"], { unique: true })
 @Index("UQ_BlueVoxs_IdCliente_Id", ["id", "idCliente"], { unique: true })
 @Index("FK_BlueVoxs_Clientes", ["idCliente"], {})
-@Entity("BlueVoxs", { schema: "TransmoviDev" })
+@Entity("BlueVoxs", { schema: `${process.env.DB_DATABASE}` })
 export class BlueVoxs {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;

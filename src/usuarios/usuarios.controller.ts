@@ -28,6 +28,11 @@ import { UpdateUsuarioContrasena } from './dto/update-usuario-contrasena.dto';
 export class UsuariosController {
   constructor(private readonly usuariosService: UsuariosService) {}
 
+  @Post('prueba')
+  async email() {
+    return await this.usuariosService.recuperarContrasena()
+  }
+
   @Post()
   @ApiOperation({ summary: 'Crear nuevo usuario' })
   async createUsuario(

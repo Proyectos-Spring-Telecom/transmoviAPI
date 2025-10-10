@@ -13,7 +13,7 @@ import { Dispositivos } from "./Dispositivos";
   ["fechaHora", "numeroSerieDispositivo"],
   {}
 )
-@Entity("Posiciones", { schema: "TransmoviDev" })
+@Entity("Posiciones", { schema: `${process.env.DB_DATABASE}` })
 export class Posiciones {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;

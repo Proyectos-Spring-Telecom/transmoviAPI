@@ -32,6 +32,7 @@
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/swagger": "^11.2.0",
     "@nestjs/typeorm": "^11.0.0",
+    "axios": "^1.12.2",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
@@ -39,13 +40,14 @@
     "joi": "^18.0.0",
     "multer": "^2.0.2",
     "multer-s3": "^3.0.1",
-    "mysql2": "^3.14.3",
+    "mysql2": "^3.15.2",
+    "nodemailer": "^7.0.9",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "swagger-ui-express": "^5.0.1",
-    "typeorm": "^0.3.25",
+    "typeorm": "^0.3.27",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
@@ -73,7 +75,6 @@
     "ts-loader": "^9.5.2",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
-    "typeorm-model-generator": "^0.4.6",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.20.0"
   },

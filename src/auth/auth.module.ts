@@ -24,5 +24,6 @@ import { UsuariosModule } from 'src/usuarios/usuarios.module';
     TypeOrmModule.forFeature([Usuarios,UsuariosPermisos]),],
   controllers: [AuthController],
   providers: [AuthService,JwtStrategy],
+  exports: [JwtModule]
 })
 export class AuthModule {}

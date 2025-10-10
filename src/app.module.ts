@@ -31,6 +31,7 @@ import { TarifasModule } from './tarifas/tarifas.module';
 import { ViajesModule } from './viajes/viajes.module';
 import { ViajesconteosModule } from './viajesconteos/viajesconteos.module';
 import { ViajestransaccionesModule } from './viajestransacciones/viajestransacciones.module';
+import { MailModule } from './mail/mail.module';
 import Joi from 'joi';
 
 @Module({
@@ -126,6 +127,8 @@ import Joi from 'joi';
     ViajesconteosModule,
 
     ViajestransaccionesModule,
+
+    MailModule,
     
   ], 
  controllers: [AppController],

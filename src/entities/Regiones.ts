@@ -12,7 +12,7 @@ import { Rutas } from "./Rutas";
 import { UsuariosRegiones } from "./UsuariosRegiones";
 
 @Index("FK_Regiones_Clientes", ["idCliente"], {})
-@Entity("Regiones", { schema: "TransmoviDev" })
+@Entity("Regiones", { schema: `${process.env.DB_DATABASE}` })
 export class Regiones {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;

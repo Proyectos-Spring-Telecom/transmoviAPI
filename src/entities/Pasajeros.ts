@@ -1,7 +1,7 @@
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { Monederos } from "./Monederos";
 
-@Entity("Pasajeros", { schema: "TransmoviDev" })
+@Entity("Pasajeros", { schema: `${process.env.DB_DATABASE}` })
 export class Pasajeros {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;

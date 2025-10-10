@@ -11,7 +11,7 @@ import { Usuarios } from "./Usuarios";
 
 @Index("FK_Bitacora_Usuarios", ["idUsuario"], {})
 @Index("FK_Bitacora_Modulos", ["idModulo"], {})
-@Entity("Bitacora", { schema: "TransmoviDev" })
+@Entity("Bitacora", { schema: `${process.env.DB_DATABASE}` })
 export class Bitacora {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;
