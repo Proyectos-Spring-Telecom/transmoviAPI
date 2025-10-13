@@ -11,7 +11,9 @@ import {
 import { Dispositivos } from "./Dispositivos";
 import { Monederos } from "./Monederos";
 import { Viajes } from "./Viajes";
+import { applySchema } from "src/common/apply-schema.decorator";
 
+@applySchema
 @Index(
   "IX_Transacciones_NumeroSerieMonedero_FechaHora",
   ["fechaHora", "numeroSerieMonedero"],
@@ -22,7 +24,7 @@ import { Viajes } from "./Viajes";
   ["fechaHora", "numeroSerieDispositivo"],
   {}
 )
-@Entity("Transacciones", { schema: `${process.env.DB_DATABASE}` })
+@Entity("Transacciones")
 export class Transacciones {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;

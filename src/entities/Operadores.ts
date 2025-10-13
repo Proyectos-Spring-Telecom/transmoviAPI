@@ -10,10 +10,12 @@ import {
 import { Usuarios } from "./Usuarios";
 import { Turnos } from "./Turnos";
 import { Viajes } from "./Viajes";
+import { applySchema } from "src/common/apply-schema.decorator";
 
+@applySchema
 @Index("UQ_Operadores_NumeroLicencia", ["numeroLicencia"], { unique: true })
 @Index("UQ_Operadores_IdUsuario", ["idUsuario"], { unique: true })
-@Entity("Operadores", { schema: `${process.env.DB_DATABASE}` })
+@Entity("Operadores")
 export class Operadores {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;

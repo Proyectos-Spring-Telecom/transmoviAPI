@@ -8,10 +8,12 @@ import {
 } from "typeorm";
 import { Regiones } from "./Regiones";
 import { Usuarios } from "./Usuarios";
+import { applySchema } from "src/common/apply-schema.decorator";
 
+@applySchema
 @Index("FK_UsuariosRegiones_Usuarios", ["idUsuario"], {})
 @Index("FK_UsuariosRegiones_Regiones", ["idRegion"], {})
-@Entity("UsuariosRegiones", { schema: `${process.env.DB_DATABASE}` })
+@Entity("UsuariosRegiones")
 export class UsuariosRegiones {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;

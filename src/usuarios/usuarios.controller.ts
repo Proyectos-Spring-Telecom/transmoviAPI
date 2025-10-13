@@ -10,6 +10,7 @@ import {
   UseGuards,
   ParseIntPipe,
   Request,
+  Query,
 } from '@nestjs/common';
 import { UsuariosService } from './usuarios.service';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
@@ -22,9 +23,9 @@ import { ApiCrudResponse } from 'src/common/ApiResponse';
 import { UpdateUsuarioOperadorDto } from './dto/update-usuario-operador.dto';
 import { UpdateUsuarioContrasena } from './dto/update-usuario-contrasena.dto';
 
+@UseGuards(JwtAuthGuard)
 @ApiTags('Usuarios')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
 @Controller('usuarios')
 export class UsuariosController {
   constructor(private readonly usuariosService: UsuariosService) {}
@@ -32,13 +33,6 @@ export class UsuariosController {
   // ========================================
   // 🔹 POST ROUTES (crear recursos)
   // ========================================
-  
-  @Post('prueba')
-  @ApiOperation({ summary: 'Prueba de envío de email (testing)' })
-  async email() {
-    return await this.usuariosService.recuperarContrasena();
-  }
-
   @Post()
   @ApiOperation({ summary: 'Crear nuevo usuario' })
   @ApiResponse({ status: 201, description: 'Usuario creado exitosamente' })
@@ -54,7 +48,6 @@ export class UsuariosController {
   // ========================================
   // 🔹 GET ROUTES - Rutas específicas primero
   // ========================================
-  
   @Get('list')
   @ApiOperation({ summary: 'Obtener todos los usuarios sin paginación' })
   @ApiResponse({ status: 200, description: 'Lista completa de usuarios' })
@@ -73,14 +66,17 @@ export class UsuariosController {
     return await this.usuariosService.getAllListUsuariosRol();
   }
 
-  @Get('list/cliente/:id')
+  @Get('list/cliente')
   @ApiOperation({ summary: 'Obtener usuarios por cliente específico' })
   @ApiResponse({ status: 200, description: 'Lista de usuarios del cliente' })
   @ApiResponse({ status: 404, description: 'Cliente no encontrado' })
   async findAllListUsuarioCliente(
     @Param('id', ParseIntPipe) id: number,
+    @Request() req
   ): Promise<ApiResponseCommon> {
-    return await this.usuariosService.getAllListUsuariosCliente(id);
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+    return await this.usuariosService.getAllListUsuariosCliente(id, +cliente);
   }
 
   @Get(':page/:limit')

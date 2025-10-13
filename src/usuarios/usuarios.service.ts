@@ -5,6 +5,7 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -38,25 +39,6 @@ export class UsuariosService {
     private readonly emailService: MailService,
     private readonly jwtService: JwtService,
   ) {}
-
-  async recuperarContrasena() {
-    try {
-      const user = ''
-      const payload = { 
-        id: 1,
-        email: '',
-      }
-      const token = this.jwtService.sign(payload, { expiresIn: `${process.env.JWT_CONFIRMACION}` })
-      await this.emailService.sendConfirmationEmail(user, token);
-      return token
-    } catch (error) {
-      console.log(error)
-      throw new InternalServerErrorException({
-        message: 'Ocurrió un error al confirmar el usuario.',
-        error: error.message,
-      });
-    }
-  }
 
   // Obtener todos los usuarios con paginación
   async getAllUsuario(
@@ -346,10 +328,10 @@ ORDER BY u.Id DESC;
   }
 
   //Obtener todos los usuarios por cliente
-  async getAllListUsuariosCliente(id: number): Promise<ApiResponseCommon> {
+  async getAllListUsuariosCliente(id: number, cliente: number): Promise<ApiResponseCommon> {
     try {
       const usuarios = await this.usuarioRepository.find({
-        where: { estatus: 1, idCliente: id },
+        where: { estatus: 1, idCliente: cliente },
       });
       if (usuarios.length === 0) {
         throw new NotFoundException('Usuarios no encontrados');
@@ -619,8 +601,11 @@ ORDER BY u.Id DESC
         id: userSave.id,
         email: userSave.userName,
       }
+
+      //datos del correo
       const token = this.jwtService.sign(payload, { expiresIn: `${process.env.JWT_CONFIRMACION}` })
-      await this.emailService.sendConfirmationEmail(userSave.userName, token);
+      const name = `${userSave.nombre} ${userSave.apellidoPaterno} ${userSave.apellidoMaterno}`
+      await this.emailService.sendConfirmationEmail(userSave.userName, name,token);
 
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { createUsuarioDto };

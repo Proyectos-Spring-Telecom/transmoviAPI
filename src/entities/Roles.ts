@@ -6,9 +6,11 @@ import {
   PrimaryGeneratedColumn,
 } from "typeorm";
 import { Usuarios } from "./Usuarios";
+import { applySchema } from "src/common/apply-schema.decorator";
 
+@applySchema
 @Index("UQ_Roles_Nombre", ["nombre"], { unique: true })
-@Entity("Roles", { schema: `${process.env.DB_DATABASE}` })
+@Entity("Roles")
 export class Roles {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;

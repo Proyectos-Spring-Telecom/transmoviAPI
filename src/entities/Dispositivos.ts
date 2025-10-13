@@ -11,11 +11,13 @@ import { Clientes } from "./Clientes";
 import { Instalaciones } from "./Instalaciones";
 import { Posiciones } from "./Posiciones";
 import { Transacciones } from "./Transacciones";
+import { applySchema } from "src/common/apply-schema.decorator";
 
+@applySchema
 @Index("UQ_Dispositivos_NumeroSerie", ["numeroSerie"], { unique: true })
 @Index("UQ_Dispositivos_IdCliente_Id", ["id", "idCliente"], { unique: true })
 @Index("FK_Dispositivos_Clientes", ["idCliente"], {})
-@Entity("Dispositivos", { schema: `${process.env.DB_DATABASE}` })
+@Entity("Dispositivos")
 export class Dispositivos {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;

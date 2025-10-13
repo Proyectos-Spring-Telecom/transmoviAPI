@@ -9,9 +9,11 @@ import {
 } from 'typeorm';
 import { Derroteros } from './Derroteros';
 import { Regiones } from './Regiones';
+import { applySchema } from "src/common/apply-schema.decorator";
 
+@applySchema
 @Index('FK_Rutas_Regiones', ['idRegion'], {})
-@Entity('Rutas', { schema: `${process.env.DB_DATABASE}` })
+@Entity('Rutas')
 export class Rutas {
   @PrimaryGeneratedColumn({ type: 'bigint', name: 'Id' })
   id: number;

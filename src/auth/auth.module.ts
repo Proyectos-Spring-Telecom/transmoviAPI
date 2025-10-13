@@ -8,10 +8,14 @@ import { JwtModule } from '@nestjs/jwt';
 import { UsuariosPermisos } from 'src/entities/UsuariosPermisos'; 
 import { JwtStrategy } from './jwt.strategy';
 import { UsuariosModule } from 'src/usuarios/usuarios.module';
+import { MailModule } from 'src/mail/mail.module';
+import { BitacoraModule } from 'src/bitacora/bitacora.module';
 
 
 @Module({
   imports:[
+    MailModule,
+    BitacoraModule,
     ConfigModule,
     JwtModule.registerAsync({
       imports:[ConfigModule],

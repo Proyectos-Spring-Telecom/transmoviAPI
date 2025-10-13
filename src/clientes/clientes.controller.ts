@@ -47,6 +47,7 @@ export class ClientesController {
     const rol = req.user.rol;
     return this.clientesService.getAllClientes(+idUser, +cliente, +rol, page, limit);
   }
+  
   //Obtener solo un cliente
   @Get(':id')
   getOneCliente(@Param('id') id: string, @Request() req,) {

@@ -11,14 +11,16 @@ import { Clientes } from "./Clientes";
 import { Instalaciones } from "./Instalaciones";
 import { Operadores } from "./Operadores";
 import { Viajes } from "./Viajes";
+import { applySchema } from "src/common/apply-schema.decorator";
 
+@applySchema
 @Index("UQ_Turnos_IdCliente_Id", ["id", "idCliente"], { unique: true })
 @Index("IX_Turnos_IdOperador_Inicio", ["inicio", "idOperador"], {})
 @Index("IX_Turnos_IdCliente_Inicio", ["inicio", "idCliente"], {})
 @Index("FK_Turnos_Clientes", ["idCliente"], {})
 @Index("FK_Turnos_Operadores", ["idOperador"], {})
 @Index("FK_Turnos_Instalaciones", ["idInstalacion"], {})
-@Entity("Turnos", { schema: `${process.env.DB_DATABASE}` })
+@Entity("Turnos")
 export class Turnos {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;

@@ -15,13 +15,15 @@ import { Roles } from "./Roles";
 import { UsuariosInstalaciones } from "./UsuariosInstalaciones";
 import { UsuariosPermisos } from "./UsuariosPermisos";
 import { UsuariosRegiones } from "./UsuariosRegiones";
+import { applySchema } from "src/common/apply-schema.decorator";
 
+@applySchema
 @Index("UQ_Usuarios_IdCliente_UserName", ["userName", "idCliente"], {
   unique: true,
 })
 @Index("FK_Usuarios_Roles", ["idRol"], {})
 @Index("FK_Usuarios_Clientes", ["idCliente"], {})
-@Entity("Usuarios", { schema: `${process.env.DB_DATABASE}` })
+@Entity("Usuarios")
 export class Usuarios {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;

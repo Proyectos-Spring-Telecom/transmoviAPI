@@ -10,11 +10,13 @@ import {
 import { Clientes } from "./Clientes";
 import { ConteoPasajeros } from "./ConteoPasajeros";
 import { Instalaciones } from "./Instalaciones";
+import { applySchema } from "src/common/apply-schema.decorator";
 
+@applySchema
 @Index("UQ_BlueVoxs_NumeroSerie", ["numeroSerie"], { unique: true })
 @Index("UQ_BlueVoxs_IdCliente_Id", ["id", "idCliente"], { unique: true })
 @Index("FK_BlueVoxs_Clientes", ["idCliente"], {})
-@Entity("BlueVoxs", { schema: `${process.env.DB_DATABASE}` })
+@Entity("BlueVoxs")
 export class BlueVoxs {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;

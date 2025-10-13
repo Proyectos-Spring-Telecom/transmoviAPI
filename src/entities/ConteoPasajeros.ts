@@ -12,13 +12,15 @@ import {
 import { BlueVoxs } from './BlueVoxs';
 import { Viajes } from './Viajes';
 import { ViajesConteos } from './ViajesConteos';
+import { applySchema } from "src/common/apply-schema.decorator";
 
+@applySchema
 @Index(
   'IX_ConteoPasajeros_Serie_FechaHora',
   ['fechaHora', 'numeroSerieBlueVox'],
   {},
 )
-@Entity('ConteoPasajeros', { schema: `${process.env.DB_DATABASE}` })
+@Entity('ConteoPasajeros')
 export class ConteoPasajeros {
   @PrimaryGeneratedColumn({ type: 'bigint', name: 'Id' })
   id: number;

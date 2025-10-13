@@ -17,12 +17,15 @@ import { BlueVoxs } from 'src/entities/BlueVoxs';
 import { Repository } from 'typeorm';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import { UpdateBlueVoxEstatusDto } from './dto/update-bluevox-estatus.dto';
+import { Instalaciones } from 'src/entities/Instalaciones';
 
 @Injectable()
 export class BluevoxService {
   constructor(
     @InjectRepository(BlueVoxs)
     private readonly bluevoxsRepository: Repository<BlueVoxs>,
+    @InjectRepository(Instalaciones)
+    private readonly instalacionesRepository: Repository<Instalaciones>,
     private readonly bitacoraLogger: BitacoraLoggerService,
   ) {}
 
@@ -93,10 +96,10 @@ export class BluevoxService {
   }
 
   //Obtener los bluevox por cliente
-  async findAllListClientes(id: number) {
+  async findAllListClientes(id: number, cliente: number) {
     try {
       const bluevox = await this.bluevoxsRepository.find({
-        where: { idCliente: id, estatus: 1 },
+        where: { idCliente: id, estatus: cliente },
       });
       if (bluevox.length === 0) {
         throw new NotFoundException(`No se encontraron BlueVoxs.`);
@@ -480,6 +483,15 @@ ORDER BY b.Id DESC;
       });
       if (!bluevoxs) throw new NotFoundException('BlueVoxs no encontrado');
       const estatus = updateBlueVoxEstatusDto.estatus;
+      if (estatus === 1) {
+        const bluevoxInstalacion = await this.instalacionesRepository.findOne({
+          where: { idBlueVox: bluevoxs.id, estatus: 1 },
+        });
+        if (bluevoxInstalacion)
+          throw new BadRequestException(
+            'No es posible completar la operación: BlueVoxs ya se encuentra asignado a una instalación.',
+          );
+      }
       await this.bluevoxsRepository.update(id, { estatus: estatus });
 
       //-----Registro en la bitacora----- SUCCESS

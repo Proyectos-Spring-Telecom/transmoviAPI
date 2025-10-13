@@ -9,10 +9,12 @@ import {
 } from "typeorm";
 import { Modulos } from "./Modulos";
 import { UsuariosPermisos } from "./UsuariosPermisos";
+import { applySchema } from "src/common/apply-schema.decorator";
 
+@applySchema
 @Index("UQ_Permisos_IdModulo_Nombre", ["nombre", "idModulo"], { unique: true })
 @Index("FK_Permisos_Modulo", ["idModulo"], {})
-@Entity("Permisos", { schema: `${process.env.DB_DATABASE}` })
+@Entity("Permisos")
 export class Permisos {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;

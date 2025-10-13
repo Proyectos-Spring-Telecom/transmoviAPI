@@ -8,10 +8,12 @@ import {
 } from "typeorm";
 import { Modulos } from "./Modulos";
 import { Usuarios } from "./Usuarios";
+import { applySchema } from "src/common/apply-schema.decorator";
 
+@applySchema
 @Index("FK_Bitacora_Usuarios", ["idUsuario"], {})
 @Index("FK_Bitacora_Modulos", ["idModulo"], {})
-@Entity("Bitacora", { schema: `${process.env.DB_DATABASE}` })
+@Entity("Bitacora")
 export class Bitacora {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;

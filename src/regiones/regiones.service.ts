@@ -444,6 +444,7 @@ INNER JOIN Clientes c ON r.IdCliente = c.Id
 
 WHERE 
   r.Estatus = 1
+  AND c.Estatus = 1
   
 
 ORDER BY r.Nombre ASC;
@@ -479,6 +480,7 @@ INNER JOIN Clientes c ON r.IdCliente = c.Id
 WHERE 
   r.IdCliente = ?   -- 🔹 aquí filtras por el ID del cliente
   AND r.Estatus = 1
+  AND c.Estatus = 1
 
 ORDER BY r.Nombre ASC;
 
@@ -864,13 +866,8 @@ ORDER BY r.Nombre ASC;
 
         default:
           // Usuarios normales - solo sus regiones asignadas
-          const permiso = await this.usuarioregionesRepository.find({
-            where: { idUsuario: idUser, idRegion: id, estatus: 1 },
-          });
-          if (permiso.length === 0)
-            throw new BadRequestException(`Acceso denegado`);
           regiones = await this.regionesRepository.findOne({
-            where: { id: id, idCliente: cliente },
+            where: { id: id },
           });
           break;
       }
@@ -954,11 +951,6 @@ ORDER BY r.Nombre ASC;
 
         default:
           // Usuarios normales - solo sus regiones asignadas
-          const permiso = await this.usuarioregionesRepository.find({
-            where: { idUsuario: idUser, idRegion: id, estatus: 1 },
-          });
-          if (permiso.length === 0)
-            throw new BadRequestException(`Acceso denegado`);
           regiones = await this.regionesRepository.findOne({
             where: { id: id, idCliente: cliente },
           });
@@ -1036,12 +1028,7 @@ ORDER BY r.Nombre ASC;
 
         default:
           // Usuarios normales - solo sus regiones asignadas
-          const permiso = await this.usuarioregionesRepository.find({
-            where: { idUsuario: idUser, idRegion: id },
-          });
-          if (permiso.length === 0)
-            throw new BadRequestException(`Acceso denegado`);
-          regiones = await this.regionesRepository.find({
+          regiones = await this.regionesRepository.findOne({
             where: { id: id, idCliente: cliente },
           });
           break;

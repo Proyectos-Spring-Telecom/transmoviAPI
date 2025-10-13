@@ -1,14 +1,13 @@
 import {
-  Column,
   Entity,
   JoinColumn,
-  ManyToOne,
   PrimaryColumn,
 } from 'typeorm';
-import { Viajes } from './Viajes';
 import { Transacciones } from './Transacciones';
+import { applySchema } from "src/common/apply-schema.decorator";
 
-@Entity('ViajesTransacciones', { schema: `${process.env.DB_DATABASE}` })
+@applySchema
+@Entity('ViajesTransacciones')
 export class ViajesTransacciones {
   @PrimaryColumn('bigint', { name: 'IdViaje' })
   idViaje: number;

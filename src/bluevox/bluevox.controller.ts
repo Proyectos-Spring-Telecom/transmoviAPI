@@ -40,7 +40,7 @@ export class BluevoxController {
     return this.bluevoxService.findAllList(+cliente, +rol);
   }
 
-  @Get('clientes/:id')
+  @Get('clientes')
   async findAllDispositivosClientes(
     @Param('id', ParseIntPipe) id: number,
     @Request() req,
@@ -48,7 +48,7 @@ export class BluevoxController {
     const idUser = req.user.userId;
     const cliente = req.user.cliente;
     const rol = req.user.rol;
-    return await this.bluevoxService.findAllListClientes(id);
+    return await this.bluevoxService.findAllListClientes(id, +cliente);
   }
 
   @Get(':page/:limit')

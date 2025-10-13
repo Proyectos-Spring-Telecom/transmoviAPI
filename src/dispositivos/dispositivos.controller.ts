@@ -43,7 +43,7 @@ export class DispositivosController {
     return this.dispositivosService.findAllList(+cliente, +rol);
   }
 
-  @Get('/clientes/:id')
+  @Get('/clientes')
   async findAllDispositivosClientes(
     @Param('id', ParseIntPipe) id: number,
     @Request() req,
@@ -51,7 +51,7 @@ export class DispositivosController {
     const idUser = req.user.userId;
     const cliente = req.user.cliente;
     const rol = req.user.rol;
-    return await this.dispositivosService.findAllListDispositivosClientes(+id);
+    return await this.dispositivosService.findAllListDispositivosClientes(+id, +cliente);
   }
 
   @Get(':page/:limit')

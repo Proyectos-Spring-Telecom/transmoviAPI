@@ -18,11 +18,14 @@ import {
   EstatusEnumBitcora,
 } from 'src/common/ApiResponse';
 import { ClientesService } from 'src/clientes/clientes.service';
+import { Instalaciones } from 'src/entities/Instalaciones';
 @Injectable()
 export class DispositivosService {
   constructor(
     @InjectRepository(Dispositivos)
     private readonly dispositivoRepository: Repository<Dispositivos>,
+    @InjectRepository(Instalaciones)
+    private readonly instalacionesRepository: Repository<Instalaciones>,
     private readonly bitacoraLogger: BitacoraLoggerService,
     private readonly clientesService: ClientesService,
   ) {}
@@ -103,10 +106,10 @@ export class DispositivosService {
   }
 
   //Obtener todos los dispositivos por cliente
-  async findAllListDispositivosClientes(id: number) {
+  async findAllListDispositivosClientes(id: number, cliente: number) {
     try {
       const dispositivo = await this.dispositivoRepository.find({
-        where: { idCliente: id, estatus: 1 },
+        where: { idCliente: id, estatus: cliente },
       });
       if (dispositivo.length === 0) {
         throw new NotFoundException(`Dispositivo no encontrado.`);
@@ -200,7 +203,6 @@ ORDER BY d.Id DESC;
           );
           break;
       }
-
 
       const data = dispositivo.map((item) => ({
         ...item,
@@ -316,7 +318,6 @@ LIMIT ? OFFSET ?;
           );
           break;
       }
-
 
       const data = dispositivo.map((item) => ({
         ...item,
@@ -452,8 +453,19 @@ ORDER BY d.Id DESC;
         );
       }
       const { estatus } = updateDispositivoEstatusDto;
+      if (estatus === 1) {
+        const dispositivoInstalacion =
+          await this.instalacionesRepository.findOne({
+            where: { idDispositivo: dispositivo.id, estatus: 1 },
+          });
+
+        if (dispositivoInstalacion)
+          throw new BadRequestException(
+            'No es posible completar la operación: Dispositivo ya se encuentra asignado a una instalación.',
+          );
+      }
       await this.dispositivoRepository.update(id, {
-        estatus: updateDispositivoEstatusDto.estatus,
+        estatus: estatus,
       });
 
       //-----Registro en la bitacora----- SUCCESS

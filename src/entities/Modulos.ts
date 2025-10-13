@@ -7,9 +7,11 @@ import {
 } from "typeorm";
 import { Bitacora } from "./Bitacora";
 import { Permisos } from "./Permisos";
+import { applySchema } from "src/common/apply-schema.decorator";
 
+@applySchema
 @Index("UQ_Modulos_Nombre", ["nombre"], { unique: true })
-@Entity("Modulos", { schema: `${process.env.DB_DATABASE}` })
+@Entity("Modulos")
 export class Modulos {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;

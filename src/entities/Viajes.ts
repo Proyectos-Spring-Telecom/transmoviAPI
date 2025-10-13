@@ -15,13 +15,15 @@ import { Turnos } from './Turnos';
 import { ConteoPasajeros } from './ConteoPasajeros';
 import { Transacciones } from './Transacciones';
 import { ViajesConteos } from './ViajesConteos';
+import { applySchema } from "src/common/apply-schema.decorator";
 
+@applySchema
 @Index('IX_Viajes_IdTurno_Inicio', ['inicio', 'idTurno'], {})
 @Index('IX_Viajes_IdOperador_Inicio', ['inicio', 'idOperador'], {})
 @Index('IX_Viajes_IdCliente_Inicio', ['inicio', 'idCliente'], {})
 @Index('FK_Viajes_Derroteros', ['idDerrotero'], {})
 @Index('FK_Viajes_Clientes', ['idCliente'], {})
-@Entity('Viajes', { schema: `${process.env.DB_DATABASE}` })
+@Entity('Viajes')
 export class Viajes {
   @PrimaryGeneratedColumn({ type: 'bigint', name: 'Id' })
   id: number;

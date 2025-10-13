@@ -140,6 +140,10 @@ SELECT
 
   -- CLIENTE
   c.Id AS idCliente,
+  c.Nombre As nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente,
   CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
 FROM Rutas ru
@@ -148,7 +152,7 @@ LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
 
 WHERE 
-  c.Estatus = 1
+  r.Estatus = 1
 ORDER BY ru.Id DESC
 
   LIMIT ? OFFSET ?;
@@ -166,7 +170,7 @@ LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
 
 WHERE 
-  c.Estatus = 1
+  r.Estatus = 1
   `,
         );
         break;
@@ -205,6 +209,10 @@ SELECT
 
   -- CLIENTE
   c.Id AS idCliente,
+  c.Nombre As nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente,
   CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
 FROM Rutas ru
@@ -214,7 +222,7 @@ INNER JOIN Clientes c ON r.IdCliente = c.Id
 
 WHERE 
   c.Id = ?        -- 🔹 aquí filtras por el Id del cliente
-  AND c.Estatus = 1
+  AND r.Estatus = 1
 ORDER BY ru.Id DESC
 
   LIMIT ? OFFSET ?;
@@ -233,7 +241,7 @@ INNER JOIN Clientes c ON r.IdCliente = c.Id
 
 WHERE 
   c.Id = ?        -- 🔹 aquí filtras por el Id del cliente
-  AND c.Estatus = 1
+  AND r.Estatus = 1
   `,
           [cliente],
         );
@@ -273,6 +281,10 @@ SELECT
 
   -- CLIENTE
   c.Id AS idCliente,
+  c.Nombre As nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente,
   CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
 FROM Rutas ru
@@ -282,6 +294,7 @@ INNER JOIN Clientes c ON r.IdCliente = c.Id
 
 WHERE 
   c.Id = ?        -- 🔹 aquí filtras por el Id del cliente
+  AND r.Estatus = 1
   AND c.Estatus = 1
 ORDER BY ru.Id DESC
 
@@ -301,6 +314,7 @@ INNER JOIN Clientes c ON r.IdCliente = c.Id
 
 WHERE 
   c.Id = ?        -- 🔹 aquí filtras por el Id del cliente
+  AND r.Estatus = 1
   AND c.Estatus = 1
   `,
           [cliente],
@@ -341,6 +355,10 @@ SELECT
 
   -- CLIENTE
   c.Id AS idCliente,
+  c.Nombre As nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente,
   CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
 FROM Rutas ru
@@ -350,6 +368,7 @@ INNER JOIN Clientes c ON r.IdCliente = c.Id
 
 WHERE 
   c.Id = ?        -- 🔹 aquí filtras por el Id del cliente
+  AND r.Estatus = 1
   AND c.Estatus = 1
 ORDER BY ru.Id DESC
 
@@ -369,6 +388,7 @@ INNER JOIN Clientes c ON r.IdCliente = c.Id
 
 WHERE 
   c.Id = ?        -- 🔹 aquí filtras por el Id del cliente
+  AND r.Estatus = 1
   AND c.Estatus = 1
   `,
           [cliente],
@@ -406,8 +426,12 @@ WHERE
     rf.FechaActualizacion AS fechaActualizacionRegionFin,
     rf.Estatus AS estatusRegionFin,
 
-    -- Datos del cliente
-    c.Id AS idCliente,
+  -- CLIENTE
+  c.Id AS idCliente,
+  c.Nombre As nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente,
     CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
   FROM UsuariosRegiones ur
@@ -434,11 +458,13 @@ WHERE
   FROM UsuariosRegiones ur
   INNER JOIN Regiones r ON ur.IdRegion = r.Id
   INNER JOIN Rutas ru ON ru.IdRegion = r.Id
+  LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+  INNER JOIN Clientes c ON r.IdCliente = c.Id
+
   WHERE ur.IdUsuario = ?
     AND ur.Estatus = 1
     AND r.Estatus = 1
-    AND ru.Estatus = 1
-    AND r.IdCliente = ?
+    AND c.Id = ?
   `,
           [idUser, cliente],
         );
@@ -507,6 +533,10 @@ SELECT
 
   -- CLIENTE
   c.Id AS idCliente,
+  c.Nombre As nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente,
   CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
 FROM Rutas ru
@@ -515,12 +545,10 @@ LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
 
 WHERE 
-  c.Id = ?        -- 🔹 aquí filtras por el Id del cliente
-  AND c.Estatus = 1
+  r.Estatus = 1
   AND ru.Estatus = 1
-ORDER BY ru.Id DESC;
+ORDER BY ru.Id DESC
   `,
-            [cliente],
           );
           break;
 
@@ -528,7 +556,8 @@ ORDER BY ru.Id DESC;
           // Consulta de datos paginados Usuario Administrador
           rutas = await this.usuarioregionesRepository.query(
             `
-            SELECT 
+SELECT 
+  -- RUTA
     ru.Id AS id,
     ru.Nombre AS nombre,
     ru.PuntoInicio AS puntoInicio,
@@ -538,41 +567,155 @@ ORDER BY ru.Id DESC;
     ru.FechaCreacion AS fechaCreacionRuta,
     ru.Estatus AS estatusRuta,
     ru.IdRegionFin AS idRegionFin,
-    
-    r.Id AS idRegion,
-    r.Nombre AS nombreRegion,
-    r.Descripcion AS descripcionRegion,
-    r.FechaCreacion AS fechaCreacionRegion,
-    r.FechaActualizacion AS fechaActualizacionRegion,
-    r.Estatus AS estatusRegion,
-    
-    rf.Id AS idRegionFinDetalle,
-    rf.Nombre AS nombreRegionFinDetalle,
-    rf.Descripcion AS descripcionRegionFin,
-    rf.FechaCreacion AS fechaCreacionRegionFin,
-    rf.FechaActualizacion AS fechaActualizacionRegionFin,
-    rf.Estatus AS estatusRegionFin,
-    
-    c.Id AS idCliente,
-    c.Nombre AS nombreCliente,
-    CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
-FROM UsuariosRegiones ur
-INNER JOIN Regiones r ON ur.IdRegion = r.Id            -- Región inicial
-INNER JOIN Rutas ru ON ru.IdRegion = r.Id              -- Ruta
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id        -- Región final (puede ser null)
-INNER JOIN Clientes c ON r.IdCliente = c.Id            -- Cliente
+  -- REGIÓN INICIAL
+  r.Id AS idRegion,
+  r.Nombre AS nombreRegion,
+  r.Descripcion AS descripcionRegion,
+  r.FechaCreacion AS fechaCreacionRegion,
+  r.FechaActualizacion AS fechaActualizacionRegion,
+  r.Estatus AS estatusRegion,
 
-WHERE ur.IdUsuario = ?
-  AND ur.Estatus = 1
+  -- REGIÓN FINAL (si existe)
+  rf.Id AS idRegionFinDetalle,
+  rf.Nombre AS nombreRegionFinDetalle,
+  rf.Descripcion AS descripcionRegionFin,
+  rf.FechaCreacion AS fechaCreacionRegionFin,
+  rf.FechaActualizacion AS fechaActualizacionRegionFin,
+  rf.Estatus AS estatusRegionFin,
+
+  -- CLIENTE
+  c.Id AS idCliente,
+  c.Nombre As nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente,
+  CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
+
+FROM Rutas ru
+INNER JOIN Regiones r ON ru.IdRegion = r.Id
+LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Clientes c ON r.IdCliente = c.Id
+
+WHERE 
+      c.Id = ?
   AND r.Estatus = 1
   AND ru.Estatus = 1
-  AND c.Id = ? -- filtro por cliente
-
 ORDER BY ru.Id DESC;
+  `,
+  [cliente]
+          );
+          break;
 
-            `,
-            [idUser, cliente],
+        case 8:
+          // Consulta de datos paginados Usuario Reportes
+          rutas = await this.usuarioregionesRepository.query(
+            `
+SELECT 
+  -- RUTA
+    ru.Id AS id,
+    ru.Nombre AS nombre,
+    ru.PuntoInicio AS puntoInicio,
+    ru.NombreInicio AS nombreInicio,
+    ru.PuntoFin AS puntoFin,
+    ru.NombreFin AS nombreFin,
+    ru.FechaCreacion AS fechaCreacionRuta,
+    ru.Estatus AS estatusRuta,
+    ru.IdRegionFin AS idRegionFin,
+
+  -- REGIÓN INICIAL
+  r.Id AS idRegion,
+  r.Nombre AS nombreRegion,
+  r.Descripcion AS descripcionRegion,
+  r.FechaCreacion AS fechaCreacionRegion,
+  r.FechaActualizacion AS fechaActualizacionRegion,
+  r.Estatus AS estatusRegion,
+
+  -- REGIÓN FINAL (si existe)
+  rf.Id AS idRegionFinDetalle,
+  rf.Nombre AS nombreRegionFinDetalle,
+  rf.Descripcion AS descripcionRegionFin,
+  rf.FechaCreacion AS fechaCreacionRegionFin,
+  rf.FechaActualizacion AS fechaActualizacionRegionFin,
+  rf.Estatus AS estatusRegionFin,
+
+  -- CLIENTE
+  c.Id AS idCliente,
+  c.Nombre As nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente,
+  CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
+
+FROM Rutas ru
+INNER JOIN Regiones r ON ru.IdRegion = r.Id
+LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Clientes c ON r.IdCliente = c.Id
+
+WHERE 
+      c.Id = ?
+  AND c.Estatus = 1
+  AND r.Estatus = 1
+  AND ru.Estatus = 1
+ORDER BY ru.Id DESC;
+  `,
+  [cliente]
+          );
+          break;
+
+        case 10:
+          // Consulta de datos paginados Usuario Capturista
+          rutas = await this.usuarioregionesRepository.query(
+            `
+SELECT 
+  -- RUTA
+    ru.Id AS id,
+    ru.Nombre AS nombre,
+    ru.PuntoInicio AS puntoInicio,
+    ru.NombreInicio AS nombreInicio,
+    ru.PuntoFin AS puntoFin,
+    ru.NombreFin AS nombreFin,
+    ru.FechaCreacion AS fechaCreacionRuta,
+    ru.Estatus AS estatusRuta,
+    ru.IdRegionFin AS idRegionFin,
+
+  -- REGIÓN INICIAL
+  r.Id AS idRegion,
+  r.Nombre AS nombreRegion,
+  r.Descripcion AS descripcionRegion,
+  r.FechaCreacion AS fechaCreacionRegion,
+  r.FechaActualizacion AS fechaActualizacionRegion,
+  r.Estatus AS estatusRegion,
+
+  -- REGIÓN FINAL (si existe)
+  rf.Id AS idRegionFinDetalle,
+  rf.Nombre AS nombreRegionFinDetalle,
+  rf.Descripcion AS descripcionRegionFin,
+  rf.FechaCreacion AS fechaCreacionRegionFin,
+  rf.FechaActualizacion AS fechaActualizacionRegionFin,
+  rf.Estatus AS estatusRegionFin,
+
+  -- CLIENTE
+  c.Id AS idCliente,
+  c.Nombre As nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente,
+  CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
+
+FROM Rutas ru
+INNER JOIN Regiones r ON ru.IdRegion = r.Id
+LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Clientes c ON r.IdCliente = c.Id
+
+WHERE 
+      c.Id = ?
+  AND c.Estatus = 1
+  AND r.Estatus = 1
+  AND ru.Estatus = 1
+ORDER BY ru.Id DESC;
+  `,
+  [cliente]
           );
           break;
 
@@ -619,6 +762,7 @@ WHERE ur.IdUsuario = ?
   AND ur.Estatus = 1
   AND r.Estatus = 1
   AND ru.Estatus = 1
+  AND c.Estatus = 1
   AND c.Id = ? -- filtro por cliente
 
 ORDER BY ru.Id DESC;

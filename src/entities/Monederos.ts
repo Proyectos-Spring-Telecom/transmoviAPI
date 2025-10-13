@@ -10,11 +10,13 @@ import {
 import { Clientes } from "./Clientes";
 import { Pasajeros } from "./Pasajeros";
 import { Transacciones } from "./Transacciones";
+import { applySchema } from "src/common/apply-schema.decorator";
 
+@applySchema
 @Index("UQ_Monederos_NumeroSerie", ["numeroSerie"], { unique: true })
 @Index("FK_Monederos_Pasajeros", ["idPasajero"], {})
 @Index("FK_Monederos_Clientes", ["idCliente"], {})
-@Entity("Monederos", { schema: `${process.env.DB_DATABASE}` })
+@Entity("Monederos")
 export class Monederos {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;

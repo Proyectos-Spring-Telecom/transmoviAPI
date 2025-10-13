@@ -10,9 +10,11 @@ import {
 import { Rutas } from "./Rutas";
 import { Tarifas } from "./Tarifas";
 import { Viajes } from "./Viajes";
+import { applySchema } from "src/common/apply-schema.decorator";
 
+@applySchema
 @Index("FK_Derroteros_Rutas", ["idRuta"], {})
-@Entity("Derroteros", { schema: `${process.env.DB_DATABASE}` })
+@Entity("Derroteros")
 export class Derroteros {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;

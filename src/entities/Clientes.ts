@@ -16,10 +16,12 @@ import { Turnos } from "./Turnos";
 import { Usuarios } from "./Usuarios";
 import { Vehiculos } from "./Vehiculos";
 import { Viajes } from "./Viajes";
+import { applySchema } from "src/common/apply-schema.decorator";
 
+@applySchema
 @Index("UQ_Clientes_RFC", ["rfc"], { unique: true })
 @Index("IX_Clientes_IdPadre", ["idPadre"], {})
-@Entity("Clientes", { schema: `${process.env.DB_DATABASE}` })
+@Entity("Clientes")
 export class Clientes {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;

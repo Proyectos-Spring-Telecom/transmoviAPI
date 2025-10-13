@@ -13,7 +13,9 @@ import { Dispositivos } from "./Dispositivos";
 import { Vehiculos } from "./Vehiculos";
 import { Turnos } from "./Turnos";
 import { UsuariosInstalaciones } from "./UsuariosInstalaciones";
+import { applySchema } from "src/common/apply-schema.decorator";
 
+@applySchema
 @Index(
   "IX_Instalaciones_IdCliente_IdDispositivo",
   ["idDispositivo", "idCliente"],
@@ -22,7 +24,7 @@ import { UsuariosInstalaciones } from "./UsuariosInstalaciones";
 @Index("IX_Instalaciones_IdCliente_IdBlueVox", ["idBlueVox", "idCliente"], {})
 @Index("IX_Instalaciones_IdCliente_IdVehiculo", ["idVehiculo", "idCliente"], {})
 @Index("FK_Instalaciones_Clientes", ["idCliente"], {})
-@Entity("Instalaciones", { schema: `${process.env.DB_DATABASE}` })
+@Entity("Instalaciones")
 export class Instalaciones {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;

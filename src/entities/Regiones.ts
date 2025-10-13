@@ -10,9 +10,11 @@ import {
 import { Clientes } from "./Clientes";
 import { Rutas } from "./Rutas";
 import { UsuariosRegiones } from "./UsuariosRegiones";
+import { applySchema } from "src/common/apply-schema.decorator";
 
+@applySchema
 @Index("FK_Regiones_Clientes", ["idCliente"], {})
-@Entity("Regiones", { schema: `${process.env.DB_DATABASE}` })
+@Entity("Regiones")
 export class Regiones {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;

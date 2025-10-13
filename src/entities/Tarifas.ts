@@ -7,9 +7,11 @@ import {
   PrimaryGeneratedColumn,
 } from "typeorm";
 import { Derroteros } from "./Derroteros";
+import { applySchema } from "src/common/apply-schema.decorator";
 
+@applySchema
 @Index("FK_Tarifas_Derroteros", ["idDerrotero"], {})
-@Entity("Tarifas", { schema: `${process.env.DB_DATABASE}` })
+@Entity("Tarifas")
 export class Tarifas {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;

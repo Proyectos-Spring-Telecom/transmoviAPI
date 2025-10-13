@@ -17,12 +17,15 @@ import {
   EstatusEnumBitcora,
 } from 'src/common/ApiResponse';
 import { UpdateVehiculoEstatusDto } from './dto/update-vehiculos-estatus.dto';
+import { Instalaciones } from 'src/entities/Instalaciones';
 
 @Injectable()
 export class VehiculosService {
   constructor(
     @InjectRepository(Vehiculos)
     private readonly vehiculoRepository: Repository<Vehiculos>,
+    @InjectRepository(Instalaciones)
+    private readonly instalacionesRepository: Repository<Instalaciones>,
     private readonly bitacoraLogger: BitacoraLoggerService,
   ) {}
   async create(createVehiculoDto: CreateVehiculoDto, idUser: number) {
@@ -84,10 +87,10 @@ export class VehiculosService {
   }
 
   //Obtener los bluevox por cliente
-  async findAllListClientes(id: number) {
+  async findAllListClientes(id: number, cliente: number) {
     try {
       const vehiculos = await this.vehiculoRepository.find({
-        where: { idCliente: id, estatus: 1 },
+        where: { idCliente: id, estatus: cliente },
       });
       if (vehiculos.length === 0) {
         throw new NotFoundException(`No se encontraron vehículos.`);
@@ -220,9 +223,6 @@ LIMIT ? OFFSET ?;
             [cliente],
           );
           break;
-      }
-      if (vehiculos.length === 0) {
-        throw new NotFoundException(`No se encontraron vehículos.`);
       }
       const total = Number(totalResult[0]?.total || 0);
       const data = vehiculos.map((item) => ({
@@ -468,6 +468,16 @@ ORDER BY v.Id DESC;
       });
       if (!vehiculo) throw new NotFoundException('Vehículo no encontrado.');
       const estatus = updateVehiculoEstausDto.estatus;
+      if (estatus === 1) {
+        const vehiculoInstalacion = await this.instalacionesRepository.findOne({
+          where: {idVehiculo: vehiculo.id, estatus: 1}
+        });
+        if (vehiculoInstalacion)
+          throw new BadRequestException(
+            'No es posible completar la operación: Vehiculo ya se encuentra asignado a una instalación.',
+          );
+      }
+      
       await this.vehiculoRepository.update(id, { estatus: estatus });
 
       //-----Registro en la bitacora----- SUCCESS

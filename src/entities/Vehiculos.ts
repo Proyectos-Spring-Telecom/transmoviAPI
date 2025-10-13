@@ -9,11 +9,13 @@ import {
 } from "typeorm";
 import { Instalaciones } from "./Instalaciones";
 import { Clientes } from "./Clientes";
+import { applySchema } from "src/common/apply-schema.decorator";
 
+@applySchema
 @Index("UQ_Vehiculos_Placa", ["placa"], { unique: true })
 @Index("UQ_Vehiculos_IdCliente_Id", ["id", "idCliente"], { unique: true })
 @Index("FK_Vehiculos_Clientes", ["idCliente"], {})
-@Entity("Vehiculos", { schema: `${process.env.DB_DATABASE}` })
+@Entity("Vehiculos")
 export class Vehiculos {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;
