@@ -40,32 +40,6 @@ export class DerroterosService {
     createDerroteroDto: CreateDerroteroDto,
   ) {
     try {
-      switch (rol) {
-        case 1:
-          // Usuario SuperAdministrador
-          break;
-
-        case 2:
-          // Usuario Administrador
-          break;
-
-        default:
-          // Usuarios normales - solo sus instalaciones asignadas
-          const region = await this.rutasRepository.findOne({
-            where: { id: createDerroteroDto.idRuta },
-            select: {
-              idRegion: true,
-            },
-          });
-          const idRegion = region?.idRegion;
-          const permiso = await this.usuariosregionesRepository.findOne({
-            where: { idUsuario: idUser, idRegion: idRegion },
-          });
-
-          if (!permiso) throw new BadRequestException(`Acceso denegado`);
-
-          break;
-      }
       const { recorridoDetallado: puntos } = createDerroteroDto;
       const newDerrotero =
         await this.derroterosRepository.create(createDerroteroDto);
@@ -124,6 +98,90 @@ export class DerroterosService {
     }
   }
 
+  private async consultarDerroteroPaginado(
+    cliente: number,
+    limit: number,
+    offset: number,
+  ) {
+    const query = `
+  SELECT 
+    -- Datos del derrotero (datos principales)
+    d.Id AS id,
+    d.Nombre AS nombreDerrotero,
+    d.PuntoInicio AS puntoInicio,
+    d.PuntoFin AS puntoFin,
+    d.RecorridoDetallado AS recorridoDetallado,
+    d.DistanciaKm AS distanciaKm,
+    d.FechaCreacion AS fechaCreacionDerrotero,
+    d.Estatus AS estatusDerrotero,
+
+    -- Datos de la ruta asociada
+    ru.Id AS idRuta,
+    ru.Nombre AS nombreRuta,
+    ru.NombreInicio AS nombreInicio,
+    ru.NombreFin AS nombreFin,
+    ru.FechaCreacion AS fechaCreacionRuta,
+    ru.Estatus AS estatusRuta,
+
+    -- Región de inicio
+    r.Id AS idRegionInicio,
+    r.Nombre AS nombreRegionInicio,
+    r.Descripcion AS descripcionRegionInicio,
+    r.FechaCreacion AS fechaCreacionRegionInicio,
+    r.FechaActualizacion AS fechaActualizacionRegionInicio,
+    r.Estatus AS estatusRegionInicio,
+
+    -- Región de fin
+    rf.Id AS idRegionFin,
+    rf.Nombre AS nombreRegionFin,
+    rf.Descripcion AS descripcionRegionFin,
+    rf.FechaCreacion AS fechaCreacionRegionFin,
+    rf.FechaActualizacion AS fechaActualizacionRegionFin,
+    rf.Estatus AS estatusRegionFin,
+
+    -- Cliente relacionado
+    c.Id AS idCliente,
+    CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
+
+FROM Derroteros d
+INNER JOIN Rutas ru ON d.IdRuta = ru.Id
+INNER JOIN Regiones r ON ru.IdRegion = r.Id
+LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Clientes c ON r.IdCliente = c.Id
+
+WHERE c.Id = ?               -- Filtrado por cliente
+  AND c.Estatus = 1
+  AND ru.Estatus = 1         -- Solo rutas activas
+  AND r.Estatus = 1          -- Solo regiones activas
+
+ORDER BY d.Id DESC
+
+  LIMIT ? OFFSET ?;
+    `;
+    return this.usuariosregionesRepository.query(query, [
+      cliente,
+      limit,
+      offset,
+    ]);
+  }
+
+  private async consultarTotalDerroteroPaginados(cliente: number) {
+    const query = `  
+    SELECT COUNT(*) AS total
+FROM Derroteros d
+INNER JOIN Rutas ru ON d.IdRuta = ru.Id
+INNER JOIN Regiones r ON ru.IdRegion = r.Id
+LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Clientes c ON r.IdCliente = c.Id
+
+WHERE c.Id = ?               -- Filtrado por cliente
+  AND c.Estatus = 1
+  AND ru.Estatus = 1         -- Solo rutas activas
+  AND r.Estatus = 1          -- Solo regiones activas
+`;
+    return await this.usuariosregionesRepository.query(query, [cliente]);
+  }
+
   async findAll(
     idUser: number,
     cliente: number,
@@ -179,20 +237,19 @@ export class DerroterosService {
     c.Id AS idCliente,
     CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
-  FROM Derroteros d
-  INNER JOIN Rutas ru ON d.IdRuta = ru.Id
-  INNER JOIN Regiones r ON ru.IdRegion = r.Id
-  LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
-  INNER JOIN Clientes c ON r.IdCliente = c.Id
-  INNER JOIN UsuariosRegiones ur ON ur.IdRegion = r.Id
+FROM Derroteros d
+INNER JOIN Rutas ru ON d.IdRuta = ru.Id
+INNER JOIN Regiones r ON ru.IdRegion = r.Id
+LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Clientes c ON r.IdCliente = c.Id
 
-  WHERE ur.IdUsuario = ?
-    AND ur.Estatus = 1
+WHERE ru.Estatus = 1         -- Solo rutas activas
+  AND r.Estatus = 1          -- Solo regiones activas
 
-  ORDER BY d.Id DESC
-  LIMIT ? OFFSET ?
-  `,
-            [idUser, limit, offset],
+ORDER BY d.Id DESC
+
+  LIMIT ? OFFSET ?;
+  `,[limit, offset]
           );
 
           // Query para total (sin paginación)
@@ -202,88 +259,37 @@ SELECT COUNT(*) AS total
 FROM Derroteros d
 INNER JOIN Rutas ru ON d.IdRuta = ru.Id
 INNER JOIN Regiones r ON ru.IdRegion = r.Id
-INNER JOIN UsuariosRegiones ur ON ur.IdRegion = r.Id
-WHERE ur.IdUsuario = ?
-  AND ur.Estatus = 1
+LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Clientes c ON r.IdCliente = c.Id
+
+WHERE ru.Estatus = 1         -- Solo rutas activas
+  AND r.Estatus = 1  
   `,
-            [idUser],
           );
           break;
 
         case 2:
           // Consulta de datos paginados Usuario Administrador
-          data = await this.usuariosregionesRepository.query(
-            `
-  SELECT 
-    -- Datos del derrotero (datos principales)
-    d.Id AS id,
-    d.Nombre AS nombreDerrotero,
-    d.PuntoInicio AS puntoInicio,
-    d.PuntoFin AS puntoFin,
-    d.RecorridoDetallado AS recorridoDetallado,
-    d.DistanciaKm AS distanciaKm,
-    d.FechaCreacion AS fechaCreacionDerrotero,
-    d.Estatus AS estatusDerrotero,
-
-    -- Datos de la ruta asociada
-    ru.Id AS idRuta,
-    ru.Nombre AS nombreRuta,
-    ru.NombreInicio AS nombreInicio,
-    ru.NombreFin AS nombreFin,
-    ru.FechaCreacion AS fechaCreacionRuta,
-    ru.Estatus AS estatusRuta,
-
-    -- Región de inicio
-    r.Id AS idRegionInicio,
-    r.Nombre AS nombreRegionInicio,
-    r.Descripcion AS descripcionRegionInicio,
-    r.FechaCreacion AS fechaCreacionRegionInicio,
-    r.FechaActualizacion AS fechaActualizacionRegionInicio,
-    r.Estatus AS estatusRegionInicio,
-
-    -- Región de fin
-    rf.Id AS idRegionFin,
-    rf.Nombre AS nombreRegionFin,
-    rf.Descripcion AS descripcionRegionFin,
-    rf.FechaCreacion AS fechaCreacionRegionFin,
-    rf.FechaActualizacion AS fechaActualizacionRegionFin,
-    rf.Estatus AS estatusRegionFin,
-
-    -- Cliente relacionado
-    c.Id AS idCliente,
-    CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
-
-  FROM Derroteros d
-  INNER JOIN Rutas ru ON d.IdRuta = ru.Id
-  INNER JOIN Regiones r ON ru.IdRegion = r.Id
-  LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
-  INNER JOIN Clientes c ON r.IdCliente = c.Id
-  INNER JOIN UsuariosRegiones ur ON ur.IdRegion = r.Id
-
-  WHERE ur.IdUsuario = ?
-    AND ur.Estatus = 1
-    AND c.Id = ? -- Discriminacion de clientes
-
-  ORDER BY d.Id DESC
-  LIMIT ? OFFSET ?
-  `,
-            [idUser, cliente, limit, offset],
-          );
+          data = await this.consultarDerroteroPaginado(cliente, page, offset);
 
           // Query para total (sin paginación)
-          totalResult = await this.usuariosregionesRepository.query(
-            `
-SELECT COUNT(*) AS total
-FROM Derroteros d
-INNER JOIN Rutas ru ON d.IdRuta = ru.Id
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-INNER JOIN UsuariosRegiones ur ON ur.IdRegion = r.Id
-WHERE ur.IdUsuario = ?
-  AND ur.Estatus = 1
-  AND r.IdCliente = ?
-  `,
-            [idUser, cliente],
-          );
+          totalResult = await this.consultarTotalDerroteroPaginados(cliente);
+          break;
+
+        case 8:
+          // Consulta de datos paginados Usuario Reportes
+          data = await this.consultarDerroteroPaginado(cliente, page, offset);
+
+          // Query para total (sin paginación)
+          totalResult = await this.consultarTotalDerroteroPaginados(cliente);
+          break;
+
+        case 10:
+          // Consulta de datos paginados Usuario Capturista
+          data = await this.consultarDerroteroPaginado(cliente, page, offset);
+
+          // Query para total (sin paginación)
+          totalResult = await this.consultarTotalDerroteroPaginados(cliente);
           break;
 
         default:
@@ -400,6 +406,64 @@ WHERE ur.IdUsuario = ?
     }
   }
 
+  private async consultarDerroteroListado(cliente: number) {
+    const query = `
+  SELECT 
+    -- Datos del derrotero (datos principales)
+    d.Id AS id,
+    d.Nombre AS nombreDerrotero,
+    d.PuntoInicio AS puntoInicio,
+    d.PuntoFin AS puntoFin,
+    d.RecorridoDetallado AS recorridoDetallado,
+    d.DistanciaKm AS distanciaKm,
+    d.FechaCreacion AS fechaCreacionDerrotero,
+    d.Estatus AS estatusDerrotero,
+
+    -- Datos de la ruta asociada
+    ru.Id AS idRuta,
+    ru.Nombre AS nombreRuta,
+    ru.NombreInicio AS nombreInicio,
+    ru.NombreFin AS nombreFin,
+    ru.FechaCreacion AS fechaCreacionRuta,
+    ru.Estatus AS estatusRuta,
+
+    -- Región de inicio
+    r.Id AS idRegionInicio,
+    r.Nombre AS nombreRegionInicio,
+    r.Descripcion AS descripcionRegionInicio,
+    r.FechaCreacion AS fechaCreacionRegionInicio,
+    r.FechaActualizacion AS fechaActualizacionRegionInicio,
+    r.Estatus AS estatusRegionInicio,
+
+    -- Región de fin
+    rf.Id AS idRegionFin,
+    rf.Nombre AS nombreRegionFin,
+    rf.Descripcion AS descripcionRegionFin,
+    rf.FechaCreacion AS fechaCreacionRegionFin,
+    rf.FechaActualizacion AS fechaActualizacionRegionFin,
+    rf.Estatus AS estatusRegionFin,
+
+    -- Cliente relacionado
+    c.Id AS idCliente,
+    CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
+
+FROM Derroteros d
+INNER JOIN Rutas ru ON d.IdRuta = ru.Id
+INNER JOIN Regiones r ON ru.IdRegion = r.Id
+LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Clientes c ON r.IdCliente = c.Id
+
+WHERE c.Id = ?               -- Filtrado por cliente
+  AND c.Estatus = 1
+  AND ru.Estatus = 1         -- Solo rutas activas
+  AND r.Estatus = 1          -- Solo regiones activas
+  AND d.Estatus = 1
+
+ORDER BY d.Id DESC;
+    `;
+    return this.usuariosregionesRepository.query(query, [cliente]);
+  }
+
   async findAllList(idUser: number, cliente: number, rol: number) {
     try {
       let data;
@@ -408,125 +472,73 @@ WHERE ur.IdUsuario = ?
           // Consulta de datos paginados Usuario SuperAdministrador
           data = await this.usuariosregionesRepository.query(
             `
-      SELECT 
-  -- Datos del derrotero (datos principales)
-  d.Id AS id,
-  d.Nombre AS nombreDerrotero,
-  d.PuntoInicio AS puntoInicio,
-  d.PuntoFin AS puntoFin,
-  d.RecorridoDetallado AS recorridoDetallado,
-  d.DistanciaKm AS distanciaKm,
-  d.FechaCreacion AS fechaCreacionDerrotero,
-  d.Estatus AS estatusDerrotero,
+  SELECT 
+    -- Datos del derrotero (datos principales)
+    d.Id AS id,
+    d.Nombre AS nombreDerrotero,
+    d.PuntoInicio AS puntoInicio,
+    d.PuntoFin AS puntoFin,
+    d.RecorridoDetallado AS recorridoDetallado,
+    d.DistanciaKm AS distanciaKm,
+    d.FechaCreacion AS fechaCreacionDerrotero,
+    d.Estatus AS estatusDerrotero,
 
-  -- Datos de la ruta asociada
-  ru.Id AS idRuta,
-  ru.Nombre AS nombreRuta,
-  ru.NombreInicio AS nombreInicio,
-  ru.NombreFin AS nombreFin,
-  ru.FechaCreacion AS fechaCreacionRuta,
-  ru.Estatus AS estatusRuta,
+    -- Datos de la ruta asociada
+    ru.Id AS idRuta,
+    ru.Nombre AS nombreRuta,
+    ru.NombreInicio AS nombreInicio,
+    ru.NombreFin AS nombreFin,
+    ru.FechaCreacion AS fechaCreacionRuta,
+    ru.Estatus AS estatusRuta,
 
-  -- Región de inicio
-  r.Id AS idRegionInicio,
-  r.Nombre AS nombreRegionInicio,
-  r.Descripcion AS descripcionRegionInicio,
-  r.FechaCreacion AS fechaCreacionRegionInicio,
-  r.FechaActualizacion AS fechaActualizacionRegionInicio,
-  r.Estatus AS estatusRegionInicio,
+    -- Región de inicio
+    r.Id AS idRegionInicio,
+    r.Nombre AS nombreRegionInicio,
+    r.Descripcion AS descripcionRegionInicio,
+    r.FechaCreacion AS fechaCreacionRegionInicio,
+    r.FechaActualizacion AS fechaActualizacionRegionInicio,
+    r.Estatus AS estatusRegionInicio,
 
-  -- Región de fin
-  rf.Id AS idRegionFin,
-  rf.Nombre AS nombreRegionFin,
-  rf.Descripcion AS descripcionRegionFin,
-  rf.FechaCreacion AS fechaCreacionRegionFin,
-  rf.FechaActualizacion AS fechaActualizacionRegionFin,
-  rf.Estatus AS estatusRegionFin,
+    -- Región de fin
+    rf.Id AS idRegionFin,
+    rf.Nombre AS nombreRegionFin,
+    rf.Descripcion AS descripcionRegionFin,
+    rf.FechaCreacion AS fechaCreacionRegionFin,
+    rf.FechaActualizacion AS fechaActualizacionRegionFin,
+    rf.Estatus AS estatusRegionFin,
 
-  -- Cliente relacionado
-  c.Id AS idCliente,
-  CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
+    -- Cliente relacionado
+    c.Id AS idCliente,
+    CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
 FROM Derroteros d
 INNER JOIN Rutas ru ON d.IdRuta = ru.Id
 INNER JOIN Regiones r ON ru.IdRegion = r.Id
 LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
-INNER JOIN UsuariosRegiones ur ON ur.IdRegion = r.Id
 
-WHERE ur.IdUsuario = ?
-  AND ur.Estatus = 1
-  AND r.Estatus = 1
-  AND ru.Estatus = 1
+WHERE ru.Estatus = 1         -- Solo rutas activas
+  AND r.Estatus = 1          -- Solo regiones activas
   AND d.Estatus = 1
 
 ORDER BY d.Id DESC;
       `,
-            [idUser], // parámetro seguro
           );
           break;
 
         case 2:
           // Consulta de datos paginados Usuario Administrador
-          data = await this.usuariosregionesRepository.query(
-            `
-      SELECT 
-  -- Datos del derrotero (datos principales)
-  d.Id AS id,
-  d.Nombre AS nombreDerrotero,
-  d.PuntoInicio AS puntoInicio,
-  d.PuntoFin AS puntoFin,
-  d.RecorridoDetallado AS recorridoDetallado,
-  d.DistanciaKm AS distanciaKm,
-  d.FechaCreacion AS fechaCreacionDerrotero,
-  d.Estatus AS estatusDerrotero,
+          data = await this.consultarDerroteroListado(cliente);
+          break;
 
-  -- Datos de la ruta asociada
-  ru.Id AS idRuta,
-  ru.Nombre AS nombreRuta,
-  ru.NombreInicio AS nombreInicio,
-  ru.NombreFin AS nombreFin,
-  ru.FechaCreacion AS fechaCreacionRuta,
-  ru.Estatus AS estatusRuta,
+        case 8:
+          // Consulta de datos paginados Usuario Reportes
+          data = await this.consultarDerroteroListado(cliente);
+          break;
 
-  -- Región de inicio
-  r.Id AS idRegionInicio,
-  r.Nombre AS nombreRegionInicio,
-  r.Descripcion AS descripcionRegionInicio,
-  r.FechaCreacion AS fechaCreacionRegionInicio,
-  r.FechaActualizacion AS fechaActualizacionRegionInicio,
-  r.Estatus AS estatusRegionInicio,
-
-  -- Región de fin
-  rf.Id AS idRegionFin,
-  rf.Nombre AS nombreRegionFin,
-  rf.Descripcion AS descripcionRegionFin,
-  rf.FechaCreacion AS fechaCreacionRegionFin,
-  rf.FechaActualizacion AS fechaActualizacionRegionFin,
-  rf.Estatus AS estatusRegionFin,
-
-  -- Cliente relacionado
-  c.Id AS idCliente,
-  CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
-
-FROM Derroteros d
-INNER JOIN Rutas ru ON d.IdRuta = ru.Id
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
-INNER JOIN Clientes c ON r.IdCliente = c.Id
-INNER JOIN UsuariosRegiones ur ON ur.IdRegion = r.Id
-
-WHERE ur.IdUsuario = ?
-  AND ur.Estatus = 1
-  AND r.Estatus = 1
-  AND ru.Estatus = 1
-  AND d.Estatus = 1
-   AND c.Id = ?
-
-ORDER BY d.Id DESC;
-      `,
-            [idUser, cliente], // parámetro seguro
-          );
+        case 10:
+          // Consulta de datos paginados Usuario Capturista
+          data = await this.consultarDerroteroListado(cliente);
           break;
 
         default:
@@ -593,7 +605,6 @@ ORDER BY d.Id DESC;
           break;
       }
 
-
       const derroteros = data.map((item) => ({
         ...item,
         id: Number(item.id),
@@ -617,6 +628,65 @@ ORDER BY d.Id DESC;
         error: error.message,
       });
     }
+  }
+
+  private async consultarDerroteroOne(cliente: number, id: number) {
+    const query = `
+  SELECT 
+    -- Datos del derrotero (datos principales)
+    d.Id AS id,
+    d.Nombre AS nombreDerrotero,
+    d.PuntoInicio AS puntoInicio,
+    d.PuntoFin AS puntoFin,
+    d.RecorridoDetallado AS recorridoDetallado,
+    d.DistanciaKm AS distanciaKm,
+    d.FechaCreacion AS fechaCreacionDerrotero,
+    d.Estatus AS estatusDerrotero,
+
+    -- Datos de la ruta asociada
+    ru.Id AS idRuta,
+    ru.Nombre AS nombreRuta,
+    ru.NombreInicio AS nombreInicio,
+    ru.NombreFin AS nombreFin,
+    ru.FechaCreacion AS fechaCreacionRuta,
+    ru.Estatus AS estatusRuta,
+
+    -- Región de inicio
+    r.Id AS idRegionInicio,
+    r.Nombre AS nombreRegionInicio,
+    r.Descripcion AS descripcionRegionInicio,
+    r.FechaCreacion AS fechaCreacionRegionInicio,
+    r.FechaActualizacion AS fechaActualizacionRegionInicio,
+    r.Estatus AS estatusRegionInicio,
+
+    -- Región de fin
+    rf.Id AS idRegionFin,
+    rf.Nombre AS nombreRegionFin,
+    rf.Descripcion AS descripcionRegionFin,
+    rf.FechaCreacion AS fechaCreacionRegionFin,
+    rf.FechaActualizacion AS fechaActualizacionRegionFin,
+    rf.Estatus AS estatusRegionFin,
+
+    -- Cliente relacionado
+    c.Id AS idCliente,
+    CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
+
+FROM Derroteros d
+INNER JOIN Rutas ru ON d.IdRuta = ru.Id
+INNER JOIN Regiones r ON ru.IdRegion = r.Id
+LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Clientes c ON r.IdCliente = c.Id
+
+WHERE c.Id = ?               -- Filtrado por cliente
+  AND c.Estatus = 1
+  AND ru.Estatus = 1         -- Solo rutas activas
+  AND r.Estatus = 1          -- Solo regiones activas
+  AND d.Estatus = 1
+  AND d.Id = ?
+
+ORDER BY d.Id DESC;
+    `;
+    return this.usuariosregionesRepository.query(query, [cliente, id]);
   }
 
   async findOne(id: number, idUser: number, cliente: number, rol: number) {
@@ -687,65 +757,17 @@ WHERE ur.IdUsuario = ?
 
         case 2:
           // Consulta de datos paginados Usuario Administrador
-          data = await this.usuariosregionesRepository.query(
-            `
-    SELECT 
-  -- Datos del derrotero (datos principales)
-  d.Id AS id,
-  d.Nombre AS nombreDerrotero,
-  d.PuntoInicio AS puntoInicio,
-  d.PuntoFin AS puntoFin,
-  d.RecorridoDetallado AS recorridoDetallado,
-  d.RecorridoInterpolar AS recorridoInterpolar,
-  d.DistanciaKm AS distanciaKm,
-  d.FechaCreacion AS fechaCreacionDerrotero,
-  d.FechaActualizacion AS fechaActualizacion,
-  d.Estatus AS estatusDerrotero,
+          data = await this.consultarDerroteroOne(cliente, id);
+          break;
 
-  -- Datos de la ruta asociada
-  ru.Id AS idRuta,
-  ru.Nombre AS nombreRuta,
-  ru.NombreInicio AS nombreInicio,
-  ru.NombreFin AS nombreFin,
-  ru.FechaCreacion AS fechaCreacionRuta,
-  ru.Estatus AS estatusRuta,
+        case 8:
+          // Consulta de datos paginados Usuario Reportes
+          data = await this.consultarDerroteroOne(cliente, id);
+          break;
 
-  -- Región de inicio
-  r.Id AS idRegionInicio,
-  r.Nombre AS nombreRegionInicio,
-  r.Descripcion AS descripcionRegionInicio,
-  r.FechaCreacion AS fechaCreacionRegionInicio,
-  r.FechaActualizacion AS fechaActualizacionRegionInicio,
-  r.Estatus AS estatusRegionInicio,
-
-  -- Región de fin
-  rf.Id AS idRegionFin,
-  rf.Nombre AS nombreRegionFin,
-  rf.Descripcion AS descripcionRegionFin,
-  rf.FechaCreacion AS fechaCreacionRegionFin,
-  rf.FechaActualizacion AS fechaActualizacionRegionFin,
-  rf.Estatus AS estatusRegionFin,
-
-  -- Cliente relacionado
-  c.Id AS idCliente,
-  CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
-
-FROM Derroteros d
-INNER JOIN Rutas ru ON d.IdRuta = ru.Id
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
-INNER JOIN Clientes c ON r.IdCliente = c.Id
-INNER JOIN UsuariosRegiones ur ON ur.IdRegion = r.Id
-
-WHERE ur.IdUsuario = ?
-  AND ur.Estatus = 1
-  AND r.Estatus = 1
-  AND ru.Estatus = 1
-  AND d.Id = ? -- Id del derrotero
-  AND c.Id = ? -- Discriminacion de clientes
-      `,
-            [idUser, id, cliente], // parámetro seguro
-          );
+        case 10:
+          // Consulta de datos paginados Usuario Capturista
+          data = await this.consultarDerroteroOne(cliente, id);
           break;
 
         default:
@@ -846,58 +868,10 @@ WHERE ur.IdUsuario = ?
   ) {
     try {
       let derrotero;
-      switch (rol) {
-        case 1:
-          // Usuario SuperAdministrador
-          derrotero = await this.derroterosRepository.findOne({
-            where: { id: id },
-          });
-          if (!derrotero)
-            throw new NotFoundException('Derrotero no encontrado');
-          break;
-
-        case 2:
-          // Usuario Administrador
-          derrotero = await this.derroterosRepository.findOne({
-            relations: ['idRuta2', 'idRegion2'],
-            where: {
-              id: id,
-              idRuta2: {
-                idRegion2: {
-                  idCliente: cliente,
-                },
-              },
-            },
-          });
-          if (!derrotero)
-            throw new NotFoundException('Derrotero no encontrado');
-          break;
-
-        default:
-          derrotero = await this.derroterosRepository.findOne({
-            where: { id: id },
-            select: {
-              idRuta: true,
-              nombre: true,
-              distanciaKm: true,
-              estatus: true,
-            },
-          });
-          const idRuta = derrotero?.idRuta;
-          const region = await this.rutasRepository.findOne({
-            where: { id: idRuta },
-            select: {
-              idRegion: true,
-            },
-          });
-          const idRegion = region?.idRegion;
-          const permiso = await this.usuariosregionesRepository.findOne({
-            where: { idUsuario: idUser, idRegion: idRegion },
-          });
-
-          if (!permiso) throw new BadRequestException(`Acceso denegado`);
-          break;
-      }
+      derrotero = await this.derroterosRepository.findOne({
+        where: { id: id },
+      });
+      if (!derrotero) throw new NotFoundException('Derrotero no encontrado');
 
       //actualizacion de estatus
       const estatus = updateDerroterosEstatusDto.estatus;
@@ -956,32 +930,7 @@ WHERE ur.IdUsuario = ?
     updateDerroteroDto: UpdateDerroteroDto,
   ) {
     try {
-      switch (rol) {
-        case 1:
-          // Usuario SuperAdministrador
-          break;
 
-        case 2:
-          // Usuario Administrador
-          break;
-
-        default:
-          // Usuarios normales - solo sus instalaciones asignadas
-          const region = await this.rutasRepository.findOne({
-            where: { id: updateDerroteroDto.idRuta },
-            select: {
-              idRegion: true,
-            },
-          });
-          const idRegion = region?.idRegion;
-          const permiso = await this.usuariosregionesRepository.findOne({
-            where: { idUsuario: idUser, idRegion: idRegion },
-          });
-
-          if (!permiso) throw new BadRequestException(`Acceso denegado`);
-
-          break;
-      }
 
       let newDerrotero = this.derroterosRepository.create(updateDerroteroDto);
 
@@ -1048,58 +997,11 @@ WHERE ur.IdUsuario = ?
   async remove(id: number, idUser: number, cliente: number, rol: number) {
     try {
       let derrotero;
-      switch (rol) {
-        case 1:
-          // Usuario SuperAdministrador
-          derrotero = await this.derroterosRepository.findOne({
+      derrotero = await this.derroterosRepository.findOne({
             where: { id: id },
           });
           if (!derrotero)
             throw new NotFoundException('Derrotero no encontrado');
-          break;
-
-        case 2:
-          // Usuario Administrador
-          derrotero = await this.derroterosRepository.findOne({
-            relations: ['idRuta2', 'idRegion2'],
-            where: {
-              id: id,
-              idRuta2: {
-                idRegion2: {
-                  idCliente: cliente,
-                },
-              },
-            },
-          });
-          if (!derrotero)
-            throw new NotFoundException('Derrotero no encontrado');
-          break;
-
-        default:
-          derrotero = await this.derroterosRepository.findOne({
-            where: { id: id },
-            select: {
-              idRuta: true,
-              nombre: true,
-              distanciaKm: true,
-              estatus: true,
-            },
-          });
-          const idRuta = derrotero?.idRuta;
-          const region = await this.rutasRepository.findOne({
-            where: { id: idRuta },
-            select: {
-              idRegion: true,
-            },
-          });
-          const idRegion = region?.idRegion;
-          const permiso = await this.usuariosregionesRepository.findOne({
-            where: { idUsuario: idUser, idRegion: idRegion },
-          });
-
-          if (!permiso) throw new BadRequestException(`Acceso denegado`);
-          break;
-      }
 
       //eliminado logico
       await this.derroterosRepository.update(id, { estatus: 0 });
