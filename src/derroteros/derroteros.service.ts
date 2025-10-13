@@ -249,7 +249,8 @@ WHERE ru.Estatus = 1         -- Solo rutas activas
 ORDER BY d.Id DESC
 
   LIMIT ? OFFSET ?;
-  `,[limit, offset]
+  `,
+            [limit, offset],
           );
 
           // Query para total (sin paginación)
@@ -270,15 +271,16 @@ WHERE ru.Estatus = 1         -- Solo rutas activas
 
         case 2:
           // Consulta de datos paginados Usuario Administrador
-          data = await this.consultarDerroteroPaginado(cliente, page, offset);
+          data = await this.consultarDerroteroPaginado(cliente, limit, offset);
 
           // Query para total (sin paginación)
           totalResult = await this.consultarTotalDerroteroPaginados(cliente);
+
           break;
 
         case 8:
           // Consulta de datos paginados Usuario Reportes
-          data = await this.consultarDerroteroPaginado(cliente, page, offset);
+          data = await this.consultarDerroteroPaginado(cliente, limit, offset);
 
           // Query para total (sin paginación)
           totalResult = await this.consultarTotalDerroteroPaginados(cliente);
@@ -286,7 +288,7 @@ WHERE ru.Estatus = 1         -- Solo rutas activas
 
         case 10:
           // Consulta de datos paginados Usuario Capturista
-          data = await this.consultarDerroteroPaginado(cliente, page, offset);
+          data = await this.consultarDerroteroPaginado(cliente, limit, offset);
 
           // Query para total (sin paginación)
           totalResult = await this.consultarTotalDerroteroPaginados(cliente);
@@ -375,6 +377,7 @@ WHERE ur.IdUsuario = ?
 
       const total = Number(totalResult[0]?.total ?? 0);
 
+      console.log(data.length, total);
       const derroteros = data.map((item) => ({
         ...item,
         id: Number(item.id),
@@ -930,8 +933,6 @@ WHERE ur.IdUsuario = ?
     updateDerroteroDto: UpdateDerroteroDto,
   ) {
     try {
-
-
       let newDerrotero = this.derroterosRepository.create(updateDerroteroDto);
 
       if (
@@ -998,10 +999,9 @@ WHERE ur.IdUsuario = ?
     try {
       let derrotero;
       derrotero = await this.derroterosRepository.findOne({
-            where: { id: id },
-          });
-          if (!derrotero)
-            throw new NotFoundException('Derrotero no encontrado');
+        where: { id: id },
+      });
+      if (!derrotero) throw new NotFoundException('Derrotero no encontrado');
 
       //eliminado logico
       await this.derroterosRepository.update(id, { estatus: 0 });

@@ -39,37 +39,17 @@ export class TarifasService {
   ): Promise<ApiCrudResponse> {
     try {
       let derrotero;
-      switch (rol) {
-        case 1:
-          derrotero = await this.derroterosRepository.findOne({
-            where: { id: createTarifaDto.idDerrotero },
-          });
-          if (!derrotero)
-            throw new NotFoundException(`El derrotero no fue encontrado.`);
-          break;
-
-        case 2:
-          derrotero = await this.derroterosRepository.findOne({
-            where: { id: createTarifaDto.idDerrotero },
-          });
-          if (!derrotero)
-            throw new NotFoundException(`El derrotero no fue encontrado.`);
-          break;
-
-        default:
-          derrotero = await this.derroterosRepository.findOne({
-            where: { id: createTarifaDto.idDerrotero },
-          });
-          if (!derrotero)
-            throw new NotFoundException(`El derrotero no fue encontrado.`);
-          break;
-      }
+      derrotero = await this.derroterosRepository.findOne({
+        where: { id: createTarifaDto.idDerrotero },
+      });
+      if (!derrotero)
+        throw new NotFoundException(`El derrotero no fue encontrado.`);
 
       const newTarifas = this.tarifasRepository.create(createTarifaDto);
       const tarifaSave = await this.tarifasRepository.save(newTarifas);
 
       // Registro en la bitácora SUCCESS
-      const querylogger =  {createTarifaDto}
+      const querylogger = { createTarifaDto };
       await this.bitacoraLogger.logToBitacora(
         'Tarifas',
         `Se creó una tarifa con ID: ${tarifaSave.id}.`,
@@ -92,7 +72,7 @@ export class TarifasService {
       return result;
     } catch (error) {
       // Registro en la bitácora ERROR
-      const querylogger =  {createTarifaDto}
+      const querylogger = { createTarifaDto };
       await this.bitacoraLogger.logToBitacora(
         'Tarifas',
         `Se creó una tarifa con ID de derrotero: ${createTarifaDto.idDerrotero}.`,
@@ -112,6 +92,71 @@ export class TarifasService {
         error: error.message,
       });
     }
+  }
+
+  private async consultarTarifasListado(
+    cliente: number
+  ) {
+    const query = `
+SELECT 
+  -- Datos de la tarifa
+  t.Id AS id,
+  t.TarifaBase,
+  t.DistanciaBaseKm,
+  t.IncrementoCadaMetros,
+  t.CostoAdicional,
+  t.FechaCreacion AS fechaCreacionTarifa,
+  t.FechaActualizacion AS fechaActualizacionTarifa,
+  t.Estatus AS estatusTarifa,
+
+  -- Datos del derrotero
+  d.Id AS idDerrotero,
+  d.Nombre AS nombreDerrotero,
+  d.PuntoInicio AS puntoInicio,
+  d.PuntoFin AS puntoFin,
+  d.DistanciaKm AS distanciaKm,
+
+  -- Datos de la ruta
+  ru.Id AS idRuta,
+  ru.Nombre AS nombreRuta,
+  ru.NombreInicio,
+  ru.NombreFin,
+
+  -- Región de inicio
+  r.Id AS idRegionInicio,
+  r.Nombre AS nombreRegionInicio,
+
+  -- Región de fin
+  rf.Id AS idRegionFin,
+  rf.Nombre AS nombreRegionFin,
+
+  -- Cliente
+  c.Id AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente,
+  CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
+
+FROM Tarifas t
+INNER JOIN Derroteros d ON t.IdDerrotero = d.Id
+INNER JOIN Rutas ru ON d.IdRuta = ru.Id
+INNER JOIN Regiones r ON ru.IdRegion = r.Id
+LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Clientes c ON r.IdCliente = c.Id
+
+WHERE c.Id = ?            -- Filtrado por cliente
+  AND c.Estatus = 1
+  AND r.Estatus = 1
+  AND ru.Estatus = 1
+  AND d.Estatus = 1
+  AND t.Estatus = 1
+
+ORDER BY t.Id DESC
+    `;
+    return this.usuariosregionesRepository.query(query, [
+      cliente,
+    ]);
   }
 
   async findAllList(idUser: number, cliente: number, rol: number) {
@@ -146,7 +191,7 @@ SELECT
   ru.NombreInicio,
   ru.NombreFin,
 
-  -- Región de inicio (la importante para filtro del usuario)
+  -- Región de inicio
   r.Id AS idRegionInicio,
   r.Nombre AS nombreRegionInicio,
 
@@ -159,6 +204,7 @@ SELECT
   c.Nombre AS nombreCliente,
   c.ApellidoPaterno AS apellidoPaternoCliente,
   c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente,
   CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
 FROM Tarifas t
@@ -167,88 +213,37 @@ INNER JOIN Rutas ru ON d.IdRuta = ru.Id
 INNER JOIN Regiones r ON ru.IdRegion = r.Id
 LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
-INNER JOIN UsuariosRegiones ur ON ur.IdRegion = r.Id
 
-WHERE ur.IdUsuario = ?
-  AND ur.Estatus = 1
+WHERE c.Estatus = 1
   AND r.Estatus = 1
   AND ru.Estatus = 1
   AND d.Estatus = 1
   AND t.Estatus = 1
 
-ORDER BY t.Id DESC;
+ORDER BY t.Id DESC
+
       `,
-            [idUser], // parámetro seguro
+           
           );
           break;
 
         case 2:
           // Usuario Administrador - obtiene todas las regiones
-          data = await this.usuariosregionesRepository.query(
-            `
-SELECT 
-  -- Datos de la tarifa
-  t.Id AS id,
-  t.TarifaBase,
-  t.DistanciaBaseKm,
-  t.IncrementoCadaMetros,
-  t.CostoAdicional,
-  t.FechaCreacion AS fechaCreacionTarifa,
-  t.FechaActualizacion AS fechaActualizacionTarifa,
-  t.Estatus AS estatusTarifa,
-
-  -- Datos del derrotero
-  d.Id AS idDerrotero,
-  d.Nombre AS nombreDerrotero,
-  d.PuntoInicio AS puntoInicio,
-  d.PuntoFin AS puntoFin,
-  d.DistanciaKm AS distanciaKm,
-
-  -- Datos de la ruta
-  ru.Id AS idRuta,
-  ru.Nombre AS nombreRuta,
-  ru.NombreInicio,
-  ru.NombreFin,
-
-  -- Región de inicio (la importante para filtro del usuario)
-  r.Id AS idRegionInicio,
-  r.Nombre AS nombreRegionInicio,
-
-  -- Región de fin
-  rf.Id AS idRegionFin,
-  rf.Nombre AS nombreRegionFin,
-
-  -- Cliente
-  c.Id AS idCliente,
-  c.Nombre AS nombreCliente,
-  c.ApellidoPaterno AS apellidoPaternoCliente,
-  c.ApellidoMaterno AS apellidoMaternoCliente,
-  CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
-
-FROM Tarifas t
-INNER JOIN Derroteros d ON t.IdDerrotero = d.Id
-INNER JOIN Rutas ru ON d.IdRuta = ru.Id
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
-INNER JOIN Clientes c ON r.IdCliente = c.Id
-INNER JOIN UsuariosRegiones ur ON ur.IdRegion = r.Id
-
-WHERE ur.IdUsuario = ?
-  AND ur.Estatus = 1
-  AND r.Estatus = 1
-  AND ru.Estatus = 1
-  AND d.Estatus = 1
-  AND t.Estatus = 1
-  AND c.Id = ?  -- Filtro por cliente específico
-
-ORDER BY t.Id DESC;
-      `,
-            [idUser, cliente], // parámetro seguro
-          );
+          data = await this.consultarTarifasListado(cliente)
           break;
 
+        case 8:
+          // Consulta de datos paginados Usuario Reportes
+          data = await this.consultarTarifasListado(cliente)
+          break;
+
+        case 10:
+          // Usuario Administrador - obtiene todas las regiones
+          data = await this.consultarTarifasListado(cliente)
+          break
+
         default:
-          // Usuarios normales - solo sus regiones asignadas
+          // Consulta de datos paginados Usuario Capturista
           data = await this.usuariosregionesRepository.query(
             `
 SELECT 
@@ -312,7 +307,6 @@ ORDER BY t.Id DESC;
           );
           break;
       }
-
 
       const tarifas = data.map((item) => ({
         ...item,
@@ -346,6 +340,96 @@ ORDER BY t.Id DESC;
     }
   }
 
+  private async consultarTarifasPaginado(
+    cliente: number,
+    limit: number,
+    offset: number,
+  ) {
+    const query = `
+SELECT 
+  -- Datos de la tarifa
+  t.Id AS id,
+  t.TarifaBase,
+  t.DistanciaBaseKm,
+  t.IncrementoCadaMetros,
+  t.CostoAdicional,
+  t.FechaCreacion AS fechaCreacionTarifa,
+  t.FechaActualizacion AS fechaActualizacionTarifa,
+  t.Estatus AS estatusTarifa,
+
+  -- Datos del derrotero
+  d.Id AS idDerrotero,
+  d.Nombre AS nombreDerrotero,
+  d.PuntoInicio AS puntoInicio,
+  d.PuntoFin AS puntoFin,
+  d.DistanciaKm AS distanciaKm,
+
+  -- Datos de la ruta
+  ru.Id AS idRuta,
+  ru.Nombre AS nombreRuta,
+  ru.NombreInicio,
+  ru.NombreFin,
+
+  -- Región de inicio
+  r.Id AS idRegionInicio,
+  r.Nombre AS nombreRegionInicio,
+
+  -- Región de fin
+  rf.Id AS idRegionFin,
+  rf.Nombre AS nombreRegionFin,
+
+  -- Cliente
+  c.Id AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente,
+  CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
+
+FROM Tarifas t
+INNER JOIN Derroteros d ON t.IdDerrotero = d.Id
+INNER JOIN Rutas ru ON d.IdRuta = ru.Id
+INNER JOIN Regiones r ON ru.IdRegion = r.Id
+LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Clientes c ON r.IdCliente = c.Id
+
+WHERE c.Id = ?            -- Filtrado por cliente
+  AND c.Estatus = 1
+  AND r.Estatus = 1
+  AND ru.Estatus = 1
+  AND d.Estatus = 1
+
+ORDER BY t.Id DESC
+
+  LIMIT ? OFFSET ?;
+    `;
+    return this.usuariosregionesRepository.query(query, [
+      cliente,
+      limit,
+      offset,
+    ]);
+  }
+
+  private async consultarTotalTarifasPaginados(cliente: number) {
+    const query = `  
+
+SELECT COUNT(*) AS total
+FROM Tarifas t
+INNER JOIN Derroteros d ON t.IdDerrotero = d.Id
+INNER JOIN Rutas ru ON d.IdRuta = ru.Id
+INNER JOIN Regiones r ON ru.IdRegion = r.Id
+LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Clientes c ON r.IdCliente = c.Id
+
+WHERE c.Id = ?            -- Filtrado por cliente
+  AND c.Estatus = 1
+  AND r.Estatus = 1
+  AND ru.Estatus = 1
+  AND d.Estatus = 1
+`;
+    return await this.usuariosregionesRepository.query(query, [cliente]);
+  }
+
   async findAll(
     idUser: number,
     cliente: number,
@@ -359,6 +443,7 @@ ORDER BY t.Id DESC;
       let totalResult;
       switch (rol) {
         case 1:
+          // Consulta de datos paginados Usuario SuperAdministrador
           data = await this.usuariosregionesRepository.query(
             `
 SELECT 
@@ -385,7 +470,7 @@ SELECT
   ru.NombreInicio,
   ru.NombreFin,
 
-  -- Región de inicio (la importante para filtro del usuario)
+  -- Región de inicio
   r.Id AS idRegionInicio,
   r.Nombre AS nombreRegionInicio,
 
@@ -398,6 +483,7 @@ SELECT
   c.Nombre AS nombreCliente,
   c.ApellidoPaterno AS apellidoPaternoCliente,
   c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente,
   CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
 FROM Tarifas t
@@ -406,18 +492,16 @@ INNER JOIN Rutas ru ON d.IdRuta = ru.Id
 INNER JOIN Regiones r ON ru.IdRegion = r.Id
 LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
-INNER JOIN UsuariosRegiones ur ON ur.IdRegion = r.Id
 
-WHERE ur.IdUsuario = ?
-  AND ur.Estatus = 1
-  AND r.Estatus = 1
+WHERE r.Estatus = 1
   AND ru.Estatus = 1
   AND d.Estatus = 1
+  AND c.Estatus = 1
 
 ORDER BY t.Id DESC
   LIMIT ? OFFSET ?
   `,
-            [idUser, limit, offset],
+            [limit, offset],
           );
 
           // Query para total (sin paginación)
@@ -428,15 +512,39 @@ FROM Tarifas t
 INNER JOIN Derroteros d ON t.IdDerrotero = d.Id
 INNER JOIN Rutas ru ON d.IdRuta = ru.Id
 INNER JOIN Regiones r ON ru.IdRegion = r.Id
-INNER JOIN UsuariosRegiones ur ON ur.IdRegion = r.Id
-WHERE ur.IdUsuario = ?
-  AND ur.Estatus = 1         -- Relación usuario-región activa
-  AND r.Estatus = 1          -- Región activa
-  AND ru.Estatus = 1         -- Ruta activa
-  AND d.Estatus = 1          -- Derrotero activo
+LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Clientes c ON r.IdCliente = c.Id
+
+WHERE r.Estatus = 1
+  AND ru.Estatus = 1
+  AND d.Estatus = 1
+  AND c.Estatus = 1
   `,
-            [idUser],
           );
+          break;
+
+        case 2:
+          // Consulta de datos paginados Usuario Administrador
+          data = await this.consultarTarifasPaginado(cliente, limit, offset);
+
+          // Query para total (sin paginación)
+          totalResult = await this.consultarTotalTarifasPaginados(cliente);
+          break;
+
+        case 8:
+          // Consulta de datos paginados Usuario Reportes
+          data = await this.consultarTarifasPaginado(cliente, limit, offset);
+
+          // Query para total (sin paginación)
+          totalResult = await this.consultarTotalTarifasPaginados(cliente);
+          break;
+
+        case 10:
+          // Consulta de datos paginados Usuario Capturista
+          data = await this.consultarTarifasPaginado(cliente, limit, offset);
+
+          // Query para total (sin paginación)
+          totalResult = await this.consultarTotalTarifasPaginados(cliente);
           break;
 
         default:
@@ -753,7 +861,7 @@ ORDER BY t.Id DESC
       await this.tarifasRepository.update(id, { estatus: estatus });
 
       // Registro en la bitácora SUCCESS
-      const querylogger =  {updateTarifasEstatusDto}
+      const querylogger = { updateTarifasEstatusDto };
       await this.bitacoraLogger.logToBitacora(
         'Tarifas',
         `Se actualizó el estatus a ${estatus} de la tarifa con ID: ${tarifa.id}.`,
@@ -777,7 +885,7 @@ ORDER BY t.Id DESC
       return result;
     } catch (error) {
       // Registro en la bitácora Error
-      const querylogger =  {updateTarifasEstatusDto}
+      const querylogger = { updateTarifasEstatusDto };
       await this.bitacoraLogger.logToBitacora(
         'Regiones',
         `Se actualizo el estatus: ${updateTarifasEstatusDto.estatus} de una Tarifa con Id: ${id}`,
@@ -809,7 +917,7 @@ ORDER BY t.Id DESC
       await this.tarifasRepository.update(id, updateTarifaDto);
 
       // Registro en la bitácora SUCCESS
-      const querylogger =  {updateTarifaDto}
+      const querylogger = { updateTarifaDto };
       await this.bitacoraLogger.logToBitacora(
         'Tarifas',
         `Se actualizó una tarifa con ID: ${tarifa.id}.`,
@@ -832,7 +940,7 @@ ORDER BY t.Id DESC
       return result;
     } catch (error) {
       // Registro en la bitácora Error
-      const querylogger =  {updateTarifaDto}
+      const querylogger = { updateTarifaDto };
       await this.bitacoraLogger.logToBitacora(
         'Tarifas',
         `Se actualizó una tarifa con ID: ${id}.`,
@@ -864,7 +972,7 @@ ORDER BY t.Id DESC
       await this.tarifasRepository.update(id, { estatus: 0 });
 
       // Registro en la bitácora SUCCESS
-      const querylogger =  { id: id, estatus: 0}
+      const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(
         'Tarifas',
         `Se actualizó el estatus a ${0} de la tarifa con ID: ${tarifa.id}.`,
@@ -887,7 +995,7 @@ ORDER BY t.Id DESC
       return result;
     } catch (error) {
       // Registro en la bitácora Error
-      const querylogger =  { id: id, estatus: 0}
+      const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(
         'Tarifas',
         `Se actualizó el estatus a ${0} de la tarifa con ID: ${id}.`,
@@ -929,7 +1037,7 @@ ORDER BY t.Id DESC
       await this.tarifasRepository.delete({ id: id });
 
       // Registro en la bitácora SUCCESS
-      const querylogger =  { query: `DELETE FROM Tarifas WHERE Id = ${id}`}
+      const querylogger = { query: `DELETE FROM Tarifas WHERE Id = ${id}` };
       await this.bitacoraLogger.logToBitacora(
         'Tarifas',
         `Se eliminó una tarifa con ID: ${id}.`,
@@ -952,7 +1060,7 @@ ORDER BY t.Id DESC
       return result;
     } catch (error) {
       // Registro en la bitácora Error
-      const querylogger =  { query: `DELETE FROM Tarifas WHERE Id = ${id}`}
+      const querylogger = { query: `DELETE FROM Tarifas WHERE Id = ${id}` };
       await this.bitacoraLogger.logToBitacora(
         'Tarifas',
         `Se eliminó una tarifa con ID: ${id}.`,
