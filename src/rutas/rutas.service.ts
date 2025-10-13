@@ -95,6 +95,75 @@ export class RutasService {
     }
   }
 
+  private async consultarRutasPaginado(cliente: number, limit: number, offset: number) {
+    const query = `
+SELECT 
+  -- RUTA
+    ru.Id AS id,
+    ru.Nombre AS nombre,
+    ru.PuntoInicio AS puntoInicio,
+    ru.NombreInicio AS nombreInicio,
+    ru.PuntoFin AS puntoFin,
+    ru.NombreFin AS nombreFin,
+    ru.FechaCreacion AS fechaCreacionRuta,
+    ru.Estatus AS estatusRuta,
+    ru.IdRegionFin AS idRegionFin,
+
+  -- REGIÓN INICIAL
+  r.Id AS idRegion,
+  r.Nombre AS nombreRegion,
+  r.Descripcion AS descripcionRegion,
+  r.FechaCreacion AS fechaCreacionRegion,
+  r.FechaActualizacion AS fechaActualizacionRegion,
+  r.Estatus AS estatusRegion,
+
+  -- REGIÓN FINAL (si existe)
+  rf.Id AS idRegionFinDetalle,
+  rf.Nombre AS nombreRegionFinDetalle,
+  rf.Descripcion AS descripcionRegionFin,
+  rf.FechaCreacion AS fechaCreacionRegionFin,
+  rf.FechaActualizacion AS fechaActualizacionRegionFin,
+  rf.Estatus AS estatusRegionFin,
+
+  -- CLIENTE
+  c.Id AS idCliente,
+  c.Nombre As nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente,
+  CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
+
+FROM Rutas ru
+INNER JOIN Regiones r ON ru.IdRegion = r.Id
+LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Clientes c ON r.IdCliente = c.Id
+
+WHERE 
+  c.Id = ?        -- 🔹 aquí filtras por el Id del cliente
+  AND r.Estatus = 1
+  AND c.Estatus = 1
+ORDER BY ru.Id DESC
+
+  LIMIT ? OFFSET ?;
+    `;
+    return this.usuarioregionesRepository.query(query, [cliente,limit, offset]);
+  }
+
+  private async consultarTotalRutasPaginados(cliente: number) {
+    const query = `  
+    SELECT COUNT(*) AS total
+FROM Rutas ru
+INNER JOIN Regiones r ON ru.IdRegion = r.Id
+LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Clientes c ON r.IdCliente = c.Id
+
+WHERE 
+  c.Id = ?        -- 🔹 aquí filtras por el Id del cliente
+  AND r.Estatus = 1
+  AND c.Estatus = 1
+`;
+    return await this.usuarioregionesRepository.query(query, [cliente]);
+  }
   async obtenerRutasPorUsuarioSQL(
     idUser: number,
     cliente: number,
@@ -177,222 +246,26 @@ WHERE
 
       case 2:
         // Consulta de datos paginados Usuario Administrador
-        data = await this.usuarioregionesRepository.query(
-          `
-SELECT 
-  -- RUTA
-    ru.Id AS id,
-    ru.Nombre AS nombre,
-    ru.PuntoInicio AS puntoInicio,
-    ru.NombreInicio AS nombreInicio,
-    ru.PuntoFin AS puntoFin,
-    ru.NombreFin AS nombreFin,
-    ru.FechaCreacion AS fechaCreacionRuta,
-    ru.Estatus AS estatusRuta,
-    ru.IdRegionFin AS idRegionFin,
-
-  -- REGIÓN INICIAL
-  r.Id AS idRegion,
-  r.Nombre AS nombreRegion,
-  r.Descripcion AS descripcionRegion,
-  r.FechaCreacion AS fechaCreacionRegion,
-  r.FechaActualizacion AS fechaActualizacionRegion,
-  r.Estatus AS estatusRegion,
-
-  -- REGIÓN FINAL (si existe)
-  rf.Id AS idRegionFinDetalle,
-  rf.Nombre AS nombreRegionFinDetalle,
-  rf.Descripcion AS descripcionRegionFin,
-  rf.FechaCreacion AS fechaCreacionRegionFin,
-  rf.FechaActualizacion AS fechaActualizacionRegionFin,
-  rf.Estatus AS estatusRegionFin,
-
-  -- CLIENTE
-  c.Id AS idCliente,
-  c.Nombre As nombreCliente,
-  c.ApellidoPaterno AS apellidoPaternoCliente,
-  c.ApellidoMaterno AS apellidoMaternoCliente,
-  c.Estatus AS estatusCliente,
-  CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
-
-FROM Rutas ru
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
-INNER JOIN Clientes c ON r.IdCliente = c.Id
-
-WHERE 
-  c.Id = ?        -- 🔹 aquí filtras por el Id del cliente
-  AND r.Estatus = 1
-ORDER BY ru.Id DESC
-
-  LIMIT ? OFFSET ?;
-  `,
-          [cliente, limit, offset],
-        );
+        data = await this.consultarRutasPaginado(cliente, limit, offset);
 
         // Query para total (sin paginación)
-        totalResult = await this.usuarioregionesRepository.query(
-          `
-  SELECT COUNT(*) AS total
-FROM Rutas ru
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
-INNER JOIN Clientes c ON r.IdCliente = c.Id
-
-WHERE 
-  c.Id = ?        -- 🔹 aquí filtras por el Id del cliente
-  AND r.Estatus = 1
-  `,
-          [cliente],
-        );
+        totalResult = await this.consultarTotalRutasPaginados(cliente);
         break;
 
       case 8:
         // Consulta de datos paginados Usuario Reportes
-        data = await this.usuarioregionesRepository.query(
-          `
-SELECT 
-  -- RUTA
-    ru.Id AS id,
-    ru.Nombre AS nombre,
-    ru.PuntoInicio AS puntoInicio,
-    ru.NombreInicio AS nombreInicio,
-    ru.PuntoFin AS puntoFin,
-    ru.NombreFin AS nombreFin,
-    ru.FechaCreacion AS fechaCreacionRuta,
-    ru.Estatus AS estatusRuta,
-    ru.IdRegionFin AS idRegionFin,
-
-  -- REGIÓN INICIAL
-  r.Id AS idRegion,
-  r.Nombre AS nombreRegion,
-  r.Descripcion AS descripcionRegion,
-  r.FechaCreacion AS fechaCreacionRegion,
-  r.FechaActualizacion AS fechaActualizacionRegion,
-  r.Estatus AS estatusRegion,
-
-  -- REGIÓN FINAL (si existe)
-  rf.Id AS idRegionFinDetalle,
-  rf.Nombre AS nombreRegionFinDetalle,
-  rf.Descripcion AS descripcionRegionFin,
-  rf.FechaCreacion AS fechaCreacionRegionFin,
-  rf.FechaActualizacion AS fechaActualizacionRegionFin,
-  rf.Estatus AS estatusRegionFin,
-
-  -- CLIENTE
-  c.Id AS idCliente,
-  c.Nombre As nombreCliente,
-  c.ApellidoPaterno AS apellidoPaternoCliente,
-  c.ApellidoMaterno AS apellidoMaternoCliente,
-  c.Estatus AS estatusCliente,
-  CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
-
-FROM Rutas ru
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
-INNER JOIN Clientes c ON r.IdCliente = c.Id
-
-WHERE 
-  c.Id = ?        -- 🔹 aquí filtras por el Id del cliente
-  AND r.Estatus = 1
-  AND c.Estatus = 1
-ORDER BY ru.Id DESC
-
-  LIMIT ? OFFSET ?;
-  `,
-          [cliente, limit, offset],
-        );
+        data = await this.consultarRutasPaginado(cliente, limit, offset);
 
         // Query para total (sin paginación)
-        totalResult = await this.usuarioregionesRepository.query(
-          `
-  SELECT COUNT(*) AS total
-FROM Rutas ru
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
-INNER JOIN Clientes c ON r.IdCliente = c.Id
-
-WHERE 
-  c.Id = ?        -- 🔹 aquí filtras por el Id del cliente
-  AND r.Estatus = 1
-  AND c.Estatus = 1
-  `,
-          [cliente],
-        );
+        totalResult = await this.consultarTotalRutasPaginados(cliente);
         break;
 
       case 10:
         // Consulta de datos paginados Usuario Capturista
-        data = await this.usuarioregionesRepository.query(
-          `
-SELECT 
-  -- RUTA
-    ru.Id AS id,
-    ru.Nombre AS nombre,
-    ru.PuntoInicio AS puntoInicio,
-    ru.NombreInicio AS nombreInicio,
-    ru.PuntoFin AS puntoFin,
-    ru.NombreFin AS nombreFin,
-    ru.FechaCreacion AS fechaCreacionRuta,
-    ru.Estatus AS estatusRuta,
-    ru.IdRegionFin AS idRegionFin,
-
-  -- REGIÓN INICIAL
-  r.Id AS idRegion,
-  r.Nombre AS nombreRegion,
-  r.Descripcion AS descripcionRegion,
-  r.FechaCreacion AS fechaCreacionRegion,
-  r.FechaActualizacion AS fechaActualizacionRegion,
-  r.Estatus AS estatusRegion,
-
-  -- REGIÓN FINAL (si existe)
-  rf.Id AS idRegionFinDetalle,
-  rf.Nombre AS nombreRegionFinDetalle,
-  rf.Descripcion AS descripcionRegionFin,
-  rf.FechaCreacion AS fechaCreacionRegionFin,
-  rf.FechaActualizacion AS fechaActualizacionRegionFin,
-  rf.Estatus AS estatusRegionFin,
-
-  -- CLIENTE
-  c.Id AS idCliente,
-  c.Nombre As nombreCliente,
-  c.ApellidoPaterno AS apellidoPaternoCliente,
-  c.ApellidoMaterno AS apellidoMaternoCliente,
-  c.Estatus AS estatusCliente,
-  CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
-
-FROM Rutas ru
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
-INNER JOIN Clientes c ON r.IdCliente = c.Id
-
-WHERE 
-  c.Id = ?        -- 🔹 aquí filtras por el Id del cliente
-  AND r.Estatus = 1
-  AND c.Estatus = 1
-ORDER BY ru.Id DESC
-
-  LIMIT ? OFFSET ?;
-  `,
-          [cliente, limit, offset],
-        );
+        data = await this.consultarRutasPaginado(cliente, limit, offset);
 
         // Query para total (sin paginación)
-        totalResult = await this.usuarioregionesRepository.query(
-          `
-  SELECT COUNT(*) AS total
-FROM Rutas ru
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
-INNER JOIN Clientes c ON r.IdCliente = c.Id
-
-WHERE 
-  c.Id = ?        -- 🔹 aquí filtras por el Id del cliente
-  AND r.Estatus = 1
-  AND c.Estatus = 1
-  `,
-          [cliente],
-        );
+        totalResult = await this.consultarTotalRutasPaginados(cliente);
         break;
 
       default:
@@ -495,6 +368,59 @@ WHERE
     };
   }
 
+  private async consultarRutasListado(cliente: number) {
+    const query = `
+    SELECT 
+  -- RUTA
+    ru.Id AS id,
+    ru.Nombre AS nombre,
+    ru.PuntoInicio AS puntoInicio,
+    ru.NombreInicio AS nombreInicio,
+    ru.PuntoFin AS puntoFin,
+    ru.NombreFin AS nombreFin,
+    ru.FechaCreacion AS fechaCreacionRuta,
+    ru.Estatus AS estatusRuta,
+    ru.IdRegionFin AS idRegionFin,
+
+  -- REGIÓN INICIAL
+  r.Id AS idRegion,
+  r.Nombre AS nombreRegion,
+  r.Descripcion AS descripcionRegion,
+  r.FechaCreacion AS fechaCreacionRegion,
+  r.FechaActualizacion AS fechaActualizacionRegion,
+  r.Estatus AS estatusRegion,
+
+  -- REGIÓN FINAL (si existe)
+  rf.Id AS idRegionFinDetalle,
+  rf.Nombre AS nombreRegionFinDetalle,
+  rf.Descripcion AS descripcionRegionFin,
+  rf.FechaCreacion AS fechaCreacionRegionFin,
+  rf.FechaActualizacion AS fechaActualizacionRegionFin,
+  rf.Estatus AS estatusRegionFin,
+
+  -- CLIENTE
+  c.Id AS idCliente,
+  c.Nombre As nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente,
+  CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
+
+FROM Rutas ru
+INNER JOIN Regiones r ON ru.IdRegion = r.Id
+LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Clientes c ON r.IdCliente = c.Id
+
+WHERE 
+      c.Id = ?
+  AND c.Estatus = 1
+  AND r.Estatus = 1
+  AND ru.Estatus = 1
+ORDER BY ru.Id DESC;
+    `
+    return await this.usuarioregionesRepository.query(query, [cliente]);
+  }
+
   async findAllList(idUser: number, cliente: number, rol: number) {
     try {
       let rutas;
@@ -554,169 +480,17 @@ ORDER BY ru.Id DESC
 
         case 2:
           // Consulta de datos paginados Usuario Administrador
-          rutas = await this.usuarioregionesRepository.query(
-            `
-SELECT 
-  -- RUTA
-    ru.Id AS id,
-    ru.Nombre AS nombre,
-    ru.PuntoInicio AS puntoInicio,
-    ru.NombreInicio AS nombreInicio,
-    ru.PuntoFin AS puntoFin,
-    ru.NombreFin AS nombreFin,
-    ru.FechaCreacion AS fechaCreacionRuta,
-    ru.Estatus AS estatusRuta,
-    ru.IdRegionFin AS idRegionFin,
-
-  -- REGIÓN INICIAL
-  r.Id AS idRegion,
-  r.Nombre AS nombreRegion,
-  r.Descripcion AS descripcionRegion,
-  r.FechaCreacion AS fechaCreacionRegion,
-  r.FechaActualizacion AS fechaActualizacionRegion,
-  r.Estatus AS estatusRegion,
-
-  -- REGIÓN FINAL (si existe)
-  rf.Id AS idRegionFinDetalle,
-  rf.Nombre AS nombreRegionFinDetalle,
-  rf.Descripcion AS descripcionRegionFin,
-  rf.FechaCreacion AS fechaCreacionRegionFin,
-  rf.FechaActualizacion AS fechaActualizacionRegionFin,
-  rf.Estatus AS estatusRegionFin,
-
-  -- CLIENTE
-  c.Id AS idCliente,
-  c.Nombre As nombreCliente,
-  c.ApellidoPaterno AS apellidoPaternoCliente,
-  c.ApellidoMaterno AS apellidoMaternoCliente,
-  c.Estatus AS estatusCliente,
-  CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
-
-FROM Rutas ru
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
-INNER JOIN Clientes c ON r.IdCliente = c.Id
-
-WHERE 
-      c.Id = ?
-  AND r.Estatus = 1
-  AND ru.Estatus = 1
-ORDER BY ru.Id DESC;
-  `,
-  [cliente]
-          );
+          rutas = await this.consultarRutasListado(cliente)
           break;
 
         case 8:
           // Consulta de datos paginados Usuario Reportes
-          rutas = await this.usuarioregionesRepository.query(
-            `
-SELECT 
-  -- RUTA
-    ru.Id AS id,
-    ru.Nombre AS nombre,
-    ru.PuntoInicio AS puntoInicio,
-    ru.NombreInicio AS nombreInicio,
-    ru.PuntoFin AS puntoFin,
-    ru.NombreFin AS nombreFin,
-    ru.FechaCreacion AS fechaCreacionRuta,
-    ru.Estatus AS estatusRuta,
-    ru.IdRegionFin AS idRegionFin,
-
-  -- REGIÓN INICIAL
-  r.Id AS idRegion,
-  r.Nombre AS nombreRegion,
-  r.Descripcion AS descripcionRegion,
-  r.FechaCreacion AS fechaCreacionRegion,
-  r.FechaActualizacion AS fechaActualizacionRegion,
-  r.Estatus AS estatusRegion,
-
-  -- REGIÓN FINAL (si existe)
-  rf.Id AS idRegionFinDetalle,
-  rf.Nombre AS nombreRegionFinDetalle,
-  rf.Descripcion AS descripcionRegionFin,
-  rf.FechaCreacion AS fechaCreacionRegionFin,
-  rf.FechaActualizacion AS fechaActualizacionRegionFin,
-  rf.Estatus AS estatusRegionFin,
-
-  -- CLIENTE
-  c.Id AS idCliente,
-  c.Nombre As nombreCliente,
-  c.ApellidoPaterno AS apellidoPaternoCliente,
-  c.ApellidoMaterno AS apellidoMaternoCliente,
-  c.Estatus AS estatusCliente,
-  CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
-
-FROM Rutas ru
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
-INNER JOIN Clientes c ON r.IdCliente = c.Id
-
-WHERE 
-      c.Id = ?
-  AND c.Estatus = 1
-  AND r.Estatus = 1
-  AND ru.Estatus = 1
-ORDER BY ru.Id DESC;
-  `,
-  [cliente]
-          );
+          rutas = await this.consultarRutasListado(cliente)
           break;
 
         case 10:
           // Consulta de datos paginados Usuario Capturista
-          rutas = await this.usuarioregionesRepository.query(
-            `
-SELECT 
-  -- RUTA
-    ru.Id AS id,
-    ru.Nombre AS nombre,
-    ru.PuntoInicio AS puntoInicio,
-    ru.NombreInicio AS nombreInicio,
-    ru.PuntoFin AS puntoFin,
-    ru.NombreFin AS nombreFin,
-    ru.FechaCreacion AS fechaCreacionRuta,
-    ru.Estatus AS estatusRuta,
-    ru.IdRegionFin AS idRegionFin,
-
-  -- REGIÓN INICIAL
-  r.Id AS idRegion,
-  r.Nombre AS nombreRegion,
-  r.Descripcion AS descripcionRegion,
-  r.FechaCreacion AS fechaCreacionRegion,
-  r.FechaActualizacion AS fechaActualizacionRegion,
-  r.Estatus AS estatusRegion,
-
-  -- REGIÓN FINAL (si existe)
-  rf.Id AS idRegionFinDetalle,
-  rf.Nombre AS nombreRegionFinDetalle,
-  rf.Descripcion AS descripcionRegionFin,
-  rf.FechaCreacion AS fechaCreacionRegionFin,
-  rf.FechaActualizacion AS fechaActualizacionRegionFin,
-  rf.Estatus AS estatusRegionFin,
-
-  -- CLIENTE
-  c.Id AS idCliente,
-  c.Nombre As nombreCliente,
-  c.ApellidoPaterno AS apellidoPaternoCliente,
-  c.ApellidoMaterno AS apellidoMaternoCliente,
-  c.Estatus AS estatusCliente,
-  CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
-
-FROM Rutas ru
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
-INNER JOIN Clientes c ON r.IdCliente = c.Id
-
-WHERE 
-      c.Id = ?
-  AND c.Estatus = 1
-  AND r.Estatus = 1
-  AND ru.Estatus = 1
-ORDER BY ru.Id DESC;
-  `,
-  [cliente]
-          );
+          rutas = await this.consultarRutasListado(cliente)
           break;
 
         default:
@@ -806,6 +580,59 @@ ORDER BY ru.Id DESC;
     }
   }
 
+  private async consultarRutasOne(id: number, cliente: number) {
+    const query = `
+     SELECT 
+  -- RUTA
+    ru.Id AS id,
+    ru.Nombre AS nombre,
+    ru.PuntoInicio AS puntoInicio,
+    ru.NombreInicio AS nombreInicio,
+    ru.PuntoFin AS puntoFin,
+    ru.NombreFin AS nombreFin,
+    ru.FechaCreacion AS fechaCreacionRuta,
+    ru.Estatus AS estatusRuta,
+    ru.IdRegionFin AS idRegionFin,
+
+  -- REGIÓN INICIAL
+  r.Id AS idRegion,
+  r.Nombre AS nombreRegion,
+  r.Descripcion AS descripcionRegion,
+  r.FechaCreacion AS fechaCreacionRegion,
+  r.FechaActualizacion AS fechaActualizacionRegion,
+  r.Estatus AS estatusRegion,
+
+  -- REGIÓN FINAL (si existe)
+  rf.Id AS idRegionFinDetalle,
+  rf.Nombre AS nombreRegionFinDetalle,
+  rf.Descripcion AS descripcionRegionFin,
+  rf.FechaCreacion AS fechaCreacionRegionFin,
+  rf.FechaActualizacion AS fechaActualizacionRegionFin,
+  rf.Estatus AS estatusRegionFin,
+
+  -- CLIENTE
+  c.Id AS idCliente,
+  c.Nombre As nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente,
+  CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
+
+FROM Rutas ru
+INNER JOIN Regiones r ON ru.IdRegion = r.Id
+LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Clientes c ON r.IdCliente = c.Id
+
+WHERE 
+      c.Id = ?
+  AND c.Estatus = 1
+  AND r.Estatus = 1
+  AND ru.Id = ?
+ORDER BY ru.Id DESC;
+    `
+    return await this.usuarioregionesRepository.query(query, [cliente, id]);
+  }
+
   async findOne(id: number, idUser: number, cliente: number, rol: number) {
     try {
       let ruta;
@@ -814,7 +641,8 @@ ORDER BY ru.Id DESC;
           // Consulta de datos paginados Usuario SuperAdministrador
           ruta = await this.usuarioregionesRepository.query(
             `
-            SELECT 
+     SELECT 
+  -- RUTA
     ru.Id AS id,
     ru.Nombre AS nombre,
     ru.PuntoInicio AS puntoInicio,
@@ -824,93 +652,50 @@ ORDER BY ru.Id DESC;
     ru.FechaCreacion AS fechaCreacionRuta,
     ru.Estatus AS estatusRuta,
     ru.IdRegionFin AS idRegionFin,
-    
-    r.Id AS idRegion,
-    r.Nombre AS nombreRegion,
-    r.Descripcion AS descripcionRegion,
-    r.FechaCreacion AS fechaCreacionRegion,
-    r.FechaActualizacion AS fechaActualizacionRegion,
-    r.Estatus AS estatusRegion,
-    
-    rf.Id AS idRegionFinDetalle,
-    rf.Nombre AS nombreRegionFinDetalle,
-    rf.Descripcion AS descripcionRegionFin,
-    rf.FechaCreacion AS fechaCreacionRegionFin,
-    rf.FechaActualizacion AS fechaActualizacionRegionFin,
-    rf.Estatus AS estatusRegionFin,
-    
-    c.Id AS idCliente,
-    c.Nombre AS nombreCliente,
-    CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
-FROM UsuariosRegiones ur
-INNER JOIN Regiones r ON ur.IdRegion = r.Id            -- Región inicial
-INNER JOIN Rutas ru ON ru.IdRegion = r.Id              -- Ruta
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id        -- Región final (puede ser null)
-INNER JOIN Clientes c ON r.IdCliente = c.Id            -- Cliente
+  -- REGIÓN INICIAL
+  r.Id AS idRegion,
+  r.Nombre AS nombreRegion,
+  r.Descripcion AS descripcionRegion,
+  r.FechaCreacion AS fechaCreacionRegion,
+  r.FechaActualizacion AS fechaActualizacionRegion,
+  r.Estatus AS estatusRegion,
 
-WHERE ur.IdUsuario = ?
-  AND ur.Estatus = 1
+  -- REGIÓN FINAL (si existe)
+  rf.Id AS idRegionFinDetalle,
+  rf.Nombre AS nombreRegionFinDetalle,
+  rf.Descripcion AS descripcionRegionFin,
+  rf.FechaCreacion AS fechaCreacionRegionFin,
+  rf.FechaActualizacion AS fechaActualizacionRegionFin,
+  rf.Estatus AS estatusRegionFin,
+
+  -- CLIENTE
+  c.Id AS idCliente,
+  c.Nombre As nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente,
+  CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
+
+FROM Rutas ru
+INNER JOIN Regiones r ON ru.IdRegion = r.Id
+LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Clientes c ON r.IdCliente = c.Id
+
+WHERE 
+      c.Estatus = 1
   AND r.Estatus = 1
-  AND ru.Estatus = 1
-  AND ru.Id = ? -- id ruta
+  AND ru.Id = ?
 ORDER BY ru.Id DESC;
 
             `,
-            [idUser, id],
+            [id],
           );
           break;
 
         default:
           // Consulta de datos paginados Usuario SuperAdministrador
-          ruta = await this.usuarioregionesRepository.query(
-            `
-            SELECT 
-    ru.Id AS id,
-    ru.Nombre AS nombre,
-    ru.PuntoInicio AS puntoInicio,
-    ru.NombreInicio AS nombreInicio,
-    ru.PuntoFin AS puntoFin,
-    ru.NombreFin AS nombreFin,
-    ru.FechaCreacion AS fechaCreacionRuta,
-    ru.Estatus AS estatusRuta,
-    ru.IdRegionFin AS idRegionFin,
-    
-    r.Id AS idRegion,
-    r.Nombre AS nombreRegion,
-    r.Descripcion AS descripcionRegion,
-    r.FechaCreacion AS fechaCreacionRegion,
-    r.FechaActualizacion AS fechaActualizacionRegion,
-    r.Estatus AS estatusRegion,
-    
-    rf.Id AS idRegionFinDetalle,
-    rf.Nombre AS nombreRegionFinDetalle,
-    rf.Descripcion AS descripcionRegionFin,
-    rf.FechaCreacion AS fechaCreacionRegionFin,
-    rf.FechaActualizacion AS fechaActualizacionRegionFin,
-    rf.Estatus AS estatusRegionFin,
-    
-    c.Id AS idCliente,
-    c.Nombre AS nombreCliente,
-    CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
-
-FROM UsuariosRegiones ur
-INNER JOIN Regiones r ON ur.IdRegion = r.Id            -- Región inicial
-INNER JOIN Rutas ru ON ru.IdRegion = r.Id              -- Ruta
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id        -- Región final (puede ser null)
-INNER JOIN Clientes c ON r.IdCliente = c.Id            -- Cliente
-
-WHERE ur.IdUsuario = ?
-  AND ur.Estatus = 1
-  AND r.Estatus = 1
-  AND ru.Estatus = 1
-  AND ru.Id = ? -- id ruta
-  AND c.Id = ? -- filtro por cliente
-ORDER BY ru.Id DESC;
-
-            `,
-            [idUser, id, cliente],
-          );
+          ruta = await this.consultarRutasOne(id, cliente)
           break;
       }
 
@@ -957,24 +742,7 @@ ORDER BY ru.Id DESC;
     try {
       const ruta = await this.rutasRepository.findOne({ where: { id: id } });
       if (!ruta) throw new NotFoundException('Ruta no encontrada');
-      switch (rol) {
-        case 1:
-          // Usuario SuperAdministrador
-          break;
-
-        case 2:
-          // Usuario Administrador
-          break;
-
-        default:
-          // Usuarios normales - solo sus regiones asignadas
-          const permiso = await this.usuarioregionesRepository.find({
-            where: { idUsuario: idUser, idRegion: ruta.idRegion, estatus: 1 },
-          });
-          if (permiso.length === 0)
-            throw new BadRequestException(`Acceso denegado`);
-          break;
-      }
+      
       const estatus = updateRutasEstatusDto.estatus;
       await this.rutasRepository.update(id, { estatus: estatus });
 
@@ -1033,25 +801,7 @@ ORDER BY ru.Id DESC;
     try {
       const ruta = await this.rutasRepository.findOne({ where: { id: id } });
       if (!ruta) throw new NotFoundException('Ruta no encontrada');
-      switch (rol) {
-        case 1:
-          // Usuario SuperAdministrador
-          break;
-
-        case 2:
-          // Usuario Administrador
-          break;
-
-        default:
-          // Usuarios normales - solo sus regiones asignadas
-          const permiso = await this.usuarioregionesRepository.find({
-            where: { idUsuario: idUser, idRegion: ruta.idRegion, estatus: 1 },
-          });
-          if (permiso.length === 0)
-            throw new BadRequestException(`Acceso denegado`);
-          break;
-      }
-
+      
       await this.rutasRepository.update(id, updateRutaDto);
 
       // Registro en la bitácora SUCCESS
@@ -1103,24 +853,6 @@ ORDER BY ru.Id DESC;
     try {
       const ruta = await this.rutasRepository.findOne({ where: { id: id } });
       if (!ruta) throw new NotFoundException('Ruta no encontrada');
-      switch (rol) {
-        case 1:
-          // Usuario SuperAdministrador
-          break;
-
-        case 2:
-          // Usuario Administrador
-          break;
-
-        default:
-          // Usuarios normales - solo sus regiones asignadas
-          const permiso = await this.usuarioregionesRepository.find({
-            where: { idUsuario: idUser, idRegion: ruta.idRegion, estatus: 1 },
-          });
-          if (permiso.length === 0)
-            throw new BadRequestException(`Acceso denegado`);
-          break;
-      }
 
       await this.rutasRepository.update(id, { estatus: 0 });
 
