@@ -209,6 +209,77 @@ export class InstalacionesService {
     }
   }
 
+  private async consultarInstalacionesPaginado(
+    cliente: number,
+    limit: number,
+    offset: number,
+  ) {
+    const query = `
+SELECT
+  -- Instalación
+  i.Id AS id,
+  i.FechaCreacion AS fechaCreacion,
+  i.FechaActualizacion AS fechaActualizacion,
+  i.Estatus AS estatus,
+
+  -- Dispositivo
+  i.IdDispositivo AS idDispositivo,
+  d.NumeroSerie AS numeroSerieDispositivo,
+  d.Marca AS marcaDispositivo,
+  d.Modelo AS modeloDispositivo,
+
+  -- BlueVox
+  i.IdBlueVox AS idBlueVox,
+  b.NumeroSerie AS numeroSerieBlueVox,
+  b.Marca AS marcaBlueVox,
+  b.Modelo AS modeloBlueVox,
+
+  -- Vehículo
+  i.IdVehiculo AS idVehiculo,
+  v.Marca AS marcaVehiculo,
+  v.Modelo AS modeloVehiculo,
+  v.Placa AS placaVehiculo,
+  v.NumeroEconomico AS numeroEconomicoVehiculo,
+
+  -- Cliente
+  i.IdCliente AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente
+
+FROM Instalaciones i
+INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
+INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+
+WHERE c.Estatus = 1
+AND c.Id = ?
+  
+
+ORDER BY i.Id DESC
+LIMIT ? OFFSET ?;
+   `;
+    return this.instalacionesRepository.query(query, [cliente, limit, offset]);
+  }
+
+  private async consultarTotalInstalacionesPaginados(cliente: number) {
+    const query = `  
+  SELECT COUNT(*) AS total
+  FROM Instalaciones i
+INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
+INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+
+WHERE c.Estatus = 1
+AND c.Id = ?
+  
+`;
+    return await this.instalacionesRepository.query(query, [cliente]);
+  }
+
   async findAll(
     idUser: number,
     cliente: number,
@@ -264,7 +335,7 @@ INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
-
+WHERE c.Estatus = 1
   
 
 ORDER BY i.Id DESC
@@ -282,6 +353,8 @@ INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdClient
 INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
+
+WHERE c.Estatus = 1
 		
   `,
           );
@@ -289,69 +362,38 @@ INNER JOIN Clientes c ON i.IdCliente = c.Id
 
         case 2:
           // Consulta de datos paginados Usuario Administrador
-          instalaciones = await this.usuariosinstalacionesRepository.query(
-            `
-SELECT
-  -- Instalación
-  i.Id AS id,
-  i.FechaCreacion AS fechaCreacion,
-  i.FechaActualizacion AS fechaActualizacion,
-  i.Estatus AS estatus,
-
-  -- Dispositivo
-  i.IdDispositivo AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
-
-  -- BlueVox
-  i.IdBlueVox AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
-
-  -- Vehículo
-  i.IdVehiculo AS idVehiculo,
-  v.Marca AS marcaVehiculo,
-  v.Modelo AS modeloVehiculo,
-  v.Placa AS placaVehiculo,
-  v.NumeroEconomico AS numeroEconomicoVehiculo,
-
-  -- Cliente
-  i.IdCliente AS idCliente,
-  c.Nombre AS nombreCliente,
-  c.ApellidoPaterno AS apellidoPaternoCliente,
-  c.ApellidoMaterno AS apellidoMaternoCliente,
-  c.Estatus AS estatusCliente
-
-FROM Instalaciones i
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
-INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
-INNER JOIN Clientes c ON i.IdCliente = c.Id
-
-WHERE i.IdCliente = ?
-  
-
-ORDER BY i.Id DESC
-  LIMIT ? OFFSET ?;
-
-  `,
-            [cliente, limit, offset],
+          instalaciones = await this.consultarInstalacionesPaginado(
+            cliente,
+            limit,
+            offset,
           );
           // Query para total (sin paginación)
-          totalResult = await this.instalacionesRepository.query(
-            `
-  SELECT COUNT(*) AS total
-  FROM Instalaciones i
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
-INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
-INNER JOIN Clientes c ON i.IdCliente = c.Id
-		WHERE i.IdCliente = ?
-  `,
-            [cliente],
+          totalResult =
+            await this.consultarTotalInstalacionesPaginados(cliente);
+          break;
+
+        case 8:
+          // Consulta de datos paginados Usuario Reportes
+          instalaciones = await this.consultarInstalacionesPaginado(
+            cliente,
+            limit,
+            offset,
           );
+          // Query para total (sin paginación)
+          totalResult =
+            await this.consultarTotalInstalacionesPaginados(cliente);
+          break;
+
+        case 10:
+          // Consulta de datos paginados Usuario Capturista
+          instalaciones = await this.consultarInstalacionesPaginado(
+            cliente,
+            limit,
+            offset,
+          );
+          // Query para total (sin paginación)
+          totalResult =
+            await this.consultarTotalInstalacionesPaginados(cliente);
           break;
 
         default:
@@ -427,8 +469,6 @@ INNER JOIN Clientes c ON i.IdCliente = c.Id
 
       const total = Number(totalResult[0]?.total || 0);
 
-      
-
       // 🔥 Transformación de datos (ids → number, nombreCompleto)
       const data = instalaciones.map((item) => ({
         ...item,
@@ -459,6 +499,59 @@ INNER JOIN Clientes c ON i.IdCliente = c.Id
         error: error.message,
       });
     }
+  }
+
+  private async consultarInstalacionesListado(
+    cliente: number
+  ) {
+    const query = `
+SELECT
+  -- Instalación
+  i.Id AS id,
+  i.FechaCreacion AS fechaCreacion,
+  i.FechaActualizacion AS fechaActualizacion,
+  i.Estatus AS estatus,
+
+  -- Dispositivo
+  i.IdDispositivo AS idDispositivo,
+  d.NumeroSerie AS numeroSerieDispositivo,
+  d.Marca AS marcaDispositivo,
+  d.Modelo AS modeloDispositivo,
+
+  -- BlueVox
+  i.IdBlueVox AS idBlueVox,
+  b.NumeroSerie AS numeroSerieBlueVox,
+  b.Marca AS marcaBlueVox,
+  b.Modelo AS modeloBlueVox,
+
+  -- Vehículo
+  i.IdVehiculo AS idVehiculo,
+  v.Marca AS marcaVehiculo,
+  v.Modelo AS modeloVehiculo,
+  v.Placa AS placaVehiculo,
+  v.NumeroEconomico AS numeroEconomicoVehiculo,
+
+  -- Cliente
+  i.IdCliente AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente
+
+FROM Instalaciones i
+INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
+INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+
+WHERE c.Estatus = 1
+AND c.Id = ?
+AND i.Estatus = 1
+  
+
+ORDER BY i.Id DESC
+   `;
+    return this.instalacionesRepository.query(query, [cliente]);
   }
 
   async findAllList(
@@ -522,55 +615,18 @@ ORDER BY i.Id DESC;
           break;
 
         case 2:
-          instalaciones = await this.usuariosinstalacionesRepository.query(
-            `
-SELECT
-  -- Instalación
-  i.Id AS id,
-  i.FechaCreacion AS fechaCreacion,
-  i.FechaActualizacion AS fechaActualizacion,
-  i.Estatus AS estatus,
+          // Consulta de datos paginados Usuario Administrador
+          instalaciones = await this.consultarInstalacionesListado(cliente)
+          break;
 
-  -- Dispositivo
-  i.IdDispositivo AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
+        case 8: 
+        // Consulta de datos paginados Usuario Reportes
+          instalaciones = await this.consultarInstalacionesListado(cliente)
+        break;
 
-  -- BlueVox
-  i.IdBlueVox AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
-
-  -- Vehículo
-  i.IdVehiculo AS idVehiculo,
-  v.Marca AS marcaVehiculo,
-  v.Modelo AS modeloVehiculo,
-  v.Placa AS placaVehiculo,
-  v.NumeroEconomico AS numeroEconomicoVehiculo,
-
-  -- Cliente
-  i.IdCliente AS idCliente,
-  c.Nombre AS nombreCliente,
-  c.ApellidoPaterno AS apellidoPaternoCliente,
-  c.ApellidoMaterno AS apellidoMaternoCliente,
-  c.Estatus AS estatusCliente
-
-FROM Instalaciones i
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
-INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
-INNER JOIN Clientes c ON i.IdCliente = c.Id
-
-WHERE i.IdCliente = ?
-  AND i.Estatus = 1
-
-ORDER BY i.Id DESC;
-
-  `,
-            [cliente],
-          );
+        case 10:
+          // Consulta de datos paginados Usuario Capturista
+          instalaciones = await this.consultarInstalacionesListado(cliente)
           break;
 
         default:
@@ -629,7 +685,6 @@ ORDER BY i.Id DESC;
           break;
       }
 
-
       // 🔥 Transformación de datos (ids → number, nombreCompleto)
       const data = instalaciones.map((item) => ({
         ...item,
@@ -654,6 +709,59 @@ ORDER BY i.Id DESC;
         error,
       });
     }
+  }
+
+    private async consultarInstalacionesOne(
+    cliente: number,
+    id: number
+  ) {
+    const query = `
+SELECT
+  -- Instalación
+  i.Id AS id,
+  i.FechaCreacion AS fechaCreacion,
+  i.FechaActualizacion AS fechaActualizacion,
+  i.Estatus AS estatus,
+
+  -- Dispositivo
+  i.IdDispositivo AS idDispositivo,
+  d.NumeroSerie AS numeroSerieDispositivo,
+  d.Marca AS marcaDispositivo,
+  d.Modelo AS modeloDispositivo,
+
+  -- BlueVox
+  i.IdBlueVox AS idBlueVox,
+  b.NumeroSerie AS numeroSerieBlueVox,
+  b.Marca AS marcaBlueVox,
+  b.Modelo AS modeloBlueVox,
+
+  -- Vehículo
+  i.IdVehiculo AS idVehiculo,
+  v.Marca AS marcaVehiculo,
+  v.Modelo AS modeloVehiculo,
+  v.Placa AS placaVehiculo,
+  v.NumeroEconomico AS numeroEconomicoVehiculo,
+
+  -- Cliente
+  i.IdCliente AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente
+
+FROM Instalaciones i
+INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
+INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+
+WHERE i.Id = ?
+AND i.IdCliente = ?
+AND c.Estatus = 1
+
+ORDER BY i.Id DESC;
+   `;
+    return this.instalacionesRepository.query(query, [id, cliente]);
   }
 
   async findOne(id: number, idUser: number, cliente: number, rol: number) {
@@ -713,55 +821,18 @@ ORDER BY i.Id DESC;
           break;
 
         case 2:
-          instalaciones = await this.usuariosinstalacionesRepository.query(
-            `
-SELECT
-  -- Instalación
-  i.Id AS id,
-  i.FechaCreacion AS fechaCreacion,
-  i.FechaActualizacion AS fechaActualizacion,
-  i.Estatus AS estatus,
+          // Consulta de datos paginados Usuario Administrador
+          instalaciones = await this.consultarInstalacionesOne(cliente, id)
+          break;
 
-  -- Dispositivo
-  i.IdDispositivo AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
+        case 8:
+          // Consulta de datos paginados Usuario Reportes
+          instalaciones = await this.consultarInstalacionesOne(cliente, id)
+          break;
 
-  -- BlueVox
-  i.IdBlueVox AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
-
-  -- Vehículo
-  i.IdVehiculo AS idVehiculo,
-  v.Marca AS marcaVehiculo,
-  v.Modelo AS modeloVehiculo,
-  v.Placa AS placaVehiculo,
-  v.NumeroEconomico AS numeroEconomicoVehiculo,
-
-  -- Cliente
-  i.IdCliente AS idCliente,
-  c.Nombre AS nombreCliente,
-  c.ApellidoPaterno AS apellidoPaternoCliente,
-  c.ApellidoMaterno AS apellidoMaternoCliente,
-  c.Estatus AS estatusCliente
-
-FROM Instalaciones i
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
-INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
-INNER JOIN Clientes c ON i.IdCliente = c.Id
-
-WHERE i.IdCliente = ?
-  AND i.Id = ?
-
-ORDER BY i.Id DESC;
-
-  `,
-            [cliente, id],
-          );
+        case 10:
+          // Consulta de datos paginados Usuario Capturista
+          instalaciones = await this.consultarInstalacionesOne(cliente, id)
           break;
 
         default:
@@ -819,7 +890,7 @@ ORDER BY i.Id DESC;
           );
           break;
       }
-      
+
       if (instalaciones.length === 0) {
         throw new NotFoundException('No se encontraron instalaciones.');
       }
@@ -942,12 +1013,11 @@ ORDER BY i.Id DESC;
         const body = { estatus: 1 };
         await this.dispositivosRepository.update(
           instalacion.idDispositivo,
-          body
+          body,
         );
         await this.bluevoxsRepository.update(instalacion.idBlueVox, body);
         await this.vehiculosRepository.update(instalacion.idVehiculo, body);
       }
-
 
       await this.instalacionesRepository.update(id, { estatus: estatus });
 
@@ -1116,13 +1186,10 @@ ORDER BY i.Id DESC;
       await this.instalacionesRepository.update(id, { estatus: 0 });
 
       // Desactivar instalación → activar componentes
-        const body = { estatus: 1 };
-        await this.dispositivosRepository.update(
-          instalacion.idDispositivo,
-          body
-        );
-        await this.bluevoxsRepository.update(instalacion.idBlueVox, body);
-        await this.vehiculosRepository.update(instalacion.idVehiculo, body);
+      const body = { estatus: 1 };
+      await this.dispositivosRepository.update(instalacion.idDispositivo, body);
+      await this.bluevoxsRepository.update(instalacion.idBlueVox, body);
+      await this.vehiculosRepository.update(instalacion.idVehiculo, body);
 
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { id: id, estatus: 0 };

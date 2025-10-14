@@ -164,6 +164,7 @@ WHERE
 `;
     return await this.usuarioregionesRepository.query(query, [cliente]);
   }
+  
   async obtenerRutasPorUsuarioSQL(
     idUser: number,
     cliente: number,
