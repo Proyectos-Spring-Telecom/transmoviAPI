@@ -22,7 +22,7 @@ export class ViajesController {
     const idUser = req.user.userId;
     const cliente = req.user.cliente;
     const rol = req.user.rol;
-    return this.viajesService.create(+idUser, createViajeDto);
+    return this.viajesService.create(+idUser,  createViajeDto);
   }
 
   @Get('list')
@@ -30,7 +30,7 @@ export class ViajesController {
     const idUser = req.user.userId;
     const cliente = req.user.cliente;
     const rol = req.user.rol;
-    return this.viajesService.findAllList();
+    return this.viajesService.findAllList(+cliente, +cliente,);
   }
 
   @Get(':page/:limit')
@@ -42,7 +42,7 @@ export class ViajesController {
     const idUser = req.user.userId;
     const cliente = req.user.cliente;
     const rol = req.user.rol;
-    return this.viajesService.findAll(page,limit);
+    return this.viajesService.findAll(+cliente, +rol, page,limit);
   }
 
   @Get(':id')
@@ -50,7 +50,7 @@ export class ViajesController {
     const idUser = req.user.userId;
     const cliente = req.user.cliente;
     const rol = req.user.rol;
-    return this.viajesService.findOne(+id);
+    return this.viajesService.findOne(+id, +cliente, +rol,);
   }
 
 }

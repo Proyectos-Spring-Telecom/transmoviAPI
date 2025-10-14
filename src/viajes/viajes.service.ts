@@ -77,10 +77,117 @@ export class ViajesService {
     }
   }
 
-  async findAllList() {
+  private async consultarViajesListado(cliente: number) {
+    const query = `
+SELECT
+  -- Viaje
+  v.Id AS id,
+  v.Inicio AS inicio,
+  v.Fin AS fin,
+  v.Estatus AS estatus,
+
+  -- Cliente
+  c.Id AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+
+  -- Turno
+  t.Id AS idTurno,
+  t.Inicio AS inicioTurno,
+  t.IdInstalacion AS idInstalacion,
+
+  -- Instalación
+  ins.IdDispositivo AS idDispositivo,
+  -- Dispositivo
+  d.NumeroSerie AS numeroSerieDispositivo,
+  ins.IdBlueVox AS idBlueVox,
+  -- BlueVox
+  bv.NumeroSerie AS numeroSerieBlueVox,
+  ins.IdVehiculo AS idVehiculo,
+  -- Vehículo
+  vhl.Placa AS placaVehiculo,
+
+  -- Operador
+  o.Id AS idOperador,
+  o.NumeroLicencia AS numeroLicenciaOperador,
+  o.IdUsuario AS idUsuario,
+
+  -- Usuario del operador
+  u.Nombre AS nombreOperador,
+  u.ApellidoPaterno AS apellidoPaternoOperador,
+  u.ApellidoMaterno AS apellidoMaternoOperador,
+
+  -- Derrotero
+  der.Id AS idDerrotero,
+  der.Nombre AS nombreDerrotero,
+  der.PuntoInicio AS puntoInicioDerrotero,
+  der.PuntoFin AS puntoFinDerrotero,
+  der.DistanciaKm AS distanciaKmDerrotero,
+
+  -- Ruta
+  r.Id AS idRuta,
+  r.Nombre AS nombreRuta,
+  r.IdRegion AS idRegion,
+  -- Regiones (Inicio y Fin)
+  regInicio.Nombre AS nombreRegionInicio,
+  r.IdRegionFin AS idRegionFin,
+  -- Regiones (Inicio y Fin)
+  regFin.Nombre AS nombreRegionFin
+
+FROM Viajes v
+-- Cliente
+JOIN Clientes c ON v.IdCliente = c.Id
+
+-- Turno
+JOIN Turnos t ON v.IdTurno = t.Id
+
+-- Instalación
+JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
+
+-- Dispositivo
+JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
+
+-- BlueVox
+JOIN BlueVoxs bv ON ins.IdCliente = bv.IdCliente AND ins.IdBlueVox = bv.Id
+
+-- Vehículo
+JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
+
+-- Operador
+JOIN Operadores o ON v.IdOperador = o.Id
+
+-- Usuario del operador
+JOIN Usuarios u ON o.IdUsuario = u.Id
+
+-- Derrotero
+JOIN Derroteros der ON v.IdDerrotero = der.Id
+
+-- Ruta
+JOIN Rutas r ON der.IdRuta = r.Id
+
+-- Región de inicio
+LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
+
+-- Región de fin
+LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
+
+        WHERE v.Estatus = 1
+        AND c.Id = ?
+
+ORDER BY v.Id DESC
+
+    `;
+    return this.viajesRepository.query(query, [cliente]);
+  }
+
+  async findAllList(cliente: number, rol: number) {
     try {
-      const viajes = await this.viajesRepository.query(
-        `
+      let viajes;
+      switch (rol) {
+        case 1:
+          viajes = await this.viajesRepository.query(
+            `
 SELECT
   -- Viaje
   v.Id AS id,
@@ -176,8 +283,13 @@ LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
 
 ORDER BY v.Id DESC;
             `,
-      );
+          );
+          break;
 
+        default:
+          viajes = await this.consultarViajesListado(cliente);
+          break;
+      }
 
       const data = viajes.map((item) => ({
         ...item,
@@ -203,7 +315,7 @@ ORDER BY v.Id DESC;
 
       //APi response
       const result: ApiResponseCommon = {
-        data: data
+        data: data,
       };
 
       return result;
@@ -218,12 +330,154 @@ ORDER BY v.Id DESC;
     }
   }
 
-  async findAll(page: number, limit: number): Promise<ApiResponseCommon> {
+  private async consultarViajesPaginado(
+    cliente: number,
+    limit: number,
+    offset: number,
+  ) {
+    const query = `
+SELECT
+  -- Viaje
+  v.Id AS id,
+  v.Inicio AS inicio,
+  v.Fin AS fin,
+  v.Estatus AS estatus,
+
+  -- Cliente
+  c.Id AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+
+  -- Turno
+  t.Id AS idTurno,
+  t.Inicio AS inicioTurno,
+  t.IdInstalacion AS idInstalacion,
+
+  -- Instalación
+  ins.IdDispositivo AS idDispositivo,
+  -- Dispositivo
+  d.NumeroSerie AS numeroSerieDispositivo,
+  ins.IdBlueVox AS idBlueVox,
+  -- BlueVox
+  bv.NumeroSerie AS numeroSerieBlueVox,
+  ins.IdVehiculo AS idVehiculo,
+  -- Vehículo
+  vhl.Placa AS placaVehiculo,
+
+  -- Operador
+  o.Id AS idOperador,
+  o.NumeroLicencia AS numeroLicenciaOperador,
+  o.IdUsuario AS idUsuario,
+
+  -- Usuario del operador
+  u.Nombre AS nombreOperador,
+  u.ApellidoPaterno AS apellidoPaternoOperador,
+  u.ApellidoMaterno AS apellidoMaternoOperador,
+
+  -- Derrotero
+  der.Id AS idDerrotero,
+  der.Nombre AS nombreDerrotero,
+  der.PuntoInicio AS puntoInicioDerrotero,
+  der.PuntoFin AS puntoFinDerrotero,
+  der.DistanciaKm AS distanciaKmDerrotero,
+
+  -- Ruta
+  r.Id AS idRuta,
+  r.Nombre AS nombreRuta,
+  r.IdRegion AS idRegion,
+  -- Regiones (Inicio y Fin)
+  regInicio.Nombre AS nombreRegionInicio,
+  r.IdRegionFin AS idRegionFin,
+  -- Regiones (Inicio y Fin)
+  regFin.Nombre AS nombreRegionFin
+
+FROM Viajes v
+-- Cliente
+JOIN Clientes c ON v.IdCliente = c.Id
+
+-- Turno
+JOIN Turnos t ON v.IdTurno = t.Id
+
+-- Instalación
+JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
+
+-- Dispositivo
+JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
+
+-- BlueVox
+JOIN BlueVoxs bv ON ins.IdCliente = bv.IdCliente AND ins.IdBlueVox = bv.Id
+
+-- Vehículo
+JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
+
+-- Operador
+JOIN Operadores o ON v.IdOperador = o.Id
+
+-- Usuario del operador
+JOIN Usuarios u ON o.IdUsuario = u.Id
+
+-- Derrotero
+JOIN Derroteros der ON v.IdDerrotero = der.Id
+
+-- Ruta
+JOIN Rutas r ON der.IdRuta = r.Id
+
+-- Región de inicio
+LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
+
+-- Región de fin
+LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
+
+        WHERE v.Estatus = 1
+        AND c.Id = ?
+
+ORDER BY v.Id DESC
+
+  LIMIT ? OFFSET ?;
+    `;
+    return this.viajesRepository.query(query, [cliente, limit, offset]);
+  }
+
+  private async consultarTotalRutasPaginados(cliente: number) {
+    const query = `  
+SELECT COUNT(*) AS total
+FROM Viajes v
+-- Cliente
+JOIN Clientes c ON v.IdCliente = c.Id
+JOIN Turnos t ON v.IdTurno = t.Id
+JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
+JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
+JOIN BlueVoxs bv ON ins.IdCliente = bv.IdCliente AND ins.IdBlueVox = bv.Id
+JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
+JOIN Operadores o ON v.IdOperador = o.Id
+JOIN Usuarios u ON o.IdUsuario = u.Id
+JOIN Derroteros der ON v.IdDerrotero = der.Id
+JOIN Rutas r ON der.IdRuta = r.Id
+LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
+LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
+
+        WHERE v.Estatus = 1
+        AND c.Id = ?
+`;
+    return await this.viajesRepository.query(query, [cliente]);
+  }
+
+  async findAll(
+    cliente: number,
+    rol: number,
+    page: number,
+    limit: number,
+  ): Promise<ApiResponseCommon> {
     try {
       const offset = (page - 1) * limit;
-
-      const viajes = await this.viajesRepository.query(
-        `
+      let totalResult;
+      let viajes;
+      switch (rol) {
+        case 1:
+          // Consulta de datos paginados Usuario SuperAdministrador
+          viajes = await this.viajesRepository.query(
+            `
 SELECT
   -- Viaje
   v.Id AS id,
@@ -322,18 +576,26 @@ LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
 ORDER BY v.Id DESC
 LIMIT ? OFFSET ?;
             `,
-        [limit, offset],
-      );
+            [limit, offset],
+          );
 
-      // Query para total (sin paginación)
-      const totalResult = await this.viajesRepository.query(
-        `
+          // Query para total (sin paginación)
+          totalResult = await this.viajesRepository.query(
+            `
   SELECT COUNT(*) AS total
   FROM Viajes v
   WHERE v.Estatus = 1
   `,
-      );
+          );
+          break;
 
+        default:
+          // Consulta de datos paginados Usuario Administrador
+          viajes = await this.consultarViajesPaginado(cliente, limit, offset);
+
+          totalResult = await this.consultarTotalRutasPaginados(cliente);
+          break;
+      }
 
       const data = viajes.map((item) => ({
         ...item,
@@ -381,10 +643,117 @@ LIMIT ? OFFSET ?;
     }
   }
 
-  async findOne(id: number) {
-        try {
-      const viajes = await this.viajesRepository.query(
-        `
+  private async consultarViajesOne(cliente: number, id: number) {
+    const query = `
+SELECT
+  -- Viaje
+  v.Id AS id,
+  v.Inicio AS inicio,
+  v.Fin AS fin,
+  v.Estatus AS estatus,
+
+  -- Cliente
+  c.Id AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+
+  -- Turno
+  t.Id AS idTurno,
+  t.Inicio AS inicioTurno,
+  t.IdInstalacion AS idInstalacion,
+
+  -- Instalación
+  ins.IdDispositivo AS idDispositivo,
+  -- Dispositivo
+  d.NumeroSerie AS numeroSerieDispositivo,
+  ins.IdBlueVox AS idBlueVox,
+  -- BlueVox
+  bv.NumeroSerie AS numeroSerieBlueVox,
+  ins.IdVehiculo AS idVehiculo,
+  -- Vehículo
+  vhl.Placa AS placaVehiculo,
+
+  -- Operador
+  o.Id AS idOperador,
+  o.NumeroLicencia AS numeroLicenciaOperador,
+  o.IdUsuario AS idUsuario,
+
+  -- Usuario del operador
+  u.Nombre AS nombreOperador,
+  u.ApellidoPaterno AS apellidoPaternoOperador,
+  u.ApellidoMaterno AS apellidoMaternoOperador,
+
+  -- Derrotero
+  der.Id AS idDerrotero,
+  der.Nombre AS nombreDerrotero,
+  der.PuntoInicio AS puntoInicioDerrotero,
+  der.PuntoFin AS puntoFinDerrotero,
+  der.DistanciaKm AS distanciaKmDerrotero,
+
+  -- Ruta
+  r.Id AS idRuta,
+  r.Nombre AS nombreRuta,
+  r.IdRegion AS idRegion,
+  -- Regiones (Inicio y Fin)
+  regInicio.Nombre AS nombreRegionInicio,
+  r.IdRegionFin AS idRegionFin,
+  -- Regiones (Inicio y Fin)
+  regFin.Nombre AS nombreRegionFin
+
+FROM Viajes v
+-- Cliente
+JOIN Clientes c ON v.IdCliente = c.Id
+
+-- Turno
+JOIN Turnos t ON v.IdTurno = t.Id
+
+-- Instalación
+JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
+
+-- Dispositivo
+JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
+
+-- BlueVox
+JOIN BlueVoxs bv ON ins.IdCliente = bv.IdCliente AND ins.IdBlueVox = bv.Id
+
+-- Vehículo
+JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
+
+-- Operador
+JOIN Operadores o ON v.IdOperador = o.Id
+
+-- Usuario del operador
+JOIN Usuarios u ON o.IdUsuario = u.Id
+
+-- Derrotero
+JOIN Derroteros der ON v.IdDerrotero = der.Id
+
+-- Ruta
+JOIN Rutas r ON der.IdRuta = r.Id
+
+-- Región de inicio
+LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
+
+-- Región de fin
+LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
+
+        WHERE v.Estatus = 1
+        AND c.Id = ?
+        AND v.Id = ?
+
+ORDER BY v.Id DESC
+    `;
+    return this.viajesRepository.query(query, [cliente, id]);
+  }
+
+  async findOne(id: number, cliente: number, rol: number) {
+    try {
+      let viajes;
+      switch (rol) {
+        case 1:
+          viajes = await this.viajesRepository.query(
+            `
 SELECT
   -- Viaje
   v.Id AS id,
@@ -483,39 +852,45 @@ LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
 ORDER BY v.Id DESC
             `,
             [id],
-      );
+          );
+          break;
+
+        default:
+          viajes = await this.consultarViajesOne(cliente, id)
+          break;
+      }
 
       if (viajes.length === 0) {
         throw new NotFoundException('No se encontraron viajes.');
       }
 
       const viaje = viajes[0];
-      
+
       const data = {
-      ...viaje,
-      id: Number(viaje.id),
-      idCliente: Number(viaje.idCliente),
-      idTurno: Number(viaje.idTurno),
-      idInstalacion: Number(viaje.idInstalacion),
-      idDispositivo: Number(viaje.idDispositivo),
-      idBlueVox: Number(viaje.idBlueVox),
-      idVehiculo: Number(viaje.idVehiculo),
-      idOperador: Number(viaje.idOperador),
-      idUsuario: Number(viaje.idUsuario),
-      idDerrotero: Number(viaje.idDerrotero),
-      distanciaKmDerrotero:
-        viaje.distanciaKmDerrotero !== null
-          ? Number(viaje.distanciaKmDerrotero)
-          : null,
-      idRuta: Number(viaje.idRuta),
-      idRegion: Number(viaje.idRegion),
-      idRegionFin:
-        viaje.idRegionFin !== null ? Number(viaje.idRegionFin) : null,
-    };
+        ...viaje,
+        id: Number(viaje.id),
+        idCliente: Number(viaje.idCliente),
+        idTurno: Number(viaje.idTurno),
+        idInstalacion: Number(viaje.idInstalacion),
+        idDispositivo: Number(viaje.idDispositivo),
+        idBlueVox: Number(viaje.idBlueVox),
+        idVehiculo: Number(viaje.idVehiculo),
+        idOperador: Number(viaje.idOperador),
+        idUsuario: Number(viaje.idUsuario),
+        idDerrotero: Number(viaje.idDerrotero),
+        distanciaKmDerrotero:
+          viaje.distanciaKmDerrotero !== null
+            ? Number(viaje.distanciaKmDerrotero)
+            : null,
+        idRuta: Number(viaje.idRuta),
+        idRegion: Number(viaje.idRegion),
+        idRegionFin:
+          viaje.idRegionFin !== null ? Number(viaje.idRegionFin) : null,
+      };
 
       //APi response
       const result: ApiResponseCommon = {
-        data: data
+        data: data,
       };
 
       return result;
@@ -529,6 +904,4 @@ ORDER BY v.Id DESC
       });
     }
   }
-
-
 }
