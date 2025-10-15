@@ -154,7 +154,7 @@ WHERE c.Id = ?               -- Filtrado por cliente
   AND ru.Estatus = 1         -- Solo rutas activas
   AND r.Estatus = 1          -- Solo regiones activas
 
-ORDER BY d.Id DESC
+ORDER BY i.Id DESC
 
   LIMIT ? OFFSET ?;
     `;

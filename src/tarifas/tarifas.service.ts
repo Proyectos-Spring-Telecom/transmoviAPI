@@ -674,6 +674,68 @@ WHERE ur.IdUsuario = ?
     }
   }
 
+  private async consultarTotalTarifasOne(id: number, cliente: number) { 
+        const query = `  
+
+SELECT 
+  -- Datos de la tarifa
+  t.Id AS id,
+  t.TarifaBase,
+  t.DistanciaBaseKm,
+  t.IncrementoCadaMetros,
+  t.CostoAdicional,
+  t.FechaCreacion AS fechaCreacionTarifa,
+  t.FechaActualizacion AS fechaActualizacionTarifa,
+  t.Estatus AS estatusTarifa,
+
+  -- Datos del derrotero
+  d.Id AS idDerrotero,
+  d.Nombre AS nombreDerrotero,
+  d.PuntoInicio AS puntoInicio,
+  d.PuntoFin AS puntoFin,
+  d.DistanciaKm AS distanciaKm,
+
+  -- Datos de la ruta
+  ru.Id AS idRuta,
+  ru.Nombre AS nombreRuta,
+  ru.NombreInicio,
+  ru.NombreFin,
+
+  -- Región de inicio
+  r.Id AS idRegionInicio,
+  r.Nombre AS nombreRegionInicio,
+
+  -- Región de fin
+  rf.Id AS idRegionFin,
+  rf.Nombre AS nombreRegionFin,
+
+  -- Cliente
+  c.Id AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente,
+  CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
+
+FROM Tarifas t
+INNER JOIN Derroteros d ON t.IdDerrotero = d.Id
+INNER JOIN Rutas ru ON d.IdRuta = ru.Id
+INNER JOIN Regiones r ON ru.IdRegion = r.Id
+LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Clientes c ON r.IdCliente = c.Id
+
+WHERE r.Estatus = 1
+  AND ru.Estatus = 1
+  AND d.Estatus = 1
+  AND c.Estatus = 1
+  AND c.Id = ? 
+  AND t.Id = ?
+
+ORDER BY t.Id DESC
+`;
+    return await this.usuariosregionesRepository.query(query, [cliente, id]);
+  }
+
   async findOne(id: number, idUser: number, cliente: number, rol: number) {
     try {
       let data;
@@ -705,7 +767,7 @@ SELECT
   ru.NombreInicio,
   ru.NombreFin,
 
-  -- Región de inicio (la importante para filtro del usuario)
+  -- Región de inicio
   r.Id AS idRegionInicio,
   r.Nombre AS nombreRegionInicio,
 
@@ -718,6 +780,7 @@ SELECT
   c.Nombre AS nombreCliente,
   c.ApellidoPaterno AS apellidoPaternoCliente,
   c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente,
   CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
 FROM Tarifas t
@@ -726,20 +789,33 @@ INNER JOIN Rutas ru ON d.IdRuta = ru.Id
 INNER JOIN Regiones r ON ru.IdRegion = r.Id
 LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
-INNER JOIN UsuariosRegiones ur ON ur.IdRegion = r.Id
 
-WHERE ur.IdUsuario = ?
-  AND ur.Estatus = 1
-  AND r.Estatus = 1
+WHERE r.Estatus = 1
   AND ru.Estatus = 1
   AND d.Estatus = 1
+  AND c.Estatus = 1
   AND t.Id = ?
 
 ORDER BY t.Id DESC
   `,
-            [idUser, id],
+            [id],
           );
           break;
+
+          case 2:
+          // Usuario Administrador - obtiene todas las regiones
+          data = await this.consultarTotalTarifasOne(id, cliente)
+          break;
+
+        case 8:
+          // Consulta de datos paginados Usuario Reportes
+          data = await this.consultarTotalTarifasOne(id, cliente)
+          break;
+
+        case 10:
+          // Usuario Administrador - obtiene todas las regiones
+          data = await this.consultarTotalTarifasOne(id, cliente)
+          break
 
         default:
           data = await this.usuariosregionesRepository.query(

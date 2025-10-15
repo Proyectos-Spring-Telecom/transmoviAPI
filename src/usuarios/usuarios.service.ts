@@ -155,9 +155,6 @@ LIMIT ? OFFSET ?;
           break;
       }
 
-      if (usuarios.length === 0) {
-        throw new NotFoundException(`No se encontraron usuarios.`);
-      }
       const total = Number(totalResult[0]?.total || 0);
 
       const data = usuarios.map((item) => ({
@@ -274,10 +271,6 @@ ORDER BY u.Id DESC;
           break;
       }
 
-      if (usuarios.length === 0) {
-        throw new NotFoundException('Usuarios no encontrados');
-      }
-
       const data = usuarios.map((item) => ({
         ...item,
         Id: Number(item.Id),
@@ -306,9 +299,6 @@ ORDER BY u.Id DESC;
       const usuarios = await this.usuarioRepository.find({
         where: { estatus: 1, idRol: 3 },
       });
-      if (usuarios.length === 0) {
-        throw new NotFoundException('Usuarios no encontrados');
-      }
       const usuariosSinPassword = usuarios.map(
         ({ passwordHash, ...rest }) => rest,
       );
@@ -334,7 +324,7 @@ ORDER BY u.Id DESC;
         where: { estatus: 1, idCliente: cliente },
       });
       if (usuarios.length === 0) {
-        throw new NotFoundException('Usuarios no encontrados');
+        throw new NotFoundException('No se encontraron usuarios.');
       }
       const usuariosSinPassword = usuarios.map(
         ({ passwordHash, ...rest }) => rest,
@@ -348,7 +338,7 @@ ORDER BY u.Id DESC;
         throw error;
       }
       throw new InternalServerErrorException({
-        message: 'Error al obtener Usuarios',
+        message: 'Se produjo un error al intentar obtener los usuarios asociados al cliente.',
         error: error.message,
       });
     }
@@ -486,7 +476,7 @@ ORDER BY u.Id DESC
       });
       if (!usuario) {
         throw new NotFoundException(
-          `Usuario con nombre de usuario: ${userName} no encontrado.`,
+          `Usuario con nombre de usuario: ${ updateUsuarioOperadorDto.userName } no encontrado.`,
         );
       }
 
@@ -521,7 +511,7 @@ ORDER BY u.Id DESC
       const querylogger = { updateUsuarioOperadorDto };
       await this.bitacoraLogger.logToBitacora(
         'Usuarios',
-        `Se creó el PIN para el usuario con ID: ${usuario.id}.`,
+        `El PIN ha sido generado para el usuario con ID: ${idUser}.`,
         'UPDATE',
         querylogger,
         idUser,
@@ -532,7 +522,7 @@ ORDER BY u.Id DESC
       //Api response
       const result: ApiCrudResponse = {
         status: 'success',
-        message: 'Pin creado correctamente',
+        message: 'El PIN ha sido creado correctamente.',
         data: {
           id: Number(usuario.id),
           nombre: `${usuario.nombre} ${usuario.apellidoPaterno} ` || '',
@@ -544,7 +534,7 @@ ORDER BY u.Id DESC
       const querylogger = { updateUsuarioOperadorDto };
       await this.bitacoraLogger.logToBitacora(
         'Usuarios',
-        `Se creó el PIN para el usuario con ID: ${idUser}.`,
+        `El PIN ha sido generado para el usuario con ID: ${idUser}.`,
         'UPDATE',
         querylogger,
         idUser,
@@ -573,7 +563,7 @@ ORDER BY u.Id DESC
         where: { userName: createUsuarioDto.userName },
       });
       if (existUsuario) {
-        throw new BadRequestException('El usuario ya existe');
+        throw new BadRequestException('El usuario ya se encuentra registrado.');
       }
 
       const hashedPassword = await bcrypt.hash(
@@ -611,7 +601,7 @@ ORDER BY u.Id DESC
       const querylogger = { createUsuarioDto };
       await this.bitacoraLogger.logToBitacora(
         'Usuarios',
-        `Se creó un usuarios con nombre: ${createUsuarioDto.nombre}`,
+        `Se ha creado un usuario con nombre: ${createUsuarioDto.nombre}.`,
         'CREATE',
         querylogger,
         Number(idUser),
@@ -638,7 +628,7 @@ ORDER BY u.Id DESC
       const querylogger = { createUsuarioDto };
       await this.bitacoraLogger.logToBitacora(
         'Usuarios',
-        `Se creó un usuarios con nombre: ${createUsuarioDto.nombre}`,
+        `Se ha creado un usuario con nombre: ${createUsuarioDto.nombre}.`,
         'CREATE',
         querylogger,
         Number(idUser),
@@ -667,7 +657,7 @@ ORDER BY u.Id DESC
         where: { id: id },
       });
       if (!usuario) {
-        throw new NotFoundException(`Usuario con ID: ${id} no encontrado.`);
+        throw new NotFoundException(`No se encontró un usuario con ID: ${id}.`);
       }
       if (
         updateUsuarioContrasena.passwordNueva ===
@@ -713,7 +703,7 @@ ORDER BY u.Id DESC
       const querylogger = { id: id };
       await this.bitacoraLogger.logToBitacora(
         'Usuarios',
-        `Se actualizó contraseña un usuario con ID: ${id}.`,
+        `Se ha actualizado la contraseña del usuario con ID: ${id}.`,
         'UPDATE',
         querylogger,
         Number(idUser),
@@ -724,7 +714,7 @@ ORDER BY u.Id DESC
       //Api response
       const result: ApiCrudResponse = {
         status: 'success',
-        message: 'Contraseña actualizada correctamente',
+        message: 'La contraseña ha sido actualizada correctamente.',
         data: {
           id: id,
           nombre: `${usuario.nombre} ${usuario.apellidoPaterno} ` || '',
@@ -736,7 +726,7 @@ ORDER BY u.Id DESC
       const querylogger = { id: id };
       await this.bitacoraLogger.logToBitacora(
         'Usuarios',
-        `Se actualizó contraseña un usuario con ID: ${id}.`,
+        `SSe ha actualizado la contraseña del usuario con ID: ${id}.`,
         'UPDATE',
         querylogger,
         Number(idUser),
@@ -765,14 +755,14 @@ ORDER BY u.Id DESC
         where: { id: id },
       });
       if (!usuario) {
-        throw new NotFoundException(`Usuario con ID:${id} no encontrado`);
+        throw new NotFoundException(`No se encontró un usuario con ID: ${id}.`);
       }
 
       if (updateUsuarioDto.idCliente) {
         const cliente = await this.clientesService.getOneCliente(
           Number(updateUsuarioDto.idCliente),
         );
-        if (!cliente) throw new BadRequestException('Cliente Invalido');
+        if (!cliente) throw new BadRequestException('No se encontró el cliente especificado.');
       }
 
       const { permisosIds, ...usuarioUpdate } = updateUsuarioDto;
@@ -782,7 +772,7 @@ ORDER BY u.Id DESC
         where: { id: id },
       });
       if (!newUser) {
-        throw new NotFoundException(`Usuario con ID:${id} no encontrado`);
+        throw new NotFoundException(`No se encontró un usuario con ID: ${id}.`);
       }
       const { passwordHash: _, ...usuarioSinPassword } = newUser;
 
@@ -866,7 +856,7 @@ ORDER BY u.Id DESC
       // ----- Api response -----
       const result: ApiCrudResponse = {
         status: 'success',
-        message: 'Usuario actualizado correctamente',
+        message: 'El usuario ha sido actualizado correctamente.',
         data: {
           id: id,
           nombre:
@@ -910,7 +900,7 @@ ORDER BY u.Id DESC
         where: { id: id },
       });
       if (!usuario) {
-        throw new NotFoundException(`Usuario con ID:${id} no encontrado`);
+        throw new NotFoundException(`No se encontró un usuario con ID: ${id}.`);
       }
       const { estatus } = updateUsuarioEstatusDto;
 
@@ -919,7 +909,7 @@ ORDER BY u.Id DESC
         where: { id: id },
       });
       if (!usuarioResult) {
-        throw new NotFoundException(`Usuario con ID:${id} no encontrado`);
+        throw new NotFoundException(`No se encontró un usuario con ID: ${id}.`);
       }
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { updateUsuarioEstatusDto };
@@ -936,7 +926,7 @@ ORDER BY u.Id DESC
       //Api Response
       const result: ApiCrudResponse = {
         status: 'success',
-        message: 'Estatus usuario actualizado correctamente',
+        message: 'El estatus del usuario ha sido actualizado correctamente.',
         estatus: {
           estatus: estatus,
         },
@@ -978,7 +968,7 @@ ORDER BY u.Id DESC
         where: { id: id },
       });
       if (!usuario) {
-        throw new NotFoundException(`No se encontró el usuario con ID: ${id}.`);
+        throw new NotFoundException(`No se encontró un usuario con ID: ${id}.`);
       }
       //Se hacer eliminado logico
       //Cambiamos el estatus del usuario a 0
@@ -1003,7 +993,7 @@ ORDER BY u.Id DESC
       //Api response
       const result: ApiCrudResponse = {
         status: 'success',
-        message: 'Usuario eliminado correctamente',
+        message: 'El usuario ha sido eliminado correctamente.',
         data: {
           id: id,
           nombre: `${usuario.nombre} ${usuario.apellidoPaterno} ` || '',

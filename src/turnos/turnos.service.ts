@@ -82,6 +82,98 @@ export class TurnosService {
     }
   }
 
+  private async consultarTurnoPaginado(
+    cliente: number,
+    limit: number,
+    offset: number,
+  ) {
+    const query = `
+SELECT
+  -- Turno
+  t.Id AS id,
+  t.Inicio AS inicio,
+  t.Fin AS fin,
+  t.FechaCreacion AS fechaCreacion,
+  t.FechaActualizacion AS fechaActualizacion,
+  t.Estatus AS estatus,
+
+  -- Instalación
+  i.Id AS idInstalacion,
+  i.FechaCreacion AS fechaCreacionInstalacion,
+  i.FechaActualizacion AS fechaActualizacionInstalacion,
+  i.Estatus AS estatusInstalacion,
+
+  -- Dispositivo
+  d.Id AS idDispositivo,
+  d.NumeroSerie AS numeroSerieDispositivo,
+  d.Marca AS marcaDispositivo,
+  d.Modelo AS modeloDispositivo,
+
+  -- BlueVox
+  b.Id AS idBlueVox,
+  b.NumeroSerie AS numeroSerieBlueVox,
+  b.Marca AS marcaBlueVox,
+  b.Modelo AS modeloBlueVox,
+
+  -- Vehículo
+  v.Id AS idVehiculo,
+  v.Marca AS marcaVehiculo,
+  v.Modelo AS modeloVehiculo,
+  v.Placa AS placaVehiculo,
+  v.NumeroEconomico AS numeroEconomicoVehiculo,
+
+  -- Cliente
+  c.Id AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente,
+
+  -- Operador
+  o.Id AS idOperador,
+  o.NumeroLicencia AS numeroLicencia,
+  o.FechaNacimiento AS fechaNacimientoOperador,
+  u.Nombre AS nombreOperador,
+  u.ApellidoPaterno AS apellidoPaternoOperador,
+  u.ApellidoMaterno AS apellidoMaternoOperador
+
+FROM Turnos t
+INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
+INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id
+INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id
+INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id
+INNER JOIN Clientes c ON t.IdCliente = c.Id
+INNER JOIN Operadores o ON t.IdOperador = o.Id
+INNER JOIN Usuarios u ON o.IdUsuario = u.Id
+
+WHERE c.Id = ?
+AND c.Estatus = 1
+
+ORDER BY t.Id DESC
+  LIMIT ? OFFSET ?;
+   `;
+    return this.turnosRepository.query(query, [cliente, limit, offset]);
+  }
+
+  private async consultarTotalTurnosPaginados(cliente: number) {
+    const query = `  
+  SELECT COUNT(*) AS total
+FROM Turnos t
+INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
+INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id
+INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id
+INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id
+INNER JOIN Clientes c ON t.IdCliente = c.Id
+INNER JOIN Operadores o ON t.IdOperador = o.Id
+INNER JOIN Usuarios u ON o.IdUsuario = u.Id
+
+WHERE c.Id = ?
+AND c.Estatus = 1
+  
+`;
+    return await this.turnosRepository.query(query, [cliente]);
+  }
+
   async findAll(
     idUser: number,
     cliente: number,
@@ -181,90 +273,24 @@ INNER JOIN Usuarios u ON o.IdUsuario = u.Id
           break;
 
         case 2:
-          turnos = await this.turnosRepository.query(
-            `
-SELECT
-  -- Turno
-  t.Id AS id,
-  t.Inicio AS inicio,
-  t.Fin AS fin,
-  t.FechaCreacion AS fechaCreacion,
-  t.FechaActualizacion AS fechaActualizacion,
-  t.Estatus AS estatus,
-
-  -- Instalación
-  i.Id AS idInstalacion,
-  i.FechaCreacion AS fechaCreacionInstalacion,
-  i.FechaActualizacion AS fechaActualizacionInstalacion,
-  i.Estatus AS estatusInstalacion,
-
-  -- Dispositivo
-  d.Id AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
-
-  -- BlueVox
-  b.Id AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
-
-  -- Vehículo
-  v.Id AS idVehiculo,
-  v.Marca AS marcaVehiculo,
-  v.Modelo AS modeloVehiculo,
-  v.Placa AS placaVehiculo,
-  v.NumeroEconomico AS numeroEconomicoVehiculo,
-
-  -- Cliente
-  c.Id AS idCliente,
-  c.Nombre AS nombreCliente,
-  c.ApellidoPaterno AS apellidoPaternoCliente,
-  c.ApellidoMaterno AS apellidoMaternoCliente,
-  c.Estatus AS estatusCliente,
-
-  -- Operador
-  o.Id AS idOperador,
-  o.NumeroLicencia AS numeroLicencia,
-  o.FechaNacimiento AS fechaNacimientoOperador,
-  u.Nombre AS nombreOperador,
-  u.ApellidoPaterno AS apellidoPaternoOperador,
-  u.ApellidoMaterno AS apellidoMaternoOperador
-
-FROM Turnos t
-INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id
-INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id
-INNER JOIN Clientes c ON t.IdCliente = c.Id
-INNER JOIN Operadores o ON t.IdOperador = o.Id
-INNER JOIN Usuarios u ON o.IdUsuario = u.Id
-
-
-WHERE t.IdCliente = ?
-ORDER BY t.Id DESC
-  LIMIT ? OFFSET ?;
-            `,
-            [cliente, limit, offset],
-          );
+          turnos = await this.consultarTurnoPaginado(cliente, limit, offset);
 
           // Query para total (sin paginación)
-          totalResult = await this.turnosRepository.query(
-            `
-  SELECT COUNT(*) AS total
-FROM Turnos t
-INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id
-INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id
-INNER JOIN Clientes c ON t.IdCliente = c.Id
-INNER JOIN Operadores o ON t.IdOperador = o.Id
-INNER JOIN Usuarios u ON o.IdUsuario = u.Id
-WHERE t.IdCliente = ?
-  `,
-            [cliente],
-          );
+          totalResult = await this.consultarTotalTurnosPaginados(cliente);
+          break;
+
+        case 8:
+          turnos = await this.consultarTurnoPaginado(cliente, limit, offset);
+
+          // Query para total (sin paginación)
+          totalResult = await this.consultarTotalTurnosPaginados(cliente);
+          break;
+
+        case 10:
+          turnos = await this.consultarTurnoPaginado(cliente, limit, offset);
+
+          // Query para total (sin paginación)
+          totalResult = await this.consultarTotalTurnosPaginados(cliente);
           break;
 
         default:
@@ -365,7 +391,6 @@ WHERE ui.IdUsuario = ?
           break;
       }
 
-
       const total = Number(totalResult[0]?.total || 0);
 
       // 🔥 Transformación con map
@@ -398,6 +423,75 @@ WHERE ui.IdUsuario = ?
         error: error.message,
       });
     }
+  }
+
+  private async consultarTurnoListado(cliente: number) {
+    const query = `
+SELECT
+  -- Turno
+  t.Id AS id,
+  t.Inicio AS inicio,
+  t.Fin AS fin,
+  t.FechaCreacion AS fechaCreacion,
+  t.FechaActualizacion AS fechaActualizacion,
+  t.Estatus AS estatus,
+
+  -- Instalación
+  i.Id AS idInstalacion,
+  i.FechaCreacion AS fechaCreacionInstalacion,
+  i.FechaActualizacion AS fechaActualizacionInstalacion,
+  i.Estatus AS estatusInstalacion,
+
+  -- Dispositivo
+  d.Id AS idDispositivo,
+  d.NumeroSerie AS numeroSerieDispositivo,
+  d.Marca AS marcaDispositivo,
+  d.Modelo AS modeloDispositivo,
+
+  -- BlueVox
+  b.Id AS idBlueVox,
+  b.NumeroSerie AS numeroSerieBlueVox,
+  b.Marca AS marcaBlueVox,
+  b.Modelo AS modeloBlueVox,
+
+  -- Vehículo
+  v.Id AS idVehiculo,
+  v.Marca AS marcaVehiculo,
+  v.Modelo AS modeloVehiculo,
+  v.Placa AS placaVehiculo,
+  v.NumeroEconomico AS numeroEconomicoVehiculo,
+
+  -- Cliente
+  c.Id AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente,
+
+  -- Operador
+  o.Id AS idOperador,
+  o.NumeroLicencia AS numeroLicencia,
+  o.FechaNacimiento AS fechaNacimientoOperador,
+  u.Nombre AS nombreOperador,
+  u.ApellidoPaterno AS apellidoPaternoOperador,
+  u.ApellidoMaterno AS apellidoMaternoOperador
+
+FROM Turnos t
+INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
+INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id
+INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id
+INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id
+INNER JOIN Clientes c ON t.IdCliente = c.Id
+INNER JOIN Operadores o ON t.IdOperador = o.Id
+INNER JOIN Usuarios u ON o.IdUsuario = u.Id
+
+WHERE t.Estatus = 1
+AND c.Estatus = 1
+AND c.Id = ?
+
+ORDER BY t.Id DESC;
+   `;
+    return this.turnosRepository.query(query, [cliente]);
   }
 
   async findAllList(idUser: number, cliente: number, rol: number) {
@@ -474,73 +568,15 @@ ORDER BY t.Id DESC;
           break;
 
         case 2:
-          turnos = await this.turnosRepository.query(
-            `
-SELECT
-  -- Turno
-  t.Id AS id,
-  t.Inicio AS inicio,
-  t.Fin AS fin,
-  t.FechaCreacion AS fechaCreacion,
-  t.FechaActualizacion AS fechaActualizacion,
-  t.Estatus AS estatus,
+          turnos = await this.consultarTurnoListado(cliente)
+          break;
 
-  -- Instalación
-  i.Id AS idInstalacion,
-  i.FechaCreacion AS fechaCreacionInstalacion,
-  i.FechaActualizacion AS fechaActualizacionInstalacion,
-  i.Estatus AS estatusInstalacion,
+        case 8:
+          turnos = await this.consultarTurnoListado(cliente)
+          break;
 
-  -- Dispositivo
-  d.Id AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
-
-  -- BlueVox
-  b.Id AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
-
-  -- Vehículo
-  v.Id AS idVehiculo,
-  v.Marca AS marcaVehiculo,
-  v.Modelo AS modeloVehiculo,
-  v.Placa AS placaVehiculo,
-  v.NumeroEconomico AS numeroEconomicoVehiculo,
-
-  -- Cliente
-  c.Id AS idCliente,
-  c.Nombre AS nombreCliente,
-  c.ApellidoPaterno AS apellidoPaternoCliente,
-  c.ApellidoMaterno AS apellidoMaternoCliente,
-  c.Estatus AS estatusCliente,
-
-  -- Operador
-  o.Id AS idOperador,
-  o.NumeroLicencia AS numeroLicencia,
-  o.FechaNacimiento AS fechaNacimientoOperador,
-  u.Nombre AS nombreOperador,
-  u.ApellidoPaterno AS apellidoPaternoOperador,
-  u.ApellidoMaterno AS apellidoMaternoOperador
-
-FROM Turnos t
-INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id
-INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id
-INNER JOIN Clientes c ON t.IdCliente = c.Id
-INNER JOIN Operadores o ON t.IdOperador = o.Id
-INNER JOIN Usuarios u ON o.IdUsuario = u.Id
-
-WHERE t.IdCliente = ?
-  AND t.Estatus = 1
-
-ORDER BY t.Id DESC;
-            `,
-            [cliente],
-          );
+        case 10:
+          turnos = await this.consultarTurnoListado(cliente)
           break;
 
         default:
@@ -616,7 +652,6 @@ ORDER BY t.Id DESC;
           );
           break;
       }
-
 
       // 🔥 Transformación con map
       const data = turnos.map((item) => ({

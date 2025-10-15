@@ -109,7 +109,7 @@ export class DispositivosService {
   async findAllListDispositivosClientes(id: number, cliente: number) {
     try {
       const dispositivo = await this.dispositivoRepository.find({
-        where: { idCliente: id, estatus: cliente },
+        where: { idCliente: cliente, estatus: 1 },
       });
       if (dispositivo.length === 0) {
         throw new NotFoundException(`Dispositivo no encontrado.`);
@@ -165,6 +165,7 @@ FROM Dispositivos d
 INNER JOIN Clientes c ON d.IdCliente = c.Id
 
 WHERE d.Estatus = 1
+AND c.Estatus = 1
 
 ORDER BY d.Id DESC;
         `);
@@ -196,6 +197,7 @@ INNER JOIN Clientes c ON d.IdCliente = c.Id
 
 WHERE d.IdCliente = ?
   AND d.Estatus = 1
+  AND c.Estatus = 1
 
 ORDER BY d.Id DESC;
         `,
@@ -259,6 +261,7 @@ ORDER BY d.Id DESC;
 
 FROM Dispositivos d
 INNER JOIN Clientes c ON d.IdCliente = c.Id
+WHERE c.Estatus = 1
 
 ORDER BY d.Id DESC
 LIMIT ? OFFSET ?;
@@ -269,8 +272,10 @@ LIMIT ? OFFSET ?;
           // Query para total (sin paginación)
           totalResult = await this.dispositivoRepository.query(
             `
-  SELECT COUNT(*) AS total
-  FROM Dispositivos d
+              SELECT COUNT(*) AS total
+FROM Dispositivos d
+INNER JOIN Clientes c ON d.IdCliente = c.Id
+WHERE c.Estatus = 1
   `,
           );
           break;
@@ -300,6 +305,7 @@ FROM Dispositivos d
 INNER JOIN Clientes c ON d.IdCliente = c.Id
 
 WHERE d.IdCliente = ?
+  AND c.Estatus = 1
 
 ORDER BY d.Id DESC
 LIMIT ? OFFSET ?;
@@ -311,8 +317,11 @@ LIMIT ? OFFSET ?;
           totalResult = await this.dispositivoRepository.query(
             `
   SELECT COUNT(*) AS total
-  FROM Dispositivos d
-  WHERE d.IdCliente= ?
+FROM Dispositivos d
+INNER JOIN Clientes c ON d.IdCliente = c.Id
+
+WHERE d.IdCliente = ?
+  AND c.Estatus = 1
   `,
             [cliente],
           );
@@ -337,6 +346,7 @@ LIMIT ? OFFSET ?;
       };
       return result;
     } catch (error) {
+      console.log(error)
       if (error instanceof HttpException) {
         throw error;
       }
@@ -376,6 +386,7 @@ FROM Dispositivos d
 INNER JOIN Clientes c ON d.IdCliente = c.Id
 
 WHERE d.Id = ?
+AND c.Estatus = 1
 
 ORDER BY d.Id DESC;
         `,
@@ -409,6 +420,7 @@ INNER JOIN Clientes c ON d.IdCliente = c.Id
 
 WHERE d.Id = ?
      AND d.IdCliente = ?
+     AND c.Estatus = 1
 
 ORDER BY d.Id DESC;
         `,

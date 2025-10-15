@@ -43,7 +43,7 @@ export class ConteopasajerosService {
 
       const result: ApiCrudResponse = {
         status: 'success',
-        message: 'ConteoPasajero creado correctamente',
+        message: 'El registro de ConteoPasajero se realizó con éxito.',
         data: {
           id: Number(conteoPasajeroSave.id),
           nombre: `${conteoPasajeroSave.id} ${conteoPasajeroSave.numeroSerieBlueVox}` || '',
