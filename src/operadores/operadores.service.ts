@@ -32,7 +32,7 @@ export class OperadoresService {
       });
       if (operadorExistente) {
         throw new BadRequestException(
-          `Operador con licencia: ${createOperadoreDto.numeroLicencia} esta registrado`,
+          `El operador con licencia número: ${createOperadoreDto.numeroLicencia} ya se encuentra registrado.`,
         );
       }
 
@@ -49,7 +49,7 @@ export class OperadoresService {
       const querylogger = { createOperadoreDto };
       await this.bitacoraLogger.logToBitacora(
         'Operadores',
-        `El operador fue creado correctamente con el número de licencia: ${createOperadoreDto.numeroLicencia}.`,
+        `El operador ha sido creado correctamente con el número de licencia: ${createOperadoreDto.numeroLicencia}.`,
         'CREATE',
         querylogger,
         Number(idUser),
@@ -74,7 +74,7 @@ export class OperadoresService {
       const querylogger = { createOperadoreDto };
       await this.bitacoraLogger.logToBitacora(
         'Operadores',
-        `El operador fue creado correctamente con el número de licencia: ${createOperadoreDto.numeroLicencia}.`,
+        `El operador ha sido creado correctamente con el número de licencia: ${createOperadoreDto.numeroLicencia}.`,
         'CREATE',
         querylogger,
         Number(idUser),
@@ -86,7 +86,7 @@ export class OperadoresService {
         throw error;
       }
       throw new InternalServerErrorException({
-        message: `Ocurrió un error al crear el operador.`,
+        message: `Ha ocurrido un error durante el proceso de creación del operador.`,
         error: error.message,
       });
     }
@@ -149,7 +149,8 @@ LIMIT ? OFFSET ?;
           totalResult = await this.operadoresRepository.query(
             `
   SELECT COUNT(*) AS total
-  FROM Operadores o
+FROM Operadores o
+INNER JOIN Usuarios u ON o.IdUsuario = u.Id
   `,
           );
           break;
@@ -659,7 +660,7 @@ ORDER BY o.Id DESC;
         throw error;
       }
       throw new InternalServerErrorException({
-        message: 'Error al eliminar al operador',
+        message: 'Ha ocurrido un error durante el proceso de eliminación del operador.',
         error: error.message,
       });
     }

@@ -34,9 +34,9 @@ export class UsuariosController {
   // 🔹 POST ROUTES (crear recursos)
   // ========================================
   @Post()
-  @ApiOperation({ summary: 'Crear nuevo usuario' })
-  @ApiResponse({ status: 201, description: 'Usuario creado exitosamente' })
-  @ApiResponse({ status: 400, description: 'Datos inválidos' })
+  @ApiOperation({ summary: 'Registrar un nuevo usuario' })
+  @ApiResponse({ status: 201, description: 'El usuario ha sido creado exitosamente.' })
+  @ApiResponse({ status: 400, description: 'Los datos ingresados no son válidos' })
   async createUsuario(
     @Body() createUsuarioDto: CreateUsuarioDto,
     @Request() req,

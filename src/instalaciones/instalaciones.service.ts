@@ -607,6 +607,7 @@ INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
 WHERE i.Estatus = 1
+AND c.Estatus = 1
 
 ORDER BY i.Id DESC;
 
@@ -812,6 +813,7 @@ INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
 WHERE i.Id = ?
+AND c.Estatus = 1
 
 ORDER BY i.Id DESC;
 

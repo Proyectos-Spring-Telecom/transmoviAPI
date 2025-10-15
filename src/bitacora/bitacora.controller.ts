@@ -9,10 +9,6 @@ import { ApiResponseCommon } from 'src/common/ApiResponse';
 export class BitacoraController {
   constructor(private readonly bitacoraService: BitacoraLoggerService) {}
 
-  @Post()
-  create(@Body() createBitacoraDto: CreateBitacoraDto) {
-    return this.bitacoraService.createBitacora(createBitacoraDto);
-  }
 
   @Get('list') //Obseleto
   async findAllListBitacora(): Promise<ApiResponseCommon> {
