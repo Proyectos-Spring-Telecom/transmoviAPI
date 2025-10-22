@@ -8,7 +8,7 @@ import {
   IsIn,
   IsEnum,
 } from 'class-validator';
-import { EstadoComponente } from 'src/common/estado-componente.enum';
+import { EstadoComponente } from 'src/common/estatus.enum'; 
 
 export class CreateDispositivoDto {
   @IsString()

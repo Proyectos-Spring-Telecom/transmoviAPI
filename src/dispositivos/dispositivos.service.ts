@@ -20,6 +20,8 @@ import {
 import { ClientesService } from 'src/clientes/clientes.service';
 import { Instalaciones } from 'src/entities/Instalaciones';
 import { Clientes } from 'src/entities/Clientes';
+import { EstadoComponente } from 'src/common/estatus.enum';
+import { UpdateDispositivoEstadoDto } from './dto/update-dispositivo-estado.dto';
 @Injectable()
 export class DispositivosService {
   constructor(
@@ -108,7 +110,7 @@ export class DispositivosService {
     }
   }
 
-  //Obtener todos los dispositivos por cliente
+  //Obtener todos los dispositivos por cliente -- no sirve
   async findAllListDispositivosClientes(id: number, cliente: number) {
     try {
       const dispositivo = await this.dispositivoRepository.find({
@@ -175,6 +177,7 @@ export class DispositivosService {
   d.Modelo AS modelo,
   d.FechaCreacion AS fechaCreacion,
   d.FechaActualizacion AS fechaActualizacion,
+  d.EstadoActual as estadoActual,
   d.Estatus AS estatus,
 
   -- Cliente
@@ -208,6 +211,7 @@ ORDER BY d.Id DESC;
   d.Modelo AS modelo,
   d.FechaCreacion AS fechaCreacion,
   d.FechaActualizacion AS fechaActualizacion,
+  d.EstadoActual as estadoActual,
   d.Estatus AS estatus,
 
   -- Cliente
@@ -277,6 +281,7 @@ ORDER BY d.Id DESC;
   d.Modelo AS modelo,
   d.FechaCreacion AS fechaCreacion,
   d.FechaActualizacion AS fechaActualizacion,
+  d.EstadoActual as estadoActual,
   d.Estatus AS estatus,
 
   -- Cliente
@@ -318,6 +323,7 @@ INNER JOIN Clientes c ON d.IdCliente = c.Id
   d.Modelo AS modelo,
   d.FechaCreacion AS fechaCreacion,
   d.FechaActualizacion AS fechaActualizacion,
+  d.EstadoActual as estadoActual,
   d.Estatus AS estatus,
 
   -- Cliente
@@ -397,6 +403,7 @@ WHERE d.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente
   d.Modelo AS modelo,
   d.FechaCreacion AS fechaCreacion,
   d.FechaActualizacion AS fechaActualizacion,
+  d.EstadoActual as estadoActual,
   d.Estatus AS estatus,
 
   -- Cliente
@@ -430,6 +437,7 @@ ORDER BY d.Id DESC;
   d.Modelo AS modelo,
   d.FechaCreacion AS fechaCreacion,
   d.FechaActualizacion AS fechaActualizacion,
+  d.EstadoActual as estadoActual,
   d.Estatus AS estatus,
 
   -- Cliente
@@ -554,6 +562,81 @@ ORDER BY d.Id DESC;
       }
       throw new InternalServerErrorException({
         message: 'Error al actualizar el estatus del dispositivo.',
+        error: error.message,
+      });
+    }
+  }
+
+  //Actualizar el estado del dispositivo
+  async updateDispositivoEstado(
+    id: number,
+    idUser: number,
+    updateDispositivoEstadoDto: UpdateDispositivoEstadoDto,
+  ) {
+    try {
+      const dispositivo = await this.dispositivoRepository.findOne({
+        where: { id: id },
+      });
+      if (!dispositivo) {
+        throw new NotFoundException(
+          `No se encontró un dispositivo con ID ${id}.`,
+        );
+      }
+
+      if (dispositivo.estadoActual === EstadoComponente.ASIGNADO) {
+        throw new BadRequestException(
+          'No es posible completar la operación: Dispositivo se encuentra asignado a una instalación.',
+        );
+      }
+      const { estadoActual } = updateDispositivoEstadoDto;
+
+      await this.dispositivoRepository.update(id, {
+        estadoActual: estadoActual,
+      });
+
+      //-----Registro en la bitacora----- SUCCESS
+      const querylogger = { updateDispositivoEstadoDto };
+      await this.bitacoraLogger.logToBitacora(
+        'Dispositivos',
+        `Se cambió el estadoActual del dispositivo con ID: ${id} a estadoActual: ${estadoActual}.`,
+        'UPDATE',
+        querylogger,
+        idUser,
+        11,
+        EstatusEnumBitcora.SUCCESS,
+      );
+
+      //Api response
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'El estado del dispositivo se ha actualizado correctamente.',
+        estatus: { estatus: Number(estadoActual) },
+        data: {
+          id: id,
+          nombre: `${dispositivo.modelo} ${dispositivo.numeroSerie} ` || '',
+        },
+      };
+
+      return result;
+    } catch (error) {
+      //-----Registro en la bitacora----- ERROR
+      const querylogger = { updateDispositivoEstadoDto };
+      await this.bitacoraLogger.logToBitacora(
+        'Dispositivos',
+        `Se cambió el estado del dispositivo con ID: ${id} a estado: ${updateDispositivoEstadoDto.estadoActual}.`,
+        'UPDATE',
+        querylogger,
+        idUser,
+        11,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Error al actualizar el estado del dispositivo.',
         error: error.message,
       });
     }

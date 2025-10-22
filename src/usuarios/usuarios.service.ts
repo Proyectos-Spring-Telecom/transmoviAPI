@@ -631,15 +631,16 @@ ORDER BY u.Id DESC
       };
 
       //datos del correo
-      const token = this.jwtService.sign(payload, {
+/*       const token = this.jwtService.sign(payload, {
         expiresIn: `${process.env.JWT_CONFIRMACION}`,
       });
-      const name = `${userSave.nombre} ${userSave.apellidoPaterno} ${userSave.apellidoMaterno}`;
+      //Enviar correo de confirmacion
+      const name = `${userSave.nombre} ${userSave.apellidoPaterno} ${userSave.apellidoMaterno??''}`;
       await this.emailService.sendConfirmationEmail(
         userSave.userName,
         name,
         token,
-      );
+      ); */
 
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { createUsuarioDto };

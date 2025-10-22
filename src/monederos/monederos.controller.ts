@@ -36,17 +36,19 @@ export class MonederosController {
     @Request() req
   ): Promise<ApiResponseCommon> {
     const idUser = req.user.userId;
+    const email = req.user.email;
     const cliente = req.user.cliente;
     const rol = req.user.rol;
-    return this.monederosService.findAllPagMonederos(+idUser, +cliente, +rol, page, limit);
+    return this.monederosService.findAllPagMonederos(+idUser, email, +cliente, +rol, page, limit);
   }
 
   @Get('list')
   findAllListMonederos(@Request() req): Promise<ApiResponseCommon> {
     const idUser = req.user.userId;
+    const email = req.user.email;
     const cliente = req.user.cliente;
     const rol = req.user.rol;
-    return this.monederosService.findAllListMonederos(+ idUser, +cliente, +rol);
+    return this.monederosService.findAllListMonederos(+ idUser, email, +cliente, +rol);
   }
 
   @Get(':id')

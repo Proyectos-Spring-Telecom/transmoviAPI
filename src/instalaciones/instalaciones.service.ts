@@ -24,6 +24,7 @@ import { Vehiculos } from 'src/entities/Vehiculos';
 import { Clientes } from 'src/entities/Clientes';
 import { HistoricoInstalaciones } from 'src/entities/historico-instalaciones';
 import { HistoricoinstalacionesService } from 'src/historicoinstalaciones/historicoinstalaciones.service';
+import { EstadoComponente } from 'src/common/estatus.enum';
 
 @Injectable()
 export class InstalacionesService {
@@ -142,7 +143,7 @@ export class InstalacionesService {
           await this.usuariosinstalacionesRepository.save(permiso);
           break;
       }
-      const body = { estatus: 0 };
+      const body = { estadoActual: EstadoComponente.ASIGNADO };
 
       //actualizamos estatus de los componentes de la instalacion
       await this.dispositivosRepository.update(
@@ -1069,7 +1070,7 @@ ORDER BY i.Id DESC;
         }
 
         // Cambiar estatus de componentes a 2 (Asignado)
-        const body = { estadoActual: 2 };
+        const body = { estadoActual: EstadoComponente.ASIGNADO };
         await this.dispositivosRepository.update(
           instalacion.idDispositivo,
           body,
@@ -1078,7 +1079,7 @@ ORDER BY i.Id DESC;
         await this.vehiculosRepository.update(instalacion.idVehiculo, body);
       } else if (estatus === 0) {
         // Desactivar instalación → activar componentes a 1(Disponible)
-        const body = { estadoActual: 1 };
+        const body = { estadoActual: EstadoComponente.DISPONIBLE };
         await this.dispositivosRepository.update(
           instalacion.idDispositivo,
           body,
@@ -1268,7 +1269,7 @@ ORDER BY i.Id DESC;
       await this.instalacionesRepository.update(id, { estatus: 0 });
 
       // Desactivar instalación → activar componentes
-      const body = { estadoActual: 1 };
+      const body = { estadoActual: EstadoComponente.DISPONIBLE };
       await this.dispositivosRepository.update(instalacion.idDispositivo, body);
       await this.bluevoxsRepository.update(instalacion.idBlueVox, body);
       await this.vehiculosRepository.update(instalacion.idVehiculo, body);

@@ -19,6 +19,8 @@ import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import { UpdateBlueVoxEstatusDto } from './dto/update-bluevox-estatus.dto';
 import { Instalaciones } from 'src/entities/Instalaciones';
 import { Clientes } from 'src/entities/Clientes';
+import { UpdateBluevoxEstadoDto } from './dto/update-bluevox.estado.dto';
+import { EstadoComponente } from 'src/common/estatus.enum';
 
 @Injectable()
 export class BluevoxService {
@@ -173,6 +175,7 @@ SELECT
   b.Modelo AS modelo,
   b.FechaCreacion AS fechaCreacion,
   b.FechaActualizacion AS fechaActualizacion,
+  b.EstadoActual as estadoActual,
   b.Estatus AS estatus,
 
   -- Datos del Cliente
@@ -213,6 +216,7 @@ SELECT
   b.Modelo AS modelo,
   b.FechaCreacion AS fechaCreacion,
   b.FechaActualizacion AS fechaActualizacion,
+  b.EstadoActual as estadoActual,
   b.Estatus AS estatus,
 
   -- Datos del Cliente
@@ -290,6 +294,7 @@ SELECT
   b.Modelo AS modelo,
   b.FechaCreacion AS fechaCreacion,
   b.FechaActualizacion AS fechaActualizacion,
+  b.EstadoActual as estadoActual,
   b.Estatus AS estatus,
 
   -- Datos del Cliente
@@ -322,6 +327,7 @@ SELECT
   b.Modelo AS modelo,
   b.FechaCreacion AS fechaCreacion,
   b.FechaActualizacion AS fechaActualizacion,
+  b.EstadoActual as estadoActual,
   b.Estatus AS estatus,
 
   -- Datos del Cliente
@@ -380,6 +386,7 @@ SELECT
   b.Modelo AS modelo,
   b.FechaCreacion AS fechaCreacion,
   b.FechaActualizacion AS fechaActualizacion,
+  b.EstadoActual as estadoActual,
   b.Estatus AS estatus,
 
   -- Datos del Cliente
@@ -410,6 +417,7 @@ SELECT
   b.Modelo AS modelo,
   b.FechaCreacion AS fechaCreacion,
   b.FechaActualizacion AS fechaActualizacion,
+  b.EstadoActual as estadoActual,
   b.Estatus AS estatus,
 
   -- Datos del Cliente
@@ -576,6 +584,75 @@ ORDER BY b.Id DESC;
       }
       throw new InternalServerErrorException({
         message: 'Error al actualizar estatus del bluevoxs.',
+        error: error.message,
+      });
+    }
+  }
+
+  //actualizar estatus
+  async updateEstado(
+    id: number,
+    idUser: number,
+    updateBluevoxEstadoDto: UpdateBluevoxEstadoDto,
+
+  ) {
+    try {
+      const bluevoxs = await this.bluevoxsRepository.findOne({
+        where: { id: id },
+      });
+      if (!bluevoxs)
+        throw new NotFoundException(`No se encontró un BlueVox con ID: ${id}.`);
+
+      if (bluevoxs.estadoActual === EstadoComponente.ASIGNADO ) {
+        throw new BadRequestException(
+          'No es posible completar la operación: BlueVoxs se encuentra asignado a una instalación.',
+        );
+      }
+      const estadoActual = updateBluevoxEstadoDto.estadoActual;
+      await this.bluevoxsRepository.update(id, { estadoActual: estadoActual });
+      
+
+      //-----Registro en la bitacora----- SUCCESS
+      const querylogger = { updateBluevoxEstadoDto };
+      await this.bitacoraLogger.logToBitacora(
+        'BlueVoxs',
+        `Se actualizo el estado del bluevoxs con ID: ${id}`,
+        'UPDATE',
+        querylogger,
+        idUser,
+        12,
+        EstatusEnumBitcora.SUCCESS,
+      );
+
+      // ----- Api response -----
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'Estado de bluevoxs actualizado correctamente',
+        estatus: { estatus: Number(estadoActual) },
+        data: {
+          id: id,
+          nombre: `${bluevoxs.modelo} ${bluevoxs.numeroSerie} ` || '',
+        },
+      };
+      return result;
+    } catch (error) {
+      //-----Registro en la bitacora----- SUCCESS
+      const querylogger = { updateBluevoxEstadoDto };
+      await this.bitacoraLogger.logToBitacora(
+        'BlueVoxs',
+        `Se actualizo el estado del bluevoxs con ID: ${id}`,
+        'UPDATE',
+        querylogger,
+        idUser,
+        12,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Error al actualizar estado del bluevoxs.',
         error: error.message,
       });
     }
