@@ -151,7 +151,7 @@ SELECT
   ComprobanteDomicilio AS comprobanteDomicilio,
   ActaConstitutiva AS actaConstitutiva,
   Logotipo AS logotipo,
-  Estatus AS estatusCliente
+  Estatus AS estatus
   
 FROM Clientes
 ORDER BY Id ASC
@@ -199,7 +199,7 @@ SELECT
   ComprobanteDomicilio AS comprobanteDomicilio,
   ActaConstitutiva AS actaConstitutiva,
   Logotipo AS logotipo,
-  Estatus AS estatusCliente
+  Estatus AS estatus
   
 FROM Clientes
 WHERE Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
@@ -413,13 +413,14 @@ ORDER BY Id ASC;
     updateClienteEstatusDto: UpdateClienteEstatusDto,
   ): Promise<ApiCrudResponse> {
     try {
-      const { ids, placeholders } = await this.clienteHijos(cliente);
+      
       const usuario = await this.clienteRepository.findOne({
         where: { id: id },
       });
       if (!usuario) {
         throw new NotFoundException(`Cliente con ID: ${id} no encontrado`);
       }
+      const { ids, placeholders } = await this.clienteHijos(id);
       const estatus = updateClienteEstatusDto.estatus;
       await this.clienteRepository.query(
         `
@@ -482,7 +483,7 @@ ORDER BY Id ASC;
     cliente: number,
   ): Promise<ApiCrudResponse> {
     try {
-      const { ids, placeholders } = await this.clienteHijos(cliente);
+      
       const clienteEliminar = await this.clienteRepository.findOne({
         where: { id: id },
       });
@@ -490,7 +491,8 @@ ORDER BY Id ASC;
         throw new NotFoundException(
           `El cliente con ID: ${id} no fue encontrado.`,
         );
-      }
+      };
+      const { ids, placeholders } = await this.clienteHijos(id);
       await this.clienteRepository.query(
         `
         UPDATE Clientes
