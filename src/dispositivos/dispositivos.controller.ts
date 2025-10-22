@@ -17,6 +17,7 @@ import { UpdateDispositivoDto } from './dto/update-dispositivo.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { UpdateDispositivoEstatusDto } from './dto/update-dispositivos-estatus.dto';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
+import { UpdateDispositivoEstadoDto } from './dto/update-dispositivo-estado.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('dispositivos')
@@ -72,6 +73,20 @@ export class DispositivosController {
     const cliente = req.user.cliente;
     const rol = req.user.rol;
     return this.dispositivosService.findOneDispositivo(+id, +cliente, +rol);
+  }
+
+    @Patch('actualizar/estado/:id')
+  updateDispositivoEstado(
+    @Param('id') id: string,
+    @Request() req,
+    @Body() updateDispositivoEstadoDto: UpdateDispositivoEstadoDto,
+  ) {
+    const idUser = req.user.userId;
+    return this.dispositivosService.updateDispositivoEstado(
+      +id,
+      +idUser,
+      updateDispositivoEstadoDto,
+    );
   }
 
   @Patch('estatus/:id')

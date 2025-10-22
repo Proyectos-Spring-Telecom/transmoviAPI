@@ -9,10 +9,15 @@ import { CreateTransaccioneDto } from './dto/create-transaccione.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Transacciones } from 'src/entities/Transacciones';
-import { ApiCrudResponse, ApiResponseCommon, EstatusEnumBitcora } from 'src/common/ApiResponse';
+import {
+  ApiCrudResponse,
+  ApiResponseCommon,
+  EstatusEnumBitcora,
+} from 'src/common/ApiResponse';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import { Dispositivos } from 'src/entities/Dispositivos';
 import { MonederosService } from 'src/monederos/monederos.service';
+import { PasajerosService } from 'src/pasajeros/pasajeros.service';
 
 @Injectable()
 export class TransaccionesService {
@@ -23,6 +28,7 @@ export class TransaccionesService {
     private readonly dispositivoRepository: Repository<Dispositivos>,
     private readonly bitacoraLogger: BitacoraLoggerService,
     private readonly monederosService: MonederosService,
+    private readonly pasajeroService: PasajerosService,
   ) {}
   async createTransaccion(
     createTransaccioneDto: CreateTransaccioneDto,
@@ -40,11 +46,22 @@ export class TransaccionesService {
 
       //Checamos el tipo transaccion
       if (transaccion === 'RECARGA') {
-        montoFinal =  Number(monedero.data.saldo) + Number(createTransaccioneDto.monto);
+        montoFinal =
+          Number(monedero.data.saldo) + Number(createTransaccioneDto.monto);
       } else if (transaccion === 'DEBITO') {
-        montoFinal = Number(monedero.data.saldo) - Number(createTransaccioneDto.monto)
+        montoFinal =
+          Number(monedero.data.saldo) - Number(createTransaccioneDto.monto);
       }
-      console.log('Saldo Inicial: ',monedero.data.saldo,' Tipo Transaccion: ',transaccion,' Monto: ',createTransaccioneDto.monto,' Monto Final: ',montoFinal)
+      console.log(
+        'Saldo Inicial: ',
+        monedero.data.saldo,
+        ' Tipo Transaccion: ',
+        transaccion,
+        ' Monto: ',
+        createTransaccioneDto.monto,
+        ' Monto Final: ',
+        montoFinal,
+      );
       //Pasamos un filtro que no haya valores negativos
       if (montoFinal < 0) {
         throw new BadRequestException('Saldo insuficiente');
@@ -61,7 +78,8 @@ export class TransaccionesService {
       const newTransaccion = await this.transaccionesRepository.create(
         createTransaccioneDto,
       );
-      const transaccionSave = await this.transaccionesRepository.save(newTransaccion);
+      const transaccionSave =
+        await this.transaccionesRepository.save(newTransaccion);
 
       // --- Registro en la bitácora --- SUCCESS
       const querylogger = { createTransaccioneDto };
@@ -99,7 +117,7 @@ export class TransaccionesService {
         EstatusEnumBitcora.ERROR,
         error.message,
       );
-      
+
       if (error instanceof HttpException) {
         throw error;
       }
@@ -110,14 +128,21 @@ export class TransaccionesService {
   }
 
   async findAllTransacciones(
+    idUser: number,
+    email: string,
+    cliente: number,
+    rol: number,
     page: number,
-    limit: number
+    limit: number,
   ): Promise<ApiResponseCommon> {
     try {
       let totalResult;
+      let transacciones;
       const offset = (page - 1) * limit;
-      const transacciones = await this.transaccionesRepository.query(
-        `
+      switch (rol) {
+        case 1:
+          transacciones = await this.transaccionesRepository.query(
+            `
 SELECT 
     -- Transacción
     t.Id AS id,
@@ -154,12 +179,12 @@ LEFT JOIN Pasajeros p
     ORDER BY t.Id DESC
   LIMIT ? OFFSET ?;
         `,
-        [limit, offset]
-      );
+            [limit, offset],
+          );
 
-      // Query para total (sin paginación)
-      totalResult = await this.transaccionesRepository.query(
-        `
+          // Query para total (sin paginación)
+          totalResult = await this.transaccionesRepository.query(
+            `
    SELECT COUNT(*) AS total
 FROM Transacciones t
 LEFT JOIN Dispositivos d 
@@ -169,8 +194,133 @@ INNER JOIN Monederos m
 LEFT JOIN Pasajeros p 
     ON m.IdPasajero = p.Id
 		
-  `
-      );
+  `,
+          );
+          break;
+
+        case 9:
+          const pasajero =
+            await this.pasajeroService.findOnePasajeroCorreo(email);
+          console.log(idUser, email, cliente, rol, pasajero);
+          transacciones = await this.transaccionesRepository.query(
+            `
+SELECT 
+    -- Transacción
+    t.Id AS id,
+    t.TipoTransaccion AS tipoTransaccion,
+    t.Monto AS monto,
+    t.Latitud AS latitud,
+    t.Longitud AS longitud,
+    t.FechaHora AS fechaHora,
+    t.FHRegistro AS fhRegistro,
+    t.NumeroSerieMonedero AS numeroSerieMonedero,
+    t.NumeroSerieDispositivo AS numeroSerieDispositivo,
+
+    -- Dispositivo (puede ser NULL)
+    d.Marca AS marcaDispositivo,
+    d.Modelo AS modeloDispositivo,
+    
+
+    -- Pasajero (a través del monedero)
+    p.Id AS idPasajero,
+    p.Nombre AS nombrePasajero,
+    p.ApellidoPaterno AS apellidoPaternoPasajero,
+    p.ApellidoMaterno AS apellidoMaternoPasajero
+
+
+
+FROM Transacciones t
+LEFT JOIN Dispositivos d 
+    ON t.NumeroSerieDispositivo = d.NumeroSerie
+INNER JOIN Monederos m 
+    ON t.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Pasajeros p 
+    ON m.IdPasajero = p.Id
+    
+    WHERE p.Id = ?
+    ORDER BY t.Id DESC
+ 
+  LIMIT ? OFFSET ?;
+        `,
+            [Number(pasajero.id), limit, offset],
+          );
+
+          // Query para total (sin paginación)
+          totalResult = await this.transaccionesRepository.query(
+            `
+  SELECT COUNT(*) AS total
+  FROM Transacciones t
+  LEFT JOIN Dispositivos d 
+      ON t.NumeroSerieDispositivo = d.NumeroSerie
+  INNER JOIN Monederos m 
+      ON t.NumeroSerieMonedero = m.NumeroSerie
+  LEFT JOIN Pasajeros p 
+      ON m.IdPasajero = p.Id
+  WHERE p.Id = ?
+  `,
+            [Number(pasajero.id)], // <-- Aquí debe ir como segundo argumento de query()
+          );
+
+          break;
+
+        default:
+          transacciones = await this.transaccionesRepository.query(
+            `
+SELECT 
+    -- Transacción
+    t.Id AS id,
+    t.TipoTransaccion AS tipoTransaccion,
+    t.Monto AS monto,
+    t.Latitud AS latitud,
+    t.Longitud AS longitud,
+    t.FechaHora AS fechaHora,
+    t.FHRegistro AS fhRegistro,
+    t.NumeroSerieMonedero AS numeroSerieMonedero,
+    t.NumeroSerieDispositivo AS numeroSerieDispositivo,
+
+    -- Dispositivo (puede ser NULL)
+    d.Marca AS marcaDispositivo,
+    d.Modelo AS modeloDispositivo,
+    
+
+    -- Pasajero (a través del monedero)
+    p.Id AS idPasajero,
+    p.Nombre AS nombrePasajero,
+    p.ApellidoPaterno AS apellidoPaternoPasajero,
+    p.ApellidoMaterno AS apellidoMaternoPasajero
+
+
+
+FROM Transacciones t
+LEFT JOIN Dispositivos d 
+    ON t.NumeroSerieDispositivo = d.NumeroSerie
+INNER JOIN Monederos m 
+    ON t.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Pasajeros p 
+    ON m.IdPasajero = p.Id
+    
+    ORDER BY t.Id DESC
+  LIMIT ? OFFSET ?;
+        `,
+            [limit, offset],
+          );
+
+          // Query para total (sin paginación)
+          totalResult = await this.transaccionesRepository.query(
+            `
+   SELECT COUNT(*) AS total
+FROM Transacciones t
+LEFT JOIN Dispositivos d 
+    ON t.NumeroSerieDispositivo = d.NumeroSerie
+INNER JOIN Monederos m 
+    ON t.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Pasajeros p 
+    ON m.IdPasajero = p.Id
+		
+  `,
+          );
+          break;
+      }
 
       const total = Number(totalResult[0]?.total || 0);
 
@@ -186,7 +336,7 @@ LEFT JOIN Pasajeros p
 
       //API Response
       const result: ApiResponseCommon = {
-        data:data,
+        data: data,
         paginated: {
           total: total,
           page,
@@ -195,11 +345,12 @@ LEFT JOIN Pasajeros p
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
       throw new BadRequestException({
-        message: "Error al obtener transacciones",
+        message: 'Error al obtener transacciones',
       });
     }
   }
@@ -244,7 +395,7 @@ LEFT JOIN Pasajeros p
     ORDER BY t.Id DESC
         `,
       );
-      
+
       // 🔥 Transformación de datos (ids → number, nombreCompleto)
       const data = transacciones.map((item) => ({
         ...item,

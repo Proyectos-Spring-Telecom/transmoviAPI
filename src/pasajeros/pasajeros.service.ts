@@ -12,7 +12,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Pasajeros } from 'src/entities/Pasajeros';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
-import { ApiCrudResponse, ApiResponseCommon, EstatusEnumBitcora } from 'src/common/ApiResponse';
+import {
+  ApiCrudResponse,
+  ApiResponseCommon,
+  EstatusEnumBitcora,
+} from 'src/common/ApiResponse';
 @Injectable()
 export class PasajerosService {
   constructor(
@@ -64,7 +68,6 @@ export class PasajerosService {
       };
       return result;
     } catch (error) {
-
       //-----Registro en la bitacora----- ERROR
       const querylogger = { createPasajeroDto };
       await this.bitacoraLogger.logToBitacora(
@@ -81,7 +84,9 @@ export class PasajerosService {
       if (error instanceof HttpException) {
         throw error;
       }
-      throw new InternalServerErrorException('Ha ocurrido un error durante el proceso de creación del pasajero.');
+      throw new InternalServerErrorException(
+        'Ha ocurrido un error durante el proceso de creación del pasajero.',
+      );
     }
   }
   //Obtener todos los pasajeros
@@ -108,7 +113,9 @@ export class PasajerosService {
       if (error instanceof HttpException) {
         throw error;
       }
-      throw new InternalServerErrorException('Se produjo un error al intentar obtener el paginado de pasajeros.');
+      throw new InternalServerErrorException(
+        'Se produjo un error al intentar obtener el paginado de pasajeros.',
+      );
     }
   }
   //Obtener todos los pasajeros
@@ -125,7 +132,9 @@ export class PasajerosService {
       if (error instanceof HttpException) {
         throw error;
       }
-      throw new InternalServerErrorException('Se produjo un error al intentar obtener el listado de pasajeros.');
+      throw new InternalServerErrorException(
+        'Se produjo un error al intentar obtener el listado de pasajeros.',
+      );
     }
   }
   //Obtener pasajero por ID
@@ -144,9 +153,34 @@ export class PasajerosService {
       if (error instanceof HttpException) {
         throw error;
       }
-      throw new InternalServerErrorException('Se produjo un error al intentar obtener los datos del pasajero.');
+      throw new InternalServerErrorException(
+        'Se produjo un error al intentar obtener los datos del pasajero.',
+      );
     }
   }
+
+  //Obtener pasajero por correo
+  async findOnePasajeroCorreo(correo: string) {
+    try {
+      const pasajeroExistente = await this.pasajeroRepository.findOne({
+        where: { correo: correo },
+      });
+      if (!pasajeroExistente) {
+        throw new NotFoundException(
+          `No se encontró un pasajero con ID: ${correo}.`,
+        );
+      }
+      return pasajeroExistente;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Se produjo un error al intentar obtener los datos del pasajero.',
+      );
+    }
+  }
+
   //Cambiar estatus del pasajero
   async updatePasajeroEstatus(
     id: number,
@@ -164,7 +198,6 @@ export class PasajerosService {
       }
       const { estatus } = updatePasajeroEstatusDto;
       await this.pasajeroRepository.update(id, { estatus });
-
 
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { updatePasajeroEstatusDto };
@@ -272,7 +305,9 @@ export class PasajerosService {
       if (error instanceof HttpException) {
         throw error;
       }
-      throw new InternalServerErrorException('Se produjo un error al intentar actualizar los datos del pasajero.');
+      throw new InternalServerErrorException(
+        'Se produjo un error al intentar actualizar los datos del pasajero.',
+      );
     }
   }
   //Eliminar pasajero por ID
@@ -305,8 +340,7 @@ export class PasajerosService {
         message: 'El pasajero ha sido eliminado correctamente.',
         data: {
           id: Number(pasajero.id),
-          nombre:
-            `${pasajero.nombre} ${pasajero.apellidoPaterno} ` || '',
+          nombre: `${pasajero.nombre} ${pasajero.apellidoPaterno} ` || '',
         },
       };
       return result;
@@ -326,7 +360,9 @@ export class PasajerosService {
       if (error instanceof HttpException) {
         throw error;
       }
-      throw new InternalServerErrorException('Ha ocurrido un error durante el proceso de eliminación del pasajero.');
+      throw new InternalServerErrorException(
+        'Ha ocurrido un error durante el proceso de eliminación del pasajero.',
+      );
     }
   }
 }

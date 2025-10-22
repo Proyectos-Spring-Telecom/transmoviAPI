@@ -36,12 +36,22 @@ export class TransaccionesController {
   async findAllTransacciones(
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,
+    @Request() req,
   ): Promise<ApiResponseCommon> {
-    return await this.transaccionesService.findAllTransacciones(page, limit);
+    const idUser = req.user.userId;
+    const email = req.user.email;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+    
+    return await this.transaccionesService.findAllTransacciones(+idUser, email, +cliente, +rol, page, limit);
   }
 
   @Get('list')
-  async findAllListTransacciones(): Promise<ApiResponseCommon> {
+  async findAllListTransacciones(@Request() req,): Promise<ApiResponseCommon> {
+    const idUser = req.user.userId;
+    const email = req.user.email;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
     return await this.transaccionesService.findAllListTransacciones();
   }
 

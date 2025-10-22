@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsIn, IsInt, IsOptional, IsString } from 'class-validator';
+import {
+  IsDateString,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class UpdateMonederoDto {
   @ApiProperty({
@@ -7,7 +13,16 @@ export class UpdateMonederoDto {
     description: 'Número de serie único del monedero',
   })
   @IsString()
-  numeroSerie: string;
+  @IsOptional()
+  numeroSerie?: string;
+
+  @ApiProperty({
+    example: '2025-09-10T10:00:00Z',
+    description: 'Fecha de activación del monedero en formato ISO8601',
+  })
+  @IsDateString()
+  @IsOptional()
+  fechaActivacion?: string;
 
   @IsInt({ message: 'estatus debe ser un número entero' })
   @IsIn([0, 1], { message: 'Solo puede ser 0 ó 1' })

@@ -1,19 +1,26 @@
-import { Controller, Post, Body, HttpCode, Get, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  HttpCode,
+  Get,
+  Query,
+  UseGuards,
+  Patch,
+  Request,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginAuthDto } from './dto/login-auth.dto';
 import { LoginAuthPinDto } from './dto/login-pin.dto';
 import { LoginAuthConfirmacionDto } from './dto/login-confirmacion.dto';
 import { LoginAuthResetDto } from './dto/login-recuperacion.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
+import { CodigoPasajeroAutenticacion } from './dto/login-autenticacion.dto';
+import { CreateAltaPasajaroDto } from './dto/create-pasajero.dto';
 
 @Controller('login')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
-
-  @Get('verify')
-  async verifyUser(@Query('token') token: string) {
-    return await this.authService.verifyUser(token);
-  }
 
   // ========================================
   // 🔹 POST ROUTES - Rutas específicas primero
@@ -33,19 +40,46 @@ export class AuthController {
     );
   }
 
+  @Post('pasajero/registro')
+  async createPasajero(@Body() createAltaPasajaroDto: CreateAltaPasajaroDto) {
+    return this.authService.createPasajero(createAltaPasajaroDto);
+  }
+
+  @Post('operador/login')
+  @HttpCode(200)
+  async loginPin(@Body() loginAuthPinDto: LoginAuthPinDto) {
+    return this.authService.singInPin(loginAuthPinDto);
+  }
+
+  @Post()
+  @HttpCode(200)
+  async login(@Body() loginAuthDto: LoginAuthDto) {
+    return this.authService.signIn(loginAuthDto);
+  }
+
+  // ========================================
+  // 🔹 PATCH ROUTES - Rutas específicas primero
+  // ========================================
+
   @Post('cambiar/accesso')
   @UseGuards(JwtAuthGuard)
   async resetPassword(@Body() loginAuthResetDto: LoginAuthResetDto) {
     return await this.authService.resetPassword(loginAuthResetDto);
   }
 
-  @Post('operador')
-  async loginPin(@Body() loginAuthPinDto: LoginAuthPinDto) {
-    return this.authService.singInPin(loginAuthPinDto);
-  }
-
-  @Post()
-  async login(@Body() loginAuthDto: LoginAuthDto) {
-    return this.authService.signIn(loginAuthDto);
+  @Patch('verify')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(200)
+  async verifyUser(
+    @Body() codigoPasajeroAutenticacion: CodigoPasajeroAutenticacion,
+    @Request() req,
+  ) {
+    const idUser = req.user.userId;
+    const email = req.user.email;
+    return await this.authService.verifyUser(
+      +idUser,
+      email,
+      codigoPasajeroAutenticacion,
+    );
   }
 }

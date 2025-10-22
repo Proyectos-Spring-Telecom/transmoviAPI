@@ -6,14 +6,17 @@ import { Transacciones } from 'src/entities/Transacciones';
 import { MonederosModule } from 'src/monederos/monederos.module';
 import { BitacoraModule } from 'src/bitacora/bitacora.module';
 import { Dispositivos } from 'src/entities/Dispositivos';
+import { PasajerosModule } from 'src/pasajeros/pasajeros.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Transacciones,Dispositivos]),
     MonederosModule,
     BitacoraModule,
+    PasajerosModule,
   ],
   controllers: [TransaccionesController],
   providers: [TransaccionesService],
+  exports:[TransaccionesService]
 })
 export class TransaccionesModule {}

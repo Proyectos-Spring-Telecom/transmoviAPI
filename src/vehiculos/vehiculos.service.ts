@@ -19,6 +19,7 @@ import {
 import { UpdateVehiculoEstatusDto } from './dto/update-vehiculos-estatus.dto';
 import { Instalaciones } from 'src/entities/Instalaciones';
 import { Clientes } from 'src/entities/Clientes';
+import { EstadoComponente } from 'src/common/estatus.enum';
 
 @Injectable()
 export class VehiculosService {
@@ -171,6 +172,7 @@ SELECT
   v.Foto AS foto,
   v.FechaCreacion AS fechaCreacion,
   v.FechaActualizacion AS fechaActualizacion,
+  v.EstadoActual AS estadoActual,
   v.Estatus AS estatus,
 
   -- Datos del Cliente
@@ -218,6 +220,7 @@ SELECT
   v.Foto AS foto,
   v.FechaCreacion AS fechaCreacion,
   v.FechaActualizacion AS fechaActualizacion,
+  v.EstadoActual AS estadoActual,
   v.Estatus AS estatus,
 
   -- Datos del Cliente
@@ -299,6 +302,7 @@ SELECT
   v.Foto AS foto,
   v.FechaCreacion AS fechaCreacion,
   v.FechaActualizacion AS fechaActualizacion,
+  v.EstadoActual AS estadoActual,
   v.Estatus AS estatus,
 
   -- Datos del Cliente
@@ -338,6 +342,7 @@ SELECT
   v.Foto AS foto,
   v.FechaCreacion AS fechaCreacion,
   v.FechaActualizacion AS fechaActualizacion,
+  v.EstadoActual AS estadoActual,
   v.Estatus AS estatus,
 
   -- Datos del Cliente
@@ -409,6 +414,7 @@ SELECT
   v.Foto AS foto,
   v.FechaCreacion AS fechaCreacion,
   v.FechaActualizacion AS fechaActualizacion,
+  v.EstadoActual AS estadoActual,
   v.Estatus AS estatus,
 
   -- Datos del Cliente
@@ -446,6 +452,7 @@ SELECT
   v.Foto AS foto,
   v.FechaCreacion AS fechaCreacion,
   v.FechaActualizacion AS fechaActualizacion,
+  v.EstadoActual AS estadoActual,
   v.Estatus AS estatus,
 
   -- Datos del Cliente
@@ -635,9 +642,8 @@ ORDER BY v.Id DESC;
         throw new BadRequestException(
           'No es posible completar la operación: Vehiculo se encuentra asignado a una instalación.',
         );
-      await this.vehiculoRepository.update(id, { estadoActual: 0 });
 
-      await this.vehiculoRepository.update(id, { estatus: 0 });
+      await this.vehiculoRepository.update(id, { estatus: 0, estadoActual: EstadoComponente.INACTIVO });
 
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { id: id, estatus: 0 };

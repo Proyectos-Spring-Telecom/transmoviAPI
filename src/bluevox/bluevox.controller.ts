@@ -17,6 +17,7 @@ import { UpdateBluevoxDto } from './dto/update-bluevox.dto';
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { UpdateBlueVoxEstatusDto } from './dto/update-bluevox-estatus.dto';
+import { UpdateBluevoxEstadoDto } from './dto/update-bluevox.estado.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('bluevox')
@@ -79,6 +80,20 @@ export class BluevoxController {
   ) {
     const idUser = req.user.userId;
     return this.bluevoxService.update(+id, +idUser, updateVehiculoDto);
+  }
+
+    @Patch('actualizar/estado/:id')
+  updateEstado(
+    @Param('id') id: string,
+    @Body() updateBluevoxEstadoDto: UpdateBluevoxEstadoDto,
+    @Request() req,
+  ) {
+    const idUser = req.user.userId;
+    return this.bluevoxService.updateEstado(
+      +id,
+      +idUser,
+      updateBluevoxEstadoDto,
+    );
   }
 
   @Patch('estatus/:id')
