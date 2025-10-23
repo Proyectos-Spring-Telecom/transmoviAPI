@@ -480,6 +480,7 @@ ORDER BY d.Id DESC;
       });
     }
   }
+  
   //Actualizar el estatus del dispositivo
   async updateDispositivoEstatus(
     id: number,

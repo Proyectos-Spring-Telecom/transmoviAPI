@@ -1,4 +1,16 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Put, UseGuards, Request, ParseIntPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Put,
+  UseGuards,
+  Request,
+  ParseIntPipe,
+} from '@nestjs/common';
 import { PasajerosService } from './pasajeros.service';
 import { CreatePasajeroDto } from './dto/create-pasajero.dto';
 import { UpdatePasajeroDto } from './dto/update-pasajero.dto';
@@ -11,10 +23,34 @@ import { ApiResponseCommon } from 'src/common/ApiResponse';
 export class PasajerosController {
   constructor(private readonly pasajerosService: PasajerosService) {}
 
+  // ========================================
+  // 🔹 POST ROUTES
+  // ========================================
+
   @Post()
-  createPasajero(@Body() createPasajeroDto: CreatePasajeroDto,@Request()req) {
+  createPasajero(@Body() createPasajeroDto: CreatePasajeroDto, @Request() req) {
     const idUser = req.user.userId;
-    return this.pasajerosService.createPasajeros(createPasajeroDto,idUser);
+    return this.pasajerosService.createPasajeros(createPasajeroDto, idUser);
+  }
+
+  // ========================================
+  // 🔹 GET ROUTES - Rutas específicas primero
+  // ========================================
+
+  @Get('list')
+  findAllListPasajero(): Promise<ApiResponseCommon> {
+    return this.pasajerosService.findAllListPasajeros();
+  }
+
+  @Get('main/:idUsuario')
+  findMainPasajero(
+    @Param('idUsuario', ParseIntPipe) id: number,
+    @Request() req,
+  ) {
+    const idUser = req.user.userId;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+    return this.pasajerosService.obtenerMainPasajero(id, idUser, cliente, rol);
   }
 
   @Get(':page/:limit')
@@ -22,34 +58,53 @@ export class PasajerosController {
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,
   ): Promise<ApiResponseCommon> {
-    return this.pasajerosService.findAllPasajeros(page,limit);
-  }
-
-  @Get('list')
-  findAllListPasajero(): Promise<ApiResponseCommon> {
-    return this.pasajerosService.findAllListPasajeros();
+    return this.pasajerosService.findAllPasajeros(page, limit);
   }
 
   @Get(':id')
-  findOnePasajero(@Param('id') id: string) {
-    return this.pasajerosService.findOnePasajero(+id);
+  findOnePasajero(@Param('id', ParseIntPipe) id: number) {
+    return this.pasajerosService.findOnePasajero(id);
   }
 
-  @Patch('/estatus/:id')
-  updatePasajeroEstatus(@Param('id') id: string, @Body() updatePasajeroEstatusDto: UpdatePasajeroEstatusDto,@Request()req) {
-    const idUser = req.user.userId;
-    return this.pasajerosService.updatePasajeroEstatus(+id, updatePasajeroEstatusDto,idUser);
-  }
+  // ========================================
+  // 🔹 PUT ROUTES - Rutas específicas primero
+  // ========================================
 
   @Put(':id')
-  updatePasajero(@Param('id') id: string, @Body() updatePasajeroDto: UpdatePasajeroDto,@Request()req) {
+  updatePasajero(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updatePasajeroDto: UpdatePasajeroDto,
+    @Request() req,
+  ) {
     const idUser = req.user.userId;
-    return this.pasajerosService.updatePasajero(+id,idUser, updatePasajeroDto);
+    return this.pasajerosService.updatePasajero(id, idUser, updatePasajeroDto);
   }
 
-  @Delete(':id')
-  removePasajero(@Param('id') id: string,@Request()req) {
+  // ========================================
+  // 🔹 PATCH ROUTES - Rutas específicas primero
+  // ========================================
+
+  @Patch('estatus/:id')
+  updatePasajeroEstatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updatePasajeroEstatusDto: UpdatePasajeroEstatusDto,
+    @Request() req,
+  ) {
     const idUser = req.user.userId;
-    return this.pasajerosService.removePasajero(+id,idUser);
+    return this.pasajerosService.updatePasajeroEstatus(
+      id,
+      updatePasajeroEstatusDto,
+      idUser,
+    );
+  }
+
+  // ========================================
+  // 🔹 DELETE ROUTES
+  // ========================================
+
+  @Delete(':id')
+  removePasajero(@Param('id', ParseIntPipe) id: number, @Request() req) {
+    const idUser = req.user.userId;
+    return this.pasajerosService.removePasajero(id, idUser);
   }
 }

@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsIn, IsInt, IsOptional, IsNumber } from 'class-validator';
+
+import {  IsOptional, IsNumber } from 'class-validator';
 
 export class UpdateHistoricoDto {
 

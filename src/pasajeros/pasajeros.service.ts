@@ -181,6 +181,95 @@ export class PasajerosService {
     }
   }
 
+  async obtenerMainPasajero(
+    id: number,
+    idUser: number,
+    cliente: number,
+    rol: number,
+  ) {
+    try {
+      const pasajero = await this.pasajeroRepository.query(
+        `
+SELECT 
+    p.Id AS idPasajero,
+    u.Id AS idUsuario,
+    u.UserName AS CorreoUsuario,
+    CONCAT(p.Nombre, ' ', p.ApellidoPaterno, ' ', IFNULL(p.ApellidoMaterno, '')) AS NombreCompleto,
+    GROUP_CONCAT(DISTINCT m.NumeroSerie ORDER BY m.NumeroSerie SEPARATOR ', ') AS Monederos,
+    SUM(m.Saldo) AS SaldoTotal,
+    (
+        SELECT t.Monto
+        FROM Transacciones t
+        INNER JOIN Monederos m2 ON t.NumeroSerieMonedero = m2.NumeroSerie
+        WHERE m2.IdPasajero = p.Id
+          AND t.TipoTransaccion = 'RECARGA'
+        ORDER BY t.FechaHora DESC
+        LIMIT 1
+    ) AS UltimaRecarga,
+    (
+        SELECT t.FechaHora
+        FROM Transacciones t
+        INNER JOIN Monederos m2 ON t.NumeroSerieMonedero = m2.NumeroSerie
+        WHERE m2.IdPasajero = p.Id
+          AND t.TipoTransaccion = 'RECARGA'
+        ORDER BY t.FechaHora DESC
+        LIMIT 1
+    ) AS FechaUltimaRecarga,
+    (
+        SELECT SUM(t2.Monto)
+        FROM Transacciones t2
+        INNER JOIN Monederos m3 ON t2.NumeroSerieMonedero = m3.NumeroSerie
+        WHERE m3.IdPasajero = p.Id
+          AND t2.TipoTransaccion = 'DEBITO'
+          AND t2.FechaHora >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
+    ) AS TotalDebitosUltimoMes,
+    (
+        SELECT t3.Monto
+        FROM Transacciones t3
+        INNER JOIN Monederos m4 ON t3.NumeroSerieMonedero = m4.NumeroSerie
+        WHERE m4.IdPasajero = p.Id
+          AND t3.TipoTransaccion = 'DEBITO'
+        ORDER BY t3.FechaHora DESC
+        LIMIT 1
+    ) AS UltimoDebito,
+    (
+        SELECT t3.FechaHora
+        FROM Transacciones t3
+        INNER JOIN Monederos m4 ON t3.NumeroSerieMonedero = m4.NumeroSerie
+        WHERE m4.IdPasajero = p.Id
+          AND t3.TipoTransaccion = 'DEBITO'
+        ORDER BY t3.FechaHora DESC
+        LIMIT 1
+    ) AS FechaUltimoDebito
+FROM Pasajeros p
+INNER JOIN Usuarios u ON u.UserName = p.Correo
+LEFT JOIN Monederos m ON p.Id = m.IdPasajero
+WHERE u.Id = ?
+AND m.Estatus = 1
+GROUP BY p.Id, u.Id, u.UserName, NombreCompleto;
+        `,
+        [id],
+      );
+
+      const data = pasajero.map((item) => ({
+        ...item,
+        idPasajero: Number(item.idPasajero),
+        idUsuario: Number(item.idUsuario),
+      }));
+
+      return {
+        data: data,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Ha ocurrido un error durante el proceso de obtener main del pasajero.',
+      );
+    }
+  }
+
   //Cambiar estatus del pasajero
   async updatePasajeroEstatus(
     id: number,

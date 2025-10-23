@@ -328,10 +328,13 @@ export class AuthService {
       return {
         message: `login exitoso`,
         id: Number(`${user.id}`),
-        idCliente: Number(`${user.idCliente}`),
         nombre: `${user.nombre}`,
         apellidoPaterno: `${user.apellidoPaterno}`,
         apellidoMaterno: `${user.apellidoMaterno}`,
+        idCliente: Number(`${user.idCliente}`),
+        nombreCliente: `${user.idCliente2?.nombre}`,
+        apellidoPaternoCliente: `${user.idCliente2?.apellidoPaterno}`,
+        apellidoMaternoCliente: `${user.idCliente2?.apellidoMaterno}`,
         telefono: `${user.telefono}`,
         ultimoLogin: `${user.ultimoLogin}`,
         fechaCreacion: `${user.fechaCreacion}`,
@@ -382,7 +385,6 @@ export class AuthService {
       const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())} ${pad(fechaDesfasada.getHours())}:${pad(fechaDesfasada.getMinutes())}:${pad(fechaDesfasada.getSeconds())}`;
 
       if (fechaDesfasada > codigoValido.fechaExpiracion) {
-        console.log(fechaDesfasada, codigoValido.fechaExpiracion)
         throw new BadRequestException('El código ha expirado');
       }
       await this.usuariosRepository.update(user.id, { emailConfirmado: 1 });
@@ -477,9 +479,7 @@ Muchas gracias por su preferencia.`;
     const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas
     const expiracionMs = 15 * 60 * 1000; // +15 minutos
 
-    const expiracion = new Date(
-      ahora.getTime() + expiracionMs + desfaseMs,
-    );
+    const expiracion = new Date(ahora.getTime() + expiracionMs + desfaseMs);
 
     const codigoExiste = await this.codigoAutenticacioRepository.findOne({
       where: {
