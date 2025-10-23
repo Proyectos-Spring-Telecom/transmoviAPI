@@ -371,7 +371,18 @@ export class AuthService {
       if (!codigoValido)
         throw new BadRequestException('Código inválido o ya usado');
 
-      if (new Date() > codigoValido.fechaExpiracion) {
+      function pad(n: number) {
+        return n < 10 ? '0' + n : n;
+      }
+
+      const ahora = new Date();
+      const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas en milisegundos
+      const fechaDesfasada = new Date(ahora.getTime() + desfaseMs);
+
+      const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())} ${pad(fechaDesfasada.getHours())}:${pad(fechaDesfasada.getMinutes())}:${pad(fechaDesfasada.getSeconds())}`;
+
+      if (fechaDesfasada > codigoValido.fechaExpiracion) {
+        console.log(fechaDesfasada, codigoValido.fechaExpiracion)
         throw new BadRequestException('El código ha expirado');
       }
       await this.usuariosRepository.update(user.id, { emailConfirmado: 1 });
