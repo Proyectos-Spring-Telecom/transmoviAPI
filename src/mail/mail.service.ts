@@ -27,7 +27,7 @@ export class MailService {
     token: string,
     codigo: string,
   ) {
-    const url = `http://localhost:3000/login/verify?token=${token}`;
+    const url = `https://transmovi.mx/transmoviDev/#/account/verify?token=${token}`;
     await this.transporter.sendMail({
       from: `<${process.env.E_MAIL}>`,
       to,
@@ -233,6 +233,7 @@ export class MailService {
                             <p style="color: #002136; font-family: 'Open Sans', sans-serif; font-size: 16px; text-align: center; margin-top: -30px;">Hola, haz clic en el siguiente botón para restablecer tu contraseña. Si no has solicitado una nueva contraseña, <strong>ignora este correo</strong>.</p>
                             <a href= ${url} style="font-size: 18px; padding: 0.9rem; background-color: #43cc7a; color: #FFFFFF; border-radius: 30px; text-decoration: none; display: inline-block; margin-top: 13px; ">Restablecer Contraseña</a>
                             <!-- Código de verificación -->
+                            <!-- 
                             <p
                                 style="
                                     margin-top: 14px;
@@ -244,6 +245,7 @@ export class MailService {
                             >
                                 Código de verificación: ${codigo}
                             </p>
+                            -->
                         </td>
                     </tr>
                     <!-- Divider -->
