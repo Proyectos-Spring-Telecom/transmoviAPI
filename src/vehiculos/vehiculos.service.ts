@@ -19,7 +19,7 @@ import {
 import { UpdateVehiculoEstatusDto } from './dto/update-vehiculos-estatus.dto';
 import { Instalaciones } from 'src/entities/Instalaciones';
 import { Clientes } from 'src/entities/Clientes';
-import { EstadoComponente } from 'src/common/estatus.enum';
+import { EstadoComponente, EstatusEnum } from 'src/common/estatus.enum';
 
 @Injectable()
 export class VehiculosService {
@@ -114,7 +114,11 @@ export class VehiculosService {
   async findAllListClientes(id: number, cliente: number) {
     try {
       const vehiculos = await this.vehiculoRepository.find({
-        where: { idCliente: id, estatus: cliente },
+        where: {
+          idCliente: id,
+          estatus: EstatusEnum.ACTIVO,
+          estadoActual: EstadoComponente.DISPONIBLE,
+        },
       });
       if (vehiculos.length === 0) {
         throw new NotFoundException(`No se encontraron vehículos.`);
@@ -643,7 +647,10 @@ ORDER BY v.Id DESC;
           'No es posible completar la operación: Vehiculo se encuentra asignado a una instalación.',
         );
 
-      await this.vehiculoRepository.update(id, { estatus: 0, estadoActual: EstadoComponente.INACTIVO });
+      await this.vehiculoRepository.update(id, {
+        estatus: 0,
+        estadoActual: EstadoComponente.INACTIVO,
+      });
 
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { id: id, estatus: 0 };

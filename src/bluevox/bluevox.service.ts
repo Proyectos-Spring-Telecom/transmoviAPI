@@ -124,7 +124,11 @@ export class BluevoxService {
   async findAllListClientes(id: number, cliente: number) {
     try {
       const bluevox = await this.bluevoxsRepository.find({
-        where: { idCliente: cliente, estatus: 1 },
+        where: {
+          idCliente: id,
+          estatus: EstatusEnum.ACTIVO,
+          estadoActual: EstadoComponente.DISPONIBLE,
+        },
       });
       if (bluevox.length === 0) {
         throw new NotFoundException(`No se encontraron BlueVoxs.`);
