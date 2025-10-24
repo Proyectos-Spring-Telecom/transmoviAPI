@@ -114,7 +114,11 @@ export class DispositivosService {
   async findAllListDispositivosClientes(id: number, cliente: number) {
     try {
       const dispositivo = await this.dispositivoRepository.find({
-        where: { idCliente: cliente, estatus: 1 },
+        where: {
+          idCliente: id,
+          estatus: EstatusEnum.ACTIVO,
+          estadoActual: EstadoComponente.DISPONIBLE,
+        },
       });
       if (dispositivo.length === 0) {
         throw new NotFoundException(`Dispositivo no encontrado.`);

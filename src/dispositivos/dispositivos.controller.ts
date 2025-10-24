@@ -44,7 +44,7 @@ export class DispositivosController {
     return this.dispositivosService.findAllList(+cliente, +rol);
   }
 
-  @Get('/clientes')
+  @Get('/clientes/:id')
   async findAllDispositivosClientes(
     @Param('id', ParseIntPipe) id: number,
     @Request() req,
