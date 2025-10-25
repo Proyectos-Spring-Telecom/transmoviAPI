@@ -24,7 +24,7 @@ import { Vehiculos } from 'src/entities/Vehiculos';
 import { Clientes } from 'src/entities/Clientes';
 import { HistoricoInstalaciones } from 'src/entities/historico-instalaciones';
 import { HistoricoinstalacionesService } from 'src/historicoinstalaciones/historicoinstalaciones.service';
-import { EstadoComponente } from 'src/common/estatus.enum';
+import { EstadoComponente, EstatusEnum } from 'src/common/estatus.enum';
 
 @Injectable()
 export class InstalacionesService {
@@ -1157,10 +1157,13 @@ ORDER BY i.Id DESC;
         );
       }
 
+      //verificamos que exista el dispositivo a actualizar
       if (updateInstalacioneDto.estatusDispositivoAnterior) {
+        //Actualizamos el estado del dispositivo anterior
         await this.dispositivosRepository.update(instalacion.idDispositivo, {
           estadoActual: updateInstalacioneDto.estatusDispositivoAnterior,
         });
+        //Actualizamos el dispositivo en la instalacion
         await this.instalacionesRepository.update(id, {
           idDispositivo: updateInstalacioneDto.idDispositivo,
         });
@@ -1181,25 +1184,6 @@ ORDER BY i.Id DESC;
         },
       );
 
-      const body = {
-        idInstalacion: id,
-        idDispositivo: instalacion.idDispositivo,
-        idBlueVox: instalacion.idBlueVox,
-        idVehiculo: instalacion.idVehiculo,
-        idCliente: instalacion.idCliente,
-      };
-
-      //Registro historico
-      await this.historicoinstalacionesService.updateHistorico(
-        body,
-        Number(instalacionActualizada?.idDispositivo),
-        Number(instalacionActualizada?.idBlueVox),
-        Number(instalacionActualizada?.idVehiculo),
-        Number(instalacionActualizada?.idCliente),
-        idUser,
-        updateInstalacioneDto.comentarios,
-      );
-
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { updateInstalacioneDto };
       await this.bitacoraLogger.logToBitacora(
@@ -1210,6 +1194,26 @@ ORDER BY i.Id DESC;
         idUser,
         13,
         EstatusEnumBitcora.SUCCESS,
+      );
+
+      const body = {
+        idInstalacion: id,
+        idDispositivo: instalacion.idDispositivo,
+        idBlueVox: instalacion.idBlueVox,
+        idVehiculo: instalacion.idVehiculo,
+        idCliente: instalacion.idCliente,
+      };
+      const comentario = `${updateInstalacioneDto.comentariosBluevox} ${updateInstalacioneDto.comentariosDispositivo}`
+
+      //Registro historico
+      await this.historicoinstalacionesService.updateHistorico(
+        body,
+        Number(instalacionActualizada?.idDispositivo),
+        Number(instalacionActualizada?.idBlueVox),
+        Number(instalacionActualizada?.idVehiculo),
+        Number(instalacionActualizada?.idCliente),
+        idUser,
+        comentario
       );
 
       //Api response
@@ -1266,7 +1270,7 @@ ORDER BY i.Id DESC;
       }
 
       //Actualizamos datos
-      await this.instalacionesRepository.update(id, { estatus: 0 });
+      await this.instalacionesRepository.update(id, { estatus: EstatusEnum.INACTIVO });
 
       // Desactivar instalación → activar componentes
       const body = { estadoActual: EstadoComponente.DISPONIBLE };

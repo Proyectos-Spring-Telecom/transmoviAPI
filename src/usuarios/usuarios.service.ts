@@ -5,7 +5,6 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -322,16 +321,21 @@ ORDER BY u.Id DESC;
   }
 
   //Obtener usuarios operador
-  async getAllListUsuariosRol(): Promise<ApiResponseCommon> {
+  async getAllListUsuariosRol(id:number): Promise<ApiResponseCommon> {
     try {
       const usuarios = await this.usuarioRepository.find({
-        where: { estatus: 1, idRol: 3 },
+        where: { estatus: 1, idRol: 3, idCliente: id },
       });
       const usuariosSinPassword = usuarios.map(
         ({ passwordHash, ...rest }) => rest,
       );
+
+      const data = usuariosSinPassword.map((item) => ({
+        ...item,
+        id: Number(item.id),
+      }));
       const result: ApiResponseCommon = {
-        data: usuariosSinPassword,
+        data: data,
       };
       return result;
     } catch (error) {

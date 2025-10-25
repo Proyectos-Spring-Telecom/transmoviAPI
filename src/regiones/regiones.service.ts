@@ -631,7 +631,6 @@ WHERE
   ur.IdUsuario = ?       -- 🔹 ID del usuario a filtrar
   AND ur.Estatus = 1
   AND r.Id = ?
-  AND u.Estatus = 1
 
 ORDER BY r.Id DESC;
 

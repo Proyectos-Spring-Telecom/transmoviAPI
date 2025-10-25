@@ -89,6 +89,16 @@ export class ModulosService {
         relations: ['permisos'],
         where: { estatus: 1 },
       });
+      // 🔥 Forzamos ids a number y agregamos nombreCompleto
+      const data = modulos.map((item) => ({
+        ...item,
+        id: Number(item.id),
+        permisos: item.permisos.map(permiso => ({
+          ...permiso,
+          id: Number(permiso.id),
+          idModulo: Number(permiso.idModulo),
+        }))
+      }));
       const result: ApiResponseCommon = {
         data: modulos,
       };
@@ -105,6 +115,16 @@ export class ModulosService {
         skip: (page - 1) * limit,
         take: limit,
       });
+      // 🔥 Forzamos ids a number y agregamos nombreCompleto
+      const modulos = data.map((item) => ({
+        ...item,
+        id: Number(item.id),
+        permisos: item.permisos.map(permiso => ({
+          ...permiso,
+          id: Number(permiso.id),
+          idModulo: Number(permiso.idModulo),
+        }))
+      }));
 
       const result: ApiResponseCommon = {
         data,

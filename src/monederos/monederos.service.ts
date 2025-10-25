@@ -18,12 +18,15 @@ import {
   EstatusEnumBitcora,
 } from 'src/common/ApiResponse';
 import { EstatusEnum, TipoTransaccion } from 'src/common/estatus.enum';
+import { Clientes } from 'src/entities/Clientes';
 
 @Injectable()
 export class MonederosService {
   constructor(
     @InjectRepository(Monederos)
     private readonly monederoRepository: Repository<Monederos>,
+    @InjectRepository(Clientes)
+    private readonly clienteRepository: Repository<Clientes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
     private readonly pasajerosService: PasajerosService,
   ) {}
@@ -57,7 +60,6 @@ export class MonederosService {
       //Añadimos fecha
       createMonederoDto.fechaActivacion = fechaActual;
       createMonederoDto.estatus = EstatusEnum.INACTIVO;
-      createMonederoDto.saldo = 0
 
       //Guardamos el monedero
       const newMonedero =
@@ -110,10 +112,30 @@ export class MonederosService {
     }
   }
 
+  //funcion para obtener los clientes hijos
+  private async clienteHijos(cliente: number) {
+    const clientesFiltrado = await this.clienteRepository.query(
+      `CALL spGetClientes(?);`,
+      [cliente],
+    );
+
+    const idsFiltrados = clientesFiltrado[0]; // El primer índice contiene los resultados
+    const ids = idsFiltrados
+      .map((clientesFiltrado: any) => Number(clientesFiltrado.Id))
+      .filter(Boolean);
+    if (ids.length === 0) {
+      return { data: [] }; // No hay clientes que consultar
+    }
+
+    // 3. Construir el query dinámico con los IDs
+    const placeholders = ids.map(() => '?').join(', ');
+    return { ids, placeholders };
+  }
+
   //Obtener todos los monederos
   async findAllPagMonederos(
     idUser: number,
-    email:string,
+    email: string,
     cliente: number,
     rol: number,
     page: number,
@@ -122,11 +144,11 @@ export class MonederosService {
     try {
       const offset = (page - 1) * limit;
       let totalResult;
-      let monederos; 
+      let monederos;
       switch (rol) {
         case 1:
           monederos = await this.monederoRepository.query(
-        `
+            `
 SELECT 
     m.Id AS id,
     m.NumeroSerie AS numeroSerie,
@@ -159,10 +181,10 @@ INNER JOIN Clientes c ON m.IdCliente = c.Id
 ORDER BY m.Id DESC;
 
             `,
-      );
+          );
 
-      totalResult = await this.monederoRepository.query(
-        `
+          totalResult = await this.monederoRepository.query(
+            `
   SELECT COUNT(*) AS total
 FROM Monederos m
 LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
@@ -170,14 +192,14 @@ INNER JOIN Clientes c ON m.IdCliente = c.Id
 
 
   `,
-        [idUser],
-      );
+          );
           break;
 
         case 9:
-          const pasajero = await this.pasajerosService.findOnePasajeroCorreo(email)
+          const pasajero =
+            await this.pasajerosService.findOnePasajeroCorreo(email);
           monederos = await this.monederoRepository.query(
-        `
+            `
 SELECT 
     m.Id AS id,
     m.NumeroSerie AS numeroSerie,
@@ -209,11 +231,12 @@ WHERE p.Id = ?
 
 ORDER BY m.Id DESC;
 
-            `,[pasajero.id]
-      );
+            `,
+            [pasajero.id],
+          );
 
-      totalResult = await this.monederoRepository.query(
-        `
+          totalResult = await this.monederoRepository.query(
+            `
   SELECT COUNT(*) AS total
 FROM Monederos m
 LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
@@ -221,11 +244,60 @@ INNER JOIN Clientes c ON m.IdCliente = c.Id
 
 WHERE p.Id = ?
   `,
-        [pasajero.id],
-      );
+            [pasajero.id],
+          );
           break;
-      
+
         default:
+          const { ids, placeholders } = await this.clienteHijos(cliente);
+          monederos = await this.monederoRepository.query(
+            `
+SELECT 
+    m.Id AS id,
+    m.NumeroSerie AS numeroSerie,
+    m.Saldo AS saldo,
+    m.FechaActivacion AS fechaActivacion,
+    m.FechaCreacion AS fechaCreacion,
+    m.FechaActualizacion AS fechaActualizacion,
+    m.Estatus AS estatus,
+    m.IdPasajero AS idPasajero,
+    m.IdCliente AS idCliente,
+
+    p.Id AS idPasajeroMonederos,
+    p.Nombre AS pasajeroNombre,
+    p.ApellidoPaterno AS pasajeroApellidoPaterno,
+    p.ApellidoMaterno AS pasajeroApellidoMaterno,
+    CONCAT(p.Nombre, ' ', p.ApellidoPaterno, ' ', p.ApellidoMaterno) AS nombreCompletoPasajero,
+
+    c.Id AS idClienteMonederos,
+    c.Nombre AS clienteNombre,
+    c.ApellidoPaterno AS clienteApellidoPaterno,
+    c.ApellidoMaterno AS clienteApellidoMaterno,
+    CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
+
+FROM Monederos m
+LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
+INNER JOIN Clientes c ON m.IdCliente = c.Id
+
+WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+
+ORDER BY m.Id DESC;
+
+            `,
+            [...ids],
+          );
+
+          totalResult = await this.monederoRepository.query(
+            `
+  SELECT COUNT(*) AS total
+FROM Monederos m
+LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
+INNER JOIN Clientes c ON m.IdCliente = c.Id
+WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+
+  `,
+            [...ids],
+          );
           break;
       }
 
@@ -320,7 +392,7 @@ WHERE p.Id = ?
       switch (rol) {
         case 1:
           monederos = await this.monederoRepository.query(
-        `
+            `
 SELECT 
     m.Id AS id,
     m.NumeroSerie AS numeroSerie,
@@ -352,13 +424,14 @@ AND c.Estatus = 1
 ORDER BY m.Id DESC;
 
             `,
-      );
+          );
           break;
 
         case 9:
-          const pasajero = await this.pasajerosService.findOnePasajeroCorreo(email)
+          const pasajero =
+            await this.pasajerosService.findOnePasajeroCorreo(email);
           monederos = await this.monederoRepository.query(
-        `
+            `
 SELECT 
     m.Id AS id,
     m.NumeroSerie AS numeroSerie,
@@ -390,13 +463,15 @@ AND p.Id = ?
 
 ORDER BY m.Id DESC;
 
-            `,[pasajero.id]
-      );
+            `,
+            [pasajero.id],
+          );
           break;
-      
+
         default:
+          const { ids, placeholders } = await this.clienteHijos(cliente);
           monederos = await this.monederoRepository.query(
-        `
+            `
 SELECT 
     m.Id AS id,
     m.NumeroSerie AS numeroSerie,
@@ -422,16 +497,17 @@ FROM Monederos m
 LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
 INNER JOIN Clientes c ON m.IdCliente = c.Id
 
-WHERE m.Estatus = 1 -- estatus activo
+WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+AND m.Estatus = 1 -- estatus activo
 AND c.Estatus = 1
 
 ORDER BY m.Id DESC;
 
             `,
-      );
+            [...ids],
+          );
           break;
       }
-      
 
       if (monederos.length === 0) {
         throw new NotFoundException('No se encontraron monederos.');
@@ -731,7 +807,9 @@ ORDER BY m.Id DESC;
       }
 
       //Eliminamos de manera logica
-      await this.monederoRepository.update(id, { estatus: 0 });
+      await this.monederoRepository.update(id, {
+        estatus: EstatusEnum.INACTIVO,
+      });
 
       // --- Registro en la bitácora --- SUCCESS
       const querylogger = { id: id, estatus: 0 };

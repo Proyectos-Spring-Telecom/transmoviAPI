@@ -110,7 +110,7 @@ export class DispositivosService {
     }
   }
 
-  //Obtener todos los dispositivos por cliente -- no sirve
+  //Obtener todos los dispositivos por cliente 
   async findAllListDispositivosClientes(id: number, cliente: number) {
     try {
       const dispositivo = await this.dispositivoRepository.find({
