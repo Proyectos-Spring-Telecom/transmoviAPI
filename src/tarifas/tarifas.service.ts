@@ -431,6 +431,7 @@ ORDER BY t.Id DESC
   }
 
   private async consultarTotalTarifasPaginados(cliente: number) {
+    const { ids, placeholders } = await this.clienteHijos(cliente);
     const query = `  
 
 SELECT COUNT(*) AS total
@@ -441,13 +442,13 @@ INNER JOIN Regiones r ON ru.IdRegion = r.Id
 LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
 
-WHERE c.Id = ?            -- Filtrado por cliente
+WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
   AND c.Estatus = 1
   AND r.Estatus = 1
   AND ru.Estatus = 1
   AND d.Estatus = 1
 `;
-    return await this.usuariosregionesRepository.query(query, [cliente]);
+    return await this.usuariosregionesRepository.query(query, [...ids]);
   }
 
   async findAll(

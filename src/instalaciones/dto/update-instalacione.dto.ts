@@ -54,5 +54,13 @@ export class UpdateInstalacioneDto extends PartialType(CreateInstalacionesDto) {
   })
   @IsString()
   @IsOptional()
-  comentarios?: string;
+  comentariosDispositivo?: string;
+
+  @ApiProperty({
+    description: 'Comentario acerca de los componentes',
+    example: 404,
+  })
+  @IsString()
+  @IsOptional()
+  comentariosBluevox?: string;
 }

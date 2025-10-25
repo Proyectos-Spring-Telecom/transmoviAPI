@@ -18,7 +18,12 @@ import { UpdateUsuarioDto } from './dto/update-usuario.dto';
 import { UpdateUsuarioEstatusDto } from './dto/update-usuario-estatus.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
-import { ApiOperation, ApiResponse, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { ApiCrudResponse } from 'src/common/ApiResponse';
 import { UpdateUsuarioOperadorDto } from './dto/update-usuario-operador.dto';
 import { UpdateUsuarioContrasena } from './dto/update-usuario-contrasena.dto';
@@ -35,8 +40,14 @@ export class UsuariosController {
   // ========================================
   @Post()
   @ApiOperation({ summary: 'Registrar un nuevo usuario' })
-  @ApiResponse({ status: 201, description: 'El usuario ha sido creado exitosamente.' })
-  @ApiResponse({ status: 400, description: 'Los datos ingresados no son válidos' })
+  @ApiResponse({
+    status: 201,
+    description: 'El usuario ha sido creado exitosamente.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Los datos ingresados no son válidos',
+  })
   async createUsuario(
     @Body() createUsuarioDto: CreateUsuarioDto,
     @Request() req,
@@ -57,26 +68,29 @@ export class UsuariosController {
     return await this.usuariosService.getAllListUsuarios(+cliente, +rol);
   }
 
-  @Get('list/rol/operador')
-  @ApiOperation({ summary: 'Obtener usuarios con rol operador' })
-  @ApiResponse({ status: 200, description: 'Lista de usuarios operadores' })
-  async findAllListOperador(@Request() req): Promise<ApiResponseCommon> {
-    const cliente = req.user.cliente;
-    const rol = req.user.rol;
-    return await this.usuariosService.getAllListUsuariosRol();
-  }
-
   @Get('list/cliente')
   @ApiOperation({ summary: 'Obtener usuarios por cliente específico' })
   @ApiResponse({ status: 200, description: 'Lista de usuarios del cliente' })
   @ApiResponse({ status: 404, description: 'Cliente no encontrado' })
   async findAllListUsuarioCliente(
     @Param('id', ParseIntPipe) id: number,
-    @Request() req
+    @Request() req,
   ): Promise<ApiResponseCommon> {
     const cliente = req.user.cliente;
     const rol = req.user.rol;
     return await this.usuariosService.getAllListUsuariosCliente(id, +cliente);
+  }
+
+  @Get('list/rol/operador/:cliente')
+  @ApiOperation({ summary: 'Obtener usuarios con rol operador' })
+  @ApiResponse({ status: 200, description: 'Lista de usuarios operadores' })
+  async findAllListOperador(
+    @Request() req,
+    @Param('cliente', ParseIntPipe) id: number,
+  ): Promise<ApiResponseCommon> {
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+    return await this.usuariosService.getAllListUsuariosRol(+id);
   }
 
   @Get(':page/:limit')
@@ -113,7 +127,10 @@ export class UsuariosController {
 
   @Put('actualizar/contrasena/:id')
   @ApiOperation({ summary: 'Cambiar contraseña de usuario' })
-  @ApiResponse({ status: 200, description: 'Contraseña actualizada exitosamente' })
+  @ApiResponse({
+    status: 200,
+    description: 'Contraseña actualizada exitosamente',
+  })
   @ApiResponse({ status: 400, description: 'Contraseña inválida' })
   @ApiResponse({ status: 404, description: 'Usuario no encontrado' })
   async updateContrasena(

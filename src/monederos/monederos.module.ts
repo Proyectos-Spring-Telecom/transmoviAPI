@@ -6,10 +6,11 @@ import { Monederos } from 'src/entities/Monederos';
 import { BitacoraModule } from 'src/bitacora/bitacora.module';
 import { ClientesModule } from 'src/clientes/clientes.module';
 import { PasajerosModule } from 'src/pasajeros/pasajeros.module';
+import { Clientes } from 'src/entities/Clientes';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Monederos]),
+    TypeOrmModule.forFeature([Monederos,Clientes]),
     BitacoraModule,
     ClientesModule,
     PasajerosModule,

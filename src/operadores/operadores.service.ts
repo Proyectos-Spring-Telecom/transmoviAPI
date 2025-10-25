@@ -513,6 +513,7 @@ ORDER BY o.Id DESC;
       });
     }
   }
+
   //Actualizar el estatus del operador
   async updateOperadorEstatus(
     id: number,
@@ -578,6 +579,7 @@ ORDER BY o.Id DESC;
       });
     }
   }
+  
   //Actualizar datos del operador
   async updateOperador(
     id: number,

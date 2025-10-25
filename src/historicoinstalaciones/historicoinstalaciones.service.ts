@@ -116,10 +116,21 @@ export class HistoricoinstalacionesService {
         return;
       }
 
+      //afiliamos el monedero al pasajero y cambiamos estatus activo
+      function pad(n: number) {
+        return n < 10 ? '0' + n : n;
+      }
+
+      const ahora = new Date();
+      const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas en milisegundos
+      const fechaDesfasada = new Date(ahora.getTime() + desfaseMs);
+
+      const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())} ${pad(fechaDesfasada.getHours())}:${pad(fechaDesfasada.getMinutes())}:${pad(fechaDesfasada.getSeconds())}`;
+
       // ✅ Si existe un registro activo con datos distintos, cerrarlo
       if (historicoActivo) {
         await this.historicoInstalacionesRepository.update(historicoActivo.id, {
-          fechaBaja: new Date(),
+          fechaBaja: fechaDesfasada,
         });
       }
 

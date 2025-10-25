@@ -224,7 +224,6 @@ LEFT JOIN Pasajeros p
         case 9:
           const pasajero =
             await this.pasajeroService.findOnePasajeroCorreo(email);
-          console.log(idUser, email, cliente, rol, pasajero);
           transacciones = await this.transaccionesRepository.query(
             `
 SELECT 
