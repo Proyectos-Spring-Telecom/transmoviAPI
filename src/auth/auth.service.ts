@@ -410,6 +410,9 @@ export class AuthService {
       return `La verificación del usuario ${user.nombre} se ha completado con éxito.
 Muchas gracias por su preferencia.`;
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       throw new InternalServerErrorException({
         message: 'Ocurrió un error al registrar pasajero.',
         error: error.message,
@@ -448,6 +451,9 @@ Muchas gracias por su preferencia.`;
       );
       return `Se ha enviado un correo con el codigo.`;
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       throw new InternalServerErrorException({
         message: 'Ocurrió un error al recuperar contraseña del usuario.',
         error: error.message,
@@ -469,8 +475,6 @@ Muchas gracias por su preferencia.`;
     const codigoExiste = await this.codigoAutenticacioRepository.findOne({
       where: {
         idUsuario: idUsuario,
-        tipo: tipo,
-        usado: EstatusEnum.INACTIVO,
       },
     });
 
@@ -528,7 +532,9 @@ Muchas gracias por su preferencia.`;
       );
       return `Se ha enviado un correo con el codigo de autenticación.`;
     } catch (error) {
-      console.log(error); //**************Borarrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr */
+      if (error instanceof HttpException) {
+        throw error;
+      }
       throw new InternalServerErrorException({
         message: 'Ocurrió un error al confirmar el usuario.',
         error: error.message,
@@ -562,6 +568,9 @@ Muchas gracias por su preferencia.`;
       );
       return `La contraseña del usuario ${user.nombre} ha sido actualizada exitosamente.`;
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       throw new InternalServerErrorException({
         message: 'Ocurrió un error al actualizar contraseña del usuario.',
         error: error.message,

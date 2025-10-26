@@ -267,7 +267,6 @@ INNER JOIN Clientes c
     
 
 ORDER BY p.Id DESC
-  LIMIT ? OFFSET ?;
         `,
           ); 
           break;

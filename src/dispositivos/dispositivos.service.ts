@@ -110,7 +110,7 @@ export class DispositivosService {
     }
   }
 
-  //Obtener todos los dispositivos por cliente 
+  //Obtener todos los dispositivos por cliente
   async findAllListDispositivosClientes(id: number, cliente: number) {
     try {
       const dispositivo = await this.dispositivoRepository.find({
@@ -760,9 +760,9 @@ ORDER BY d.Id DESC;
         );
 
       await this.dispositivoRepository.update(id, {
-        estadoActual: 0,
+        estadoActual: EstadoComponente.INACTIVO,
+        estatus: EstatusEnum.INACTIVO,
       });
-      await this.dispositivoRepository.update(id, { estatus: 0 });
 
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { id: id, estatus: 0 };

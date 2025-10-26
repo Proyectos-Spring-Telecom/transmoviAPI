@@ -289,7 +289,6 @@ INNER JOIN Roles r ON u.IdRol = r.Id
 LEFT JOIN Clientes c ON u.IdCliente = c.Id
 WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
 AND u.Estatus = 1
-AND u.Estatus = 1
 ORDER BY u.Id DESC;
         `,
             [...ids],
