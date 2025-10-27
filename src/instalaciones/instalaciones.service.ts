@@ -1203,7 +1203,7 @@ ORDER BY i.Id DESC;
         idVehiculo: instalacion.idVehiculo,
         idCliente: instalacion.idCliente,
       };
-      const comentario = `${updateInstalacioneDto.comentariosBluevox} ${updateInstalacioneDto.comentariosDispositivo}`
+      const comentario = `${updateInstalacioneDto.comentariosBluevox ?? ''} ${updateInstalacioneDto.comentariosDispositivo ?? ''}`
 
       //Registro historico
       await this.historicoinstalacionesService.updateHistorico(
