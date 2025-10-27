@@ -12,6 +12,7 @@ import {
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuid } from 'uuid';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
+import { EstatusEnumBitcora } from 'src/common/ApiResponse';
 
 @Injectable()
 export class S3Service {
@@ -83,10 +84,23 @@ export class S3Service {
         querylogger,
         idUser,
         idModule,
+        EstatusEnumBitcora.SUCCESS,
       );
 
       return { url: publicUrl };
     } catch (error) {
+      //-----Registro en la bitacora----- SUCCESS
+      const querylogger = { data: `INSERT INTO ${folder} (...) VALUES (...) -> bucket:  ${this.bucket}` };
+      await this.bitacoraLogger.logToBitacora(
+        `${folder}`,
+        `Se subio archivo al bucket: ${this.bucket}`,
+        'CREATE',
+        querylogger,
+        idUser,
+        idModule,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
       if (error instanceof HttpException) {
         throw error;
       }

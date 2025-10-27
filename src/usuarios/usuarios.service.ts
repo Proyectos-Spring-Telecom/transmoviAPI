@@ -26,6 +26,7 @@ import { UpdateUsuarioContrasena } from './dto/update-usuario-contrasena.dto';
 import { MailService } from 'src/mail/mail.service';
 import { JwtService } from '@nestjs/jwt';
 import { Clientes } from 'src/entities/Clientes';
+import { EstatusEnum } from 'src/common/estatus.enum';
 
 @Injectable()
 export class UsuariosService {
@@ -821,6 +822,7 @@ ORDER BY u.Id DESC
             'No se encontró el cliente especificado.',
           );
       }
+      updateUsuarioDto.emailConfirmado = EstatusEnum.ACTIVO
 
       const { permisosIds, ...usuarioUpdate } = updateUsuarioDto;
       // ----- ACTUALIZACIÓN DE USUARIO -----
