@@ -405,6 +405,7 @@ export class AuthService {
       await this.codigoAutenticacioRepository.update(codigoValido.id, {
         usado: EstatusEnum.INACTIVO,
         estatus: EstatusEnum.INACTIVO,
+        fechaUso: fechaActual,
       });
 
       return `La verificación del usuario ${user.nombre} se ha completado con éxito.
