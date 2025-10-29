@@ -42,6 +42,9 @@ export class AuthService {
     private readonly pasajeroService: PasajerosService,
   ) {}
 
+  // ========================================
+  //Creacion de una afiliacion
+  // ========================================
   async createPasajero(createAltaPasajaroDto: CreateAltaPasajaroDto) {
     try {
       //Buscamos el monedero que este dado de alta
@@ -69,6 +72,7 @@ export class AuthService {
       ); //encriptamos la contraseña
       createAltaPasajaroDto.passwordHash = hashedPassword;
 
+      //creamos el body para crear un usuario que le permita loguearse
       const bodyUsuario = {
         userName: createAltaPasajaroDto.correo,
         passwordHash: createAltaPasajaroDto.passwordHash,
@@ -84,9 +88,11 @@ export class AuthService {
         idCliente: monederos.data.idCliente,
       };
 
+      //Creamos el usuario
       const newUser = await this.usuariosRepository.create(bodyUsuario);
       const userSave = await this.usuariosRepository.save(newUser); //creamos el usuario
 
+      //Le añadimos los permisos correspondientes
       const permisosIds = [77, 80, 90];
       if (permisosIds.length > 0) {
         const usuariosPermisos = permisosIds.map((permisoId) =>
@@ -96,9 +102,11 @@ export class AuthService {
           }),
         );
 
+        //guardamos los permisos
         await this.permisosRepository.save(usuariosPermisos);
       }
 
+      //Creamos el body del pasajero
       const bodyPasajero = {
         nombre: createAltaPasajaroDto.nombre,
         apellidoPaterno: createAltaPasajaroDto.apellidoPaterno,
@@ -108,21 +116,25 @@ export class AuthService {
         correo: createAltaPasajaroDto.correo,
         estatus: 1,
       };
+
+      //Creamos el pasajero
       const pasajero = await this.pasajeroService.createPasajeros(
         bodyPasajero,
         userSave.id,
       );
 
+      //armamos el payload para el token
       const payload = {
         id: userSave.id,
         email: userSave.userName,
       };
 
-      //datos del correo
+      //creamos el token
       const token = this.jwtService.sign(payload, {
         expiresIn: `${process.env.JWT_CONFIRMACION}`,
       });
 
+      //Llamamos la funcion que nos genera el codigo
       const codigo = await this.generarCodigo(
         userSave.id,
         TipoCodigoAutenticacion.CONFIRMACION_CORREO,
@@ -193,8 +205,17 @@ export class AuthService {
     }
   }
 
+  // ========================================
+  //Login por PIN
+  // ========================================
   async singInPin(loginAuthPin: LoginAuthPinDto) {
     try {
+      //buscamos el usuario
+      /* Debe tener el mismo correo
+         Debe estar activo en estatus
+         debe estar confirmado el correo
+         y el cliente al que pertenece debe estar activo
+      */
       const user = await this.usuariosRepository.findOne({
         relations: ['idRol2', 'idCliente2'],
         where: {
@@ -207,6 +228,8 @@ export class AuthService {
           },
         },
       });
+
+
       if (user?.idCliente2?.estatus === 0) {
         throw new UnauthorizedException(
           'Acceso denegado: el cliente ha sido dado de baja.',
@@ -272,6 +295,9 @@ export class AuthService {
     }
   }
 
+  // ========================================
+  //login por correo
+  // ========================================
   async signIn(loginAuthDto: LoginAuthDto) {
     try {
       const user = await this.usuariosRepository.findOne({
@@ -352,9 +378,12 @@ export class AuthService {
     }
   }
 
+  // ========================================
   //confirmacion de correo
+  // ========================================
   async verifyUser(codigoPasajeroAutenticacion: CodigoPasajeroAutenticacion) {
     try {
+      //Buscamos el codigo en la tabla CodigoAutenticacion tiene que ser  Tipo: 0 y Estatus: 1
       const codigoValido = await this.codigoAutenticacioRepository.findOne({
         where: {
           codigo: codigoPasajeroAutenticacion.codigo,
@@ -363,15 +392,18 @@ export class AuthService {
         },
       });
 
+      //En caso de no encontrar manda error
       if (!codigoValido) {
         throw new BadRequestException('Código inválido o ya usado');
       }
 
+      //Buscamos al usuario por la relacion que tiene la tabla CodigoAutenticacion
       const user = await this.usuariosRepository.findOne({
         where: { id: codigoValido.idUsuario },
       });
       if (!user) throw new BadRequestException('Usuario no encontrado');
 
+      //Generamos la fecha con un retraso de 6 horas para que se guarde de manera correcta
       function pad(n: number) {
         return n < 10 ? '0' + n : n;
       }
@@ -382,14 +414,15 @@ export class AuthService {
 
       const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())} ${pad(fechaDesfasada.getHours())}:${pad(fechaDesfasada.getMinutes())}:${pad(fechaDesfasada.getSeconds())}`;
 
+      //Verificamos que la fecha no sea mayor a la de expiracion en caso de ser asi
+      //el codigo ha expirado
       if (fechaDesfasada > codigoValido.fechaExpiracion) {
         throw new BadRequestException('El código ha expirado');
       }
+
+      //cambiamos el estatus del email a 1 del usuario correspondiente
       await this.usuariosRepository.update(user.id, { emailConfirmado: 1 });
 
-      codigoValido.usado = 1;
-      codigoValido.fechaUso = new Date();
-      await this.codigoAutenticacioRepository.save(codigoValido);
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { id: user.id, EmailConfirmado: 1 };
       await this.bitacoraLogger.logToBitacora(
@@ -402,9 +435,11 @@ export class AuthService {
         EstatusEnumBitcora.SUCCESS,
       );
 
+      //en la tabla CodigoAutenticacion actualizamos para dar a entender que ya se uso el codigo
       await this.codigoAutenticacioRepository.update(codigoValido.id, {
         usado: EstatusEnum.INACTIVO,
         estatus: EstatusEnum.INACTIVO,
+        fechaUso: fechaActual,
       });
 
       return `La verificación del usuario ${user.nombre} se ha completado con éxito.
@@ -420,25 +455,32 @@ Muchas gracias por su preferencia.`;
     }
   }
 
+  // ========================================
   //enviar correo para recuperar contraseña
+  // ========================================
   async recuperarContrasena(
     loginAuthConfirmacionDto: LoginAuthConfirmacionDto,
   ) {
     try {
+      //Buscamos el usuario por correo
       const user = await this.usuariosRepository.findOne({
         where: { userName: loginAuthConfirmacionDto.userName },
       });
       if (!user) throw new BadRequestException('Usuario no encontrado');
 
+      //Generamos el codigo
       const codigo = await this.generarCodigo(
         user.id,
         TipoCodigoAutenticacion.RECUPERACION_CONTRASENA,
       );
 
+      //Generamos el payload para el tokenn
       const payload = {
         id: user.id,
         email: user.userName,
       };
+
+      //Generamos el token
       const token = this.jwtService.sign(payload, {
         expiresIn: `${process.env.JWT_CONFIRMACION}`,
       });
@@ -461,23 +503,28 @@ Muchas gracias por su preferencia.`;
     }
   }
 
+  // ========================================
   //Creacion de codigo de autenticacion
+  // ========================================
   async generarCodigo(idUsuario: number, tipo: number): Promise<string> {
     // Generar código de 4 dígitos
     const codigo = Math.floor(1000 + Math.random() * 9000).toString();
 
+    //Generamos la fecha de Expiracion
     const ahora = new Date();
     const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas
     const expiracionMs = 15 * 60 * 1000; // +15 minutos
 
     const expiracion = new Date(ahora.getTime() + expiracionMs + desfaseMs);
 
+    //Buscamos si ya existe un atributo con ese usuario
     const codigoExiste = await this.codigoAutenticacioRepository.findOne({
       where: {
         idUsuario: idUsuario,
       },
     });
 
+    //si existe actualiza los datos
     if (codigoExiste) {
       await this.codigoAutenticacioRepository.update(codigoExiste.id, {
         codigo,
@@ -485,8 +532,10 @@ Muchas gracias por su preferencia.`;
         fechaExpiracion: expiracion,
         usado: EstatusEnum.ACTIVO,
         estatus: EstatusEnum.ACTIVO,
+        fechaUso: null,
       });
     } else {
+      //si no se crea el atributo
       const codigoCreate = this.codigoAutenticacioRepository.create({
         idUsuario: idUsuario,
         codigo: codigo,
@@ -498,10 +547,13 @@ Muchas gracias por su preferencia.`;
       await this.codigoAutenticacioRepository.save(codigoCreate);
     }
 
+    //regresa el codigo
     return codigo;
   }
 
+  // ========================================
   //recuperar la confirmacion de correo
+  // ========================================
   async recuperarConfirmacion(
     loginAuthConfirmacionDto: LoginAuthConfirmacionDto,
   ) {
@@ -542,7 +594,9 @@ Muchas gracias por su preferencia.`;
     }
   }
 
+  // ========================================
   //actualizar contraseña
+  // ========================================
   async resetPassword(loginAuthResetDto: LoginAuthResetDto) {
     try {
       const user = await this.usuariosRepository.findOne({

@@ -33,6 +33,8 @@ import { ViajesconteosModule } from './viajesconteos/viajesconteos.module';
 import { ViajestransaccionesModule } from './viajestransacciones/viajestransacciones.module';
 import { MailModule } from './mail/mail.module';
 import { HistoricoinstalacionesModule } from './historicoinstalaciones/historicoinstalaciones.module';
+import { MonitoreoModule } from './monitoreo/monitoreo.module';
+import { AdministracionModule } from './administracion/administracion.module';
 import Joi from 'joi';
 
 @Module({
@@ -136,6 +138,10 @@ import Joi from 'joi';
     MailModule,
 
     HistoricoinstalacionesModule,
+
+    MonitoreoModule,
+
+    AdministracionModule,
     
   ], 
  controllers: [AppController],
