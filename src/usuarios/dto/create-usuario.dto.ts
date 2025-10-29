@@ -43,7 +43,7 @@ export class CreateUsuarioDto {
   })
   emailConfirmado: number;
 
-  @IsOptional()
+  @IsNotEmpty()
   @IsString()
   @MaxLength(100)
   @ApiProperty({
@@ -51,7 +51,7 @@ export class CreateUsuarioDto {
     example: 'Juan',
     required: false,
   })
-  nombre?: string;
+  nombre: string;
 
   @IsNotEmpty()
   @IsString()

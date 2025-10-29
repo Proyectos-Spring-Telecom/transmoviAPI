@@ -245,7 +245,7 @@ INNER JOIN Clientes c
           //Resto de usuarios
           pasajeros = await this.pasajeroRepository.query(
             `
-SELECT DISTINCT
+SELECT 
     p.Id AS id,
     p.Nombre AS nombre,
     p.ApellidoPaterno AS apellidoPaterno,
@@ -255,18 +255,12 @@ SELECT DISTINCT
     p.Correo AS correo,
     p.FechaCreacion AS fechaCreacion,
     p.FechaActualizacion AS fechaActualizacion,
-    p.Estatus AS estatus,
-    c.Id AS idCliente,
-    c.Nombre AS nombreCliente
-
+    p.Estatus AS estatus
 FROM Pasajeros p
-INNER JOIN Monederos m 
-    ON p.Id = m.IdPasajero
-INNER JOIN Clientes c 
-    ON m.IdCliente = c.Id
-    
+LEFT JOIN Monederos m ON p.Id = m.IdPasajero
+WHERE m.Id IS NULL
+ORDER BY p.Id DESC;
 
-ORDER BY p.Id DESC
         `,
           ); 
           break;
@@ -276,7 +270,7 @@ ORDER BY p.Id DESC
           const { ids, placeholders } = await this.clienteHijos(cliente);
           pasajeros = await this.pasajeroRepository.query(
             `
-SELECT DISTINCT
+SELECT 
     p.Id AS id,
     p.Nombre AS nombre,
     p.ApellidoPaterno AS apellidoPaterno,
@@ -286,18 +280,12 @@ SELECT DISTINCT
     p.Correo AS correo,
     p.FechaCreacion AS fechaCreacion,
     p.FechaActualizacion AS fechaActualizacion,
-    p.Estatus AS estatus,
-    c.Id AS idCliente,
-    c.Nombre AS nombreCliente
-
+    p.Estatus AS estatus
 FROM Pasajeros p
-INNER JOIN Monederos m 
-    ON p.Id = m.IdPasajero
-INNER JOIN Clientes c 
-    ON m.IdCliente = c.Id
-    
-WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
-ORDER BY p.Id DESC
+LEFT JOIN Monederos m ON p.Id = m.IdPasajero
+WHERE m.Id IS NULL
+AND c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+ORDER BY p.Id DESC;
         `,
             [...ids],
           );
