@@ -20,7 +20,7 @@ import { LoginAuthResetDto } from './dto/login-recuperacion.dto';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import { ApiCrudResponse, EstatusEnumBitcora } from 'src/common/ApiResponse';
 import { CodigoAutenticacion } from 'src/entities/CodigoAutenticacion';
-import { EstatusEnum, TipoCodigoAutenticacion } from 'src/common/estatus.enum';
+import { EnumSolicitudPasajero, EstatusEnum, TipoCodigoAutenticacion } from 'src/common/estatus.enum';
 import { CreateAltaPasajaroDto } from './dto/create-pasajero.dto';
 import { MonederosService } from 'src/monederos/monederos.service';
 import { PasajerosService } from 'src/pasajeros/pasajeros.service';
@@ -115,6 +115,7 @@ export class AuthService {
         fechaNacimiento: createAltaPasajaroDto.fechaNacimiento,
         correo: createAltaPasajaroDto.correo,
         estatus: 1,
+        estadoSolicitud: EnumSolicitudPasajero.NOSOLICITADO,
       };
 
       //Creamos el pasajero

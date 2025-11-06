@@ -58,6 +58,12 @@ export class Vehiculos {
   @Column("varchar", { name: "Foto", nullable: true, length: 500 })
   foto: string | null;
 
+  @Column("int", { name: "PasajerosSentados", nullable: true, unsigned: true })
+  pasajerosSentados: number;
+
+  @Column("int", { name: "PasajerosParados", nullable: true, unsigned: true })
+  pasajerosParados: number;
+
   @Column("datetime", {
     name: "FechaCreacion",
     default: () => "CURRENT_TIMESTAMP",
@@ -78,6 +84,15 @@ export class Vehiculos {
 
   @Column("bigint", { name: "IdCliente" })
   idCliente: number;
+
+  @Column("float", { name: "KM", nullable: true })
+  km: number;
+
+  @Column("bigint", { name: "IdCombustible", nullable: true })
+  idCombustible: number;
+
+  @Column("float", { name: "CapacidadLitros", nullable: true })
+  capacidadLitros: number;
 
   @OneToMany(() => Instalaciones, (instalaciones) => instalaciones.vehiculos)
   instalaciones: Instalaciones[];

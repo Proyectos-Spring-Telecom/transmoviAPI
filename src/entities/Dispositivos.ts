@@ -10,7 +10,6 @@ import {
 import { Clientes } from './Clientes';
 import { Instalaciones } from './Instalaciones';
 import { Posiciones } from './Posiciones';
-import { Transacciones } from './Transacciones';
 import { applySchema } from 'src/common/apply-schema.decorator';
 
 @applySchema
@@ -68,9 +67,5 @@ export class Dispositivos {
   )
   posiciones: Posiciones[];
 
-  @OneToMany(
-    () => Transacciones,
-    (transacciones) => transacciones.numeroSerieDispositivo2,
-  )
-  transacciones: Transacciones[];
+
 }

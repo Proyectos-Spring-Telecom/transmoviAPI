@@ -5,10 +5,13 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { CreateTransaccioneDto } from './dto/create-transaccione.dto';
+import {
+  CreateTransaccioneRecargaDto,
+} from './dto/create-transaccione-recarga.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Transacciones } from 'src/entities/Transacciones';
+import { TransaccionesRecarga } from 'src/entities/TransaccionesRecarga';
+import { TransaccionesDebito } from 'src/entities/TransaccionesDebito';
 import {
   ApiCrudResponse,
   ApiResponseCommon,
@@ -19,12 +22,16 @@ import { Dispositivos } from 'src/entities/Dispositivos';
 import { MonederosService } from 'src/monederos/monederos.service';
 import { PasajerosService } from 'src/pasajeros/pasajeros.service';
 import { Clientes } from 'src/entities/Clientes';
+import { CreateTransaccioneDebitoDto } from './dto/create-transaccione-debito.dto';
+import { EnumModulos, EnumTipoTransaccion } from 'src/common/estatus.enum';
 
 @Injectable()
 export class TransaccionesService {
   constructor(
-    @InjectRepository(Transacciones)
-    private readonly transaccionesRepository: Repository<Transacciones>,
+    @InjectRepository(TransaccionesRecarga)
+    private readonly transaccionesrecargaRepository: Repository<TransaccionesRecarga>,
+    @InjectRepository(TransaccionesDebito)
+    private readonly transaccionesdebitoRepository: Repository<TransaccionesDebito>,
     @InjectRepository(Dispositivos)
     private readonly dispositivoRepository: Repository<Dispositivos>,
     @InjectRepository(Clientes)
@@ -33,66 +40,61 @@ export class TransaccionesService {
     private readonly monederosService: MonederosService,
     private readonly pasajeroService: PasajerosService,
   ) {}
-  async createTransaccion(
-    createTransaccioneDto: CreateTransaccioneDto,
+
+  //Funcion para transaccion Recarga
+  async createTransaccionRecarga(
+    createTransaccioneRecargaDto: CreateTransaccioneRecargaDto,
     idUser: number,
   ): Promise<ApiCrudResponse> {
     try {
       //Buscamos el monedero
       const monedero = await this.monederosService.findOneMonederoBySerie(
-        createTransaccioneDto.numeroSerieMonedero,
+        createTransaccioneRecargaDto.numeroSerieMonedero,
       );
 
       //Declaramos transaccion y creamos la variable montoFinal
-      let transaccion = createTransaccioneDto.tipoTransaccion;
+      let transaccion = createTransaccioneRecargaDto.idTipoTransaccion;
       let montoFinal: number = 0;
 
       //Checamos el tipo transaccion
-      if (transaccion === 'RECARGA') {
-        montoFinal =
-          Number(monedero.data.saldo) + Number(createTransaccioneDto.monto);
-      } else if (transaccion === 'DEBITO') {
-        montoFinal =
-          Number(monedero.data.saldo) - Number(createTransaccioneDto.monto);
-      }
+      montoFinal =
+        Number(monedero.data.saldo) +
+        Number(createTransaccioneRecargaDto.monto);
+
       console.log(
         'Saldo Inicial: ',
         monedero.data.saldo,
         ' Tipo Transaccion: ',
         transaccion,
         ' Monto: ',
-        createTransaccioneDto.monto,
+        createTransaccioneRecargaDto.monto,
         ' Monto Final: ',
         montoFinal,
       );
-      //Pasamos un filtro que no haya valores negativos
-      if (montoFinal < 0) {
-        throw new BadRequestException('Saldo insuficiente');
-      }
 
       //actualizamos el saldo del monedero
       await this.monederosService.updateMonederoSaldo(
-        createTransaccioneDto.numeroSerieMonedero,
+        createTransaccioneRecargaDto.numeroSerieMonedero,
         idUser,
         montoFinal,
       );
 
       //Creamos la transaccion en la BD
-      const newTransaccion = await this.transaccionesRepository.create(
-        createTransaccioneDto,
+      const newTransaccion = await this.transaccionesrecargaRepository.create(
+        createTransaccioneRecargaDto,
       );
       const transaccionSave =
-        await this.transaccionesRepository.save(newTransaccion);
+        await this.transaccionesrecargaRepository.save(newTransaccion);
 
       // --- Registro en la bitácora --- SUCCESS
-      const querylogger = { createTransaccioneDto };
+      const querylogger = { createTransaccioneRecargaDto };
       await this.bitacoraLogger.logToBitacora(
         'Transacciones',
         `Se realizo una transaccion de tipo ${transaccion}`,
         'CREATE',
         querylogger,
         idUser,
-        25,
+        EnumModulos.TRANSACCIONES,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -103,20 +105,22 @@ export class TransaccionesService {
         data: {
           id: Number(transaccionSave.id),
           nombre:
-            `${createTransaccioneDto.numeroSerieMonedero} ${montoFinal} ` || '',
+            `${createTransaccioneRecargaDto.numeroSerieMonedero} ${montoFinal} ` ||
+            '',
         },
       };
       return result;
     } catch (error) {
+      console.log(error)
       // --- Registro en la bitácora --- ERROR
-      const querylogger = { createTransaccioneDto };
+      const querylogger = { createTransaccioneRecargaDto };
       await this.bitacoraLogger.logToBitacora(
         'Transacciones',
-        `Se realizo una transaccion de tipo ${createTransaccioneDto.tipoTransaccion}`,
+        `Se realizo una transaccion de tipo ${createTransaccioneRecargaDto.idTipoTransaccion}`,
         'CREATE',
         querylogger,
         idUser,
-        25,
+        EnumModulos.TRANSACCIONES,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -125,7 +129,108 @@ export class TransaccionesService {
         throw error;
       }
       throw new InternalServerErrorException(
-        `Error generar la transaccion de tipo ${createTransaccioneDto.tipoTransaccion}`,
+        `Error generar la transaccion de tipo ${createTransaccioneRecargaDto.idTipoTransaccion}`,
+      );
+    }
+  }
+
+  //Funcion para transaccion Debito
+  async createTransaccionDebito(
+    createTransaccioneDebitoDto: CreateTransaccioneDebitoDto,
+    idUser: number,
+  ): Promise<ApiCrudResponse> {
+    try {
+      //Buscamos el monedero
+      const monedero = await this.monederosService.findOneMonederoBySerie(
+        createTransaccioneDebitoDto.numeroSerieMonedero,
+      );
+
+      //Declaramos transaccion y creamos la variable montoFinal
+      let transaccion = createTransaccioneDebitoDto.idTipoTransaccion;
+      let montoFinal: number = 0;
+
+      //Checamos el tipo transaccion
+      montoFinal =
+        Number(monedero.data.saldo) - Number(createTransaccioneDebitoDto.monto);
+      console.log(
+        'Saldo Inicial: ',
+        monedero.data.saldo,
+        ' Tipo Transaccion: ',
+        transaccion,
+        ' Monto: ',
+        createTransaccioneDebitoDto.monto,
+        ' Monto Final: ',
+        montoFinal,
+      );
+
+      //Pasamos un filtro que no haya valores negativos
+      if (montoFinal < 0) {
+        //Creamos la transaccion en la BD
+        const newTransaccion = await this.transaccionesdebitoRepository.create(
+          createTransaccioneDebitoDto,
+        );
+        createTransaccioneDebitoDto.idTipoTransaccion = EnumTipoTransaccion.RECHAZO
+        await this.transaccionesdebitoRepository.save(newTransaccion);
+        throw new BadRequestException('Saldo insuficiente');
+      }
+
+      //actualizamos el saldo del monedero
+      await this.monederosService.updateMonederoSaldo(
+        createTransaccioneDebitoDto.numeroSerieMonedero,
+        idUser,
+        montoFinal,
+      );
+
+      //Creamos la transaccion en la BD
+      const newTransaccion = await this.transaccionesdebitoRepository.create(
+        createTransaccioneDebitoDto,
+      );
+      const transaccionSave =
+        await this.transaccionesdebitoRepository.save(newTransaccion);
+
+      // --- Registro en la bitácora --- SUCCESS
+      const querylogger = { createTransaccioneDebitoDto };
+      await this.bitacoraLogger.logToBitacora(
+        'Transacciones',
+        `Se realizo una transaccion de tipo ${transaccion}`,
+        'CREATE',
+        querylogger,
+        idUser,
+        EnumModulos.TRANSACCIONES,
+        EstatusEnumBitcora.SUCCESS,
+      );
+
+      //API response
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'Transaccion creado correctamente',
+        data: {
+          id: Number(transaccionSave.id),
+          nombre:
+            `${createTransaccioneDebitoDto.numeroSerieMonedero} ${montoFinal} ` ||
+            '',
+        },
+      };
+      return result;
+    } catch (error) {
+      // --- Registro en la bitácora --- ERROR
+      const querylogger = { createTransaccioneDebitoDto };
+      await this.bitacoraLogger.logToBitacora(
+        'Transacciones',
+        `Se realizo una transaccion de tipo ${createTransaccioneDebitoDto.idTipoTransaccion}`,
+        'CREATE',
+        querylogger,
+        idUser,
+        EnumModulos.TRANSACCIONES,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Error generar la transaccion de tipo ${createTransaccioneDebitoDto.idTipoTransaccion}`,
       );
     }
   }
@@ -164,198 +269,312 @@ export class TransaccionesService {
       const offset = (page - 1) * limit;
       switch (rol) {
         case 1:
-          transacciones = await this.transaccionesRepository.query(
+          transacciones = await this.transaccionesrecargaRepository.query(
             `
 SELECT 
-    -- Transacción
-    t.Id AS id,
-    t.TipoTransaccion AS tipoTransaccion,
-    t.Monto AS monto,
-    t.Latitud AS latitud,
-    t.Longitud AS longitud,
-    t.FechaHora AS fechaHora,
-    t.FHRegistro AS fhRegistro,
-    t.NumeroSerieMonedero AS numeroSerieMonedero,
-    t.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    'DEBITO' AS origenTabla,        -- 👈 de qué tabla viene
+    td.Id AS id,
+    ctt.Nombre AS tipoTransaccion,  -- 👈 tipo según el catálogo (RECARGA, DEBITO o RECHAZADO)
+    td.Monto AS monto,
+    td.Latitud AS latitud,
+    td.Longitud AS longitud,
+    td.FechaHora AS fechaHora,
+    td.FHRegistro AS fhRegistro,
+    td.NumeroSerieMonedero AS numeroSerieMonedero,
+    td.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    td.ControlTransaccion AS controlTransaccion,
 
-    -- Dispositivo (puede ser NULL)
+    -- Datos del dispositivo
     d.Marca AS marcaDispositivo,
     d.Modelo AS modeloDispositivo,
-    
 
-    -- Pasajero (a través del monedero)
+    -- Pasajero (vía Monedero)
     p.Id AS idPasajero,
     p.Nombre AS nombrePasajero,
     p.ApellidoPaterno AS apellidoPaternoPasajero,
     p.ApellidoMaterno AS apellidoMaternoPasajero
 
-
-
-FROM Transacciones t
+FROM TransaccionesDebito td
+INNER JOIN CatTiposTransacciones ctt 
+    ON td.IdTipoTransaccion = ctt.IdTipoTransaccion
 LEFT JOIN Dispositivos d 
-    ON t.NumeroSerieDispositivo = d.NumeroSerie
+    ON td.NumeroSerieDispositivo = d.NumeroSerie
 INNER JOIN Monederos m 
-    ON t.NumeroSerieMonedero = m.NumeroSerie
+    ON td.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
     ON m.IdPasajero = p.Id
-    
-    ORDER BY t.Id DESC
+
+UNION ALL
+
+SELECT 
+    'RECARGA' AS origenTabla,       -- 👈 solo indica de qué tabla proviene
+    tr.Id AS id,
+    ctt.Nombre AS tipoTransaccion,  -- 👈 valor real del tipo
+    tr.Monto AS monto,
+    tr.Latitud AS latitud,
+    tr.Longitud AS longitud,
+    tr.FechaHora AS fechaHora,
+    tr.FHRegistro AS fhRegistro,
+    tr.NumeroSerieMonedero AS numeroSerieMonedero,
+    tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    tr.ControlTransaccion AS controlTransaccion,
+
+    d.Marca AS marcaDispositivo,
+    d.Modelo AS modeloDispositivo,
+
+    p.Id AS idPasajero,
+    p.Nombre AS nombrePasajero,
+    p.ApellidoPaterno AS apellidoPaternoPasajero,
+    p.ApellidoMaterno AS apellidoMaternoPasajero
+
+FROM TransaccionesRecarga tr
+INNER JOIN CatTiposTransacciones ctt 
+    ON tr.IdTipoTransaccion = ctt.IdTipoTransaccion
+LEFT JOIN Dispositivos d 
+    ON tr.NumeroSerieDispositivo = d.NumeroSerie
+INNER JOIN Monederos m 
+    ON tr.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Pasajeros p 
+    ON m.IdPasajero = p.Id
+
+ORDER BY FHRegistro DESC
   LIMIT ? OFFSET ?;
         `,
             [limit, offset],
           );
 
           // Query para total (sin paginación)
-          totalResult = await this.transaccionesRepository.query(
+          totalResult = await this.transaccionesrecargaRepository.query(
             `
-   SELECT COUNT(*) AS total
-FROM Transacciones t
-LEFT JOIN Dispositivos d 
-    ON t.NumeroSerieDispositivo = d.NumeroSerie
-INNER JOIN Monederos m 
-    ON t.NumeroSerieMonedero = m.NumeroSerie
-LEFT JOIN Pasajeros p 
-    ON m.IdPasajero = p.Id
+SELECT COUNT(*) AS total
+FROM (
+    SELECT td.Id
+    FROM TransaccionesDebito td
+    INNER JOIN CatTiposTransacciones ctt 
+        ON td.IdTipoTransaccion = ctt.IdTipoTransaccion
+    LEFT JOIN Dispositivos d 
+        ON td.NumeroSerieDispositivo = d.NumeroSerie
+    INNER JOIN Monederos m 
+        ON td.NumeroSerieMonedero = m.NumeroSerie
+    LEFT JOIN Pasajeros p 
+        ON m.IdPasajero = p.Id
+
+    UNION ALL
+
+    SELECT tr.Id
+    FROM TransaccionesRecarga tr
+    INNER JOIN CatTiposTransacciones ctt 
+        ON tr.IdTipoTransaccion = ctt.IdTipoTransaccion
+    LEFT JOIN Dispositivos d 
+        ON tr.NumeroSerieDispositivo = d.NumeroSerie
+    INNER JOIN Monederos m 
+        ON tr.NumeroSerieMonedero = m.NumeroSerie
+    LEFT JOIN Pasajeros p 
+        ON m.IdPasajero = p.Id
+) AS todas;
 		
   `,
           );
           break;
 
         case 9:
+          //Datos por usuario
           const pasajero =
             await this.pasajeroService.findOnePasajeroCorreo(email);
-          transacciones = await this.transaccionesRepository.query(
+          transacciones = await this.transaccionesrecargaRepository.query(
             `
-SELECT 
-    -- Transacción
-    t.Id AS id,
-    t.TipoTransaccion AS tipoTransaccion,
-    t.Monto AS monto,
-    t.Latitud AS latitud,
-    t.Longitud AS longitud,
-    t.FechaHora AS fechaHora,
-    t.FHRegistro AS fhRegistro,
-    t.NumeroSerieMonedero AS numeroSerieMonedero,
-    t.NumeroSerieDispositivo AS numeroSerieDispositivo,
+(
+  SELECT 
+      'DEBITO' AS origenTabla,        
+      td.Id AS id,
+      ctt.Nombre AS tipoTransaccion,
+      td.Monto AS monto,
+      td.Latitud AS latitud,
+      td.Longitud AS longitud,
+      td.FechaHora AS fechaHora,
+      td.FHRegistro AS fhRegistro,
+      td.NumeroSerieMonedero AS numeroSerieMonedero,
+      td.NumeroSerieDispositivo AS numeroSerieDispositivo,
+      td.ControlTransaccion AS controlTransaccion,
 
-    -- Dispositivo (puede ser NULL)
-    d.Marca AS marcaDispositivo,
-    d.Modelo AS modeloDispositivo,
-    
+      d.Marca AS marcaDispositivo,
+      d.Modelo AS modeloDispositivo,
 
-    -- Pasajero (a través del monedero)
-    p.Id AS idPasajero,
-    p.Nombre AS nombrePasajero,
-    p.ApellidoPaterno AS apellidoPaternoPasajero,
-    p.ApellidoMaterno AS apellidoMaternoPasajero
+      p.Id AS idPasajero,
+      p.Nombre AS nombrePasajero,
+      p.ApellidoPaterno AS apellidoPaternoPasajero,
+      p.ApellidoMaterno AS apellidoMaternoPasajero
 
+  FROM TransaccionesDebito td
+  INNER JOIN CatTiposTransacciones ctt ON td.IdTipoTransaccion = ctt.IdTipoTransaccion
+  LEFT JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
+  INNER JOIN Monederos m ON td.NumeroSerieMonedero = m.NumeroSerie
+  INNER JOIN Pasajeros p ON m.IdPasajero = p.Id
+  WHERE p.Id = ?
 
+  UNION ALL
 
-FROM Transacciones t
-LEFT JOIN Dispositivos d 
-    ON t.NumeroSerieDispositivo = d.NumeroSerie
-INNER JOIN Monederos m 
-    ON t.NumeroSerieMonedero = m.NumeroSerie
-LEFT JOIN Pasajeros p 
-    ON m.IdPasajero = p.Id
-    
-    WHERE p.Id = ?
-    ORDER BY t.Id DESC
- 
-  LIMIT ? OFFSET ?;
+  SELECT 
+      'RECARGA' AS origenTabla,
+      tr.Id AS id,
+      ctt.Nombre AS tipoTransaccion,
+      tr.Monto AS monto,
+      tr.Latitud AS latitud,
+      tr.Longitud AS longitud,
+      tr.FechaHora AS fechaHora,
+      tr.FHRegistro AS fhRegistro,
+      tr.NumeroSerieMonedero AS numeroSerieMonedero,
+      tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+      tr.ControlTransaccion AS controlTransaccion,
+
+      d.Marca AS marcaDispositivo,
+      d.Modelo AS modeloDispositivo,
+
+      p.Id AS idPasajero,
+      p.Nombre AS nombrePasajero,
+      p.ApellidoPaterno AS apellidoPaternoPasajero,
+      p.ApellidoMaterno AS apellidoMaternoPasajero
+
+  FROM TransaccionesRecarga tr
+  INNER JOIN CatTiposTransacciones ctt ON tr.IdTipoTransaccion = ctt.IdTipoTransaccion
+  LEFT JOIN Dispositivos d ON tr.NumeroSerieDispositivo = d.NumeroSerie
+  INNER JOIN Monederos m ON tr.NumeroSerieMonedero = m.NumeroSerie
+  INNER JOIN Pasajeros p ON m.IdPasajero = p.Id
+  WHERE p.Id = ?
+)
+ORDER BY FHRegistro DESC
+LIMIT ? OFFSET ?;
+
         `,
-            [Number(pasajero.id), limit, offset],
+            [Number(pasajero.id), Number(pasajero.id), limit, offset],
           );
 
           // Query para total (sin paginación)
-          totalResult = await this.transaccionesRepository.query(
+          totalResult = await this.transaccionesrecargaRepository.query(
             `
-  SELECT COUNT(*) AS total
-  FROM Transacciones t
-  LEFT JOIN Dispositivos d 
-      ON t.NumeroSerieDispositivo = d.NumeroSerie
-  INNER JOIN Monederos m 
-      ON t.NumeroSerieMonedero = m.NumeroSerie
-  LEFT JOIN Pasajeros p 
-      ON m.IdPasajero = p.Id
-  WHERE p.Id = ?
+SELECT COUNT(*) AS total
+FROM (
+    SELECT td.Id
+    FROM TransaccionesDebito td
+    INNER JOIN CatTiposTransacciones ctt ON td.IdTipoTransaccion = ctt.IdTipoTransaccion
+    INNER JOIN Monederos m ON td.NumeroSerieMonedero = m.NumeroSerie
+    INNER JOIN Pasajeros p ON m.IdPasajero = p.Id
+    WHERE p.Id = ?  -- 👈 pasajero específico
+
+    UNION ALL
+
+    SELECT tr.Id
+    FROM TransaccionesRecarga tr
+    INNER JOIN CatTiposTransacciones ctt ON tr.IdTipoTransaccion = ctt.IdTipoTransaccion
+    INNER JOIN Monederos m ON tr.NumeroSerieMonedero = m.NumeroSerie
+    INNER JOIN Pasajeros p ON m.IdPasajero = p.Id
+    WHERE p.Id = ?  -- 👈 mismo pasajero
+) AS transacciones_pasajero;
+
   `,
-            [Number(pasajero.id)], // <-- Aquí debe ir como segundo argumento de query()
+            [Number(pasajero.id),Number(pasajero.id)], // <-- Aquí debe ir como segundo argumento de query()
           );
 
           break;
 
         default:
           const { ids, placeholders } = await this.clienteHijos(cliente);
-          transacciones = await this.transaccionesRepository.query(
+          transacciones = await this.transaccionesrecargaRepository.query(
             `
-SELECT 
-    -- 🔹 Transacción
-    t.Id AS id,
-    t.TipoTransaccion AS tipoTransaccion,
-    t.Monto AS monto,
-    t.Latitud AS latitud,
-    t.Longitud AS longitud,
-    t.FechaHora AS fechaHora,
-    t.FHRegistro AS fhRegistro,
-    t.NumeroSerieMonedero AS numeroSerieMonedero,
-    t.NumeroSerieDispositivo AS numeroSerieDispositivo,
+(
+  SELECT 
+      'DEBITO' AS origenTabla,
+      td.Id AS id,
+      ctt.Nombre AS tipoTransaccion,
+      td.Monto AS monto,
+      td.Latitud AS latitud,
+      td.Longitud AS longitud,
+      td.FechaHora AS fechaHora,
+      td.FHRegistro AS fhRegistro,
+      td.NumeroSerieMonedero AS numeroSerieMonedero,
+      td.NumeroSerieDispositivo AS numeroSerieDispositivo,
+      td.ControlTransaccion AS controlTransaccion,
 
-    -- 🔹 Dispositivo (puede ser NULL)
-    d.Marca AS marcaDispositivo,
-    d.Modelo AS modeloDispositivo,
+      d.Marca AS marcaDispositivo,
+      d.Modelo AS modeloDispositivo,
 
-    -- 🔹 Pasajero (a través del monedero)
-    p.Id AS idPasajero,
-    p.Nombre AS nombrePasajero,
-    p.ApellidoPaterno AS apellidoPaternoPasajero,
-    p.ApellidoMaterno AS apellidoMaternoPasajero,
+      p.Id AS idPasajero,
+      p.Nombre AS nombrePasajero,
+      p.ApellidoPaterno AS apellidoPaternoPasajero,
+      p.ApellidoMaterno AS apellidoMaternoPasajero
 
-    -- 🔹 Monedero
-    m.Id AS idMonedero,
-    m.Saldo AS saldoMonedero,
+  FROM TransaccionesDebito td
+  INNER JOIN CatTiposTransacciones ctt 
+      ON td.IdTipoTransaccion = ctt.IdTipoTransaccion
+  LEFT JOIN Dispositivos d 
+      ON td.NumeroSerieDispositivo = d.NumeroSerie
+  INNER JOIN Monederos m 
+      ON td.NumeroSerieMonedero = m.NumeroSerie
+  LEFT JOIN Pasajeros p 
+      ON m.IdPasajero = p.Id
+  WHERE m.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
 
-    -- 🔹 Cliente
-    c.Id AS idCliente,
-    c.Nombre AS nombreCliente,
-    c.RFC AS rfcCliente
+  UNION ALL
 
-FROM Transacciones t
-LEFT JOIN Dispositivos d 
-    ON t.NumeroSerieDispositivo = d.NumeroSerie
-INNER JOIN Monederos m 
-    ON t.NumeroSerieMonedero = m.NumeroSerie
-LEFT JOIN Pasajeros p 
-    ON m.IdPasajero = p.Id
-INNER JOIN Clientes c
-    ON m.IdCliente = c.Id
+  SELECT 
+      'RECARGA' AS origenTabla,
+      tr.Id AS id,
+      ctt.Nombre AS tipoTransaccion,
+      tr.Monto AS monto,
+      tr.Latitud AS latitud,
+      tr.Longitud AS longitud,
+      tr.FechaHora AS fechaHora,
+      tr.FHRegistro AS fhRegistro,
+      tr.NumeroSerieMonedero AS numeroSerieMonedero,
+      tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+      tr.ControlTransaccion AS controlTransaccion,
 
-WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+      d.Marca AS marcaDispositivo,
+      d.Modelo AS modeloDispositivo,
 
-ORDER BY t.Id DESC
+      p.Id AS idPasajero,
+      p.Nombre AS nombrePasajero,
+      p.ApellidoPaterno AS apellidoPaternoPasajero,
+      p.ApellidoMaterno AS apellidoMaternoPasajero
 
-  LIMIT ? OFFSET ?;
+  FROM TransaccionesRecarga tr
+  INNER JOIN CatTiposTransacciones ctt 
+      ON tr.IdTipoTransaccion = ctt.IdTipoTransaccion
+  LEFT JOIN Dispositivos d 
+      ON tr.NumeroSerieDispositivo = d.NumeroSerie
+  INNER JOIN Monederos m 
+      ON tr.NumeroSerieMonedero = m.NumeroSerie
+  LEFT JOIN Pasajeros p 
+      ON m.IdPasajero = p.Id
+  WHERE m.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+)
+ORDER BY FHRegistro DESC
+LIMIT ? OFFSET ?;
+
         `,
-            [...ids, limit, offset],
+            [...ids,...ids, limit, offset],
           );
 
           // Query para total (sin paginación)
-          totalResult = await this.transaccionesRepository.query(
+          totalResult = await this.transaccionesrecargaRepository.query(
             `
-   SELECT COUNT(*) AS total
-FROM Transacciones t
-LEFT JOIN Dispositivos d 
-    ON t.NumeroSerieDispositivo = d.NumeroSerie
-INNER JOIN Monederos m 
-    ON t.NumeroSerieMonedero = m.NumeroSerie
-LEFT JOIN Pasajeros p 
-    ON m.IdPasajero = p.Id
-INNER JOIN Clientes c
-    ON m.IdCliente = c.Id
+SELECT COUNT(*) AS total
+FROM (
+  SELECT td.Id
+  FROM TransaccionesDebito td
+  INNER JOIN Monederos m ON td.NumeroSerieMonedero = m.NumeroSerie
+  WHERE m.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
 
-	WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+  UNION ALL
+
+  SELECT tr.Id
+  FROM TransaccionesRecarga tr
+  INNER JOIN Monederos m ON tr.NumeroSerieMonedero = m.NumeroSerie
+  WHERE m.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+) AS todas;
+
   `,
-            [...ids],
+            [...ids, ...ids],
           );
           break;
       }
@@ -401,99 +620,154 @@ INNER JOIN Clientes c
       let transacciones;
       switch (rol) {
         case 1:
-          transacciones = await this.transaccionesRepository.query(
+          transacciones = await this.transaccionesrecargaRepository.query(
             `
 SELECT 
-    -- Transacción
-    t.Id AS id,
-    t.TipoTransaccion AS tipoTransaccion,
-    t.Monto AS monto,
-    t.Latitud AS latitud,
-    t.Longitud AS longitud,
-    t.FechaHora AS fechaHora,
-    t.FHRegistro AS fhRegistro,
-    t.NumeroSerieMonedero AS numeroSerieMonedero,
-    t.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    'DEBITO' AS origenTabla,        -- 👈 de qué tabla viene
+    td.Id AS id,
+    ctt.Nombre AS tipoTransaccion,  -- 👈 tipo según el catálogo (RECARGA, DEBITO o RECHAZADO)
+    td.Monto AS monto,
+    td.Latitud AS latitud,
+    td.Longitud AS longitud,
+    td.FechaHora AS fechaHora,
+    td.FHRegistro AS fhRegistro,
+    td.NumeroSerieMonedero AS numeroSerieMonedero,
+    td.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    td.ControlTransaccion AS controlTransaccion,
 
-    -- Dispositivo (puede ser NULL)
+    -- Datos del dispositivo
     d.Marca AS marcaDispositivo,
     d.Modelo AS modeloDispositivo,
-    
 
-    -- Pasajero (a través del monedero)
+    -- Pasajero (vía Monedero)
     p.Id AS idPasajero,
     p.Nombre AS nombrePasajero,
     p.ApellidoPaterno AS apellidoPaternoPasajero,
     p.ApellidoMaterno AS apellidoMaternoPasajero
 
-
-
-FROM Transacciones t
+FROM TransaccionesDebito td
+INNER JOIN CatTiposTransacciones ctt 
+    ON td.IdTipoTransaccion = ctt.IdTipoTransaccion
 LEFT JOIN Dispositivos d 
-    ON t.NumeroSerieDispositivo = d.NumeroSerie
+    ON td.NumeroSerieDispositivo = d.NumeroSerie
 INNER JOIN Monederos m 
-    ON t.NumeroSerieMonedero = m.NumeroSerie
+    ON td.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
     ON m.IdPasajero = p.Id
-    
-    ORDER BY t.Id DESC
+
+UNION ALL
+
+SELECT 
+    'RECARGA' AS origenTabla,       -- 👈 solo indica de qué tabla proviene
+    tr.Id AS id,
+    ctt.Nombre AS tipoTransaccion,  -- 👈 valor real del tipo
+    tr.Monto AS monto,
+    tr.Latitud AS latitud,
+    tr.Longitud AS longitud,
+    tr.FechaHora AS fechaHora,
+    tr.FHRegistro AS fhRegistro,
+    tr.NumeroSerieMonedero AS numeroSerieMonedero,
+    tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    tr.ControlTransaccion AS controlTransaccion,
+
+    d.Marca AS marcaDispositivo,
+    d.Modelo AS modeloDispositivo,
+
+    p.Id AS idPasajero,
+    p.Nombre AS nombrePasajero,
+    p.ApellidoPaterno AS apellidoPaternoPasajero,
+    p.ApellidoMaterno AS apellidoMaternoPasajero
+
+FROM TransaccionesRecarga tr
+INNER JOIN CatTiposTransacciones ctt 
+    ON tr.IdTipoTransaccion = ctt.IdTipoTransaccion
+LEFT JOIN Dispositivos d 
+    ON tr.NumeroSerieDispositivo = d.NumeroSerie
+INNER JOIN Monederos m 
+    ON tr.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Pasajeros p 
+    ON m.IdPasajero = p.Id
+
+ORDER BY FHRegistro DESC
         `,
           );
           break;
 
         default:
           const { ids, placeholders } = await this.clienteHijos(cliente);
-          transacciones = await this.transaccionesRepository.query(
+          transacciones = await this.transaccionesrecargaRepository.query(
             `
-SELECT 
-    -- 🔹 Transacción
-    t.Id AS id,
-    t.TipoTransaccion AS tipoTransaccion,
-    t.Monto AS monto,
-    t.Latitud AS latitud,
-    t.Longitud AS longitud,
-    t.FechaHora AS fechaHora,
-    t.FHRegistro AS fhRegistro,
-    t.NumeroSerieMonedero AS numeroSerieMonedero,
-    t.NumeroSerieDispositivo AS numeroSerieDispositivo,
+(
+  SELECT 
+      'DEBITO' AS origenTabla,
+      td.Id AS id,
+      ctt.Nombre AS tipoTransaccion,
+      td.Monto AS monto,
+      td.Latitud AS latitud,
+      td.Longitud AS longitud,
+      td.FechaHora AS fechaHora,
+      td.FHRegistro AS fhRegistro,
+      td.NumeroSerieMonedero AS numeroSerieMonedero,
+      td.NumeroSerieDispositivo AS numeroSerieDispositivo,
+      td.ControlTransaccion AS controlTransaccion,
 
-    -- 🔹 Dispositivo (puede ser NULL)
-    d.Marca AS marcaDispositivo,
-    d.Modelo AS modeloDispositivo,
+      d.Marca AS marcaDispositivo,
+      d.Modelo AS modeloDispositivo,
 
-    -- 🔹 Pasajero (a través del monedero)
-    p.Id AS idPasajero,
-    p.Nombre AS nombrePasajero,
-    p.ApellidoPaterno AS apellidoPaternoPasajero,
-    p.ApellidoMaterno AS apellidoMaternoPasajero,
+      p.Id AS idPasajero,
+      p.Nombre AS nombrePasajero,
+      p.ApellidoPaterno AS apellidoPaternoPasajero,
+      p.ApellidoMaterno AS apellidoMaternoPasajero
 
-    -- 🔹 Monedero
-    m.Id AS idMonedero,
-    m.Saldo AS saldoMonedero,
+  FROM TransaccionesDebito td
+  INNER JOIN CatTiposTransacciones ctt 
+      ON td.IdTipoTransaccion = ctt.IdTipoTransaccion
+  LEFT JOIN Dispositivos d 
+      ON td.NumeroSerieDispositivo = d.NumeroSerie
+  INNER JOIN Monederos m 
+      ON td.NumeroSerieMonedero = m.NumeroSerie
+  LEFT JOIN Pasajeros p 
+      ON m.IdPasajero = p.Id
+  WHERE m.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
 
-    -- 🔹 Cliente
-    c.Id AS idCliente,
-    c.Nombre AS nombreCliente,
-    c.ApellidoPaterno AS apellidoPaternoCliente,
-    c.ApellidoMaterno AS apellidoMaternoCliente,
-    c.Estatus AS estatusCliente
+  UNION ALL
 
-FROM Transacciones t
-LEFT JOIN Dispositivos d 
-    ON t.NumeroSerieDispositivo = d.NumeroSerie
-INNER JOIN Monederos m 
-    ON t.NumeroSerieMonedero = m.NumeroSerie
-LEFT JOIN Pasajeros p 
-    ON m.IdPasajero = p.Id
-INNER JOIN Clientes c
-    ON m.IdCliente = c.Id
+  SELECT 
+      'RECARGA' AS origenTabla,
+      tr.Id AS id,
+      ctt.Nombre AS tipoTransaccion,
+      tr.Monto AS monto,
+      tr.Latitud AS latitud,
+      tr.Longitud AS longitud,
+      tr.FechaHora AS fechaHora,
+      tr.FHRegistro AS fhRegistro,
+      tr.NumeroSerieMonedero AS numeroSerieMonedero,
+      tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+      tr.ControlTransaccion AS controlTransaccion,
 
-WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+      d.Marca AS marcaDispositivo,
+      d.Modelo AS modeloDispositivo,
 
-ORDER BY t.Id DESC;
+      p.Id AS idPasajero,
+      p.Nombre AS nombrePasajero,
+      p.ApellidoPaterno AS apellidoPaternoPasajero,
+      p.ApellidoMaterno AS apellidoMaternoPasajero
+
+  FROM TransaccionesRecarga tr
+  INNER JOIN CatTiposTransacciones ctt 
+      ON tr.IdTipoTransaccion = ctt.IdTipoTransaccion
+  LEFT JOIN Dispositivos d 
+      ON tr.NumeroSerieDispositivo = d.NumeroSerie
+  INNER JOIN Monederos m 
+      ON tr.NumeroSerieMonedero = m.NumeroSerie
+  LEFT JOIN Pasajeros p 
+      ON m.IdPasajero = p.Id
+  WHERE m.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+)
+ORDER BY FHRegistro DESC
 
         `,
-            [...ids],
+            [...ids, ...ids],
           );
           break;
       }
@@ -525,14 +799,106 @@ ORDER BY t.Id DESC;
     }
   }
 
-  async findOneTransaccion(Id: number) {
+  async findOneTransaccionRecarga(id: number) {
     try {
-      const transaccion = await this.transaccionesRepository.findOne({
-        where: { id: Id },
-      });
-      if (!transaccion)
+      let transacciones;
+      
+      transacciones = await this.transaccionesrecargaRepository.query(
+            `
+SELECT 
+    'RECARGA' AS origenTabla,       -- 👈 solo indica de qué tabla proviene
+    tr.Id AS id,
+    ctt.Nombre AS tipoTransaccion,  -- 👈 valor real del tipo
+    tr.Monto AS monto,
+    tr.Latitud AS latitud,
+    tr.Longitud AS longitud,
+    tr.FechaHora AS fechaHora,
+    tr.FHRegistro AS fhRegistro,
+    tr.NumeroSerieMonedero AS numeroSerieMonedero,
+    tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    tr.ControlTransaccion AS controlTransaccion,
+
+    d.Marca AS marcaDispositivo,
+    d.Modelo AS modeloDispositivo,
+
+    p.Id AS idPasajero,
+    p.Nombre AS nombrePasajero,
+    p.ApellidoPaterno AS apellidoPaternoPasajero,
+    p.ApellidoMaterno AS apellidoMaternoPasajero
+
+FROM TransaccionesRecarga tr
+INNER JOIN CatTiposTransacciones ctt 
+    ON tr.IdTipoTransaccion = ctt.IdTipoTransaccion
+LEFT JOIN Dispositivos d 
+    ON tr.NumeroSerieDispositivo = d.NumeroSerie
+INNER JOIN Monederos m 
+    ON tr.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Pasajeros p 
+    ON m.IdPasajero = p.Id
+    WHERE tr.Id = ?
+
+        `, [id]
+          );
+
+      if (!transacciones)
         throw new NotFoundException('Transaccion no encontradas');
-      return { data: transaccion };
+      return { data: transacciones };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new BadRequestException({
+        message: 'Error al obtener transacciones',
+      });
+    }
+  }
+
+  async findOneTransaccionDebito(id: number) {
+    try {
+      let transacciones;
+      
+      transacciones = await this.transaccionesrecargaRepository.query(
+            `
+SELECT 
+    'DEBITO' AS origenTabla,        -- 👈 de qué tabla viene
+    td.Id AS id,
+    ctt.Nombre AS tipoTransaccion,  -- 👈 tipo según el catálogo (RECARGA, DEBITO o RECHAZADO)
+    td.Monto AS monto,
+    td.Latitud AS latitud,
+    td.Longitud AS longitud,
+    td.FechaHora AS fechaHora,
+    td.FHRegistro AS fhRegistro,
+    td.NumeroSerieMonedero AS numeroSerieMonedero,
+    td.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    td.ControlTransaccion AS controlTransaccion,
+
+    -- Datos del dispositivo
+    d.Marca AS marcaDispositivo,
+    d.Modelo AS modeloDispositivo,
+
+    -- Pasajero (vía Monedero)
+    p.Id AS idPasajero,
+    p.Nombre AS nombrePasajero,
+    p.ApellidoPaterno AS apellidoPaternoPasajero,
+    p.ApellidoMaterno AS apellidoMaternoPasajero
+
+FROM TransaccionesDebito td
+INNER JOIN CatTiposTransacciones ctt 
+    ON td.IdTipoTransaccion = ctt.IdTipoTransaccion
+LEFT JOIN Dispositivos d 
+    ON td.NumeroSerieDispositivo = d.NumeroSerie
+INNER JOIN Monederos m 
+    ON td.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Pasajeros p 
+    ON m.IdPasajero = p.Id
+    WHERE td.Id = ?
+
+        `, [id]
+          );
+
+      if (!transacciones)
+        throw new NotFoundException('Transaccion no encontradas');
+      return { data: transacciones };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;

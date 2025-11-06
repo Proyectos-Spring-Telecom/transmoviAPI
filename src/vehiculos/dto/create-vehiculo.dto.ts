@@ -9,6 +9,8 @@ import {
   Max,
   IsInt,
   IsIn,
+  IsDecimal,
+  IsPositive,
 } from 'class-validator';
 
 export class CreateVehiculoDto {
@@ -108,6 +110,24 @@ export class CreateVehiculoDto {
   @MaxLength(500)
   foto?: string;
 
+  @ApiProperty({
+    description: 'La capacidad maxima de pasajeros sentados',
+    example: 42,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  pasajerosSentados?: number;
+
+  @ApiProperty({
+    description: 'La capacidad maxima de pasajeros parados',
+    example: 42,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  pasajerosParados?: number;
+
   @IsOptional()
   @IsInt()
   @IsIn([0, 1], { message: 'Solo se permite 0 o 1' })
@@ -124,4 +144,33 @@ export class CreateVehiculoDto {
   @IsNotEmpty()
   @IsNumber()
   idCliente: number;
+
+  @ApiProperty({
+    example: 12.5,
+    description: 'Kilómetros por litro según el manual del vehículo.',
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
+  km?: number;
+
+  @ApiProperty({
+    example: 1,
+    description: 'Id del tipo de combustible (referencia al catálogo).',
+    required: false,
+  })
+  @IsOptional()
+  @IsInt()
+  idCombustible?: number;
+
+  @ApiProperty({
+    example: 45.0,
+    description: 'Capacidad del tanque en litros.',
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
+  capacidadLitros?: number;
 }

@@ -59,4 +59,12 @@ export class CreateMonederoDto {
   })
   @IsInt()
   idCliente: number;
+
+  @ApiProperty({
+    example: 1,
+    description: 'ID del tipo pasajero propietario del monedero',
+  })
+  @IsInt()
+  @IsOptional()
+  idTipoPasajero?: number;
 }

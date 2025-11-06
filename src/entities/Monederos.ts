@@ -9,7 +9,6 @@ import {
 } from "typeorm";
 import { Clientes } from "./Clientes";
 import { Pasajeros } from "./Pasajeros";
-import { Transacciones } from "./Transacciones";
 import { applySchema } from "src/common/apply-schema.decorator";
 
 @applySchema
@@ -56,6 +55,9 @@ export class Monederos {
   @Column("bigint", { name: "IdCliente" })
   idCliente: number;
 
+  @Column("bigint", { name: "idTipoPasajero" })
+  idTipoPasajero: number;
+
   @ManyToOne(() => Clientes, (clientes) => clientes.monederos, {
     onDelete: "NO ACTION",
     onUpdate: "NO ACTION",
@@ -70,9 +72,5 @@ export class Monederos {
   @JoinColumn([{ name: "IdPasajero", referencedColumnName: "id" }])
   idPasajero2: Pasajeros;
 
-  @OneToMany(
-    () => Transacciones,
-    (transacciones) => transacciones.numeroSerieMonedero2
-  )
-  transacciones: Transacciones[];
+
 }

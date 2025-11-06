@@ -41,6 +41,15 @@ export class Pasajeros {
   @Column("tinyint", { name: "Estatus", default: () => "'1'" })
   estatus: number;
 
+  @Column("tinyint", { name: "EstadoSolicitud", default: () => "'0'" })
+  estadoSolicitud: number;
+
+  @Column("varchar", { name: "Documentacion", nullable: true, length: 500 })
+  documentacion: string | null;
+
+  @Column("varchar", { name: "Curp", nullable: true, length: 18 })
+  curp: string | null;
+
   @OneToMany(() => Monederos, (monederos) => monederos.idPasajero2)
   monederos: Monederos[];
 }

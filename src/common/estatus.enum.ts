@@ -17,12 +17,13 @@ export enum EstadoComponente {
   RETIRADO = 5,
 }
 
-export enum TipoTransaccion {
-  DEBITO = "DEBITO",
-  RECARGA = "RECARGA",
+export enum EnumTipoTransaccion {
+  RECARGA = 1,
+  DEBITO = 2,
+  RECHAZO = 3,
 }
 
-export enum ModulosEstados {
+export enum EnumModulos {
   CLIENTES = 1,
   USUARIOS = 2,
   ROLES = 3,
@@ -48,8 +49,31 @@ export enum ModulosEstados {
   CONTEOPASAJEROS = 23,
   POSICIONES = 24,
   TRANSACCIONES = 25,
-  VIAJESCONTEOS = 26,
-  VIAJESTRANSACCIONES = 27,
-  ADMINISTRACION = 28,
-  MONITOREO = 29,
+  ADMINISTRACION = 26,
+  MONITOREO = 27,
+  VIAJESCONTEOS = 28,
+  VIAJESTRANSACCIONES = 29,
+  HISTORICOTRANSACCIONES = 30,
+  CATALOGOPASAJERO = 31,
+}
+
+export enum EnumSolicitudPasajero {
+  NOSOLICITADO = 0,
+  SOLICITADO = 1,
+  APROVADO = 2,
+  RECHAZADO = 3,
+}
+
+export enum EnumTipoDescuento {
+  PORCENTAJE = 1,
+  MONETARIO = 2,
+  NULO = 3,
+}
+
+export enum EnumEstatusMonederos {
+  INACTIVO = 0,
+  ACTIVO = 1,
+  SUSPENDIDO = 2,
+  EXTRAVIADO = 3,
+  BLOQUEADO = 4,
 }

@@ -1,23 +1,24 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsDateString,
-  IsIn,
+  IsEnum,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
 } from 'class-validator';
+import { EnumTipoTransaccion } from 'src/common/estatus.enum';
 
-export class CreateTransaccioneDto {
-  @IsIn(['RECARGA', 'DEBITO'], {
-    message: 'Tipo de transacción inválido',
+export class CreateTransaccioneRecargaDto {
+  @IsEnum(EnumTipoTransaccion, {
+    message: 'El tipo de transaccion a realizar: 1 (Recarga), 2 (Debito)',
   })
   @ApiProperty({
     description: 'Tipo de transaccion',
-    example: 'RECARGA/DEBITO',
+    example: '1 = Recarga, 2 = Debito',
   })
   @IsNotEmpty()
-  tipoTransaccion: string;
+  idTipoTransaccion: EnumTipoTransaccion;
 
   @ApiProperty({
     example: 150.75,

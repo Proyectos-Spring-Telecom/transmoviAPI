@@ -8,7 +8,11 @@ import {
   IsInt,
   IsIn,
   IsNotEmpty,
+  MaxLength,
+  IsEnum,
+  MinLength,
 } from 'class-validator';
+import { EnumSolicitudPasajero } from 'src/common/estatus.enum';
 
 export class CreatePasajeroDto {
   @ApiProperty({ example: 'Juan', description: 'Nombre del pasajero' })
@@ -71,4 +75,33 @@ export class CreatePasajeroDto {
     example: '1',
   })
   estatus?: number = 1;
+
+  @IsEnum(EnumSolicitudPasajero, {
+    message: 'Estado de solicitud: 0 (No Solicitado), 1 (SOLICITADO)',
+  })
+  @ApiProperty({
+    description: 'Solicitud cambio tipo de pasajero',
+    example: '0 = No Solicitado, 1 = Solicitado',
+  })
+  @IsNotEmpty()
+  estadoSolicitud: EnumSolicitudPasajero = EnumSolicitudPasajero.NOSOLICITADO;
+
+  @ApiProperty({
+    description: 'url del documento',
+    example: 'https.documento.com',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  documentacion?: string;
+
+  @ApiProperty({
+    description: 'CURP del pasajero',
+    example: 'ABCDEFGHIJKLMNOPQ',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(18)
+  @MinLength(18)
+  curp?: string;
 }

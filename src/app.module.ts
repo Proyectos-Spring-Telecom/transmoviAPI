@@ -35,6 +35,8 @@ import { MailModule } from './mail/mail.module';
 import { HistoricoinstalacionesModule } from './historicoinstalaciones/historicoinstalaciones.module';
 import { MonitoreoModule } from './monitoreo/monitoreo.module';
 import { AdministracionModule } from './administracion/administracion.module';
+import { CatpasajeroModule } from './catpasajero/catpasajero.module';
+import { CatcombustibleModule } from './catcombustible/catcombustible.module';
 import Joi from 'joi';
 
 @Module({
@@ -142,6 +144,10 @@ import Joi from 'joi';
     MonitoreoModule,
 
     AdministracionModule,
+
+    CatpasajeroModule,
+
+    CatcombustibleModule,
     
   ], 
  controllers: [AppController],

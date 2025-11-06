@@ -139,14 +139,23 @@ SELECT DISTINCT
     p.FechaCreacion AS fechaCreacion,
     p.FechaActualizacion AS fechaActualizacion,
     p.Estatus AS estatus,
+    p.EstadoSolicitud AS estadoSolicitud,
+    p.Documentacion AS documentacion,
+    p.Curp AS curp,
     c.Id AS idCliente,
-    c.Nombre AS nombreCliente
+    c.Nombre AS nombreCliente,
+    m.Id AS idMonedero,
+    m.NumeroSerie AS numeroSerie,
+    ct.IdTipoPasajero AS idTipoPasajero,
+    ct.Nombre AS nombreCatPasajero
 
 FROM Pasajeros p
 INNER JOIN Monederos m 
     ON p.Id = m.IdPasajero
 INNER JOIN Clientes c 
     ON m.IdCliente = c.Id
+LEFT JOIN CatPasajeros ct
+    ON m.IdTipoPasajero = ct.IdTipoPasajero
 
 ORDER BY p.Id DESC
   LIMIT ? OFFSET ?;
@@ -163,6 +172,8 @@ INNER JOIN Monederos m
     ON p.Id = m.IdPasajero
 INNER JOIN Clientes c 
     ON m.IdCliente = c.Id
+LEFT JOIN CatPasajeros ct
+    ON m.IdTipoPasajero = ct.IdTipoPasajero
 		
   `,
           );
@@ -184,14 +195,24 @@ SELECT DISTINCT
     p.FechaCreacion AS fechaCreacion,
     p.FechaActualizacion AS fechaActualizacion,
     p.Estatus AS estatus,
+    p.EstadoSolicitud AS estadoSolicitud,
+    p.Documentacion AS documentacion,
+    p.Curp AS curp,
     c.Id AS idCliente,
-    c.Nombre AS nombreCliente
+    c.Nombre AS nombreCliente,
+    m.Id AS idMonedero,
+    m.NumeroSerie AS numeroSerie,
+    ct.IdTipoPasajero AS idTipoPasajero,
+    ct.Nombre AS nombreCatPasajero
 
 FROM Pasajeros p
 INNER JOIN Monederos m 
     ON p.Id = m.IdPasajero
 INNER JOIN Clientes c 
     ON m.IdCliente = c.Id
+LEFT JOIN CatPasajeros ct
+    ON m.IdTipoPasajero = ct.IdTipoPasajero
+
     
 WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
 ORDER BY p.Id DESC
@@ -209,6 +230,8 @@ INNER JOIN Monederos m
     ON p.Id = m.IdPasajero
 INNER JOIN Clientes c 
     ON m.IdCliente = c.Id
+LEFT JOIN CatPasajeros ct
+    ON m.IdTipoPasajero = ct.IdTipoPasajero
 	WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
   `,
             [...ids],
@@ -255,10 +278,20 @@ SELECT
     p.Correo AS correo,
     p.FechaCreacion AS fechaCreacion,
     p.FechaActualizacion AS fechaActualizacion,
-    p.Estatus AS estatus
+    p.Estatus AS estatus,
+    p.EstadoSolicitud AS estadoSolicitud,
+    p.Documentacion AS documentacion,
+    p.Curp AS curp,
+    m.Id AS idMonedero,
+    m.NumeroSerie AS numeroSerie,
+    ct.IdTipoPasajero AS idTipoPasajero,
+    ct.Nombre AS nombreCatPasajero
+
 FROM Pasajeros p
 LEFT JOIN Monederos m ON p.Id = m.IdPasajero
-WHERE m.Id IS NULL
+LEFT JOIN CatPasajeros ct
+    ON m.IdTipoPasajero = ct.IdTipoPasajero
+WHERE m.Id IS NOT NULL
 ORDER BY p.Id DESC;
 
         `,
@@ -280,10 +313,20 @@ SELECT
     p.Correo AS correo,
     p.FechaCreacion AS fechaCreacion,
     p.FechaActualizacion AS fechaActualizacion,
-    p.Estatus AS estatus
+    p.Estatus AS estatus,
+    p.EstadoSolicitud AS estadoSolicitud,
+    p.Documentacion AS documentacion,
+    p.Curp AS curp,
+    m.Id AS idMonedero,
+    m.NumeroSerie AS numeroSerie,
+    ct.IdTipoPasajero AS idTipoPasajero,
+    ct.Nombre AS nombreCatPasajero
+    
 FROM Pasajeros p
 LEFT JOIN Monederos m ON p.Id = m.IdPasajero
-WHERE m.Id IS NULL
+LEFT JOIN CatPasajeros ct
+    ON m.IdTipoPasajero = ct.IdTipoPasajero
+WHERE m.Id IS NOT NULL
 AND c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
 ORDER BY p.Id DESC;
         `,
@@ -348,6 +391,8 @@ ORDER BY p.Id DESC;
     }
   }
 
+
+  //ARREGLAR
   async obtenerMainPasajero(
     id: number,
     idUser: number,
@@ -370,6 +415,7 @@ SELECT
         INNER JOIN Monederos m2 ON t.NumeroSerieMonedero = m2.NumeroSerie
         WHERE m2.IdPasajero = p.Id
           AND t.TipoTransaccion = 'RECARGA'
+          AND m2.Estatus = 1
         ORDER BY t.FechaHora DESC
         LIMIT 1
     ) AS UltimaRecarga,
@@ -379,6 +425,7 @@ SELECT
         INNER JOIN Monederos m2 ON t.NumeroSerieMonedero = m2.NumeroSerie
         WHERE m2.IdPasajero = p.Id
           AND t.TipoTransaccion = 'RECARGA'
+          AND m2.Estatus = 1
         ORDER BY t.FechaHora DESC
         LIMIT 1
     ) AS FechaUltimaRecarga,
@@ -388,6 +435,7 @@ SELECT
         INNER JOIN Monederos m3 ON t2.NumeroSerieMonedero = m3.NumeroSerie
         WHERE m3.IdPasajero = p.Id
           AND t2.TipoTransaccion = 'DEBITO'
+          AND m3.Estatus = 1
           AND t2.FechaHora >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
     ) AS TotalDebitosUltimoMes,
     (
@@ -396,6 +444,7 @@ SELECT
         INNER JOIN Monederos m4 ON t3.NumeroSerieMonedero = m4.NumeroSerie
         WHERE m4.IdPasajero = p.Id
           AND t3.TipoTransaccion = 'DEBITO'
+          AND m4.Estatus = 1
         ORDER BY t3.FechaHora DESC
         LIMIT 1
     ) AS UltimoDebito,
@@ -405,6 +454,7 @@ SELECT
         INNER JOIN Monederos m4 ON t3.NumeroSerieMonedero = m4.NumeroSerie
         WHERE m4.IdPasajero = p.Id
           AND t3.TipoTransaccion = 'DEBITO'
+          AND m4.Estatus = 1
         ORDER BY t3.FechaHora DESC
         LIMIT 1
     ) AS FechaUltimoDebito

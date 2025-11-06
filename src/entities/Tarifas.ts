@@ -19,14 +19,17 @@ export class Tarifas {
   @Column("decimal", { name: "TarifaBase", precision: 10, scale: 2 })
   tarifaBase: number;
 
-  @Column("decimal", { name: "DistanciaBaseKm", precision: 10, scale: 2 })
+  @Column("decimal", { name: "DistanciaBaseKm", precision: 10, scale: 2,  nullable: true })
   distanciaBaseKm: number;
 
-  @Column("int", { name: "IncrementoCadaMetros" })
+  @Column("int", { name: "IncrementoCadaMetros",  nullable: true })
   incrementoCadaMetros: number;
 
-  @Column("decimal", { name: "CostoAdicional", precision: 10, scale: 2 })
+  @Column("decimal", { name: "CostoAdicional", precision: 10, scale: 2,  nullable: true })
   costoAdicional: number;
+
+  @Column("int", { name: "TipoTarifa",  unsigned: true })
+  tipoTarifa: number;
 
   @Column("datetime", {
     name: "FechaCreacion",

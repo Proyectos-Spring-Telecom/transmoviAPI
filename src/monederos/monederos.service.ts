@@ -17,8 +17,15 @@ import {
   ApiResponseCommon,
   EstatusEnumBitcora,
 } from 'src/common/ApiResponse';
-import { EstatusEnum, TipoTransaccion } from 'src/common/estatus.enum';
+import {
+  EnumEstatusMonederos,
+  EnumModulos,
+  EnumSolicitudPasajero,
+  EstatusEnum,
+} from 'src/common/estatus.enum';
 import { Clientes } from 'src/entities/Clientes';
+import { UpdateMonederoCatPasajeroDto } from './dto/update-monedero-catpasajero.dto';
+import { UpdateMonederoExtravioDto } from './dto/update-monedero-extravio.dto';
 
 @Injectable()
 export class MonederosService {
@@ -31,7 +38,9 @@ export class MonederosService {
     private readonly pasajerosService: PasajerosService,
   ) {}
 
-  //Crear un monedero
+  // ========================================
+  // 🔹 CREAR UN MONEDERO
+  // ========================================
   async createMonedero(
     createMonederoDto: CreateMonederoDto,
     idUser: number,
@@ -74,7 +83,7 @@ export class MonederosService {
         'CREATE',
         querylogger,
         idUser,
-        20,
+        EnumModulos.MONEDEROS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -98,7 +107,7 @@ export class MonederosService {
         'CREATE',
         querylogger,
         idUser,
-        20,
+        EnumModulos.MONEDEROS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -132,7 +141,9 @@ export class MonederosService {
     return { ids, placeholders };
   }
 
-  //Obtener todos los monederos
+  // ========================================
+  // 🔹 OBTENER PAGINADO DE MONEDEROS
+  // ========================================
   async findAllPagMonederos(
     idUser: number,
     email: string,
@@ -228,6 +239,7 @@ LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
 INNER JOIN Clientes c ON m.IdCliente = c.Id
 
 WHERE p.Id = ?
+AND m.Estatus = 1
 
 ORDER BY m.Id DESC;
 
@@ -243,6 +255,7 @@ LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
 INNER JOIN Clientes c ON m.IdCliente = c.Id
 
 WHERE p.Id = ?
+AND m.Estatus = 1
   `,
             [pasajero.id],
           );
@@ -380,7 +393,9 @@ WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que qu
     }
   }
 
-  //Obtener todos los monederos
+  // ========================================
+  // 🔹 OBTENER LISTADO DE MONEDEROS
+  // ========================================
   async findAllListMonederos(
     idUser: number,
     email: string,
@@ -509,10 +524,6 @@ ORDER BY m.Id DESC;
           break;
       }
 
-      if (monederos.length === 0) {
-        throw new NotFoundException('No se encontraron monederos.');
-      }
-
       const data = monederos.map((item) => ({
         ...item,
         id: Number(item.id),
@@ -536,7 +547,9 @@ ORDER BY m.Id DESC;
     }
   }
 
-  //Obtener monedero por ID
+  // ========================================
+  // 🔹 OBTENER UN MONEDERO POR ID
+  // ========================================
   async findOneMonedero(id: number) {
     try {
       const monedero = await this.monederoRepository.findOne({
@@ -567,7 +580,9 @@ ORDER BY m.Id DESC;
     }
   }
 
-  //Obtener monedero por numero de serie
+  // ========================================
+  // 🔹 OBTENER MONEDERO POR NUMERO DE SERIE
+  // ========================================
   async findOneMonederoBySerie(NumeroSerie: string) {
     try {
       const monedero = await this.monederoRepository.findOne({
@@ -597,7 +612,9 @@ ORDER BY m.Id DESC;
     }
   }
 
-  //Actualizar el estatus del monedero
+  // ========================================
+  // 🔹 CAMBIAR ESTATUS DEL MONEDERO
+  // ========================================
   async updateMonederoEstatus(
     id: number,
     idUser: number,
@@ -625,7 +642,7 @@ ORDER BY m.Id DESC;
         'UPDATE',
         querylogger,
         idUser,
-        20,
+        EnumModulos.MONEDEROS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -650,12 +667,12 @@ ORDER BY m.Id DESC;
         'UPDATE',
         querylogger,
         idUser,
-        20,
+        EnumModulos.MONEDEROS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
       if (error instanceof HttpException) {
-        throw error;
+        throw error.message;
       }
       throw new InternalServerErrorException(
         'Hubo un error al actualizar el estatus del monedero.',
@@ -663,7 +680,95 @@ ORDER BY m.Id DESC;
     }
   }
 
-  //Actualizar saldo en el monedero
+  // ========================================
+  // 🔹 ACTUALIZAR TIPO DE PASJERO EN EL MONEDERO
+  // ========================================
+  async updateMonederoTipoPasajero(
+    id: number,
+    idUser: number,
+    updateMonederoCatPasajeroDto: UpdateMonederoCatPasajeroDto,
+  ) {
+    try {
+      //Buscamos y validamos que exista el monedero
+      const monedero = await this.monederoRepository.findOne({
+        where: { id: id },
+      });
+      if (!monedero) {
+        throw new NotFoundException(
+          `El monedero con número de ID: ${id} no fue encontrado.`,
+        );
+      }
+
+      //extraemos la variable a actualizar
+      const { idTipoPasajero } = updateMonederoCatPasajeroDto;
+
+      //Actualizamos los datos
+      await this.monederoRepository.update(id, {
+        idTipoPasajero: idTipoPasajero,
+      });
+
+      // --- Registro en la bitácora --- SUCCESS
+      const querylogger = { updateMonederoCatPasajeroDto };
+      await this.bitacoraLogger.logToBitacora(
+        'Monederos',
+        `Se actualizó el tipo de pasajero del monedero con ID: ${id} a ${updateMonederoCatPasajeroDto.idTipoPasajero}.`,
+        'UPDATE',
+        querylogger,
+        idUser,
+        EnumModulos.MONEDEROS,
+        EstatusEnumBitcora.SUCCESS,
+      );
+
+      //Si el monedero esta asociado a un pasajero se debe actualizar su estado de solicitud
+      if (monedero.idPasajero) {
+        //Actualizamos el estado de la solicitud
+        const idPasajero = Number(monedero.idPasajero);
+        const bodyPasajero = {
+          estadoSolicitud: EnumSolicitudPasajero.APROVADO,
+        };
+        await this.pasajerosService.updatePasajero(
+          idPasajero,
+          idUser,
+          bodyPasajero,
+        );
+      }
+
+      //API response
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: `Se actualizó el tipo de pasajero del monedero con ID: ${id} correctamente.`,
+        data: {
+          id: Number(monedero.id),
+          nombre: `${monedero.numeroSerie} ` || '',
+        },
+      };
+
+      return result;
+    } catch (error) {
+      // --- Registro en la bitácora --- SUCCESS
+      const querylogger = { updateMonederoCatPasajeroDto };
+      await this.bitacoraLogger.logToBitacora(
+        'Monederos',
+        `Se actualizó el tipo de pasajero del monedero con ID: ${id} a ${updateMonederoCatPasajeroDto.idTipoPasajero}.`,
+        'UPDATE',
+        querylogger,
+        idUser,
+        EnumModulos.MONEDEROS,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Hubo un error al actualizar el tipo de pasajero del monedero.',
+      );
+    }
+  }
+
+  // ========================================
+  // 🔹 ACTUALIZAR SALDO DEL MONEDERO
+  // ========================================
   async updateMonederoSaldo(
     numeroSerie: string,
     idUser: number,
@@ -691,7 +796,7 @@ ORDER BY m.Id DESC;
         'UPDATE',
         querylogger,
         idUser,
-        20,
+        EnumModulos.MONEDEROS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -714,7 +819,7 @@ ORDER BY m.Id DESC;
         'UPDATE',
         querylogger,
         idUser,
-        20,
+        EnumModulos.MONEDEROS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -728,7 +833,9 @@ ORDER BY m.Id DESC;
     }
   }
 
-  //Actualizar el monedero
+  // ========================================
+  // 🔹 ACTUALIZAR MONEDERO
+  // ========================================
   async updateMonedero(
     id: number,
     idUser: number,
@@ -757,7 +864,7 @@ ORDER BY m.Id DESC;
         'UPDATE',
         querylogger,
         idUser,
-        20,
+        EnumModulos.MONEDEROS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -780,7 +887,7 @@ ORDER BY m.Id DESC;
         'UPDATE',
         querylogger,
         idUser,
-        20,
+        EnumModulos.MONEDEROS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -794,7 +901,9 @@ ORDER BY m.Id DESC;
     }
   }
 
-  //Eliminar monederos
+  // ========================================
+  // 🔹 ELIMINADO LOGICO DE MONEDERO
+  // ========================================
   async removeMonedero(id: number, idUser: number) {
     try {
       const monedero = await this.monederoRepository.findOne({
@@ -816,10 +925,11 @@ ORDER BY m.Id DESC;
       await this.bitacoraLogger.logToBitacora(
         'Monederos',
         `Se eliminó el monedero con ID: ${id}.`,
-        'DELETE',
+        'UPDATE',
         querylogger,
         idUser,
-        20,
+        EnumModulos.MONEDEROS,
+        EstatusEnumBitcora.SUCCESS,
       );
 
       //API response
@@ -838,10 +948,10 @@ ORDER BY m.Id DESC;
       await this.bitacoraLogger.logToBitacora(
         'Monederos',
         `Se eliminó el monedero con ID: ${id}.`,
-        'DELETE',
+        'UPDATE',
         querylogger,
         idUser,
-        20,
+        EnumModulos.MONEDEROS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -850,6 +960,104 @@ ORDER BY m.Id DESC;
       }
       throw new InternalServerErrorException(
         'Hubo un error al eliminar el monedero.',
+      );
+    }
+  }
+
+  async reportarExtravio(
+    idUser: number,
+    updateMonederoExtravioDto: UpdateMonederoExtravioDto,
+  ) {
+    try {
+      const { correo, numeroSerie } = updateMonederoExtravioDto;
+      //Buscamos el pasajero por correo y validamos que exista
+      const pasajero =
+        await this.pasajerosService.findOnePasajeroCorreo(correo);
+      if (!pasajero) {
+        throw new NotFoundException(
+          `El pasajero con correo: ${correo} no fue encontrado.`,
+        );
+      }
+
+      //Buscamos monedero asociado al pasajero
+      const monedero = await this.monederoRepository.findOne({
+        where: { idPasajero: pasajero.id },
+      });
+      if (!monedero) {
+        throw new NotFoundException(
+          `No se encontro un monedero asociado al pasajero con ID: ${pasajero.id}`,
+        );
+      }
+
+      //Buscamos el nuevo monedero
+      const nuevoMonedero = await this.monederoRepository.findOne({
+        where: { numeroSerie: numeroSerie },
+      });
+      if (!nuevoMonedero) {
+        throw new NotFoundException(
+          `No se encontro un monedero asociado al pasajero con ID: ${pasajero.id}`,
+        );
+      }
+      //Agregamos la fecha actual
+      function pad(n: number) {
+        return n < 10 ? '0' + n : n;
+      }
+
+      const ahora = new Date();
+      const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas en milisegundos
+      const fechaDesfasada = new Date(ahora.getTime() + desfaseMs);
+
+      const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())} ${pad(fechaDesfasada.getHours())}:${pad(fechaDesfasada.getMinutes())}:${pad(fechaDesfasada.getSeconds())}`;
+
+      //Actualizamos los datos del monedero extraviado al nuevo monedero
+      nuevoMonedero.saldo = monedero.saldo;
+      nuevoMonedero.fechaActivacion = fechaDesfasada;
+      nuevoMonedero.idPasajero = monedero.idPasajero;
+      nuevoMonedero.idCliente = monedero.idCliente;
+      nuevoMonedero.idTipoPasajero = monedero.idTipoPasajero;
+      nuevoMonedero.estatus = EnumEstatusMonederos.ACTIVO;
+
+      await this.monederoRepository.update(nuevoMonedero.id, nuevoMonedero);
+
+      await this.monederoRepository.update(monedero.id,{estatus: EnumEstatusMonederos.EXTRAVIADO, idPasajero: null})
+
+      // --- Registro en la bitácora --- SUCCESS
+      const querylogger = { nuevoMonedero };
+      await this.bitacoraLogger.logToBitacora(
+        'Monederos',
+        `Se realizo baja del monedero con numero de serie: ${monedero.numeroSerie} y se añadio el nuevo monedero con numero de serie: ${nuevoMonedero.numeroSerie}.`,
+        'DELETE',
+        querylogger,
+        idUser,
+        EnumModulos.MONEDEROS,
+      );
+
+      //API response
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'Monedero recuperado de manera correcta correctamente.',
+        data: {
+          id: Number(nuevoMonedero.id),
+          nombre: `${nuevoMonedero.numeroSerie} ${nuevoMonedero.saldo} ` || '',
+        },
+      };
+      return result;
+    } catch (error) {
+      // --- Registro en la bitácora --- SUCCESS
+      const querylogger = { updateMonederoExtravioDto };
+      await this.bitacoraLogger.logToBitacora(
+        'Monederos',
+        `Se realizo baja del monedero y se registro el nuevo con numero de serie: ${updateMonederoExtravioDto.numeroSerie}.`,
+        'DELETE',
+        querylogger,
+        idUser,
+        EnumModulos.MONEDEROS,
+      );
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Hubo un error al intentar generar el reportar el extravio del monedero.',
       );
     }
   }

@@ -17,6 +17,12 @@ import {
   ApiResponseCommon,
   EstatusEnumBitcora,
 } from 'src/common/ApiResponse';
+import { CatpasajeroService } from 'src/catpasajero/catpasajero.service';
+import {
+  EnumModulos,
+  EnumTipoDescuento,
+  EstatusEnum,
+} from 'src/common/estatus.enum';
 
 @Injectable()
 export class ClientesService {
@@ -24,13 +30,18 @@ export class ClientesService {
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
+    private readonly catpasajeroService: CatpasajeroService,
   ) {}
-  //Crear cliente
+
+  // ========================================
+  // 🔹 CREAR UN CLIENTE
+  // ========================================
   async createCliente(
     createClienteDto: CreateClienteDto,
     idUser: number,
   ): Promise<ApiCrudResponse> {
     try {
+      //Buscamos al cliente y verificamos
       const clienteCreate = await this.clienteRepository.findOne({
         where: {
           rfc: createClienteDto.rfc,
@@ -41,6 +52,8 @@ export class ClientesService {
           `Cliente ya registrado con RFC: ${createClienteDto.rfc}. Por favor, ingrese un RFC diferente.`,
         );
       }
+
+      //Creamos el nuevo cliente
       const clienteData = await this.clienteRepository.create(createClienteDto);
       const clienteCreado = await this.clienteRepository.save(clienteData);
 
@@ -52,9 +65,21 @@ export class ClientesService {
         'CREATE',
         querylogger,
         idUser,
-        1,
+        EnumModulos.CLIENTES,
         EstatusEnumBitcora.SUCCESS,
       );
+
+      //Creamos el body para generarle al nuevo cliente un tipo de pasajero estandar
+      const bodyCatPasajero = {
+        nombre: 'Estandar',
+        tipoDescuento: EnumTipoDescuento.NULO,
+        cantidad: null,
+        estatus: EstatusEnum.ACTIVO,
+        idCliente: Number(clienteCreado.id),
+      };
+
+      //consumimos el servicio crear catpasajero estandas
+      await this.catpasajeroService.create(idUser, bodyCatPasajero);
 
       //Api response
       const result: ApiCrudResponse = {
@@ -76,7 +101,7 @@ export class ClientesService {
         'CREATE',
         querylogger,
         idUser,
-        1,
+        EnumModulos.CLIENTES,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -110,7 +135,9 @@ export class ClientesService {
     return { ids, placeholders };
   }
 
-  //Obtener todos los clientes
+  // ========================================
+  // 🔹 OBTENER PAGINADO DE CLIENTES
+  // ========================================
   async getAllClientes(
     idUser: number,
     cliente: number,
@@ -250,7 +277,9 @@ ORDER BY Id ASC
     }
   }
 
-  //Obtener todos los clientes
+  // ========================================
+  // 🔹 OBTENER UN LISTADO DE CLIENTES
+  // ========================================
   async getAllListClientes(
     idUser: number,
     cliente: number,
@@ -316,7 +345,9 @@ ORDER BY Id ASC;
     }
   }
 
-  //Obtener el cliente por ID
+  // ========================================
+  // 🔹 OBTENER UN CLIENTE
+  // ========================================
   async getOneCliente(id: number) {
     try {
       const cliente = await this.clienteRepository.findOne({
@@ -338,13 +369,16 @@ ORDER BY Id ASC;
     }
   }
 
-  //Actualizar informacion del cliente
+  // ========================================
+  // 🔹 ACTUALIZAR CLIENTE
+  // ========================================
   async updateCliente(
     id: number,
     idUser: number,
     updateClienteDto: UpdateClienteDto,
   ): Promise<ApiCrudResponse> {
     try {
+      //Buscamos al cliente y verificamos
       const Cliente = await this.clienteRepository.findOne({
         where: { id: id },
       });
@@ -353,8 +387,9 @@ ORDER BY Id ASC;
           `El cliente con ID: ${id} no fue encontrado.`,
         );
       }
-      const clienteData = await this.clienteRepository.create(updateClienteDto);
-      await this.clienteRepository.update(id, clienteData);
+      
+      //Actualizamos datos del cliente
+      await this.clienteRepository.update(id, updateClienteDto);
 
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { updateClienteDto };
@@ -364,11 +399,11 @@ ORDER BY Id ASC;
         'UPDATE',
         querylogger,
         idUser,
-        1,
+        EnumModulos.CLIENTES,
         EstatusEnumBitcora.SUCCESS,
       );
 
-      //Hacemos un expose que convierta los atributos en PascalCase
+      //buscamos el cliente ya actualizados
       const clientefind = await this.clienteRepository.findOne({
         where: { id: id },
       });
@@ -392,7 +427,7 @@ ORDER BY Id ASC;
         'UPDATE',
         querylogger,
         idUser,
-        1,
+        EnumModulos.CLIENTES,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -405,7 +440,10 @@ ORDER BY Id ASC;
       });
     }
   }
-  //Cambiar el estatus del cliente
+
+  // ========================================
+  // 🔹 ACTUALIZAR ESTATUS DEL CLIENTE
+  // ========================================
   async updateClienteStatus(
     id: number,
     idUser: number,
@@ -413,15 +451,21 @@ ORDER BY Id ASC;
     updateClienteEstatusDto: UpdateClienteEstatusDto,
   ): Promise<ApiCrudResponse> {
     try {
-      
-      const usuario = await this.clienteRepository.findOne({
+      //Buscamos al cliente y verificamos
+      const cliente = await this.clienteRepository.findOne({
         where: { id: id },
       });
-      if (!usuario) {
+      if (!cliente) {
         throw new NotFoundException(`Cliente con ID: ${id} no encontrado`);
       }
+
+      //Obtenemos los clientes hijos
       const { ids, placeholders } = await this.clienteHijos(id);
+
+      //Obtenemos el valor de estatus
       const estatus = updateClienteEstatusDto.estatus;
+
+      //Hacemos eliminado logico al cliente padre e hijos
       await this.clienteRepository.query(
         `
         UPDATE Clientes
@@ -439,7 +483,7 @@ ORDER BY Id ASC;
         'UPDATE',
         querylogger,
         idUser,
-        1,
+        EnumModulos.CLIENTES,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -450,7 +494,7 @@ ORDER BY Id ASC;
         estatus: { estatus: estatus },
         data: {
           id: id,
-          nombre: `${usuario.nombre} ${usuario.apellidoPaterno} ` || '',
+          nombre: `${cliente.nombre} ${cliente.apellidoPaterno} ` || '',
         },
       };
       return result;
@@ -463,7 +507,7 @@ ORDER BY Id ASC;
         'UPDATE',
         querylogger,
         idUser,
-        1,
+        EnumModulos.CLIENTES,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -476,14 +520,18 @@ ORDER BY Id ASC;
       });
     }
   }
-  //Eliminar cliente
+
+  // ========================================
+  // 🔹 ELIMINAR CLIENTES
+  // ========================================
   async removeCliente(
     id: number,
     idUser: number,
     cliente: number,
   ): Promise<ApiCrudResponse> {
     try {
-      
+
+      //Buscamos al cliente y verificamos
       const clienteEliminar = await this.clienteRepository.findOne({
         where: { id: id },
       });
@@ -491,8 +539,12 @@ ORDER BY Id ASC;
         throw new NotFoundException(
           `El cliente con ID: ${id} no fue encontrado.`,
         );
-      };
+      }
+
+      //Obtenemos los clientes hijos
       const { ids, placeholders } = await this.clienteHijos(id);
+
+      //Hacemos eliminado logico al cliente padre e hijos
       await this.clienteRepository.query(
         `
         UPDATE Clientes
@@ -510,7 +562,7 @@ ORDER BY Id ASC;
         'UPDATE',
         querylogger,
         Number(idUser),
-        1,
+        EnumModulos.CLIENTES,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -535,7 +587,7 @@ ORDER BY Id ASC;
         'UPDATE',
         querylogger,
         Number(idUser),
-        1,
+        EnumModulos.CLIENTES,
         EstatusEnumBitcora.ERROR,
         error.message,
       );

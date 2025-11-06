@@ -13,7 +13,6 @@ import { Derroteros } from './Derroteros';
 import { Operadores } from './Operadores';
 import { Turnos } from './Turnos';
 import { ConteoPasajeros } from './ConteoPasajeros';
-import { Transacciones } from './Transacciones';
 import { ViajesConteos } from './ViajesConteos';
 import { applySchema } from "src/common/apply-schema.decorator";
 
@@ -94,9 +93,6 @@ export class Viajes {
     (conteoPasajeros) => conteoPasajeros.viajes,
   )
   conteoPasajeros: ConteoPasajeros[];
-
-  @ManyToMany(() => Transacciones, (transacciones) => transacciones.viajes)
-  transacciones: Transacciones[];
 
   @OneToMany(() => ViajesConteos, (vc) => vc.viaje)
   viajesConteos: ViajesConteos[];
