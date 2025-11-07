@@ -9,7 +9,7 @@ import {
 import { applySchema } from 'src/common/apply-schema.decorator';
 
 @applySchema
-@Index('FK_Transacciones_CatTipos_idx', ['idTipoTransaccion'], {})
+@Index('FK_TransaccionesRecargas_CatTiposTransacciones_idx', ['idTipoTransaccion'], {})
 @Index('FK_TransaccionesRecarga_NumeroSerieMonedero_idx', ['numeroSerieMonedero'], {})
 @Index('FK_TransaccionesRecarga_NumeroSerieDispositivo_idx', ['numeroSerieDispositivo'], {})
 @Entity('TransaccionesRecarga')

@@ -13,15 +13,11 @@ import { Viajes } from "./Viajes";
 import { applySchema } from "src/common/apply-schema.decorator";
 
 @applySchema
-@Index("UQ_Operadores_NumeroLicencia", ["numeroLicencia"], { unique: true })
 @Index("UQ_Operadores_IdUsuario", ["idUsuario"], { unique: true })
 @Entity("Operadores")
 export class Operadores {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
   id: number;
-
-  @Column("varchar", { name: "NumeroLicencia", unique: true, length: 20 })
-  numeroLicencia: string;
 
   @Column("date", { name: "FechaNacimiento" })
   fechaNacimiento: string;
@@ -29,8 +25,8 @@ export class Operadores {
   @Column("varchar", { name: "Identificacion", nullable: true, length: 500 })
   identificacion: string | null;
 
-  @Column("varchar", { name: "Licencia", nullable: true, length: 500 })
-  licencia: string | null;
+  @Column("varchar", { name: "Foto", nullable: true, length: 500 })
+  foto: string | null;
 
   @Column("varchar", {
     name: "ComprobanteDomicilio",
@@ -38,6 +34,13 @@ export class Operadores {
     length: 500,
   })
   comprobanteDomicilio: string | null;
+
+  @Column("varchar", {
+    name: "CertificadoMedico",
+    nullable: true,
+    length: 500,
+  })
+  certificadoMedico: string | null;
 
   @Column("varchar", {
     name: "AntecedentesNoPenales",

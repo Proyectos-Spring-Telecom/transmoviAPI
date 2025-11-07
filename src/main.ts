@@ -18,7 +18,7 @@ async function bootstrap() {
   const config = new DocumentBuilder()
     .setTitle('Transmovi API')
     .setDescription('Documentación de la API de Transmovi') 
-    .setVersion('1.0') 
+    .setVersion('2.0') 
     .addBearerAuth() 
     .build();
 

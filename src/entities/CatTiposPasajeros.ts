@@ -7,16 +7,16 @@ import {
 import { applySchema } from 'src/common/apply-schema.decorator';
 @applySchema
 @Index('FK_CatPasajeros_Clientes_idx', ['idCliente'], {})
-@Entity('CatPasajeros')
-export class CatPasajero {
-  @PrimaryGeneratedColumn({ type: 'bigint', name: 'IdTipoPasajero' })
-  idTipoPasajero: number;
+@Entity('CatTiposPasajeros')
+export class CatTiposPasajeros {
+  @PrimaryGeneratedColumn({ type: 'bigint', name: 'Id' })
+  id: number;
 
   @Column('varchar', { name: 'Nombre', length: 50 })
   nombre: string;
 
-  @Column('tinyint', { name: 'TipoDescuento', unsigned: true })
-  tipoDescuento: number;
+  @Column('tinyint', { name: 'IdCatTipoDescuento', nullable: false })
+  idCatTipoDescuento: number;
 
   @Column('int', { name: 'Cantidad', unsigned: true })
   cantidad: number | null;

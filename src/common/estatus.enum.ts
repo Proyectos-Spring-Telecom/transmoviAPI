@@ -77,3 +77,8 @@ export enum EnumEstatusMonederos {
   EXTRAVIADO = 3,
   BLOQUEADO = 4,
 }
+
+export enum EnumTipoTarifa {
+  ESTACIONARIA = 0,
+  INCREMENTAL = 1,
+}

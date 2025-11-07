@@ -3,11 +3,11 @@ import { CatpasajeroService } from './catpasajero.service';
 import { CatpasajeroController } from './catpasajero.controller';
 import { BitacoraModule } from 'src/bitacora/bitacora.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { CatPasajero } from 'src/entities/CatPasajeros';
+import { CatTiposPasajeros } from 'src/entities/CatTiposPasajeros';
 import { Clientes } from 'src/entities/Clientes';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([CatPasajero,Clientes]), BitacoraModule],
+  imports: [TypeOrmModule.forFeature([CatTiposPasajeros,Clientes]), BitacoraModule],
   controllers: [CatpasajeroController],
   providers: [CatpasajeroService],
   exports: [CatpasajeroService]

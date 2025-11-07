@@ -17,7 +17,7 @@ import {
   ApiResponseCommon,
   EstatusEnumBitcora,
 } from 'src/common/ApiResponse';
-import { CatpasajeroService } from 'src/catpasajero/catpasajero.service';
+import { CatpasajeroService } from 'src/cattiposasajeros/catpasajero.service';
 import {
   EnumModulos,
   EnumTipoDescuento,

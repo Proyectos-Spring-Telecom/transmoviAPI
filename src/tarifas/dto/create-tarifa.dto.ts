@@ -25,7 +25,7 @@ export class CreateTarifaDto {
   @IsOptional({ message: 'La distancia base no es obligatoria' })
   @IsNumber({}, { message: 'La distancia base debe ser numérica' })
   @Min(0, { message: 'La distancia base no puede ser negativa' })
-  distanciaBaseKm: number;
+  distanciaBaseKm?: number;
 
   @ApiProperty({
     example: 500,
@@ -35,7 +35,7 @@ export class CreateTarifaDto {
   @IsOptional({ message: 'El incremento en metros es no obligatorio' })
   @IsInt({ message: 'El incremento debe ser un número entero' })
   @Min(1, { message: 'El incremento debe ser mayor a 0' })
-  incrementoCadaMetros: number;
+  incrementoCadaMetros?: number;
 
   @ApiProperty({
     example: 2.5,
@@ -44,7 +44,7 @@ export class CreateTarifaDto {
   @IsOptional({ message: 'El costo adicional es obligatorio' })
   @IsNumber({}, { message: 'El costo adicional debe ser numérico' })
   @Min(0, { message: 'El costo adicional no puede ser negativo' })
-  costoAdicional: number;
+  costoAdicional?: number;
 
   @ApiProperty({
     example: `0 ó 1`,

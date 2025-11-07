@@ -18,6 +18,8 @@ import {
   EstatusEnumBitcora,
 } from 'src/common/ApiResponse';
 import { Clientes } from 'src/entities/Clientes';
+import { Licencias } from 'src/entities/Licencias';
+import { EnumModulos, EstatusEnum } from 'src/common/estatus.enum';
 
 @Injectable()
 export class OperadoresService {
@@ -26,15 +28,20 @@ export class OperadoresService {
     private readonly operadoresRepository: Repository<Operadores>,
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
+    @InjectRepository(Licencias)
+    private readonly licenciasRepository: Repository<Licencias>,
     private readonly bitacoraLogger: BitacoraLoggerService,
   ) {}
-  //Crear operador
+
+  // ========================================
+  // 🔹 CREAR UN OPERADOR
+  // ========================================
   async createOperador(
     createOperadoreDto: CreateOperadoreDto,
     idUser: number,
   ): Promise<ApiCrudResponse> {
     try {
-      const operadorExistente = await this.operadoresRepository.findOne({
+      const operadorExistente = await this.licenciasRepository.findOne({
         where: { numeroLicencia: createOperadoreDto.numeroLicencia },
       });
       if (operadorExistente) {
@@ -43,15 +50,37 @@ export class OperadoresService {
         );
       }
 
+      //extraemos los valores para crear al operador
+      const bodyOperador = {
+        fechaNacimiento: createOperadoreDto.fechaNacimiento,
+        identificacion: createOperadoreDto.identificacion,
+        foto: createOperadoreDto.foto,
+        comprobanteDomicilio: createOperadoreDto.comprobanteDomicilio,
+        certificadoMedico: createOperadoreDto.certificadoMedico,
+        antecedentesNoPenales: createOperadoreDto.antecedentesNoPenales,
+        estatus: EstatusEnum.ACTIVO,
+        idUsuario: createOperadoreDto.idUsuario,
+      };
+
       //creamos al operador
-      const newOperador =
-        await this.operadoresRepository.create(createOperadoreDto);
+      const newOperador = await this.operadoresRepository.create(bodyOperador);
       const operador = await this.operadoresRepository.save(newOperador);
+      
+      //Creamos la licencia con la cual se registra
+      const bodyLicencia =  {
+        licencia: createOperadoreDto.licencia,
+        numeroLicencia: createOperadoreDto.numeroLicencia,
+        fechaExpedicion: createOperadoreDto.fechaExpedicion,
+        fechaVencimineto: createOperadoreDto.fechaVencimineto,
+        idTipoLicencia: createOperadoreDto.idTipoLicencia,
+        idCategoriaLicencia: createOperadoreDto.idCategoriaLicencia,
+        idOperador: operador.id,
+      }
 
-      const operadorData = await this.operadoresRepository.findOne({
-        where: { id: operador.id },
-      });
-
+      //Guardamos la licencia
+      const licenciaCreate = await this.licenciasRepository.create(bodyLicencia);
+      const licencia = await this.licenciasRepository.save(licenciaCreate);
+      
       //-----Registro en la bitacora-----SUCCESS
       const querylogger = { createOperadoreDto };
       await this.bitacoraLogger.logToBitacora(
@@ -60,7 +89,7 @@ export class OperadoresService {
         'CREATE',
         querylogger,
         Number(idUser),
-        9,
+        EnumModulos.OPERADORES,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -71,7 +100,7 @@ export class OperadoresService {
         data: {
           id: Number(operador.id),
           nombre:
-            `ID de usuario: ${operador.idUsuario} | Número de licencia: ${operador.numeroLicencia}` ||
+            `ID de usuario: ${operador.idUsuario} ` ||
             '',
         },
       };
@@ -85,7 +114,7 @@ export class OperadoresService {
         'CREATE',
         querylogger,
         Number(idUser),
-        9,
+        EnumModulos.OPERADORES,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -119,7 +148,9 @@ export class OperadoresService {
     return { ids, placeholders };
   }
 
-  //Obtener todos los operadores
+  // ========================================
+  // 🔹 OBTENER PAGINADO DE OPERADORES
+  // ========================================
   async findAllOperadores(
     cliente: number,
     rol: number,
@@ -138,11 +169,10 @@ export class OperadoresService {
 SELECT
   -- Datos del Operador
   o.Id AS id,
-  o.NumeroLicencia AS numeroLicencia,
   o.FechaNacimiento AS fechaNacimiento,
   o.Identificacion AS identificacion,
-  o.Licencia AS licencia,
   o.ComprobanteDomicilio AS comprobanteDomicilio,
+  o.CertificadoMedico AS certificadoMedico,
   o.AntecedentesNoPenales AS antecedentesNoPenales,
   o.FechaCreacion AS fechaCreacion,
   o.FechaActualizacion AS fechaActualizacion,
@@ -163,11 +193,25 @@ SELECT
   u.IdRol AS idRol,
 
   -- Datos del Cliente
-  u.IdCliente AS idCliente
+  u.IdCliente AS idCliente,
+  
+  -- Datos del Usuario
+  l.Id as idLicencia,
+  l.Licencia AS licencia,
+  l.NumeroLicencia AS numeroLicencia,
+  l.FechaExpedicion AS fechaExpedicion,
+  l.FechaVencimineto AS fechaVencimiento,
+  l.IdTipoLicencia AS idTipoLicencia,
+  ctl.Nombre AS nombreTipoLicencia,
+  l.IdCategoriaLicencia AS idCategoriaLicencia,
+  ccl.Nombre AS nombreCategoriaLicencia
 
 FROM Operadores o
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
-WHERE u.Estatus = 1
+LEFT JOIN Licencias l ON l.IdOperador = o.Id
+INNER JOIN CatTipoLicencia ctl ON l.IdTipoLicencia = ctl.Id
+INNER JOIN CatCategoriaLicencia ccl ON l.IdCategoriaLicencia = ccl.Id
+
 ORDER BY o.Id DESC
 LIMIT ? OFFSET ?;
         `,
@@ -180,24 +224,26 @@ LIMIT ? OFFSET ?;
   SELECT COUNT(*) AS total
 FROM Operadores o
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
-WHERE u.Estatus = 1
+LEFT JOIN Licencias l ON l.IdOperador = o.Id
+INNER JOIN CatTipoLicencia ctl ON l.IdTipoLicencia = ctl.Id
+INNER JOIN CatCategoriaLicencia ccl ON l.IdCategoriaLicencia = ccl.Id
+
   `,
           );
           break;
 
         default:
-          const { ids, placeholders } = await this.clienteHijos(cliente)
+          const { ids, placeholders } = await this.clienteHijos(cliente);
           // Consulta de datos paginados resto Usuario
           operadores = await this.operadoresRepository.query(
             `
 SELECT
   -- Datos del Operador
   o.Id AS id,
-  o.NumeroLicencia AS numeroLicencia,
   o.FechaNacimiento AS fechaNacimiento,
   o.Identificacion AS identificacion,
-  o.Licencia AS licencia,
   o.ComprobanteDomicilio AS comprobanteDomicilio,
+  o.CertificadoMedico AS certificadoMedico,
   o.AntecedentesNoPenales AS antecedentesNoPenales,
   o.FechaCreacion AS fechaCreacion,
   o.FechaActualizacion AS fechaActualizacion,
@@ -218,10 +264,24 @@ SELECT
   u.IdRol AS idRol,
 
   -- Datos del Cliente
-  u.IdCliente AS idCliente
+  u.IdCliente AS idCliente,
+  
+  -- Datos del Usuario
+  l.Id as idLicencia,
+  l.Licencia AS licencia,
+  l.NumeroLicencia AS numeroLicencia,
+  l.FechaExpedicion AS fechaExpedicion,
+  l.FechaVencimineto AS fechaVencimiento,
+  l.IdTipoLicencia AS idTipoLicencia,
+  ctl.Nombre AS nombreTipoLicencia,
+  l.IdCategoriaLicencia AS idCategoriaLicencia,
+  ccl.Nombre AS nombreCategoriaLicencia
 
 FROM Operadores o
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
+LEFT JOIN Licencias l ON l.IdOperador = o.Id
+INNER JOIN CatTipoLicencia ctl ON l.IdTipoLicencia = ctl.Id
+INNER JOIN CatCategoriaLicencia ccl ON l.IdCategoriaLicencia = ccl.Id
 WHERE u.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
 AND u.Estatus = 1
 ORDER BY o.Id DESC
@@ -234,8 +294,11 @@ LIMIT ? OFFSET ?;
           totalResult = await this.operadoresRepository.query(
             `
    SELECT COUNT(*) AS total
-  FROM Operadores o
-  INNER JOIN Usuarios u ON o.IdUsuario = u.Id
+FROM Operadores o
+INNER JOIN Usuarios u ON o.IdUsuario = u.Id
+LEFT JOIN Licencias l ON l.IdOperador = o.Id
+INNER JOIN CatTipoLicencia ctl ON l.IdTipoLicencia = ctl.Id
+INNER JOIN CatCategoriaLicencia ccl ON l.IdCategoriaLicencia = ccl.Id
 	WHERE u.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
   AND u.Estatus = 1
   `,
@@ -243,7 +306,7 @@ LIMIT ? OFFSET ?;
           );
           break;
       }
-
+      
       const total = Number(totalResult[0]?.total || 0);
       //Forzamos a cambiar el id a number
       const data = operadores.map((item) => ({
@@ -252,6 +315,9 @@ LIMIT ? OFFSET ?;
         idUsuario: Number(item.idUsuario),
         idRol: Number(item.idRol),
         idCliente: Number(item.idCliente),
+        idLicencia: Number(item.idLicencia),
+        idTipoLicencia: Number(item.idTipoLicencia),
+        idCategoriaLicencia: Number(item.idCategoriaLicencia),
       }));
 
       const result: ApiResponseCommon = {
@@ -274,7 +340,9 @@ LIMIT ? OFFSET ?;
     }
   }
 
-  //Obtener todos los operadores
+  // ========================================
+  // 🔹 OBTENER LISTADO DE OPERADORES
+  // ========================================
   async findAllListOperadores(
     cliente: number,
     rol: number,
@@ -288,11 +356,10 @@ LIMIT ? OFFSET ?;
 SELECT
   -- Datos del Operador
   o.Id AS id,
-  o.NumeroLicencia AS numeroLicencia,
   o.FechaNacimiento AS fechaNacimiento,
   o.Identificacion AS identificacion,
-  o.Licencia AS licencia,
   o.ComprobanteDomicilio AS comprobanteDomicilio,
+  o.CertificadoMedico AS certificadoMedico,
   o.AntecedentesNoPenales AS antecedentesNoPenales,
   o.FechaCreacion AS fechaCreacion,
   o.FechaActualizacion AS fechaActualizacion,
@@ -313,10 +380,24 @@ SELECT
   u.IdRol AS idRol,
 
   -- Datos del Cliente
-  u.IdCliente AS idCliente
+  u.IdCliente AS idCliente,
+  
+  -- Datos del Usuario
+  l.Id as idLicencia,
+  l.Licencia AS licencia,
+  l.NumeroLicencia AS numeroLicencia,
+  l.FechaExpedicion AS fechaExpedicion,
+  l.FechaVencimineto AS fechaVencimiento,
+  l.IdTipoLicencia AS idTipoLicencia,
+  ctl.Nombre AS nombreTipoLicencia,
+  l.IdCategoriaLicencia AS idCategoriaLicencia,
+  ccl.Nombre AS nombreCategoriaLicencia
 
 FROM Operadores o
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
+LEFT JOIN Licencias l ON l.IdOperador = o.Id
+INNER JOIN CatTipoLicencia ctl ON l.IdTipoLicencia = ctl.Id
+INNER JOIN CatCategoriaLicencia ccl ON l.IdCategoriaLicencia = ccl.Id
 WHERE o.Estatus = 1
 AND u.Estatus = 1
 ORDER BY o.Id DESC;
@@ -325,17 +406,16 @@ ORDER BY o.Id DESC;
           break;
 
         default:
-          const { ids, placeholders } = await this.clienteHijos(cliente)
+          const { ids, placeholders } = await this.clienteHijos(cliente);
           operadores = await this.operadoresRepository.query(
             `
 SELECT
   -- Datos del Operador
   o.Id AS id,
-  o.NumeroLicencia AS numeroLicencia,
   o.FechaNacimiento AS fechaNacimiento,
   o.Identificacion AS identificacion,
-  o.Licencia AS licencia,
   o.ComprobanteDomicilio AS comprobanteDomicilio,
+  o.CertificadoMedico AS certificadoMedico,
   o.AntecedentesNoPenales AS antecedentesNoPenales,
   o.FechaCreacion AS fechaCreacion,
   o.FechaActualizacion AS fechaActualizacion,
@@ -356,10 +436,24 @@ SELECT
   u.IdRol AS idRol,
 
   -- Datos del Cliente
-  u.IdCliente AS idCliente
+  u.IdCliente AS idCliente,
+  
+  -- Datos del Usuario
+  l.Id as idLicencia,
+  l.Licencia AS licencia,
+  l.NumeroLicencia AS numeroLicencia,
+  l.FechaExpedicion AS fechaExpedicion,
+  l.FechaVencimineto AS fechaVencimiento,
+  l.IdTipoLicencia AS idTipoLicencia,
+  ctl.Nombre AS nombreTipoLicencia,
+  l.IdCategoriaLicencia AS idCategoriaLicencia,
+  ccl.Nombre AS nombreCategoriaLicencia
 
 FROM Operadores o
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
+LEFT JOIN Licencias l ON l.IdOperador = o.Id
+INNER JOIN CatTipoLicencia ctl ON l.IdTipoLicencia = ctl.Id
+INNER JOIN CatCategoriaLicencia ccl ON l.IdCategoriaLicencia = ccl.Id
 WHERE u.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
 AND o.Estatus = 1
 AND u.Estatus = 1
@@ -377,6 +471,9 @@ ORDER BY o.Id DESC;
         idUsuario: Number(item.idUsuario),
         idRol: Number(item.idRol),
         idCliente: Number(item.idCliente),
+        idLicencia: Number(item.idLicencia),
+        idTipoLicencia: Number(item.idTipoLicencia),
+        idCategoriaLicencia: Number(item.idCategoriaLicencia),
       }));
 
       const result: ApiResponseCommon = {
@@ -394,7 +491,9 @@ ORDER BY o.Id DESC;
     }
   }
 
-  //Obtener operador por ID
+  // ========================================
+  // 🔹 OBTENER OPERADORES POR ID
+  // ========================================
   async findOneOperador(id: number, cliente: number, rol: number) {
     try {
       let operador;
@@ -406,11 +505,10 @@ ORDER BY o.Id DESC;
 SELECT
   -- Datos del Operador
   o.Id AS id,
-  o.NumeroLicencia AS numeroLicencia,
   o.FechaNacimiento AS fechaNacimiento,
   o.Identificacion AS identificacion,
-  o.Licencia AS licencia,
   o.ComprobanteDomicilio AS comprobanteDomicilio,
+  o.CertificadoMedico AS certificadoMedico,
   o.AntecedentesNoPenales AS antecedentesNoPenales,
   o.FechaCreacion AS fechaCreacion,
   o.FechaActualizacion AS fechaActualizacion,
@@ -431,10 +529,24 @@ SELECT
   u.IdRol AS idRol,
 
   -- Datos del Cliente
-  u.IdCliente AS idCliente
+  u.IdCliente AS idCliente,
+  
+  -- Datos del Usuario
+  l.Id as idLicencia,
+  l.Licencia AS licencia,
+  l.NumeroLicencia AS numeroLicencia,
+  l.FechaExpedicion AS fechaExpedicion,
+  l.FechaVencimineto AS fechaVencimiento,
+  l.IdTipoLicencia AS idTipoLicencia,
+  ctl.Nombre AS nombreTipoLicencia,
+  l.IdCategoriaLicencia AS idCategoriaLicencia,
+  ccl.Nombre AS nombreCategoriaLicencia
 
 FROM Operadores o
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
+LEFT JOIN Licencias l ON l.IdOperador = o.Id
+INNER JOIN CatTipoLicencia ctl ON l.IdTipoLicencia = ctl.Id
+INNER JOIN CatCategoriaLicencia ccl ON l.IdCategoriaLicencia = ccl.Id
 WHERE o.Id = ?
 ORDER BY o.Id DESC;
         `,
@@ -443,18 +555,17 @@ ORDER BY o.Id DESC;
           break;
 
         default:
-          const { ids, placeholders } = await this.clienteHijos(cliente)
+          const { ids, placeholders } = await this.clienteHijos(cliente);
           // Consulta de datos paginados resto Usuario
           operador = await this.operadoresRepository.query(
             `
 SELECT
   -- Datos del Operador
   o.Id AS id,
-  o.NumeroLicencia AS numeroLicencia,
   o.FechaNacimiento AS fechaNacimiento,
   o.Identificacion AS identificacion,
-  o.Licencia AS licencia,
   o.ComprobanteDomicilio AS comprobanteDomicilio,
+  o.CertificadoMedico AS certificadoMedico,
   o.AntecedentesNoPenales AS antecedentesNoPenales,
   o.FechaCreacion AS fechaCreacion,
   o.FechaActualizacion AS fechaActualizacion,
@@ -475,10 +586,24 @@ SELECT
   u.IdRol AS idRol,
 
   -- Datos del Cliente
-  u.IdCliente AS idCliente
+  u.IdCliente AS idCliente,
+  
+  -- Datos del Usuario
+  l.Id as idLicencia,
+  l.Licencia AS licencia,
+  l.NumeroLicencia AS numeroLicencia,
+  l.FechaExpedicion AS fechaExpedicion,
+  l.FechaVencimineto AS fechaVencimiento,
+  l.IdTipoLicencia AS idTipoLicencia,
+  ctl.Nombre AS nombreTipoLicencia,
+  l.IdCategoriaLicencia AS idCategoriaLicencia,
+  ccl.Nombre AS nombreCategoriaLicencia
 
 FROM Operadores o
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
+LEFT JOIN Licencias l ON l.IdOperador = o.Id
+INNER JOIN CatTipoLicencia ctl ON l.IdTipoLicencia = ctl.Id
+INNER JOIN CatCategoriaLicencia ccl ON l.IdCategoriaLicencia = ccl.Id
 WHERE u.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
 AND o.Id = ?
 ORDER BY o.Id DESC;
@@ -498,6 +623,9 @@ ORDER BY o.Id DESC;
         idUsuario: Number(item.idUsuario),
         idRol: Number(item.idRol),
         idCliente: Number(item.idCliente),
+        idLicencia: Number(item.idLicencia),
+        idTipoLicencia: Number(item.idTipoLicencia),
+        idCategoriaLicencia: Number(item.idCategoriaLicencia),
       }));
 
       return {
@@ -514,7 +642,9 @@ ORDER BY o.Id DESC;
     }
   }
 
-  //Actualizar el estatus del operador
+  // ========================================
+  // 🔹 ACTUALIZAR ESTATUS DEL OPERADOR
+  // ========================================
   async updateOperadorEstatus(
     id: number,
     idUser: number,
@@ -540,7 +670,7 @@ ORDER BY o.Id DESC;
         'UPDATE',
         querylogger,
         idUser,
-        9,
+        EnumModulos.OPERADORES,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -552,7 +682,7 @@ ORDER BY o.Id DESC;
         data: {
           id: id,
           nombre:
-            `ID usuario: ${operador.idUsuario} con número de licencia: ${operador.numeroLicencia}.` ||
+            `ID usuario: ${operador.idUsuario}.` ||
             '',
         },
       };
@@ -566,7 +696,7 @@ ORDER BY o.Id DESC;
         'UPDATE',
         querylogger,
         idUser,
-        9,
+        EnumModulos.OPERADORES,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -579,8 +709,10 @@ ORDER BY o.Id DESC;
       });
     }
   }
-  
-  //Actualizar datos del operador
+
+  // ========================================
+  // 🔹 ACTUALIZAR DATOS DEL OPERADOR
+  // ========================================
   async updateOperador(
     id: number,
     idUser: number,
@@ -605,7 +737,7 @@ ORDER BY o.Id DESC;
         'UPDATE',
         querylogger,
         idUser,
-        9,
+        EnumModulos.OPERADORES,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -616,7 +748,7 @@ ORDER BY o.Id DESC;
         data: {
           id: id,
           nombre:
-            `id usuario:${operador.idUsuario} con numero de licencia:${operador.numeroLicencia} ` ||
+            `id usuario:${operador.idUsuario}  ` ||
             '',
         },
       };
@@ -630,7 +762,7 @@ ORDER BY o.Id DESC;
         'UPDATE',
         querylogger,
         idUser,
-        9,
+        EnumModulos.OPERADORES,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -645,7 +777,9 @@ ORDER BY o.Id DESC;
     }
   }
 
-  //Eliminar Operador
+  // ========================================
+  // 🔹 ELIMINAR OPERADOR
+  // ========================================
   async removeOperador(id: number, idUser: number) {
     try {
       const operador = await this.operadoresRepository.findOne({
@@ -664,7 +798,7 @@ ORDER BY o.Id DESC;
         'UPDATE',
         querylogger,
         idUser,
-        9,
+        EnumModulos.OPERADORES,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -675,7 +809,7 @@ ORDER BY o.Id DESC;
         data: {
           id: id,
           nombre:
-            `id usuario:${operador.idUsuario} con numero de licencia:${operador.numeroLicencia} ` ||
+            `id usuario:${operador.idUsuario} ` ||
             '',
         },
       };
@@ -689,7 +823,7 @@ ORDER BY o.Id DESC;
         'UPDATE',
         querylogger,
         idUser,
-        9,
+        EnumModulos.OPERADORES,
         EstatusEnumBitcora.ERROR,
         error.message,
       );

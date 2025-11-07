@@ -7,7 +7,7 @@ import {
 import { CreateCatpasajeroDto } from './dto/create-catpasajero.dto';
 import { UpdateCatpasajeroDto } from './dto/update-catpasajero.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { CatPasajero } from 'src/entities/CatPasajeros';
+import { CatTiposPasajeros } from 'src/entities/CatTiposPasajeros';
 import { Repository } from 'typeorm';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import {
@@ -22,8 +22,8 @@ import { Clientes } from 'src/entities/Clientes';
 @Injectable()
 export class CatpasajeroService {
   constructor(
-    @InjectRepository(CatPasajero)
-    private readonly catPasajeroRepository: Repository<CatPasajero>,
+    @InjectRepository(CatTiposPasajeros)
+    private readonly catTiposPasajerosRepository: Repository<CatTiposPasajeros>,
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
@@ -36,11 +36,11 @@ export class CatpasajeroService {
     try {
       //Creamos el nuevo tipo de pasajero
       const newCatPasajero =
-        await this.catPasajeroRepository.create(createCatpasajeroDto);
+        await this.catTiposPasajerosRepository.create(createCatpasajeroDto);
 
       //Guardamos el nuevo tipo de pasajero en la base de datos
       const catPasajeroSave =
-        await this.catPasajeroRepository.save(newCatPasajero);
+        await this.catTiposPasajerosRepository.save(newCatPasajero);
 
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { createCatpasajeroDto };
@@ -58,7 +58,7 @@ export class CatpasajeroService {
         status: 'success',
         message: 'El pasajero ha sido incorporado exitosamente al catálogo.',
         data: {
-          id: catPasajeroSave.idTipoPasajero,
+          id: catPasajeroSave.id,
           nombre: `${catPasajeroSave.nombre} ` || '',
         },
       };
@@ -119,7 +119,7 @@ export class CatpasajeroService {
   // ========================================
   async findAllListClientes(cliente: number) {
     try {
-      const catpasajeros = await this.catPasajeroRepository.find({
+      const catpasajeros = await this.catTiposPasajerosRepository.find({
         where: {
           estatus: EstatusEnum.ACTIVO,
           idCliente: cliente
@@ -129,7 +129,7 @@ export class CatpasajeroService {
       //Forzamos los BigInt a number
       const data = catpasajeros.map((item) => ({
         ...item,
-        idTipoPasajero: Number(item.idTipoPasajero),
+        id: Number(item.id),
         idCliente: Number(item.idCliente),
       }));
 
@@ -156,23 +156,26 @@ export class CatpasajeroService {
       switch (rol) {
         case 1:
           // Consulta de datos listado Usuario SuperAdministrador
-          catpasajeros = await this.catPasajeroRepository.query(
+          catpasajeros = await this.catTiposPasajerosRepository.query(
             `
-                SELECT 
-    cp.IdTipoPasajero AS idTipoPasajero,
+SELECT 
+    cp.Id AS id,
     cp.Nombre AS nombre,
-    cp.TipoDescuento AS tipoDescuento,
+    cp.IdCatTipoDescuento AS idCatTipoDescuento,
+    ctd.Nombre AS nombreTipoDescuento,
     cp.Cantidad AS cantidad,
     cp.Estatus AS estatus,
     cp.IdCliente AS idCliente,
     c.Nombre AS nombreCliente,
     c.ApellidoPaterno AS apellidoPaternoCliente,
     c.ApellidoMaterno AS apellidoMaternoCliente
-FROM CatPasajeros cp
+FROM CatTiposPasajeros cp
 INNER JOIN Clientes c 
     ON cp.IdCliente = c.Id
+INNER JOIN CatTipoDescuento ctd
+	ON cp.IdCatTipoDescuento = ctd.Id
 WHERE c.Estatus = 1
-ORDER BY cp.IdTipoPasajero DESC;          
+ORDER BY cp.Id DESC;          
             `,
           );
           break;
@@ -180,24 +183,27 @@ ORDER BY cp.IdTipoPasajero DESC;
         default:
           // Consulta de datos listado resto Usuario
           const { ids, placeholders } = await this.clienteHijos(cliente);
-          catpasajeros = await this.catPasajeroRepository.query(
+          catpasajeros = await this.catTiposPasajerosRepository.query(
             `
-                SELECT 
-    cp.IdTipoPasajero AS idTipoPasajero,
+SELECT 
+    cp.Id AS id,
     cp.Nombre AS nombre,
-    cp.TipoDescuento AS tipoDescuento,
+    cp.IdCatTipoDescuento AS idCatTipoDescuento,
+    ctd.Nombre AS nombreTipoDescuento,
     cp.Cantidad AS cantidad,
     cp.Estatus AS estatus,
     cp.IdCliente AS idCliente,
     c.Nombre AS nombreCliente,
     c.ApellidoPaterno AS apellidoPaternoCliente,
     c.ApellidoMaterno AS apellidoMaternoCliente
-FROM CatPasajeros cp
+FROM CatTiposPasajeros cp
 INNER JOIN Clientes c 
     ON cp.IdCliente = c.Id
+INNER JOIN CatTipoDescuento ctd
+	ON cp.IdCatTipoDescuento = ctd.Id
 WHERE cp.IdCliente IN (${placeholders})   -- 👈 aquí sustituyes con el ID o IDs del cliente
 AND c.Estatus = 1
-ORDER BY cp.IdTipoPasajero DESC;
+ORDER BY cp.Id DESC;
 
             `,
             [...ids],
@@ -208,7 +214,7 @@ ORDER BY cp.IdTipoPasajero DESC;
       //Forzamos los BigInt a number
       const data = catpasajeros.map((item) => ({
         ...item,
-        id: Number(item.idTipoPasajero),
+        id: Number(item.id),
         idCliente: Number(item.idCliente),
       }));
 
@@ -231,10 +237,10 @@ ORDER BY cp.IdTipoPasajero DESC;
   // ========================================
   async findOne(id: number) {
     try {
-      const catpasajeros = await this.catPasajeroRepository.query(
+      const catpasajeros = await this.catTiposPasajerosRepository.query(
         `
                 SELECT 
-    cp.IdTipoPasajero AS idTipoPasajero,
+    cp.Id AS id,
     cp.Nombre AS nombre,
     cp.TipoDescuento AS tipoDescuento,
     cp.Cantidad AS cantidad,
@@ -286,8 +292,8 @@ ORDER BY cp.IdTipoPasajero DESC;
   ) {
     try {
       //Buscamos si existe el tipo de pasajero con ese ID y validamos
-      const catpasajero = await this.catPasajeroRepository.findOne({
-        where: { idTipoPasajero: id },
+      const catpasajero = await this.catTiposPasajerosRepository.findOne({
+        where: { id: id },
       });
       if (!catpasajero) {
         throw new BadRequestException(
@@ -296,7 +302,7 @@ ORDER BY cp.IdTipoPasajero DESC;
       }
 
       //Actualizamos los datos en la base de datos
-      await this.catPasajeroRepository.update(id, updateCatpasajeroDto);
+      await this.catTiposPasajerosRepository.update(id, updateCatpasajeroDto);
 
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { updateCatpasajeroDto };
@@ -352,8 +358,8 @@ ORDER BY cp.IdTipoPasajero DESC;
   ) {
     try {
       //Buscamos si existe el tipo de pasajero con ese ID y validamos
-      const catpasajero = await this.catPasajeroRepository.findOne({
-        where: { idTipoPasajero: id },
+      const catpasajero = await this.catTiposPasajerosRepository.findOne({
+        where: { id: id },
       });
       if (!catpasajero) {
         throw new BadRequestException(
@@ -365,7 +371,7 @@ ORDER BY cp.IdTipoPasajero DESC;
       const { estatus } = updateCatPasajeroEstatusDto;
 
       //Actualizamos el estatus
-      await this.catPasajeroRepository.update(id, { estatus: estatus });
+      await this.catTiposPasajerosRepository.update(id, { estatus: estatus });
 
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { updateCatPasajeroEstatusDto };
@@ -419,8 +425,8 @@ ORDER BY cp.IdTipoPasajero DESC;
   async remove(id: number, idUser: number) {
     try {
       //Buscamos si existe el tipo de pasajero con ese ID y validamos
-      const catpasajero = await this.catPasajeroRepository.findOne({
-        where: { idTipoPasajero: id },
+      const catpasajero = await this.catTiposPasajerosRepository.findOne({
+        where: { id: id },
       });
       if (!catpasajero) {
         throw new BadRequestException(
@@ -429,7 +435,7 @@ ORDER BY cp.IdTipoPasajero DESC;
       }
 
       //Actualizamos el estatus
-      await this.catPasajeroRepository.update(id, { estatus: 0 });
+      await this.catTiposPasajerosRepository.update(id, { estatus: 0 });
 
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { id: id, estatus: EstatusEnum.INACTIVO };
