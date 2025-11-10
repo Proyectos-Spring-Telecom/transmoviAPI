@@ -38,6 +38,13 @@ import { AdministracionModule } from './administracion/administracion.module';
 import { CatpasajeroModule } from './catpasajero/catpasajero.module';
 import { CatcombustibleModule } from './catcombustible/catcombustible.module';
 import { TalleresModule } from './talleres/talleres.module';
+import { CatEstatusMantenimientoModule } from './cat-estatus-mantenimiento/cat-estatus-mantenimiento.module';
+import { CatReferenciaServicioModule } from './cat-referencia-servicio/cat-referencia-servicio.module';
+import { CatTipoCombustibleModule } from './cat-tipo-combustible/cat-tipo-combustible.module';
+import { CatTipoVerificacionesModule } from './cat-tipo-verificaciones/cat-tipo-verificaciones.module';
+import { MantenimientoVehicularModule } from './mantenimiento-vehicular/mantenimiento-vehicular.module';
+import { MantenimientoCombustibleModule } from './mantenimiento-combustible/mantenimiento-combustible.module';
+import { MantenimientoKilometrajeModule } from './mantenimiento-kilometraje/mantenimiento-kilometraje.module';
 import Joi from 'joi';
 
 @Module({
@@ -151,6 +158,20 @@ import Joi from 'joi';
     CatcombustibleModule,
 
     TalleresModule,
+
+    CatEstatusMantenimientoModule,
+
+    CatReferenciaServicioModule,
+
+    CatTipoCombustibleModule,
+
+    CatTipoVerificacionesModule,
+
+    MantenimientoVehicularModule,
+
+    MantenimientoCombustibleModule,
+
+    MantenimientoKilometrajeModule,
     
   ], 
  controllers: [AppController],

@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   HttpException,
+  HttpStatus,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -146,11 +147,22 @@ export class ModulosService {
         where: { id: id },
         relations: ['permisos'],
       });
-      if (!modulo) throw new NotFoundException('Módulo no encontrado');
+      if (!modulo)      throw new NotFoundException({ message: 'Módulo no encontrado' });
+
       return { data: modulo };
     } catch (error) {
-      throw new BadRequestException(error);
-    }
+    if (error instanceof HttpException) throw error;
+
+    console.error('Error interno:', error);
+
+    throw new HttpException(
+      {
+        message: 'Error interno al buscar el módulo',
+        details: error.message,
+      },
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
+  }
   }
 
   async update(

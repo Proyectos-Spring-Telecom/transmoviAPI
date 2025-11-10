@@ -10,6 +10,8 @@ import {
 import { Usuarios } from "./Usuarios";
 import { Turnos } from "./Turnos";
 import { Viajes } from "./Viajes";
+import { Verificaciones } from "./Verificaciones";
+import { MantenimientoCombustible } from "./MantenimientoCombustible";
 import { applySchema } from "src/common/apply-schema.decorator";
 
 @applySchema
@@ -76,4 +78,10 @@ export class Operadores {
 
   @OneToMany(() => Viajes, (viajes) => viajes.idOperador2)
   viajes: Viajes[];
+
+  @OneToMany(() => Verificaciones, (verificaciones) => verificaciones.operador)
+  verificaciones: Verificaciones[];
+
+  @OneToMany(() => MantenimientoCombustible, (mantenimientoCombustible) => mantenimientoCombustible.operador)
+  mantenimientosCombustible: MantenimientoCombustible[];
 }

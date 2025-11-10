@@ -3,6 +3,7 @@ import {
     PrimaryGeneratedColumn,
     Column,
     ManyToOne,
+    OneToMany,
     JoinColumn,
     CreateDateColumn,
     UpdateDateColumn,
@@ -11,6 +12,7 @@ import {
 
   import { applySchema } from 'src/common/apply-schema.decorator';
 import { Clientes } from './Clientes';
+import { MantenimientoVehicular } from './MantenimientoVehicular';
   
   @Entity('Talleres')
   @applySchema
@@ -65,4 +67,7 @@ import { Clientes } from './Clientes';
       onUpdate: 'CURRENT_TIMESTAMP',
     })
     fhActualizacion: Date;
+
+    @OneToMany(() => MantenimientoVehicular, (mantenimientoVehicular) => mantenimientoVehicular.taller)
+    mantenimientosVehiculares: MantenimientoVehicular[];
   }
