@@ -171,10 +171,15 @@ SELECT
   v.PermisoConcesion AS permisoConcesion,
   v.InspeccionMecanica AS inspeccionMecanica,
   v.Foto AS foto,
+  v.PasajerosSentados AS pasajerosSentados,
+  v.PasajerosParados AS pasajerosParados,
   v.FechaCreacion AS fechaCreacion,
   v.FechaActualizacion AS fechaActualizacion,
   v.EstadoActual AS estadoActual,
   v.Estatus AS estatus,
+  v.KM AS km,
+  ctc.Nombre AS nombre,
+  v.CapacidadLitros AS CapacidadLitros,
 
   -- Datos del Cliente
   c.Id AS idCliente,
@@ -185,6 +190,7 @@ SELECT
 
 FROM Vehiculos v
 INNER JOIN Clientes c ON v.IdCliente = c.Id
+LEFT JOIN CatTipoCombustible ctc ON v.IdCombustible = ctc.Id
 ORDER BY v.Id DESC
 LIMIT ? OFFSET ?;
         `,
@@ -219,10 +225,15 @@ SELECT
   v.PermisoConcesion AS permisoConcesion,
   v.InspeccionMecanica AS inspeccionMecanica,
   v.Foto AS foto,
+  v.PasajerosSentados AS pasajerosSentados,
+  v.PasajerosParados AS pasajerosParados,
   v.FechaCreacion AS fechaCreacion,
   v.FechaActualizacion AS fechaActualizacion,
   v.EstadoActual AS estadoActual,
   v.Estatus AS estatus,
+  v.KM AS km,
+  ctc.Nombre AS nombre,
+  v.CapacidadLitros AS CapacidadLitros,
 
   -- Datos del Cliente
   c.Id AS idCliente,
@@ -233,6 +244,7 @@ SELECT
 
 FROM Vehiculos v
 INNER JOIN Clientes c ON v.IdCliente = c.Id
+LEFT JOIN CatTipoCombustible ctc ON v.IdCombustible = ctc.Id
 WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
 ORDER BY v.Id DESC
 LIMIT ? OFFSET ?;
@@ -301,10 +313,15 @@ SELECT
   v.PermisoConcesion AS permisoConcesion,
   v.InspeccionMecanica AS inspeccionMecanica,
   v.Foto AS foto,
+  v.PasajerosSentados AS pasajerosSentados,
+  v.PasajerosParados AS pasajerosParados,
   v.FechaCreacion AS fechaCreacion,
   v.FechaActualizacion AS fechaActualizacion,
   v.EstadoActual AS estadoActual,
   v.Estatus AS estatus,
+  v.KM AS km,
+  ctc.Nombre AS nombre,
+  v.CapacidadLitros AS CapacidadLitros,
 
   -- Datos del Cliente
   c.Id AS idCliente,
@@ -315,6 +332,7 @@ SELECT
 
 FROM Vehiculos v
 INNER JOIN Clientes c ON v.IdCliente = c.Id
+LEFT JOIN CatTipoCombustible ctc ON v.IdCombustible = ctc.Id
 WHERE v.Estatus = 1
 AND v.EstadoActual = 1
 AND c.Estatus = 1
@@ -341,10 +359,15 @@ SELECT
   v.PermisoConcesion AS permisoConcesion,
   v.InspeccionMecanica AS inspeccionMecanica,
   v.Foto AS foto,
+  v.PasajerosSentados AS pasajerosSentados,
+  v.PasajerosParados AS pasajerosParados,
   v.FechaCreacion AS fechaCreacion,
   v.FechaActualizacion AS fechaActualizacion,
   v.EstadoActual AS estadoActual,
   v.Estatus AS estatus,
+  v.KM AS km,
+  ctc.Nombre AS nombre,
+  v.CapacidadLitros AS CapacidadLitros,
 
   -- Datos del Cliente
   c.Id AS idCliente,
@@ -355,6 +378,7 @@ SELECT
 
 FROM Vehiculos v
 INNER JOIN Clientes c ON v.IdCliente = c.Id
+LEFT JOIN CatTipoCombustible ctc ON v.IdCombustible = ctc.Id
 WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
 AND v.Estatus = 1
 AND v.EstadoActual = 1
@@ -413,10 +437,15 @@ SELECT
   v.PermisoConcesion AS permisoConcesion,
   v.InspeccionMecanica AS inspeccionMecanica,
   v.Foto AS foto,
+  v.PasajerosSentados AS pasajerosSentados,
+  v.PasajerosParados AS pasajerosParados,
   v.FechaCreacion AS fechaCreacion,
   v.FechaActualizacion AS fechaActualizacion,
   v.EstadoActual AS estadoActual,
   v.Estatus AS estatus,
+  v.KM AS km,
+  ctc.Nombre AS nombre,
+  v.CapacidadLitros AS CapacidadLitros,
 
   -- Datos del Cliente
   c.Id AS idCliente,
@@ -427,6 +456,7 @@ SELECT
 
 FROM Vehiculos v
 INNER JOIN Clientes c ON v.IdCliente = c.Id
+LEFT JOIN CatTipoCombustible ctc ON v.IdCombustible = ctc.Id
 WHERE v.Id = ?
 ORDER BY v.Id DESC;
         `,
@@ -451,10 +481,15 @@ SELECT
   v.PermisoConcesion AS permisoConcesion,
   v.InspeccionMecanica AS inspeccionMecanica,
   v.Foto AS foto,
+  v.PasajerosSentados AS pasajerosSentados,
+  v.PasajerosParados AS pasajerosParados,
   v.FechaCreacion AS fechaCreacion,
   v.FechaActualizacion AS fechaActualizacion,
   v.EstadoActual AS estadoActual,
   v.Estatus AS estatus,
+  v.KM AS km,
+  ctc.Nombre AS nombre,
+  v.CapacidadLitros AS CapacidadLitros,
 
   -- Datos del Cliente
   c.Id AS idCliente,
@@ -465,6 +500,7 @@ SELECT
 
 FROM Vehiculos v
 INNER JOIN Clientes c ON v.IdCliente = c.Id
+LEFT JOIN CatTipoCombustible ctc ON v.IdCombustible = ctc.Id
 WHERE v.Id = ?
 AND c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
 ORDER BY v.Id DESC;

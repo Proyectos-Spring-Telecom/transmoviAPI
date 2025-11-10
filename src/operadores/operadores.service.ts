@@ -50,6 +50,15 @@ export class OperadoresService {
         );
       }
 
+      const usuarioOperador = await this.operadoresRepository.findOne({
+        where: { idUsuario: createOperadoreDto.idUsuario },
+      });
+      if (usuarioOperador) {
+        throw new BadRequestException(
+          `El usuario con ID ${createOperadoreDto.idUsuario} ya se encuentra registrado.`,
+        );
+      }
+
       //extraemos los valores para crear al operador
       const bodyOperador = {
         fechaNacimiento: createOperadoreDto.fechaNacimiento,
@@ -65,9 +74,9 @@ export class OperadoresService {
       //creamos al operador
       const newOperador = await this.operadoresRepository.create(bodyOperador);
       const operador = await this.operadoresRepository.save(newOperador);
-      
+
       //Creamos la licencia con la cual se registra
-      const bodyLicencia =  {
+      const bodyLicencia = {
         licencia: createOperadoreDto.licencia,
         numeroLicencia: createOperadoreDto.numeroLicencia,
         fechaExpedicion: createOperadoreDto.fechaExpedicion,
@@ -75,12 +84,13 @@ export class OperadoresService {
         idTipoLicencia: createOperadoreDto.idTipoLicencia,
         idCategoriaLicencia: createOperadoreDto.idCategoriaLicencia,
         idOperador: operador.id,
-      }
+      };
 
       //Guardamos la licencia
-      const licenciaCreate = await this.licenciasRepository.create(bodyLicencia);
+      const licenciaCreate =
+        await this.licenciasRepository.create(bodyLicencia);
       const licencia = await this.licenciasRepository.save(licenciaCreate);
-      
+
       //-----Registro en la bitacora-----SUCCESS
       const querylogger = { createOperadoreDto };
       await this.bitacoraLogger.logToBitacora(
@@ -99,9 +109,7 @@ export class OperadoresService {
         message: 'El operador ha sido creado correctamente.',
         data: {
           id: Number(operador.id),
-          nombre:
-            `ID de usuario: ${operador.idUsuario} ` ||
-            '',
+          nombre: `ID de usuario: ${operador.idUsuario} ` || '',
         },
       };
       return result;
@@ -161,7 +169,7 @@ export class OperadoresService {
       const offset = (page - 1) * limit;
       let totalResult;
       let operadores;
-      console.log('ERRORASDASDASDASDAs', rol)
+      console.log('ERRORASDASDASDASDAs', rol);
       switch (rol) {
         case 1:
           // Consulta de datos paginados Usuario SuperAdministrador
@@ -344,7 +352,7 @@ AND u.Estatus = 1
           );
           break;
       }
-      
+
       const total = Number(totalResult[0]?.total || 0);
       //Forzamos a cambiar el id a number
       const data = operadores.map((item) => ({
@@ -729,9 +737,7 @@ ORDER BY o.Id DESC
         estatus: { estatus: estatus },
         data: {
           id: id,
-          nombre:
-            `ID usuario: ${operador.idUsuario}.` ||
-            '',
+          nombre: `ID usuario: ${operador.idUsuario}.` || '',
         },
       };
       return result;
@@ -795,9 +801,7 @@ ORDER BY o.Id DESC
         message: 'Operador actualizado correctamente',
         data: {
           id: id,
-          nombre:
-            `id usuario:${operador.idUsuario}  ` ||
-            '',
+          nombre: `id usuario:${operador.idUsuario}  ` || '',
         },
       };
       return result;
@@ -856,9 +860,7 @@ ORDER BY o.Id DESC
         message: 'Operador eliminado correctamente',
         data: {
           id: id,
-          nombre:
-            `id usuario:${operador.idUsuario} ` ||
-            '',
+          nombre: `id usuario:${operador.idUsuario} ` || '',
         },
       };
       return result;

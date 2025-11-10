@@ -38,7 +38,7 @@ export class PasajerosController {
   // ========================================
 
   @Get('list')
-  findAllListPasajero(@Request() req,): Promise<ApiResponseCommon> {
+  findAllListPasajero(@Request() req): Promise<ApiResponseCommon> {
     const idUser = req.user.userId;
     const cliente = req.user.cliente;
     const rol = req.user.rol;

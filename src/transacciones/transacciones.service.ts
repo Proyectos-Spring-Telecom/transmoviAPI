@@ -5,9 +5,7 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import {
-  CreateTransaccioneRecargaDto,
-} from './dto/create-transaccione-recarga.dto';
+import { CreateTransaccioneRecargaDto } from './dto/create-transaccione-recarga.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TransaccionesRecarga } from 'src/entities/TransaccionesRecarga';
@@ -111,7 +109,7 @@ export class TransaccionesService {
       };
       return result;
     } catch (error) {
-      console.log(error)
+      console.log(error);
       // --- Registro en la bitácora --- ERROR
       const querylogger = { createTransaccioneRecargaDto };
       await this.bitacoraLogger.logToBitacora(
@@ -169,7 +167,8 @@ export class TransaccionesService {
         const newTransaccion = await this.transaccionesdebitoRepository.create(
           createTransaccioneDebitoDto,
         );
-        createTransaccioneDebitoDto.idTipoTransaccion = EnumTipoTransaccion.RECHAZO
+        createTransaccioneDebitoDto.idTipoTransaccion =
+          EnumTipoTransaccion.RECHAZO;
         await this.transaccionesdebitoRepository.save(newTransaccion);
         throw new BadRequestException('Saldo insuficiente');
       }
@@ -296,7 +295,7 @@ SELECT
 
 FROM TransaccionesDebito td
 INNER JOIN CatTiposTransacciones ctt 
-    ON td.IdTipoTransaccion = ctt.IdTipoTransaccion
+    ON td.IdTipoTransaccion = ctt.Id
 LEFT JOIN Dispositivos d 
     ON td.NumeroSerieDispositivo = d.NumeroSerie
 INNER JOIN Monederos m 
@@ -329,7 +328,7 @@ SELECT
 
 FROM TransaccionesRecarga tr
 INNER JOIN CatTiposTransacciones ctt 
-    ON tr.IdTipoTransaccion = ctt.IdTipoTransaccion
+    ON tr.IdTipoTransaccion = ctt.Id
 LEFT JOIN Dispositivos d 
     ON tr.NumeroSerieDispositivo = d.NumeroSerie
 INNER JOIN Monederos m 
@@ -351,7 +350,7 @@ FROM (
     SELECT td.Id
     FROM TransaccionesDebito td
     INNER JOIN CatTiposTransacciones ctt 
-        ON td.IdTipoTransaccion = ctt.IdTipoTransaccion
+        ON td.IdTipoTransaccion = ctt.Id
     LEFT JOIN Dispositivos d 
         ON td.NumeroSerieDispositivo = d.NumeroSerie
     INNER JOIN Monederos m 
@@ -364,7 +363,7 @@ FROM (
     SELECT tr.Id
     FROM TransaccionesRecarga tr
     INNER JOIN CatTiposTransacciones ctt 
-        ON tr.IdTipoTransaccion = ctt.IdTipoTransaccion
+        ON tr.IdTipoTransaccion = ctt.Id
     LEFT JOIN Dispositivos d 
         ON tr.NumeroSerieDispositivo = d.NumeroSerie
     INNER JOIN Monederos m 
@@ -406,7 +405,7 @@ FROM (
       p.ApellidoMaterno AS apellidoMaternoPasajero
 
   FROM TransaccionesDebito td
-  INNER JOIN CatTiposTransacciones ctt ON td.IdTipoTransaccion = ctt.IdTipoTransaccion
+  INNER JOIN CatTiposTransacciones ctt ON td.IdTipoTransaccion = ctt.Id
   LEFT JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
   INNER JOIN Monederos m ON td.NumeroSerieMonedero = m.NumeroSerie
   INNER JOIN Pasajeros p ON m.IdPasajero = p.Id
@@ -436,7 +435,7 @@ FROM (
       p.ApellidoMaterno AS apellidoMaternoPasajero
 
   FROM TransaccionesRecarga tr
-  INNER JOIN CatTiposTransacciones ctt ON tr.IdTipoTransaccion = ctt.IdTipoTransaccion
+  INNER JOIN CatTiposTransacciones ctt ON tr.IdTipoTransaccion = ctt.Id
   LEFT JOIN Dispositivos d ON tr.NumeroSerieDispositivo = d.NumeroSerie
   INNER JOIN Monederos m ON tr.NumeroSerieMonedero = m.NumeroSerie
   INNER JOIN Pasajeros p ON m.IdPasajero = p.Id
@@ -456,7 +455,7 @@ SELECT COUNT(*) AS total
 FROM (
     SELECT td.Id
     FROM TransaccionesDebito td
-    INNER JOIN CatTiposTransacciones ctt ON td.IdTipoTransaccion = ctt.IdTipoTransaccion
+    INNER JOIN CatTiposTransacciones ctt ON td.IdTipoTransaccion = ctt.Id
     INNER JOIN Monederos m ON td.NumeroSerieMonedero = m.NumeroSerie
     INNER JOIN Pasajeros p ON m.IdPasajero = p.Id
     WHERE p.Id = ?  -- 👈 pasajero específico
@@ -465,14 +464,14 @@ FROM (
 
     SELECT tr.Id
     FROM TransaccionesRecarga tr
-    INNER JOIN CatTiposTransacciones ctt ON tr.IdTipoTransaccion = ctt.IdTipoTransaccion
+    INNER JOIN CatTiposTransacciones ctt ON tr.IdTipoTransaccion = ctt.Id
     INNER JOIN Monederos m ON tr.NumeroSerieMonedero = m.NumeroSerie
     INNER JOIN Pasajeros p ON m.IdPasajero = p.Id
     WHERE p.Id = ?  -- 👈 mismo pasajero
 ) AS transacciones_pasajero;
 
   `,
-            [Number(pasajero.id),Number(pasajero.id)], // <-- Aquí debe ir como segundo argumento de query()
+            [Number(pasajero.id), Number(pasajero.id)], // <-- Aquí debe ir como segundo argumento de query()
           );
 
           break;
@@ -505,7 +504,7 @@ FROM (
 
   FROM TransaccionesDebito td
   INNER JOIN CatTiposTransacciones ctt 
-      ON td.IdTipoTransaccion = ctt.IdTipoTransaccion
+      ON td.IdTipoTransaccion = ctt.Id
   LEFT JOIN Dispositivos d 
       ON td.NumeroSerieDispositivo = d.NumeroSerie
   INNER JOIN Monederos m 
@@ -539,7 +538,7 @@ FROM (
 
   FROM TransaccionesRecarga tr
   INNER JOIN CatTiposTransacciones ctt 
-      ON tr.IdTipoTransaccion = ctt.IdTipoTransaccion
+      ON tr.IdTipoTransaccion = ctt.Id
   LEFT JOIN Dispositivos d 
       ON tr.NumeroSerieDispositivo = d.NumeroSerie
   INNER JOIN Monederos m 
@@ -552,7 +551,7 @@ ORDER BY FHRegistro DESC
 LIMIT ? OFFSET ?;
 
         `,
-            [...ids,...ids, limit, offset],
+            [...ids, ...ids, limit, offset],
           );
 
           // Query para total (sin paginación)
@@ -647,7 +646,7 @@ SELECT
 
 FROM TransaccionesDebito td
 INNER JOIN CatTiposTransacciones ctt 
-    ON td.IdTipoTransaccion = ctt.IdTipoTransaccion
+    ON td.IdTipoTransaccion = ctt.Id
 LEFT JOIN Dispositivos d 
     ON td.NumeroSerieDispositivo = d.NumeroSerie
 INNER JOIN Monederos m 
@@ -680,7 +679,7 @@ SELECT
 
 FROM TransaccionesRecarga tr
 INNER JOIN CatTiposTransacciones ctt 
-    ON tr.IdTipoTransaccion = ctt.IdTipoTransaccion
+    ON tr.IdTipoTransaccion = ctt.Id
 LEFT JOIN Dispositivos d 
     ON tr.NumeroSerieDispositivo = d.NumeroSerie
 INNER JOIN Monederos m 
@@ -721,7 +720,7 @@ ORDER BY FHRegistro DESC
 
   FROM TransaccionesDebito td
   INNER JOIN CatTiposTransacciones ctt 
-      ON td.IdTipoTransaccion = ctt.IdTipoTransaccion
+      ON td.IdTipoTransaccion = ctt.Id
   LEFT JOIN Dispositivos d 
       ON td.NumeroSerieDispositivo = d.NumeroSerie
   INNER JOIN Monederos m 
@@ -755,7 +754,7 @@ ORDER BY FHRegistro DESC
 
   FROM TransaccionesRecarga tr
   INNER JOIN CatTiposTransacciones ctt 
-      ON tr.IdTipoTransaccion = ctt.IdTipoTransaccion
+      ON tr.IdTipoTransaccion = ctt.Id
   LEFT JOIN Dispositivos d 
       ON tr.NumeroSerieDispositivo = d.NumeroSerie
   INNER JOIN Monederos m 
@@ -802,9 +801,9 @@ ORDER BY FHRegistro DESC
   async findOneTransaccionRecarga(id: number) {
     try {
       let transacciones;
-      
+
       transacciones = await this.transaccionesrecargaRepository.query(
-            `
+        `
 SELECT 
     'RECARGA' AS origenTabla,       -- 👈 solo indica de qué tabla proviene
     tr.Id AS id,
@@ -828,7 +827,7 @@ SELECT
 
 FROM TransaccionesRecarga tr
 INNER JOIN CatTiposTransacciones ctt 
-    ON tr.IdTipoTransaccion = ctt.IdTipoTransaccion
+    ON tr.IdTipoTransaccion = ctt.Id
 LEFT JOIN Dispositivos d 
     ON tr.NumeroSerieDispositivo = d.NumeroSerie
 INNER JOIN Monederos m 
@@ -837,12 +836,23 @@ LEFT JOIN Pasajeros p
     ON m.IdPasajero = p.Id
     WHERE tr.Id = ?
 
-        `, [id]
-          );
+        `,
+        [id],
+      );
 
       if (!transacciones)
         throw new NotFoundException('Transaccion no encontradas');
-      return { data: transacciones };
+
+      // 🔥 Transformación de datos (ids → number, nombreCompleto)
+      const data = transacciones.map((item) => ({
+        ...item,
+        id: Number(item.id),
+        monto: Number(item.monto),
+        latitud: Number(item.latitud),
+        longitud: Number(item.longitud),
+        idPasajero: Number(item.idPasajero),
+      }));
+      return { data: data };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -856,9 +866,9 @@ LEFT JOIN Pasajeros p
   async findOneTransaccionDebito(id: number) {
     try {
       let transacciones;
-      
+
       transacciones = await this.transaccionesrecargaRepository.query(
-            `
+        `
 SELECT 
     'DEBITO' AS origenTabla,        -- 👈 de qué tabla viene
     td.Id AS id,
@@ -884,7 +894,7 @@ SELECT
 
 FROM TransaccionesDebito td
 INNER JOIN CatTiposTransacciones ctt 
-    ON td.IdTipoTransaccion = ctt.IdTipoTransaccion
+    ON td.IdTipoTransaccion = ctt.Id
 LEFT JOIN Dispositivos d 
     ON td.NumeroSerieDispositivo = d.NumeroSerie
 INNER JOIN Monederos m 
@@ -893,12 +903,22 @@ LEFT JOIN Pasajeros p
     ON m.IdPasajero = p.Id
     WHERE td.Id = ?
 
-        `, [id]
-          );
+        `,
+        [id],
+      );
 
       if (!transacciones)
         throw new NotFoundException('Transaccion no encontradas');
-      return { data: transacciones };
+      // 🔥 Transformación de datos (ids → number, nombreCompleto)
+      const data = transacciones.map((item) => ({
+        ...item,
+        id: Number(item.id),
+        monto: Number(item.monto),
+        latitud: Number(item.latitud),
+        longitud: Number(item.longitud),
+        idPasajero: Number(item.idPasajero),
+      }));
+      return { data: data };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;

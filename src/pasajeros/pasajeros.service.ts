@@ -260,7 +260,10 @@ LEFT JOIN CatPasajeros ct
     }
   }
   //Obtener todos los pasajeros
-  async findAllListPasajeros(cliente: number, rol: number): Promise<ApiResponseCommon> {
+  async findAllListPasajeros(
+    cliente: number,
+    rol: number,
+  ): Promise<ApiResponseCommon> {
     try {
       let pasajeros;
       switch (rol) {
@@ -295,9 +298,9 @@ WHERE m.Id IS NOT NULL
 ORDER BY p.Id DESC;
 
         `,
-          ); 
+          );
           break;
-      
+
         default:
           //Resto de usuarios
           const { ids, placeholders } = await this.clienteHijos(cliente);
@@ -390,7 +393,6 @@ ORDER BY p.Id DESC;
       );
     }
   }
-
 
   //ARREGLAR
   async obtenerMainPasajero(
