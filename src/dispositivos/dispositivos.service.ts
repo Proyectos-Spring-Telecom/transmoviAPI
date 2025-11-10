@@ -120,9 +120,6 @@ export class DispositivosService {
           estadoActual: EstadoComponente.DISPONIBLE,
         },
       });
-      if (dispositivo.length === 0) {
-        throw new NotFoundException(`Dispositivo no encontrado.`);
-      }
 
       //Forzamos a cambiar el id a number
       const data = dispositivo.map((item) => ({

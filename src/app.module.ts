@@ -43,6 +43,13 @@ import { CattipolicenciaModule } from './cattipolicencia/cattipolicencia.module'
 import { CattipodescuentoModule } from './cattipodescuento/cattipodescuento.module';
 import { CattipotransaccionesModule } from './cattipotransacciones/cattipotransacciones.module';
 import { TalleresModule } from './talleres/talleres.module';
+import { CatEstatusMantenimientoModule } from './cat-estatus-mantenimiento/cat-estatus-mantenimiento.module';
+import { CatReferenciaServicioModule } from './cat-referencia-servicio/cat-referencia-servicio.module';
+import { CatTipoCombustibleModule } from './cat-tipo-combustible/cat-tipo-combustible.module';
+import { CatTipoVerificacionesModule } from './cat-tipo-verificaciones/cat-tipo-verificaciones.module';
+import { MantenimientoVehicularModule } from './mantenimiento-vehicular/mantenimiento-vehicular.module';
+import { MantenimientoCombustibleModule } from './mantenimiento-combustible/mantenimiento-combustible.module';
+import { MantenimientoKilometrajeModule } from './mantenimiento-kilometraje/mantenimiento-kilometraje.module';
 import Joi from 'joi';
 
 @Module({
@@ -157,6 +164,7 @@ import Joi from 'joi';
     
     TalleresModule,
 
+<<<<<<< HEAD
     LicenciasModule,
 
     CatcategorialicenciaModule,
@@ -166,6 +174,21 @@ import Joi from 'joi';
     CattipodescuentoModule,
 
     CattipotransaccionesModule,
+=======
+    CatEstatusMantenimientoModule,
+
+    CatReferenciaServicioModule,
+
+    CatTipoCombustibleModule,
+
+    CatTipoVerificacionesModule,
+
+    MantenimientoVehicularModule,
+
+    MantenimientoCombustibleModule,
+
+    MantenimientoKilometrajeModule,
+>>>>>>> 298f8be2bf75b075edf02ec0b9c2618e3d665160
     
   ], 
  controllers: [AppController],

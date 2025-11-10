@@ -13,6 +13,10 @@ import { Dispositivos } from "./Dispositivos";
 import { Vehiculos } from "./Vehiculos";
 import { Turnos } from "./Turnos";
 import { UsuariosInstalaciones } from "./UsuariosInstalaciones";
+import { Verificaciones } from "./Verificaciones";
+import { MantenimientoVehicular } from "./MantenimientoVehicular";
+import { MantenimientoKilometraje } from "./MantenimientoKilometraje";
+import { MantenimientoCombustible } from "./MantenimientoCombustible";
 import { applySchema } from "src/common/apply-schema.decorator";
 
 @applySchema
@@ -101,4 +105,16 @@ export class Instalaciones {
     (usuariosInstalaciones) => usuariosInstalaciones.idInstalacion2
   )
   usuariosInstalaciones: UsuariosInstalaciones[];
+
+  @OneToMany(() => Verificaciones, (verificaciones) => verificaciones.instalacion)
+  verificaciones: Verificaciones[];
+
+  @OneToMany(() => MantenimientoVehicular, (mantenimientoVehicular) => mantenimientoVehicular.instalacion)
+  mantenimientosVehiculares: MantenimientoVehicular[];
+
+  @OneToMany(() => MantenimientoKilometraje, (mantenimientoKilometraje) => mantenimientoKilometraje.instalacion)
+  mantenimientosKilometraje: MantenimientoKilometraje[];
+
+  @OneToMany(() => MantenimientoCombustible, (mantenimientoCombustible) => mantenimientoCombustible.instalacion)
+  mantenimientosCombustible: MantenimientoCombustible[];
 }

@@ -120,9 +120,6 @@ export class VehiculosService {
           estadoActual: EstadoComponente.DISPONIBLE,
         },
       });
-      if (vehiculos.length === 0) {
-        throw new NotFoundException(`No se encontraron vehículos.`);
-      }
 
       //Forzamos a cambiar el id a number
       const data = vehiculos.map((item) => ({

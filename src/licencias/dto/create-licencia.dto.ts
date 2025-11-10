@@ -1,5 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsDateString, IsNumber } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  IsDateString,
+  IsNumber,
+  IsIn,
+  IsEnum,
+} from 'class-validator';
+import { EnumCategoriaLicencia, EnumTipoLicencia } from 'src/common/estatus.enum';
 
 export class CreateLicenciaDto {
   @ApiProperty({
@@ -33,20 +41,28 @@ export class CreateLicenciaDto {
   fechaVencimineto: string;
 
   @ApiProperty({
-    description: 'ID del tipo de licencia',
-    example: 2,
+    enum: EnumTipoLicencia,
+    description: 'Tipo de licencia del operador (A, B, C, D, E o F).',
+    example: EnumTipoLicencia.A,
   })
-  @IsNumber()
+  @IsEnum(EnumTipoLicencia, {
+    message:
+      'idTipoLicencia debe ser un valor válido: 1(A), 2(B), 3(C), 4(D), 5(E), 6(F)',
+  })
   @IsNotEmpty()
-  idTipoLicencia: number;
+  idTipoLicencia: EnumTipoLicencia;
 
   @ApiProperty({
-    description: 'ID de la categoría de licencia',
-    example: 4,
+    enum: EnumCategoriaLicencia,
+    description: 'Categoría de la licencia según su tipo de cobertura.',
+    example: EnumCategoriaLicencia.FEDERAL,
   })
-  @IsNumber()
+  @IsEnum(EnumCategoriaLicencia, {
+    message:
+      'idCategoriaLicencia debe ser un valor válido: 1 (Federal) o 2 (Estatal)',
+  })
   @IsNotEmpty()
-  idCategoriaLicencia: number;
+  idCategoriaLicencia: EnumCategoriaLicencia;
 
   @ApiProperty({
     description: 'ID del operador al que pertenece la licencia',

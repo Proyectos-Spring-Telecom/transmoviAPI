@@ -130,9 +130,7 @@ export class BluevoxService {
           estadoActual: EstadoComponente.DISPONIBLE,
         },
       });
-      if (bluevox.length === 0) {
-        throw new NotFoundException(`No se encontraron BlueVoxs.`);
-      }
+      
 
       //Forzamos a cambiar el id a number
       const data = bluevox.map((item) => ({

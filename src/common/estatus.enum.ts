@@ -82,3 +82,18 @@ export enum EnumTipoTarifa {
   ESTACIONARIA = 0,
   INCREMENTAL = 1,
 }
+
+export enum EnumCategoriaLicencia {
+  FEDERAL = 1,
+  ESTATAL = 2,
+}
+
+export enum EnumTipoLicencia {
+  A = 1,
+  B = 2,
+  C = 3,
+  D = 4,
+  E = 5,
+  F = 6,
+}
+
