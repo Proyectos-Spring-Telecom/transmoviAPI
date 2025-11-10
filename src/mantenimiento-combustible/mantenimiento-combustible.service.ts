@@ -110,7 +110,6 @@ export class MantenimientoCombustibleService {
         } : null,
         operador: item.operador ? {
           id: Number(item.operador.id),
-          numeroLicencia: item.operador.numeroLicencia,
         } : null,
       }));
 
@@ -165,7 +164,6 @@ export class MantenimientoCombustibleService {
             } : null,
             operador: mantenimiento.operador ? {
               id: Number(mantenimiento.operador.id),
-              numeroLicencia: mantenimiento.operador.numeroLicencia,
             } : null,
           },
         ],

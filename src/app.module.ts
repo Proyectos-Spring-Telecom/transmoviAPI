@@ -84,13 +84,13 @@ import Joi from 'joi';
         database: config.get<string>('DB_DATABASE'),
         autoLoadEntities: false,
         entities: [__dirname + '/entities/*{.ts,.js}'],
-        synchronize: false, //Nunca poner en true 
+        synchronize: false, //Nunca poner en true
         dateStrings: false,
         timezone: 'Z',
         extra: {
-        // Evita que bigint se devuelvan como string
-        decimalNumbers: true,
-      },
+          // Evita que bigint se devuelvan como string
+          decimalNumbers: true,
+        },
       }),
     }),
 
@@ -161,20 +161,9 @@ import Joi from 'joi';
     CatpasajeroModule,
 
     CatcombustibleModule,
-    
+
     TalleresModule,
 
-<<<<<<< HEAD
-    LicenciasModule,
-
-    CatcategorialicenciaModule,
-
-    CattipolicenciaModule,
-
-    CattipodescuentoModule,
-
-    CattipotransaccionesModule,
-=======
     CatEstatusMantenimientoModule,
 
     CatReferenciaServicioModule,
@@ -188,10 +177,18 @@ import Joi from 'joi';
     MantenimientoCombustibleModule,
 
     MantenimientoKilometrajeModule,
->>>>>>> 298f8be2bf75b075edf02ec0b9c2618e3d665160
-    
-  ], 
- controllers: [AppController],
+
+    LicenciasModule,
+
+    CatcategorialicenciaModule,
+
+    CattipolicenciaModule,
+
+    CattipodescuentoModule,
+
+    CattipotransaccionesModule,
+  ],
+  controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}
