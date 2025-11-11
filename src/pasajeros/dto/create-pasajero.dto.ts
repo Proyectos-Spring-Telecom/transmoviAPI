@@ -126,4 +126,12 @@ export class CreatePasajeroDto {
   @IsString()
   @IsOptional()
   numeroSerieMonedero: string;
+
+  @ApiProperty({
+    example: 1,
+    description: 'ID del tipo pasajero propietario del monedero',
+  })
+  @IsInt()
+  @IsOptional()
+  idTipoPasajero?: number;
 }

@@ -157,9 +157,10 @@ export class PasajerosService {
       const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())} ${pad(fechaDesfasada.getHours())}:${pad(fechaDesfasada.getMinutes())}:${pad(fechaDesfasada.getSeconds())}`;
 
       await this.monederosRepository.update(monederos.id, {
-        idPasajero: pasajeroSave.id,
         fechaActivacion: fechaDesfasada,
         estatus: EstatusEnum.ACTIVO,
+        idPasajero: pasajeroSave.id,
+        idTipoPasajero: createPasajeroDto.idTipoPasajero,
       });
 
       // --- Registro en la bitácora --- SUCCESS
