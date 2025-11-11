@@ -184,6 +184,7 @@ export class TalleresService {
     let exist: any; // Declaramos fuera del try para poder usarlo en el catch
   
     try {
+      console.log(idUser,id);
       exist = await this.talleresRepository.findOne({ where: { id } });
       if (!exist)
         throw new NotFoundException('No se ha encontrado el taller solicitado');

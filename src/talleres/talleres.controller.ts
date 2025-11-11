@@ -39,15 +39,14 @@ export class TalleresController {
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateTallereDto: UpdateTallereDto,@Req() req) {
-    return this.talleresService.update(+id, updateTallereDto,req.user.id);
+    return this.talleresService.update(+id, updateTallereDto,req.user.userId);
   }
-
-  @Patch('desactivar/:id')
+    @Patch('desactivar/:id')
   remove(@Param('id') id: number,@Req() req:any) {
-    return this.talleresService.remove(+id,Number(req.user.id));
+    return this.talleresService.remove(+id,Number(req.user.userId));
   }
   @Patch('activar/:id')
   activar(@Param('id') id: number,@Req() req:any) {
-    return this.talleresService.activar(+id,Number(req.user.id));
+    return this.talleresService.activar(+id,Number(req.user.userId));
   }
 }
