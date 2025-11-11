@@ -49,9 +49,9 @@ export class CreateMonederoDto {
     description: 'ID del pasajero (opcional)',
     required: false,
   })
-  @IsNotEmpty()
+  @IsOptional()
   @IsInt()
-  idPasajero: number;
+  idPasajero: number | null;
 
   @ApiProperty({
     example: 1,

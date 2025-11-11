@@ -21,11 +21,13 @@ import {
   EnumEstatusMonederos,
   EnumModulos,
   EnumSolicitudPasajero,
+  EnumTipoTransaccion,
   EstatusEnum,
 } from 'src/common/estatus.enum';
 import { Clientes } from 'src/entities/Clientes';
 import { UpdateMonederoCatPasajeroDto } from './dto/update-monedero-catpasajero.dto';
 import { UpdateMonederoExtravioDto } from './dto/update-monedero-extravio.dto';
+import { TransaccionesRecarga } from 'src/entities/TransaccionesRecarga';
 
 @Injectable()
 export class MonederosService {
@@ -34,6 +36,8 @@ export class MonederosService {
     private readonly monederoRepository: Repository<Monederos>,
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
+    @InjectRepository(TransaccionesRecarga)
+    private readonly transaccionesrecargaRepository: Repository<TransaccionesRecarga>,
     private readonly bitacoraLogger: BitacoraLoggerService,
     private readonly pasajerosService: PasajerosService,
   ) {}
@@ -84,6 +88,29 @@ export class MonederosService {
         querylogger,
         idUser,
         EnumModulos.MONEDEROS,
+        EstatusEnumBitcora.SUCCESS,
+      );
+
+      //Creamos la transaccion en la BD
+      const newTransaccion = await this.transaccionesrecargaRepository.create({
+        idTipoTransaccion: EnumTipoTransaccion.RECARGA,
+        monto: createMonederoDto.saldo,
+        fechaHora: fechaActual,
+        numeroSerieMonedero: monederoSave.numeroSerie,
+        numeroSerieDispositivo: null,
+      });
+      const transaccionSave =
+        await this.transaccionesrecargaRepository.save(newTransaccion);
+
+      // --- Registro en la bitácora --- SUCCESS
+      const queryloggerTransacciones = { newTransaccion };
+      await this.bitacoraLogger.logToBitacora(
+        'Transacciones',
+        `Se realizo una transaccion de tipo ${EnumTipoTransaccion.RECARGA}`,
+        'CREATE',
+        queryloggerTransacciones,
+        idUser,
+        EnumModulos.TRANSACCIONES,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -1019,7 +1046,10 @@ ORDER BY m.Id DESC;
 
       await this.monederoRepository.update(nuevoMonedero.id, nuevoMonedero);
 
-      await this.monederoRepository.update(monedero.id,{estatus: EnumEstatusMonederos.EXTRAVIADO, idPasajero: null})
+      await this.monederoRepository.update(monedero.id, {
+        estatus: EnumEstatusMonederos.EXTRAVIADO,
+        idPasajero: null,
+      });
 
       // --- Registro en la bitácora --- SUCCESS
       const querylogger = { nuevoMonedero };

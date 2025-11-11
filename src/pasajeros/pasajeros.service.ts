@@ -28,6 +28,7 @@ import {
   EstatusEnum,
 } from 'src/common/estatus.enum';
 import { Monederos } from 'src/entities/Monederos';
+import { UpdatePasajeroEstadoSolicitudDto } from './dto/update-pasajeros-estado-solicitud.dto';
 
 @Injectable()
 export class PasajerosService {
@@ -45,7 +46,9 @@ export class PasajerosService {
     private readonly bitacoraLogger: BitacoraLoggerService,
   ) {}
 
-  //Crear pasajero
+  // ========================================
+  // 🔹  CREAMOS EL PASAJERO DE MANERA INTERNA
+  // ========================================
   async createPasajeros(
     createPasajeroDto: CreatePasajeroDto,
     idUser: number,
@@ -58,7 +61,7 @@ export class PasajerosService {
       });
       if (pasajero) {
         throw new BadRequestException(
-          `El pasajero con el correo electrónico ${createPasajeroDto.correo} ya se encuentra registrado.`,
+          `El pasajero con el correo electrónico ${createPasajeroDto.correo} ya está registrado en el sistema.`,
         );
       }
       const existUsuario = await this.usuariosRepository.findOne({
@@ -67,7 +70,7 @@ export class PasajerosService {
       });
       if (existUsuario) {
         throw new BadRequestException(
-          `El usuario con el correo electrónico ${createPasajeroDto.correo} ya se encuentra registrado.`,
+          `El usuario con el correo electrónico ${createPasajeroDto.correo} ya está registrado en el sistema.`,
         );
       }
 
@@ -78,16 +81,15 @@ export class PasajerosService {
           estatus: 1,
         },
       });
-
       if (!monederos) {
         throw new BadRequestException(
-          `El monedero con numero de serie ${createPasajeroDto.numeroSerieMonedero} no fue encontrado.`,
+          `No se encontró el monedero con número de serie ${createPasajeroDto.numeroSerieMonedero}.`,
         );
       }
 
       if (monederos.idPasajero) {
         throw new BadRequestException(
-          `El monedero con numero de serie ${createPasajeroDto.numeroSerieMonedero} esta ligado a un pasajero`,
+          `El monedero con número de serie ${createPasajeroDto.numeroSerieMonedero} está asociado a un pasajero.`,
         );
       }
 
@@ -222,7 +224,9 @@ export class PasajerosService {
     }
   }
 
-  //Crear pasajero
+  // ========================================
+  // 🔹 CREAMOS EL PASAJERO DE MANERA AFILIACION EXTERNA
+  // ========================================
   async createPasajerosAfiliacion(
     createPasajeroAfiliacionDto: CreatePasajeroAfiliacionDto,
     idUser: number,
@@ -309,7 +313,9 @@ export class PasajerosService {
     return { ids, placeholders };
   }
 
-  //Obtener todos los pasajeros
+  // ========================================
+  // 🔹 OBTENEMOS EL PAGINADO DE PASAJEROS
+  // ========================================
   async findAllPasajeros(
     cliente: number,
     rol: number,
@@ -342,16 +348,19 @@ SELECT DISTINCT
     c.Nombre AS nombreCliente,
     m.Id AS idMonedero,
     m.NumeroSerie AS numeroSerie,
-    ct.IdTipoPasajero AS idTipoPasajero,
-    ct.Nombre AS nombreCatPasajero
+    ct.Id AS idTipoPasajero,
+    ct.Nombre AS nombreCatPasajero,
+    ctd.Nombre AS nombreTipoDescuento
 
 FROM Pasajeros p
 INNER JOIN Monederos m 
     ON p.Id = m.IdPasajero
 INNER JOIN Clientes c 
     ON m.IdCliente = c.Id
-LEFT JOIN CatPasajeros ct
-    ON m.IdTipoPasajero = ct.IdTipoPasajero
+LEFT JOIN CatTiposPasajeros ct
+    ON m.IdTipoPasajero = ct.Id
+LEFT JOIN CatTipoDescuento ctd
+	ON ct.IdCatTipoDescuento = ctd.Id
 
 ORDER BY p.Id DESC
   LIMIT ? OFFSET ?;
@@ -368,8 +377,8 @@ INNER JOIN Monederos m
     ON p.Id = m.IdPasajero
 INNER JOIN Clientes c 
     ON m.IdCliente = c.Id
-LEFT JOIN CatPasajeros ct
-    ON m.IdTipoPasajero = ct.IdTipoPasajero
+LEFT JOIN CatTiposPasajeros ct
+    ON m.IdTipoPasajero = ct.Id
 		
   `,
           );
@@ -398,16 +407,20 @@ SELECT DISTINCT
     c.Nombre AS nombreCliente,
     m.Id AS idMonedero,
     m.NumeroSerie AS numeroSerie,
-    ct.IdTipoPasajero AS idTipoPasajero,
-    ct.Nombre AS nombreCatPasajero
+    ct.Id AS idTipoPasajero,
+    ct.Nombre AS nombreCatPasajero,
+    ctd.Nombre AS nombreTipoDescuento
 
 FROM Pasajeros p
 INNER JOIN Monederos m 
     ON p.Id = m.IdPasajero
 INNER JOIN Clientes c 
     ON m.IdCliente = c.Id
-LEFT JOIN CatPasajeros ct
-    ON m.IdTipoPasajero = ct.IdTipoPasajero
+LEFT JOIN CatTiposPasajeros ct
+    ON m.IdTipoPasajero = ct.Id
+LEFT JOIN CatTipoDescuento ctd
+	ON ct.IdCatTipoDescuento = ctd.Id
+    ON m.IdTipoPasajero = ct.Id
 
     
 WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
@@ -426,8 +439,8 @@ INNER JOIN Monederos m
     ON p.Id = m.IdPasajero
 INNER JOIN Clientes c 
     ON m.IdCliente = c.Id
-LEFT JOIN CatPasajeros ct
-    ON m.IdTipoPasajero = ct.IdTipoPasajero
+LEFT JOIN CatTiposPasajeros ct
+    ON m.IdTipoPasajero = ct.Id
 	WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
   `,
             [...ids],
@@ -437,8 +450,17 @@ LEFT JOIN CatPasajeros ct
 
       const total = Number(totalResult[0]?.total || 0);
 
+      // 🔥 Forzamos ids a number y agregamos nombreCompleto
+      const data = pasajeros.map((item) => ({
+        ...item,
+        id: Number(item.id),
+        idCliente: Number(item.idCliente),
+        idMonedero: Number(item.idMonedero),
+        idTipoPasajero: Number(item.idTipoPasajero),
+      }));
+
       const result: ApiResponseCommon = {
-        data: pasajeros,
+        data: data,
         paginated: {
           total: total,
           page,
@@ -455,7 +477,9 @@ LEFT JOIN CatPasajeros ct
       );
     }
   }
-  //Obtener todos los pasajeros
+  // ========================================
+  // 🔹 OBTENEMOS EL LISTADO DE PASAJEROS
+  // ========================================
   async findAllListPasajeros(
     cliente: number,
     rol: number,
@@ -483,13 +507,19 @@ SELECT
     p.Curp AS curp,
     m.Id AS idMonedero,
     m.NumeroSerie AS numeroSerie,
-    ct.IdTipoPasajero AS idTipoPasajero,
-    ct.Nombre AS nombreCatPasajero
+    ct.Id AS idTipoPasajero,
+    ct.Nombre AS nombreCatPasajero,
+    ctd.Nombre AS nombreTipoDescuento
 
 FROM Pasajeros p
-LEFT JOIN Monederos m ON p.Id = m.IdPasajero
-LEFT JOIN CatPasajeros ct
-    ON m.IdTipoPasajero = ct.IdTipoPasajero
+INNER JOIN Monederos m 
+    ON p.Id = m.IdPasajero
+INNER JOIN Clientes c 
+    ON m.IdCliente = c.Id
+LEFT JOIN CatTiposPasajeros ct
+    ON m.IdTipoPasajero = ct.Id
+LEFT JOIN CatTipoDescuento ctd
+	ON ct.IdCatTipoDescuento = ctd.Id
 WHERE m.Id IS NOT NULL
 ORDER BY p.Id DESC;
 
@@ -518,13 +548,19 @@ SELECT
     p.Curp AS curp,
     m.Id AS idMonedero,
     m.NumeroSerie AS numeroSerie,
-    ct.IdTipoPasajero AS idTipoPasajero,
-    ct.Nombre AS nombreCatPasajero
+    ct.Id AS idTipoPasajero,
+    ct.Nombre AS nombreCatPasajero,
+    ctd.Nombre AS nombreTipoDescuento
     
 FROM Pasajeros p
-LEFT JOIN Monederos m ON p.Id = m.IdPasajero
-LEFT JOIN CatPasajeros ct
-    ON m.IdTipoPasajero = ct.IdTipoPasajero
+INNER JOIN Monederos m 
+    ON p.Id = m.IdPasajero
+INNER JOIN Clientes c 
+    ON m.IdCliente = c.Id
+LEFT JOIN CatTiposPasajeros ct
+    ON m.IdTipoPasajero = ct.Id
+LEFT JOIN CatTipoDescuento ctd
+	ON ct.IdCatTipoDescuento = ctd.Id
 WHERE m.Id IS NOT NULL
 AND c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
 ORDER BY p.Id DESC;
@@ -533,8 +569,17 @@ ORDER BY p.Id DESC;
           );
           break;
       }
+
+      // 🔥 Forzamos ids a number y agregamos nombreCompleto
+      const data = pasajeros.map((item) => ({
+        ...item,
+        id: Number(item.id),
+        idCliente: Number(item.idCliente),
+        idMonedero: Number(item.idMonedero),
+        idTipoPasajero: Number(item.idTipoPasajero),
+      }));
       const result: ApiResponseCommon = {
-        data: pasajeros,
+        data: data,
       };
       return result;
     } catch (error) {
@@ -546,7 +591,9 @@ ORDER BY p.Id DESC;
       );
     }
   }
-  //Obtener pasajero por ID
+  // ========================================
+  // 🔹 OBTENEMOS PASAJEROS POR ID
+  // ========================================
   async findOnePasajero(id: number) {
     try {
       const pasajeroExistente = await this.pasajeroRepository.findOne({
@@ -568,7 +615,9 @@ ORDER BY p.Id DESC;
     }
   }
 
-  //Obtener pasajero por correo
+  // ========================================
+  // 🔹 OBTENEMOS EL PASAJERO POR CORREO
+  // ========================================
   async findOnePasajeroCorreo(correo: string) {
     try {
       const pasajeroExistente = await this.pasajeroRepository.findOne({
@@ -590,7 +639,9 @@ ORDER BY p.Id DESC;
     }
   }
 
-  //ARREGLAR
+  // ========================================
+  // 🔹 OBTENEMOS EL MAIN PARA PERFIL PASAJERO
+  // ========================================
   async obtenerMainPasajero(
     id: number,
     idUser: number,
@@ -607,60 +658,66 @@ SELECT
     CONCAT(p.Nombre, ' ', p.ApellidoPaterno, ' ', IFNULL(p.ApellidoMaterno, '')) AS NombreCompleto,
     GROUP_CONCAT(DISTINCT m.NumeroSerie ORDER BY m.NumeroSerie SEPARATOR ', ') AS Monederos,
     SUM(m.Saldo) AS SaldoTotal,
+
+    -- Última recarga (monto)
     (
-        SELECT t.Monto
-        FROM Transacciones t
-        INNER JOIN Monederos m2 ON t.NumeroSerieMonedero = m2.NumeroSerie
+        SELECT tr.Monto
+        FROM TransaccionesRecarga tr
+        INNER JOIN Monederos m2 ON tr.NumeroSerieMonedero = m2.NumeroSerie
         WHERE m2.IdPasajero = p.Id
-          AND t.TipoTransaccion = 'RECARGA'
           AND m2.Estatus = 1
-        ORDER BY t.FechaHora DESC
+        ORDER BY tr.FechaHora DESC
         LIMIT 1
     ) AS UltimaRecarga,
+
+    -- Fecha de la última recarga
     (
-        SELECT t.FechaHora
-        FROM Transacciones t
-        INNER JOIN Monederos m2 ON t.NumeroSerieMonedero = m2.NumeroSerie
+        SELECT tr.FechaHora
+        FROM TransaccionesRecarga tr
+        INNER JOIN Monederos m2 ON tr.NumeroSerieMonedero = m2.NumeroSerie
         WHERE m2.IdPasajero = p.Id
-          AND t.TipoTransaccion = 'RECARGA'
           AND m2.Estatus = 1
-        ORDER BY t.FechaHora DESC
+        ORDER BY tr.FechaHora DESC
         LIMIT 1
     ) AS FechaUltimaRecarga,
+
+    -- Total de débitos del último mes
     (
-        SELECT SUM(t2.Monto)
-        FROM Transacciones t2
-        INNER JOIN Monederos m3 ON t2.NumeroSerieMonedero = m3.NumeroSerie
+        SELECT SUM(td.Monto)
+        FROM TransaccionesDebito td
+        INNER JOIN Monederos m3 ON td.NumeroSerieMonedero = m3.NumeroSerie
         WHERE m3.IdPasajero = p.Id
-          AND t2.TipoTransaccion = 'DEBITO'
           AND m3.Estatus = 1
-          AND t2.FechaHora >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
+          AND td.FechaHora >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
     ) AS TotalDebitosUltimoMes,
+
+    -- Último débito (monto)
     (
-        SELECT t3.Monto
-        FROM Transacciones t3
-        INNER JOIN Monederos m4 ON t3.NumeroSerieMonedero = m4.NumeroSerie
+        SELECT td2.Monto
+        FROM TransaccionesDebito td2
+        INNER JOIN Monederos m4 ON td2.NumeroSerieMonedero = m4.NumeroSerie
         WHERE m4.IdPasajero = p.Id
-          AND t3.TipoTransaccion = 'DEBITO'
           AND m4.Estatus = 1
-        ORDER BY t3.FechaHora DESC
+        ORDER BY td2.FechaHora DESC
         LIMIT 1
     ) AS UltimoDebito,
+
+    -- Fecha del último débito
     (
-        SELECT t3.FechaHora
-        FROM Transacciones t3
-        INNER JOIN Monederos m4 ON t3.NumeroSerieMonedero = m4.NumeroSerie
-        WHERE m4.IdPasajero = p.Id
-          AND t3.TipoTransaccion = 'DEBITO'
-          AND m4.Estatus = 1
-        ORDER BY t3.FechaHora DESC
+        SELECT td3.FechaHora
+        FROM TransaccionesDebito td3
+        INNER JOIN Monederos m5 ON td3.NumeroSerieMonedero = m5.NumeroSerie
+        WHERE m5.IdPasajero = p.Id
+          AND m5.Estatus = 1
+        ORDER BY td3.FechaHora DESC
         LIMIT 1
     ) AS FechaUltimoDebito
+
 FROM Pasajeros p
 INNER JOIN Usuarios u ON u.UserName = p.Correo
 LEFT JOIN Monederos m ON p.Id = m.IdPasajero
 WHERE u.Id = ?
-AND m.Estatus = 1
+  AND m.Estatus = 1
 GROUP BY p.Id, u.Id, u.UserName, NombreCompleto;
         `,
         [id],
@@ -685,7 +742,9 @@ GROUP BY p.Id, u.Id, u.UserName, NombreCompleto;
     }
   }
 
-  //Cambiar estatus del pasajero
+  // ========================================
+  // 🔹 ACTUALIZAR ESTATUS DEL PASAJERO
+  // ========================================
   async updatePasajeroEstatus(
     id: number,
     updatePasajeroEstatusDto: UpdatePasajeroEstatusDto,
@@ -749,10 +808,12 @@ GROUP BY p.Id, u.Id, u.UserName, NombreCompleto;
     }
   }
 
-  //Cambiar estadoSolicitud del pasajero
+  // ========================================
+  // 🔹 ACTUALIZAR TIPO DE PASJERO EN EL MONEDERO
+  // ========================================
   async updatePasajeroEstadoSolicitud(
     id: number,
-    updatePasajeroEstatusDto: UpdatePasajeroEstatusDto,
+    updatePasajeroEstadoSolicitudDto: UpdatePasajeroEstadoSolicitudDto,
     idUser: number,
   ) {
     try {
@@ -764,14 +825,43 @@ GROUP BY p.Id, u.Id, u.UserName, NombreCompleto;
           `No se encontró un pasajero con ID: ${id}.`,
         );
       }
-      const { estatus } = updatePasajeroEstatusDto;
-      await this.pasajeroRepository.update(id, { estatus });
+      const { estadoSolicitud, idTipoPasajero } =
+        updatePasajeroEstadoSolicitudDto;
+
+      //En caso de ser aprovado el pasajero se solicitada el tipo de pasajero asociado a su monedero
+      //buscamos y validamos el monedero
+      if (estadoSolicitud == EnumSolicitudPasajero.APROVADO) {
+        const monedero = await this.monederosRepository.findOne({
+          where: { idPasajero: pasajero.id, estatus: EstatusEnum.ACTIVO },
+        });
+        if (!monedero) {
+          throw new NotFoundException(
+            `El monedero asociado al pasajero ${pasajero.nombre} no fue encontrado.`,
+          );
+        }
+        await this.monederosRepository.update(monedero.id, {
+          idTipoPasajero: idTipoPasajero,
+        });
+
+        // --- Registro en la bitácora --- SUCCESS
+        const querylogger = { updatePasajeroEstadoSolicitudDto };
+        await this.bitacoraLogger.logToBitacora(
+          'Monederos',
+          `Se actualizó el tipo de pasajero del monedero con ID: ${pasajero.id} a ${updatePasajeroEstadoSolicitudDto.idTipoPasajero}.`,
+          'UPDATE',
+          querylogger,
+          idUser,
+          EnumModulos.MONEDEROS,
+          EstatusEnumBitcora.SUCCESS,
+        );
+      }
+      await this.pasajeroRepository.update(id, { estadoSolicitud });
 
       //-----Registro en la bitacora----- SUCCESS
-      const querylogger = { updatePasajeroEstatusDto };
+      const querylogger = { updatePasajeroEstadoSolicitudDto };
       await this.bitacoraLogger.logToBitacora(
         'Pasajero',
-        `El estatus del pasajero con ID: ${id} ha sido actualizado a: ${updatePasajeroEstatusDto.estatus}.`,
+        `El estadoSolicitud del pasajero con ID: ${id} ha sido actualizado a: ${updatePasajeroEstadoSolicitudDto.estadoSolicitud}.`,
         'UPDATE',
         querylogger,
         idUser,
@@ -782,8 +872,8 @@ GROUP BY p.Id, u.Id, u.UserName, NombreCompleto;
       //Api response
       const result: ApiCrudResponse = {
         status: 'success',
-        message: `El estatus del pasajero con ID: ${id} ha sido actualizado a: ${updatePasajeroEstatusDto.estatus}.`,
-        estatus: { estatus: estatus },
+        message: `El estado solicitud del pasajero con ID: ${id} ha sido actualizado a: ${updatePasajeroEstadoSolicitudDto.estadoSolicitud}.`,
+        estatus: { estatus: Number(estadoSolicitud) },
         data: {
           id: id,
           nombre: `${pasajero.nombre} ${pasajero.apellidoPaterno} ` || '',
@@ -792,10 +882,10 @@ GROUP BY p.Id, u.Id, u.UserName, NombreCompleto;
       return result;
     } catch (error) {
       //-----Registro en la bitacora----- ERROR
-      const querylogger = { updatePasajeroEstatusDto };
+      const querylogger = { updatePasajeroEstadoSolicitudDto };
       await this.bitacoraLogger.logToBitacora(
         'Pasajero',
-        `El estatus del pasajero con ID: ${id} ha sido actualizado a: ${updatePasajeroEstatusDto.estatus}.`,
+        `El estadoSolicitud del pasajero con ID: ${id} ha sido actualizado a: ${updatePasajeroEstadoSolicitudDto.estadoSolicitud}.`,
         'UPDATE',
         querylogger,
         idUser,
@@ -808,12 +898,14 @@ GROUP BY p.Id, u.Id, u.UserName, NombreCompleto;
         throw error;
       }
       throw new InternalServerErrorException(
-        'Ha ocurrido un error durante el proceso de cambio de estatus del pasajero.',
+        'Ha ocurrido un error durante el proceso de cambio de estado solicitud del pasajero.',
       );
     }
   }
 
-  // Cambiar informacion del pasajero
+  // ========================================
+  // 🔹 ACTUALIZAR PASAJERO SU INFORMACION
+  // ========================================
   async updatePasajero(
     id: number,
     idUser: number,
@@ -878,7 +970,9 @@ GROUP BY p.Id, u.Id, u.UserName, NombreCompleto;
       );
     }
   }
-  //Eliminar pasajero por ID
+  // ========================================
+  // 🔹 ELIMINADO LOGICO DEL PASAJERO
+  // ========================================
   async removePasajero(id: number, idUser: number) {
     try {
       const pasajero = await this.pasajeroRepository.findOne({

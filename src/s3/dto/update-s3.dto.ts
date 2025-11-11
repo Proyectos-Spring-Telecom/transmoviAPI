@@ -3,7 +3,7 @@ import { IsIn, IsNotEmpty,IsString } from 'class-validator';
 
 export class UploadDto {
   @IsNotEmpty()
-  @IsIn(['clientes', 'operadores', 'usuarios','vehiculos'], {
+  @IsIn(['clientes', 'operadores', 'usuarios','vehiculos','pasajeros'], {
     message: 'El folder debe ser uno de: clientes, operadores, usuarios',
   })
   @ApiProperty({

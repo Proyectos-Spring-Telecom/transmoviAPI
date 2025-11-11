@@ -17,6 +17,7 @@ import { UpdatePasajeroDto } from './dto/update-pasajero.dto';
 import { UpdatePasajeroEstatusDto } from './dto/update-pasajeros-estatus.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
+import { UpdatePasajeroEstadoSolicitudDto } from './dto/update-pasajeros-estado-solicitud.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('pasajeros')
@@ -90,6 +91,19 @@ export class PasajerosController {
   // ========================================
   // 🔹 PATCH ROUTES - Rutas específicas primero
   // ========================================
+  @Patch('estado/solicitud/:id')
+  updatePasajeroEstado(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updatePasajeroEstadoSolicitudDto: UpdatePasajeroEstadoSolicitudDto,
+    @Request() req,
+  ) {
+    const idUser = req.user.userId;
+    return this.pasajerosService.updatePasajeroEstadoSolicitud(
+      id,
+      updatePasajeroEstadoSolicitudDto,
+      idUser,
+    );
+  }
 
   @Patch('estatus/:id')
   updatePasajeroEstatus(

@@ -72,7 +72,7 @@ export class ClientesService {
       //Creamos el body para generarle al nuevo cliente un tipo de pasajero estandar
       const bodyCatPasajero = {
         nombre: 'Estandar',
-        tipoDescuento: EnumTipoDescuento.NULO,
+        idCatTipoDescuento: EnumTipoDescuento.NULO,
         cantidad: null,
         estatus: EstatusEnum.ACTIVO,
         idCliente: Number(clienteCreado.id),

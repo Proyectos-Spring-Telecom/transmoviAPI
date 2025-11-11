@@ -29,7 +29,7 @@ export class CreateCatpasajeroDto {
   @IsEnum(EnumTipoDescuento, {
     message: 'Tipo Descuento 1 (Porcentaje), 2 (Monetario), 3(Nulo)',
   })
-  tipoDescuento: EnumTipoDescuento = EnumTipoDescuento.NULO;
+  idCatTipoDescuento: EnumTipoDescuento = EnumTipoDescuento.NULO;
 
   @ApiProperty({
     example: 50,
