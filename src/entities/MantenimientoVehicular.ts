@@ -15,7 +15,7 @@ import { applySchema } from "src/common/apply-schema.decorator";
 @applySchema
 @Index("FK_MttoVehicular_Instalacion", ["idInstalacion"], {})
 @Index("FK_MttoVehicular_Estatus", ["idEstatus"], {})
-@Index("FK_MttoVehicular_Taller", ["idCentroServicio"], {})
+@Index("FK_MttoVehicular_Taller", ["idTaller"], {})
 @Entity("MantenimientoVehicular")
 export class MantenimientoVehicular {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
@@ -42,8 +42,8 @@ export class MantenimientoVehicular {
   @Column("datetime", { name: "FechaFinal", nullable: true })
   fechaFinal: string | null;
 
-  @Column("bigint", { name: "IdCentroServicio", nullable: true })
-  idCentroServicio: number | null;
+  @Column("bigint", { name: "IdTaller", nullable: true })
+  idTaller: number | null;
 
   @Column("decimal", { name: "Costo", nullable: true, precision: 10, scale: 2 })
   costo: number | null;
@@ -79,7 +79,7 @@ export class MantenimientoVehicular {
     onDelete: "NO ACTION",
     onUpdate: "NO ACTION",
   })
-  @JoinColumn([{ name: "IdCentroServicio", referencedColumnName: "id" }])
+  @JoinColumn([{ name: "idTaller", referencedColumnName: "id" }])
   taller: Talleres | null;
 
   @ManyToOne(() => CatReferenciaServicio, (catReferenciaServicio) => catReferenciaServicio.mantenimientosVehiculares, {

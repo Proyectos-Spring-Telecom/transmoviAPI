@@ -84,7 +84,7 @@ export class CreateMantenimientoVehicularDto {
   })
   @IsInt({ message: 'El ID del centro de servicio debe ser un número entero.' })
   @IsOptional()
-  idCentroServicio?: number;
+  idTaller?: number;
 
   @ApiProperty({
     example: 1500.50,
