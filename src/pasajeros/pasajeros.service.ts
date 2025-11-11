@@ -18,6 +18,17 @@ import {
   EstatusEnumBitcora,
 } from 'src/common/ApiResponse';
 import { Clientes } from 'src/entities/Clientes';
+import { CreatePasajeroAfiliacionDto } from './dto/create-pasajero-afiliacion.dto';
+import * as bcrypt from 'bcrypt';
+import { Usuarios } from 'src/entities/Usuarios';
+import { UsuariosPermisos } from 'src/entities/UsuariosPermisos';
+import {
+  EnumModulos,
+  EnumSolicitudPasajero,
+  EstatusEnum,
+} from 'src/common/estatus.enum';
+import { Monederos } from 'src/entities/Monederos';
+
 @Injectable()
 export class PasajerosService {
   constructor(
@@ -25,8 +36,15 @@ export class PasajerosService {
     private readonly pasajeroRepository: Repository<Pasajeros>,
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
+    @InjectRepository(Usuarios)
+    private readonly usuariosRepository: Repository<Usuarios>,
+    @InjectRepository(UsuariosPermisos)
+    private permisosRepository: Repository<UsuariosPermisos>,
+    @InjectRepository(Monederos)
+    private monederosRepository: Repository<Monederos>,
     private readonly bitacoraLogger: BitacoraLoggerService,
   ) {}
+
   //Crear pasajero
   async createPasajeros(
     createPasajeroDto: CreatePasajeroDto,
@@ -43,9 +61,120 @@ export class PasajerosService {
           `El pasajero con el correo electrónico ${createPasajeroDto.correo} ya se encuentra registrado.`,
         );
       }
-      const newPasajero =
-        await this.pasajeroRepository.create(createPasajeroDto);
+      const existUsuario = await this.usuariosRepository.findOne({
+        //Buscamos si existe usuario
+        where: { userName: createPasajeroDto.correo },
+      });
+      if (existUsuario) {
+        throw new BadRequestException(
+          `El usuario con el correo electrónico ${createPasajeroDto.correo} ya se encuentra registrado.`,
+        );
+      }
+
+      //Buscamos el monedero que este dado de alta
+      const monederos = await this.monederosRepository.findOne({
+        where: {
+          numeroSerie: createPasajeroDto.numeroSerieMonedero,
+          estatus: 1,
+        },
+      });
+
+      if (!monederos) {
+        throw new BadRequestException(
+          `El monedero con numero de serie ${createPasajeroDto.numeroSerieMonedero} no fue encontrado.`,
+        );
+      }
+
+      if (monederos.idPasajero) {
+        throw new BadRequestException(
+          `El monedero con numero de serie ${createPasajeroDto.numeroSerieMonedero} esta ligado a un pasajero`,
+        );
+      }
+
+      const hashedPassword = await bcrypt.hash(
+        createPasajeroDto.passwordHash,
+        10,
+      ); //encriptamos la contraseña
+      createPasajeroDto.passwordHash = hashedPassword;
+
+      //Creamos el usuario
+      const newUser = await this.usuariosRepository.create({
+        userName: createPasajeroDto.correo,
+        passwordHash: createPasajeroDto.passwordHash,
+        emailConfirmado: EstatusEnum.ACTIVO,
+        nombre: createPasajeroDto.nombre,
+        apellidoPaterno: createPasajeroDto.apellidoPaterno,
+        apellidoMaterno: createPasajeroDto.apellidoMaterno,
+        telefono: createPasajeroDto.telefono,
+        fotoPerfil:
+          'https://transmovi.s3.us-east-2.amazonaws.com/imagenes/user_default.png',
+        estatus: EstatusEnum.ACTIVO,
+        idRol: 9,
+        idCliente: monederos.idCliente,
+      });
+      const userSave = await this.usuariosRepository.save(newUser); //creamos el usuario
+
+      //Le añadimos los permisos correspondientes
+      const permisosIds = [77, 80, 90];
+      if (permisosIds.length > 0) {
+        const usuariosPermisos = permisosIds.map((permisoId) =>
+          this.permisosRepository.create({
+            idUsuario: userSave.id,
+            idPermiso: permisoId,
+          }),
+        );
+
+        //guardamos los permisos
+        await this.permisosRepository.save(usuariosPermisos);
+      }
+
+      //Creamos el body para crear el pasajero
+      const newPasajero = await this.pasajeroRepository.create({
+        nombre: createPasajeroDto.nombre,
+        apellidoPaterno: createPasajeroDto.apellidoPaterno,
+        apellidoMaterno: createPasajeroDto.apellidoMaterno,
+        fechaNacimiento: createPasajeroDto.fechaNacimiento,
+        telefono: createPasajeroDto.telefono,
+        correo: createPasajeroDto.correo,
+        estatus: EstatusEnum.ACTIVO,
+        estadoSolicitud: createPasajeroDto.estadoSolicitud,
+        documentacion: createPasajeroDto.documentacion,
+        curp: createPasajeroDto.curp,
+      });
       const pasajeroSave = await this.pasajeroRepository.save(newPasajero);
+
+      //afiliamos el monedero al pasajero y cambiamos estatus activo
+      function pad(n: number) {
+        return n < 10 ? '0' + n : n;
+      }
+
+      const ahora = new Date();
+      const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas en milisegundos
+      const fechaDesfasada = new Date(ahora.getTime() + desfaseMs);
+
+      const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())} ${pad(fechaDesfasada.getHours())}:${pad(fechaDesfasada.getMinutes())}:${pad(fechaDesfasada.getSeconds())}`;
+
+      await this.monederosRepository.update(monederos.id, {
+        idPasajero: pasajeroSave.id,
+        fechaActivacion: fechaDesfasada,
+        estatus: EstatusEnum.ACTIVO,
+      });
+
+      // --- Registro en la bitácora --- SUCCESS
+      const queryloggerUpdate = {
+        idPasajero: pasajeroSave.id,
+        fechaActivacion: fechaDesfasada,
+        estatus: EstatusEnum.ACTIVO,
+      };
+      await this.bitacoraLogger.logToBitacora(
+        'Monederos',
+        `Se actualizó el monedero con ID: ${monederos.id}.`,
+        'UPDATE',
+        queryloggerUpdate,
+        idUser,
+        EnumModulos.MONEDEROS,
+        EstatusEnumBitcora.SUCCESS,
+      );
 
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { createPasajeroDto };
@@ -55,7 +184,7 @@ export class PasajerosService {
         'CREATE',
         querylogger,
         idUser,
-        21,
+        EnumModulos.PASAJEROS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -76,6 +205,73 @@ export class PasajerosService {
       await this.bitacoraLogger.logToBitacora(
         'Pasajeros',
         `Se ha creado un pasajero con el nombre: ${createPasajeroDto.nombre}.`,
+        'CREATE',
+        querylogger,
+        idUser,
+        EnumModulos.PASAJEROS,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Ha ocurrido un error durante el proceso de creación del pasajero.',
+      );
+    }
+  }
+
+  //Crear pasajero
+  async createPasajerosAfiliacion(
+    createPasajeroAfiliacionDto: CreatePasajeroAfiliacionDto,
+    idUser: number,
+  ): Promise<ApiCrudResponse> {
+    try {
+      const pasajero = await this.pasajeroRepository.findOne({
+        where: {
+          correo: createPasajeroAfiliacionDto.correo,
+        },
+      });
+      if (pasajero) {
+        throw new BadRequestException(
+          `El pasajero con el correo electrónico ${createPasajeroAfiliacionDto.correo} ya se encuentra registrado.`,
+        );
+      }
+      const newPasajero = await this.pasajeroRepository.create(
+        createPasajeroAfiliacionDto,
+      );
+      const pasajeroSave = await this.pasajeroRepository.save(newPasajero);
+
+      //-----Registro en la bitacora----- SUCCESS
+      const querylogger = { createPasajeroAfiliacionDto };
+      await this.bitacoraLogger.logToBitacora(
+        'Pasajeros',
+        `Se ha creado un pasajero con el nombre: ${createPasajeroAfiliacionDto.nombre}.`,
+        'CREATE',
+        querylogger,
+        idUser,
+        21,
+        EstatusEnumBitcora.SUCCESS,
+      );
+
+      //API response
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'El pasajero ha sido creado correctamente.',
+        data: {
+          id: Number(pasajeroSave.id),
+          nombre:
+            `${pasajeroSave.nombre} ${pasajeroSave.apellidoPaterno} ` || '',
+        },
+      };
+      return result;
+    } catch (error) {
+      //-----Registro en la bitacora----- ERROR
+      const querylogger = { createPasajeroAfiliacionDto };
+      await this.bitacoraLogger.logToBitacora(
+        'Pasajeros',
+        `Se ha creado un pasajero con el nombre: ${createPasajeroAfiliacionDto.nombre}.`,
         'CREATE',
         querylogger,
         idUser,
@@ -515,7 +711,7 @@ GROUP BY p.Id, u.Id, u.UserName, NombreCompleto;
         'UPDATE',
         querylogger,
         idUser,
-        21,
+        EnumModulos.PASAJEROS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -539,7 +735,71 @@ GROUP BY p.Id, u.Id, u.UserName, NombreCompleto;
         'UPDATE',
         querylogger,
         idUser,
-        21,
+        EnumModulos.PASAJEROS,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Ha ocurrido un error durante el proceso de cambio de estatus del pasajero.',
+      );
+    }
+  }
+
+  //Cambiar estadoSolicitud del pasajero
+  async updatePasajeroEstadoSolicitud(
+    id: number,
+    updatePasajeroEstatusDto: UpdatePasajeroEstatusDto,
+    idUser: number,
+  ) {
+    try {
+      const pasajero = await this.pasajeroRepository.findOne({
+        where: { id: id },
+      });
+      if (!pasajero) {
+        throw new NotFoundException(
+          `No se encontró un pasajero con ID: ${id}.`,
+        );
+      }
+      const { estatus } = updatePasajeroEstatusDto;
+      await this.pasajeroRepository.update(id, { estatus });
+
+      //-----Registro en la bitacora----- SUCCESS
+      const querylogger = { updatePasajeroEstatusDto };
+      await this.bitacoraLogger.logToBitacora(
+        'Pasajero',
+        `El estatus del pasajero con ID: ${id} ha sido actualizado a: ${updatePasajeroEstatusDto.estatus}.`,
+        'UPDATE',
+        querylogger,
+        idUser,
+        EnumModulos.PASAJEROS,
+        EstatusEnumBitcora.SUCCESS,
+      );
+
+      //Api response
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: `El estatus del pasajero con ID: ${id} ha sido actualizado a: ${updatePasajeroEstatusDto.estatus}.`,
+        estatus: { estatus: estatus },
+        data: {
+          id: id,
+          nombre: `${pasajero.nombre} ${pasajero.apellidoPaterno} ` || '',
+        },
+      };
+      return result;
+    } catch (error) {
+      //-----Registro en la bitacora----- ERROR
+      const querylogger = { updatePasajeroEstatusDto };
+      await this.bitacoraLogger.logToBitacora(
+        'Pasajero',
+        `El estatus del pasajero con ID: ${id} ha sido actualizado a: ${updatePasajeroEstatusDto.estatus}.`,
+        'UPDATE',
+        querylogger,
+        idUser,
+        EnumModulos.PASAJEROS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -581,7 +841,7 @@ GROUP BY p.Id, u.Id, u.UserName, NombreCompleto;
         'UPDATE',
         querylogger,
         idUser,
-        21,
+        EnumModulos.PASAJEROS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -605,7 +865,7 @@ GROUP BY p.Id, u.Id, u.UserName, NombreCompleto;
         'UPDATE',
         querylogger,
         idUser,
-        21,
+        EnumModulos.PASAJEROS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -639,7 +899,7 @@ GROUP BY p.Id, u.Id, u.UserName, NombreCompleto;
         'UPDATE',
         querylogger,
         idUser,
-        21,
+        EnumModulos.PASAJEROS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -661,7 +921,7 @@ GROUP BY p.Id, u.Id, u.UserName, NombreCompleto;
         'UPDATE',
         querylogger,
         idUser,
-        21,
+        EnumModulos.PASAJEROS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );

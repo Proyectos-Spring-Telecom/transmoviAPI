@@ -119,7 +119,7 @@ export class AuthService {
       };
 
       //Creamos el pasajero
-      const pasajero = await this.pasajeroService.createPasajeros(
+      const pasajero = await this.pasajeroService.createPasajerosAfiliacion(
         bodyPasajero,
         userSave.id,
       );

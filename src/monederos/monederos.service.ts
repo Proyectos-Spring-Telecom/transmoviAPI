@@ -68,7 +68,7 @@ export class MonederosService {
 
       //Añadimos fecha
       createMonederoDto.fechaActivacion = fechaActual;
-      createMonederoDto.estatus = EstatusEnum.INACTIVO;
+      createMonederoDto.estatus = EnumEstatusMonederos.ACTIVO;
 
       //Guardamos el monedero
       const newMonedero =
