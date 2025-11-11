@@ -11,7 +11,7 @@ import { UpdateTallereDto } from './dto/update-tallere.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Talleres } from 'src/entities/Talleres';
 import { Repository } from 'typeorm';
-import { ApiCrudResponse, EstatusEnumBitcora } from 'src/common/ApiResponse';
+import { ApiCrudResponse, EstatusEnumBitcora, ApiResponseCommon } from 'src/common/ApiResponse';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import { Clientes } from 'src/entities/Clientes';
 
@@ -104,6 +104,77 @@ export class TalleresService {
         [ids],
       );
       return talleres;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new BadRequestException({
+        message: 'Ocurrió un error al obtener los talleres.',
+      });
+    }
+  }
+
+  async findAllPaginated(
+    req: any,
+    page: number,
+    limit: number,
+  ): Promise<ApiResponseCommon> {
+    try {
+      const { ids, placeholders } = await this.clienteHijos(
+        Number(req.user.cliente),
+      );
+
+      if (ids.length === 0) {
+        return {
+          data: [],
+          paginated: {
+            total: 0,
+            page,
+            lastPage: 0,
+          },
+        };
+      }
+
+      const offset = (page - 1) * limit;
+
+      // Query paginada
+      const talleres = await this.talleresRepository.query(
+        `
+        SELECT 
+          t.*, 
+          c.nombre AS nombreCliente
+        FROM Talleres t
+        JOIN Clientes c ON t.idCliente = c.id
+        WHERE t.idCliente IN (?)
+        ORDER BY t.id DESC
+        LIMIT ? OFFSET ?
+        `,
+        [ids, limit, offset],
+      );
+
+      // Query para obtener el total
+      const totalResult = await this.talleresRepository.query(
+        `
+        SELECT COUNT(*) AS total
+        FROM Talleres t
+        JOIN Clientes c ON t.idCliente = c.id
+        WHERE t.idCliente IN (?)
+        `,
+        [ids],
+      );
+
+      const total = totalResult[0]?.total || 0;
+
+      const result: ApiResponseCommon = {
+        data: talleres,
+        paginated: {
+          total: Number(total),
+          page,
+          lastPage: Math.ceil(Number(total) / limit),
+        },
+      };
+
+      return result;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
