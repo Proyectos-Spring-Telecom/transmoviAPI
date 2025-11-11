@@ -96,20 +96,3 @@ export enum EnumTipoLicencia {
   E = 5,
   F = 6,
 }
-
-export enum EstadoTransaccion {
-  INICIADA = 'INICIADA',
-  VALIDANDO_SALDO = 'VALIDANDO_SALDO',
-  APROBADA = 'APROBADA',
-  RECHAZADA = 'RECHAZADA',
-  FINALIZADA = 'FINALIZADA',
-  ERROR = 'ERROR',
-}
-
-export enum EventoTransaccion {
-  CREAR = 'CREAR',
-  SALDO_OK = 'SALDO_OK',
-  SALDO_INSUFICIENTE = 'SALDO_INSUFICIENTE',
-  FINALIZAR = 'FINALIZAR',
-  ERROR_INTERNO = 'ERROR_INTERNO',
-}

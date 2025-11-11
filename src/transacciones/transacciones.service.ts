@@ -21,7 +21,15 @@ import { MonederosService } from 'src/monederos/monederos.service';
 import { PasajerosService } from 'src/pasajeros/pasajeros.service';
 import { Clientes } from 'src/entities/Clientes';
 import { CreateTransaccioneDebitoDto } from './dto/create-transaccione-debito.dto';
-import { EnumModulos, EnumTipoTransaccion, EstadoTransaccion, EventoTransaccion } from 'src/common/estatus.enum';
+import {
+  EnumModulos,
+  EnumTipoTransaccion,
+} from 'src/common/estatus.enum';
+import { 
+  transicionarEstado, 
+  EstadoTransaccion, 
+  EventoTransaccion 
+} from '../utils/transaccion.util';
 
 @Injectable()
 export class TransaccionesService {
@@ -132,7 +140,8 @@ export class TransaccionesService {
     }
   }
 
-/*   async createTransaccionDebitoPrueba(
+
+  async createTransaccionDebitoPrueba(
   createTransaccioneDebitoDto: CreateTransaccioneDebitoDto,
   idUser: number,
 ): Promise<ApiCrudResponse> {
@@ -210,8 +219,7 @@ export class TransaccionesService {
       message: 'Transacción creada correctamente',
       data: {
         id: Number(transaccionSave.id),
-        saldoFinal: montoFinal,
-        estado,
+        nombre: '',
       },
     };
   } catch (error) {
@@ -235,8 +243,7 @@ export class TransaccionesService {
       `Error al generar la transacción de débito`,
     );
   }
-} */
-
+}
 
   //Funcion para transaccion Debito
   async createTransaccionDebito(
