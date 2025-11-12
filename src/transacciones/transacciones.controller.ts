@@ -29,7 +29,7 @@ export class TransaccionesController {
     @Request() req,
   ): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
-    return this.transaccionesService.createTransaccionDebito(
+    return this.transaccionesService.createTransaccionDebitoPrueba(
       createTransaccioneDebitoDto,
       idUser,
     );

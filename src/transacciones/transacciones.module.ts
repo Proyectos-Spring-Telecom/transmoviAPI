@@ -9,10 +9,12 @@ import { PasajerosModule } from 'src/pasajeros/pasajeros.module';
 import { Clientes } from 'src/entities/Clientes';
 import { TransaccionesRecarga } from 'src/entities/TransaccionesRecarga';
 import { TransaccionesDebito } from 'src/entities/TransaccionesDebito';
+import { Monederos } from 'src/entities/Monederos';
+import { CatTiposPasajeros } from 'src/entities/CatTiposPasajeros';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([TransaccionesRecarga, TransaccionesDebito, Dispositivos, Clientes]),
+    TypeOrmModule.forFeature([TransaccionesRecarga, TransaccionesDebito, Dispositivos, Clientes, Monederos, CatTiposPasajeros]),
     MonederosModule,
     BitacoraModule,
     PasajerosModule,

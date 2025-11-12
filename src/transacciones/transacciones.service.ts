@@ -23,13 +23,16 @@ import { Clientes } from 'src/entities/Clientes';
 import { CreateTransaccioneDebitoDto } from './dto/create-transaccione-debito.dto';
 import {
   EnumModulos,
+  EnumTipoDescuento,
   EnumTipoTransaccion,
 } from 'src/common/estatus.enum';
-import { 
-  transicionarEstado, 
-  EstadoTransaccion, 
-  EventoTransaccion 
+import {
+  transicionarEstado,
+  EstadoTransaccion,
+  EventoTransaccion,
 } from '../utils/transaccion.util';
+import { Monederos } from 'src/entities/Monederos';
+import { CatTiposPasajeros } from 'src/entities/CatTiposPasajeros';
 
 @Injectable()
 export class TransaccionesService {
@@ -42,6 +45,10 @@ export class TransaccionesService {
     private readonly dispositivoRepository: Repository<Dispositivos>,
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
+    @InjectRepository(CatTiposPasajeros)
+    private readonly CatTiposPasajerosRepository: Repository<CatTiposPasajeros>,
+    @InjectRepository(Monederos)
+    private readonly monederoRepository: Repository<Monederos>,
     private readonly bitacoraLogger: BitacoraLoggerService,
     private readonly monederosService: MonederosService,
     private readonly pasajeroService: PasajerosService,
@@ -140,110 +147,155 @@ export class TransaccionesService {
     }
   }
 
-
   async createTransaccionDebitoPrueba(
-  createTransaccioneDebitoDto: CreateTransaccioneDebitoDto,
-  idUser: number,
-): Promise<ApiCrudResponse> {
-  let estado: EstadoTransaccion = EstadoTransaccion.INICIADA;
+    createTransaccioneDebitoDto: CreateTransaccioneDebitoDto,
+    idUser: number,
+  ): Promise<ApiCrudResponse> {
+    let estado: EstadoTransaccion = EstadoTransaccion.INICIADA;
 
-  try {
-    // 1️⃣ Cambiamos estado a VALIDANDO_SALDO
-    estado = transicionarEstado(estado, EventoTransaccion.CREAR);
+    try {
+      // 1️⃣ Cambiamos estado a VALIDANDO_SALDO
+      estado = transicionarEstado(estado, EventoTransaccion.CREAR);
 
-    // 2️⃣ Buscamos el monedero
-    const monedero = await this.monederosService.findOneMonederoBySerie(
-      createTransaccioneDebitoDto.numeroSerieMonedero,
-    );
+      // 2️⃣ Buscamos el monedero
+      const monedero = await this.monederoRepository.findOne({
+        where: {
+          numeroSerie: createTransaccioneDebitoDto.numeroSerieMonedero,
+          estatus: 1,
+        },
+      });
 
-    if (!monedero?.data) {
-      estado = EstadoTransaccion.ERROR;
-      throw new BadRequestException('Monedero no encontrado');
-    }
+      if (!monedero) {
+        estado = EstadoTransaccion.ERROR;
+        throw new BadRequestException('Monedero no encontrado');
+      }
 
-    // 3️⃣ Calculamos monto final (aquí se pueden aplicar descuentos si existen)
-    let montoFinal = Number(monedero.data.saldo) - Number(createTransaccioneDebitoDto.monto);
+      // 3️⃣ Calculamos monto final (aquí se pueden aplicar descuentos si existen)
+      let montoConDescuento = Number(createTransaccioneDebitoDto.monto);
 
-    // 4️⃣ Validación de saldo
-    if (montoFinal < 0) {
-      estado = transicionarEstado(estado, EventoTransaccion.SALDO_INSUFICIENTE);
-      createTransaccioneDebitoDto.idTipoTransaccion = EnumTipoTransaccion.RECHAZO;
+      if (monedero.idTipoPasajero) {
+        const tipoPasajero = await this.CatTiposPasajerosRepository.findOne({
+          where: { id: monedero.idTipoPasajero },
+          relations: ['CatTipoDescuento'], // si tienes FK hacia CatTipoDescuento
+        });
 
-      // Guardar transacción rechazada
-      const newTransaccion = this.transaccionesdebitoRepository.create(createTransaccioneDebitoDto);
-      await this.transaccionesdebitoRepository.save(newTransaccion);
+        if (tipoPasajero && tipoPasajero.idCatTipoDescuento) {
+          const tipoDescuento = Number(tipoPasajero.idCatTipoDescuento);
+          const cantidad = tipoPasajero.cantidad || 0;
 
-      // Registrar en bitácora
+          switch (tipoDescuento) {
+            case Number(EnumTipoDescuento.PORCENTAJE):
+              console.log('Entro a porcentaje');
+              montoConDescuento =
+                montoConDescuento - (montoConDescuento * cantidad) / 100;
+              break;
+            case EnumTipoDescuento.MONETARIO:
+              console.log('Monetario');
+              montoConDescuento = montoConDescuento - cantidad;
+              break;
+            case EnumTipoDescuento.NULO:
+            default:
+              break;
+          }
+        }
+      }
+
+
+      let montoFinal = Number(monedero.saldo) - montoConDescuento;
+
+      // 4️⃣ Validación de saldo
+      if (montoFinal < 0) {
+        estado = transicionarEstado(
+          estado,
+          EventoTransaccion.SALDO_INSUFICIENTE,
+        );
+        createTransaccioneDebitoDto.idTipoTransaccion =
+          EnumTipoTransaccion.RECHAZO;
+
+        // Guardar transacción rechazada
+        const newTransaccion = this.transaccionesdebitoRepository.create(
+          createTransaccioneDebitoDto,
+        );
+        await this.transaccionesdebitoRepository.save(newTransaccion);
+
+        // Registrar en bitácora
+        await this.bitacoraLogger.logToBitacora(
+          'Transacciones',
+          `Transacción de débito RECHAZADA por saldo insuficiente`,
+          'CREATE',
+          { createTransaccioneDebitoDto },
+          idUser,
+          EnumModulos.TRANSACCIONES,
+          EstatusEnumBitcora.ERROR,
+          'Saldo insuficiente',
+        );
+
+        throw new BadRequestException('Saldo insuficiente');
+      }
+
+      // 5️⃣ Si saldo OK, actualizamos el monedero y estado
+      estado = transicionarEstado(estado, EventoTransaccion.SALDO_OK);
+      await this.monederosService.updateMonederoSaldo(
+        createTransaccioneDebitoDto.numeroSerieMonedero,
+        idUser,
+        montoFinal,
+      );
+
+      // 6️⃣ Guardamos transacción aprobada
+      const newTransaccion = this.transaccionesdebitoRepository.create(
+        createTransaccioneDebitoDto,
+      );
+      const transaccionSave =
+        await this.transaccionesdebitoRepository.save(newTransaccion);
+
+      // 7️⃣ Bitácora de éxito
       await this.bitacoraLogger.logToBitacora(
         'Transacciones',
-        `Transacción de débito RECHAZADA por saldo insuficiente`,
+        `Transacción de débito APROBADA`,
         'CREATE',
         { createTransaccioneDebitoDto },
         idUser,
         EnumModulos.TRANSACCIONES,
-        EstatusEnumBitcora.ERROR,
-        'Saldo insuficiente',
+        EstatusEnumBitcora.SUCCESS,
       );
 
-      throw new BadRequestException('Saldo insuficiente');
+      // 8️⃣ Finalizamos la transacción
+      estado = transicionarEstado(estado, EventoTransaccion.FINALIZAR);
+
+      return {
+        status: 'success',
+        message: 'Transacción creada correctamente',
+        data: {
+          id: Number(transaccionSave.id),
+          nombre: `${monedero.numeroSerie}`,
+        },
+      };
+    } catch (error) {
+      estado = EstadoTransaccion.ERROR;
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      // Bitácora de error
+      const querylogger = { createTransaccioneDebitoDto };
+      await this.bitacoraLogger.logToBitacora(
+        'Transacciones',
+        `Error en transacción de débito`,
+        'CREATE',
+        querylogger,
+        idUser,
+        EnumModulos.TRANSACCIONES,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
+
+      if (error instanceof HttpException) throw error;
+
+      throw new InternalServerErrorException(
+        `Error al generar la transacción de débito`,
+      );
     }
-
-    // 5️⃣ Si saldo OK, actualizamos el monedero y estado
-    estado = transicionarEstado(estado, EventoTransaccion.SALDO_OK);
-    await this.monederosService.updateMonederoSaldo(
-      createTransaccioneDebitoDto.numeroSerieMonedero,
-      idUser,
-      montoFinal,
-    );
-
-    // 6️⃣ Guardamos transacción aprobada
-    const newTransaccion = this.transaccionesdebitoRepository.create(createTransaccioneDebitoDto);
-    const transaccionSave = await this.transaccionesdebitoRepository.save(newTransaccion);
-
-    // 7️⃣ Bitácora de éxito
-    await this.bitacoraLogger.logToBitacora(
-      'Transacciones',
-      `Transacción de débito APROBADA`,
-      'CREATE',
-      { createTransaccioneDebitoDto },
-      idUser,
-      EnumModulos.TRANSACCIONES,
-      EstatusEnumBitcora.SUCCESS,
-    );
-
-    // 8️⃣ Finalizamos la transacción
-    estado = transicionarEstado(estado, EventoTransaccion.FINALIZAR);
-
-    return {
-      status: 'success',
-      message: 'Transacción creada correctamente',
-      data: {
-        id: Number(transaccionSave.id),
-        nombre: '',
-      },
-    };
-  } catch (error) {
-    estado = EstadoTransaccion.ERROR;
-
-    // Bitácora de error
-    await this.bitacoraLogger.logToBitacora(
-      'Transacciones',
-      `Error en transacción de débito`,
-      'CREATE',
-      { createTransaccioneDebitoDto },
-      idUser,
-      EnumModulos.TRANSACCIONES,
-      EstatusEnumBitcora.ERROR,
-      error.message,
-    );
-
-    if (error instanceof HttpException) throw error;
-
-    throw new InternalServerErrorException(
-      `Error al generar la transacción de débito`,
-    );
   }
-}
 
   //Funcion para transaccion Debito
   async createTransaccionDebito(

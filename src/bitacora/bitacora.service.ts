@@ -369,7 +369,7 @@ ORDER BY b.FechaCreacion DESC;
       modulo: modulo,
       descripcion: descripcion,
       accion: accion,
-      query: { raw: query },
+      query: query,
       estatus: estatus ?? null,
       error: error ?? null,
       idUsuario: idUsuario,
