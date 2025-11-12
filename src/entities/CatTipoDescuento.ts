@@ -1,5 +1,6 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { applySchema } from 'src/common/apply-schema.decorator';
+import { CatTiposPasajeros } from './CatTiposPasajeros';
 
 @applySchema
 @Entity('CatTipoDescuento')
@@ -9,4 +10,11 @@ export class CatTipoDescuento {
 
   @Column('varchar', { name: 'Nombre', length: 100 })
   nombre: string;
+
+  // Relación inversa con CatTiposPasajeros
+  @OneToMany(
+    () => CatTiposPasajeros,
+    (tipoPasajero) => tipoPasajero.CatTipoDescuento,
+  )
+  TiposPasajeros: CatTiposPasajeros[];
 }

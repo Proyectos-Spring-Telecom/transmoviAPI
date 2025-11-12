@@ -2,9 +2,14 @@ import {
   Column,
   Entity,
   Index,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { applySchema } from 'src/common/apply-schema.decorator';
+import { Monederos } from './Monederos';
+import { CatTipoDescuento } from './CatTipoDescuento';
 @applySchema
 @Index('FK_CatPasajeros_Clientes_idx', ['idCliente'], {})
 @Entity('CatTiposPasajeros')
@@ -26,4 +31,11 @@ export class CatTiposPasajeros {
 
   @Column('bigint', { name: 'IdCliente' })
   idCliente: number;
+
+  @OneToMany(() => Monederos, (monedero) => monedero.TipoPasajero)
+  Monederos: Monederos[];
+
+  @ManyToOne(() => CatTipoDescuento, (descuento) => descuento.TiposPasajeros)
+  @JoinColumn({ name: 'IdCatTipoDescuento' })
+  CatTipoDescuento: CatTipoDescuento;
 }
