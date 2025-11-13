@@ -18,7 +18,9 @@ import { UpdatePermisoDto } from './dto/update-permiso.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { UpdatePermisoEstatusDto } from './dto/update-permiso-estatus.dto';
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth('bearer-token')
 @Controller('permisos')
 @UseGuards(JwtAuthGuard)
 export class PermisosController {

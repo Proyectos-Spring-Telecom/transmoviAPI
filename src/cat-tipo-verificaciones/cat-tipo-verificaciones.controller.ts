@@ -25,7 +25,7 @@ import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 
 @ApiTags('Catálogo Tipo Verificaciones')
-@ApiBearerAuth()
+@ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('cat-tipo-verificaciones')
 export class CatTipoVerificacionesController {

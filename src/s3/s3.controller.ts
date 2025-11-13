@@ -12,8 +12,10 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import * as multer from 'multer';
 import { S3Service } from './s3.service';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-import { UploadDto } from './dto/update-s3.dto'; 
+import { UploadDto } from './dto/update-s3.dto';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('s3')
 export class S3Controller {
