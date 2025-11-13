@@ -125,7 +125,6 @@ export class MonederosService {
       };
       return result;
     } catch (error) {
-      console.log(error)
       // -------------   ERROR -------------****-*-*
       // --- Registro en la bitácora --- ERROR
       const querylogger = { createMonederoDto };
