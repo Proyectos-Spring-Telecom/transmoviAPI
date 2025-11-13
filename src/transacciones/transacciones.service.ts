@@ -642,6 +642,7 @@ FROM (
           break;
 
         default:
+          //resto usuarios
           const { ids, placeholders } = await this.clienteHijos(cliente);
           transacciones = await this.transaccionesrecargaRepository.query(
             `

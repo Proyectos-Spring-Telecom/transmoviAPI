@@ -421,7 +421,6 @@ LEFT JOIN CatTiposPasajeros ct
     ON m.IdTipoPasajero = ct.Id
 LEFT JOIN CatTipoDescuento ctd
 	ON ct.IdCatTipoDescuento = ctd.Id
-    ON m.IdTipoPasajero = ct.Id
 
     
 WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
@@ -442,6 +441,8 @@ INNER JOIN Clientes c
     ON m.IdCliente = c.Id
 LEFT JOIN CatTiposPasajeros ct
     ON m.IdTipoPasajero = ct.Id
+LEFT JOIN CatTipoDescuento ctd
+	ON ct.IdCatTipoDescuento = ctd.Id
 	WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
   `,
             [...ids],

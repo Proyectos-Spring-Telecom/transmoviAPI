@@ -31,7 +31,7 @@ export class VehiculosService {
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
-  ) {}
+  ) { }
   async create(createVehiculoDto: CreateVehiculoDto, idUser: number) {
     try {
       const vehiculoExist = await this.vehiculoRepository.findOne({
@@ -39,7 +39,7 @@ export class VehiculosService {
       });
       if (vehiculoExist)
         throw new BadRequestException(
-          `Vehiculo con placas: ${createVehiculoDto.placa}con numeroregistrado`,
+          `El vehículo con placas ${createVehiculoDto.placa} ya se encuentra registrado en el sistema.`,
         );
       const vehiculoData =
         await this.vehiculoRepository.create(createVehiculoDto);

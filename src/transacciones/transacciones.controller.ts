@@ -80,10 +80,10 @@ export class TransaccionesController {
     const rol = req.user.rol;
     
     return await this.transaccionesService.findAllTransacciones(
-      idUser, 
+      +idUser, 
       email, 
-      cliente, 
-      rol, 
+      +cliente, 
+      +rol, 
       page, 
       limit
     );
