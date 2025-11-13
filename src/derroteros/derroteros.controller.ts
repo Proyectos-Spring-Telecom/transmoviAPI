@@ -16,7 +16,9 @@ import { CreateDerroteroDto } from './dto/create-derrotero.dto';
 import { UpdateDerroteroDto } from './dto/update-derrotero.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { UpdateDerroterosEstatusDto } from './dto/update-derrotero-estatus.dto';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('derroteros')
 export class DerroterosController {

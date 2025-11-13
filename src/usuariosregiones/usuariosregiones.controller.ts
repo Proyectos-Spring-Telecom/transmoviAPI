@@ -17,7 +17,9 @@ import { UpdateUsuariosregioneDto } from './dto/update-usuariosregione.dto';
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { UpdateUsuariosRegionesEstatusDto } from './dto/update-usuariosregione-estatus.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('usuariosregiones')
 export class UsuariosregionesController {
