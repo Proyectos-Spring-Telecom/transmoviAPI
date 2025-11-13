@@ -1,7 +1,9 @@
 import { Controller, Get, UseGuards, Request } from '@nestjs/common';
 import { CatcombustibleService } from './catcombustible.service';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('catcombustible')
 export class CatcombustibleController {

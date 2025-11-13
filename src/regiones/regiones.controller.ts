@@ -16,7 +16,9 @@ import { CreateRegionesDto } from './dto/create-regione.dto';
 import { UpdateRegioneDto } from './dto/update-regione.dto';
 import { UpdateRegionesEstatusDto } from './dto/update-regione-estatus.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('regiones')
 export class RegionesController {

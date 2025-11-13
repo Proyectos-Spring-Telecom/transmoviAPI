@@ -16,7 +16,9 @@ import { CreateRutaDto } from './dto/create-ruta.dto';
 import { UpdateRutaDto } from './dto/update-ruta.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { UpdateRutasEstatusDto } from './dto/update-ruta-estatus.dto';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('rutas')
 export class RutasController {

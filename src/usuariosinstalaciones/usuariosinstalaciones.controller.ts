@@ -27,7 +27,7 @@ import { ApiCrudResponse } from 'src/common/ApiResponse';
 import { UpdateUsuariosInstalacionesEstatusDto } from './dto/update-usuariosinstalacione-estatus.dto';
 
 @ApiTags('Usuarios Instalaciones')
-@ApiBearerAuth()
+@ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('usuariosinstalaciones')
 export class UsuariosinstalacionesController {

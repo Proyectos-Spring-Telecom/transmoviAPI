@@ -24,7 +24,7 @@ import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 
 @ApiTags('Mantenimiento Kilometraje')
-@ApiBearerAuth()
+@ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('mantenimiento-kilometraje')
 export class MantenimientoKilometrajeController {

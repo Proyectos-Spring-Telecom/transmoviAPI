@@ -18,7 +18,9 @@ import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { UpdateBlueVoxEstatusDto } from './dto/update-bluevox-estatus.dto';
 import { UpdateBluevoxEstadoDto } from './dto/update-bluevox.estado.dto';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('bluevox')
 export class BluevoxController {
