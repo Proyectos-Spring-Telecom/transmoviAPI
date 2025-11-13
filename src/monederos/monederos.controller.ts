@@ -78,10 +78,10 @@ export class MonederosController {
     const cliente = req.user.cliente;
     const rol = req.user.rol;
     return this.monederosService.findAllPagMonederos(
-      idUser,
+      +idUser,
       email,
-      cliente,
-      rol,
+      +cliente,
+      +rol,
       page,
       limit,
     );
