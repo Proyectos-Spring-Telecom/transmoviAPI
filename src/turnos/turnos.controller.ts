@@ -17,7 +17,9 @@ import { UpdateTurnoDto } from './dto/update-turno.dto';
 import { UpdateTurnosEstatusDto } from './dto/update-turno-estatus.dto';
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('turnos')
 export class TurnosController {

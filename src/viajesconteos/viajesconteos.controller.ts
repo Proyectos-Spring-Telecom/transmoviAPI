@@ -13,7 +13,9 @@ import {
 import { ViajesconteosService } from './viajesconteos.service';
 import { CreateViajesconteoDto } from './dto/create-viajesconteo.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('viajesconteos')
 export class ViajesconteosController {
