@@ -56,7 +56,7 @@ export class Monederos {
   @Column('bigint', { name: 'IdCliente' })
   idCliente: number;
 
-  @Column('bigint', { name: 'idTipoPasajero' })
+  @Column('bigint', { name: 'IdTipoPasajero' })
   idTipoPasajero: number;
 
   @ManyToOne(() => Clientes, (clientes) => clientes.monederos, {

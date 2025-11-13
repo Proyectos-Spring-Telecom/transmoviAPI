@@ -185,6 +185,7 @@ export class MonederosService {
       let monederos;
       switch (rol) {
         case 1:
+          // Consulta de datos paginados Usuario SuperAdministrador
           monederos = await this.monederoRepository.query(
             `
 SELECT 
@@ -216,9 +217,10 @@ INNER JOIN Clientes c ON m.IdCliente = c.Id
 
 
 
-ORDER BY m.Id DESC;
-
+ORDER BY m.Id DESC
+LIMIT ? OFFSET ?;
             `,
+            [limit, offset],
           );
 
           totalResult = await this.monederoRepository.query(
@@ -229,11 +231,13 @@ LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
 INNER JOIN Clientes c ON m.IdCliente = c.Id
 
 
+
   `,
           );
           break;
 
         case 9:
+          // Consulta de datos paginados Usuario Pasajero
           const pasajero =
             await this.pasajerosService.findOnePasajeroCorreo(email);
           monederos = await this.monederoRepository.query(
@@ -268,10 +272,11 @@ INNER JOIN Clientes c ON m.IdCliente = c.Id
 WHERE p.Id = ?
 AND m.Estatus = 1
 
-ORDER BY m.Id DESC;
+ORDER BY m.Id DESC
+LIMIT ? OFFSET ?;
 
             `,
-            [pasajero.id],
+            [pasajero.id, limit, offset],
           );
 
           totalResult = await this.monederoRepository.query(
@@ -289,6 +294,7 @@ AND m.Estatus = 1
           break;
 
         default:
+          // Consulta de datos paginados resto Usuario
           const { ids, placeholders } = await this.clienteHijos(cliente);
           monederos = await this.monederoRepository.query(
             `
@@ -321,10 +327,11 @@ INNER JOIN Clientes c ON m.IdCliente = c.Id
 
 WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
 
-ORDER BY m.Id DESC;
+ORDER BY m.Id DESC
+LIMIT ? OFFSET ?;
 
             `,
-            [...ids],
+            [...ids, limit, offset],
           );
 
           totalResult = await this.monederoRepository.query(
