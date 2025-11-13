@@ -49,7 +49,7 @@ export class ViajesService {
         message: 'Viaje creado correctamente',
         data: {
           id: Number(viajeSave.id),
-          nombre: `Cliente ID: ${viajeSave.idCliente}, Turno ID: ${viajeSave.idTurno}, Derrotero ID: ${viajeSave.idDerrotero}, Operador ID: ${viajeSave.idOperador}`,
+          nombre: `Cliente ID: ${viajeSave.idCliente}, Turno ID: ${viajeSave.idTurno}, Variante ID: ${viajeSave.idVariante}, Operador ID: ${viajeSave.idOperador}`,
         },
       };
 
@@ -59,7 +59,7 @@ export class ViajesService {
       const querylogger = { createViajeDto };
       await this.bitacoraLogger.logToBitacora(
         'Viajes',
-        `Se creó un viaje con client ID: ${createViajeDto.idCliente} Turno ID: ${createViajeDto.idTurno}, Derrotero ID: ${createViajeDto.idDerrotero}, Operador ID: ${createViajeDto.idOperador}`,
+        `Se creó un viaje con client ID: ${createViajeDto.idCliente} Turno ID: ${createViajeDto.idTurno}, Variante ID: ${createViajeDto.idVariante}, Operador ID: ${createViajeDto.idOperador}`,
         'CREATE',
         querylogger,
         idUser,
@@ -98,12 +98,12 @@ SELECT
   t.IdInstalacion AS idInstalacion,
 
   -- Instalación
-  ins.IdDispositivo AS idDispositivo,
-  -- Dispositivo
-  d.NumeroSerie AS numeroSerieDispositivo,
-  ins.IdBlueVox AS idBlueVox,
-  -- BlueVox
-  bv.NumeroSerie AS numeroSerieBlueVox,
+  ins.IdValidador AS idValidador,
+  -- Validador
+  d.NumeroSerie AS numeroSerieValidador,
+  ins.IdContador AS idContador,
+  -- Contador
+  bv.NumeroSerie AS numeroSerieContador,
   ins.IdVehiculo AS idVehiculo,
   -- Vehículo
   vhl.Placa AS placaVehiculo,
@@ -119,7 +119,7 @@ SELECT
   u.ApellidoMaterno AS apellidoMaternoOperador,
 
   -- Derrotero
-  der.Id AS idDerrotero,
+  der.Id AS idVariante,
   der.Nombre AS nombreDerrotero,
   der.PuntoInicio AS puntoInicioDerrotero,
   der.PuntoFin AS puntoFinDerrotero,
@@ -128,12 +128,12 @@ SELECT
   -- Ruta
   r.Id AS idRuta,
   r.Nombre AS nombreRuta,
-  r.IdRegion AS idRegion,
-  -- Regiones (Inicio y Fin)
-  regInicio.Nombre AS nombreRegionInicio,
-  r.IdRegionFin AS idRegionFin,
-  -- Regiones (Inicio y Fin)
-  regFin.Nombre AS nombreRegionFin
+  r.IdZona AS idZona,
+  -- Zonas (Inicio y Fin)
+  regInicio.Nombre AS nombreZonaInicio,
+  r.IdZonaFin AS idZonaFin,
+  -- Zonas (Inicio y Fin)
+  regFin.Nombre AS nombreZonaFin
 
 FROM Viajes v
 -- Cliente
@@ -145,11 +145,11 @@ JOIN Turnos t ON v.IdTurno = t.Id
 -- Instalación
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
 
--- Dispositivo
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
+-- Validador
+JOIN Validadores d ON ins.IdCliente = d.IdCliente AND ins.IdValidador = d.Id
 
--- BlueVox
-JOIN BlueVoxs bv ON ins.IdCliente = bv.IdCliente AND ins.IdBlueVox = bv.Id
+-- Contador
+JOIN Contadores bv ON ins.IdCliente = bv.IdCliente AND ins.IdContador = bv.Id
 
 -- Vehículo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
@@ -161,16 +161,16 @@ JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
 
 -- Derrotero
-JOIN Derroteros der ON v.IdDerrotero = der.Id
+JOIN Variantes der ON v.IdDerrotero = der.Id
 
 -- Ruta
 JOIN Rutas r ON der.IdRuta = r.Id
 
--- Región de inicio
-LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
+-- Zona de inicio
+LEFT JOIN Zonas regInicio ON r.IdZona = regInicio.Id
 
--- Región de fin
-LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
+-- Zona de fin
+LEFT JOIN Zonas regFin ON r.IdZonaFin = regFin.Id
 
         WHERE v.Estatus = 1
         AND c.Id = ?
@@ -208,12 +208,12 @@ SELECT
   t.IdInstalacion AS idInstalacion,
 
   -- Instalación
-  ins.IdDispositivo AS idDispositivo,
-  -- Dispositivo
-  d.NumeroSerie AS numeroSerieDispositivo,
-  ins.IdBlueVox AS idBlueVox,
-  -- BlueVox
-  bv.NumeroSerie AS numeroSerieBlueVox,
+  ins.IdValidador AS idValidador,
+  -- Validador
+  d.NumeroSerie AS numeroSerieValidador,
+  ins.IdContador AS idContador,
+  -- Contador
+  bv.NumeroSerie AS numeroSerieContador,
   ins.IdVehiculo AS idVehiculo,
   -- Vehículo
   vhl.Placa AS placaVehiculo,
@@ -229,7 +229,7 @@ SELECT
   u.ApellidoMaterno AS apellidoMaternoOperador,
 
   -- Derrotero
-  der.Id AS idDerrotero,
+  der.Id AS idVariante,
   der.Nombre AS nombreDerrotero,
   der.PuntoInicio AS puntoInicioDerrotero,
   der.PuntoFin AS puntoFinDerrotero,
@@ -238,12 +238,12 @@ SELECT
   -- Ruta
   r.Id AS idRuta,
   r.Nombre AS nombreRuta,
-  r.IdRegion AS idRegion,
-  -- Regiones (Inicio y Fin)
-  regInicio.Nombre AS nombreRegionInicio,
-  r.IdRegionFin AS idRegionFin,
-  -- Regiones (Inicio y Fin)
-  regFin.Nombre AS nombreRegionFin
+  r.IdZona AS idZona,
+  -- Zonas (Inicio y Fin)
+  regInicio.Nombre AS nombreZonaInicio,
+  r.IdZonaFin AS idZonaFin,
+  -- Zonas (Inicio y Fin)
+  regFin.Nombre AS nombreZonaFin
 
 FROM Viajes v
 -- Cliente
@@ -255,11 +255,11 @@ JOIN Turnos t ON v.IdTurno = t.Id
 -- Instalación
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
 
--- Dispositivo
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
+-- Validador
+JOIN Validadores d ON ins.IdCliente = d.IdCliente AND ins.IdValidador = d.Id
 
--- BlueVox
-JOIN BlueVoxs bv ON ins.IdCliente = bv.IdCliente AND ins.IdBlueVox = bv.Id
+-- Contador
+JOIN Contadores bv ON ins.IdCliente = bv.IdCliente AND ins.IdContador = bv.Id
 
 -- Vehículo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
@@ -271,16 +271,16 @@ JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
 
 -- Derrotero
-JOIN Derroteros der ON v.IdDerrotero = der.Id
+JOIN Variantes der ON v.IdDerrotero = der.Id
 
 -- Ruta
 JOIN Rutas r ON der.IdRuta = r.Id
 
--- Región de inicio
-LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
+-- Zona de inicio
+LEFT JOIN Zonas regInicio ON r.IdZona = regInicio.Id
 
--- Región de fin
-LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
+-- Zona de fin
+LEFT JOIN Zonas regFin ON r.IdZonaFin = regFin.Id
 WHERE c.Estatus = 1
 
 ORDER BY v.Id DESC;
@@ -299,20 +299,20 @@ ORDER BY v.Id DESC;
         idCliente: Number(item.idCliente),
         idTurno: Number(item.idTurno),
         idInstalacion: Number(item.idInstalacion),
-        idDispositivo: Number(item.idDispositivo),
-        idBlueVox: Number(item.idBlueVox),
+        idValidador: Number(item.idValidador),
+        idContador: Number(item.idContador),
         idVehiculo: Number(item.idVehiculo),
         idOperador: Number(item.idOperador),
         idUsuario: Number(item.idUsuario),
-        idDerrotero: Number(item.idDerrotero),
+        idVariante: Number(item.idVariante),
         distanciaKmDerrotero:
           item.distanciaKmDerrotero !== null
             ? Number(item.distanciaKmDerrotero)
             : null,
         idRuta: Number(item.idRuta),
-        idRegion: Number(item.idRegion),
-        idRegionFin:
-          item.idRegionFin !== null ? Number(item.idRegionFin) : null,
+        idZona: Number(item.idZona),
+        idZonaFin:
+          item.idZonaFin !== null ? Number(item.idZonaFin) : null,
       }));
 
       //APi response
@@ -357,12 +357,12 @@ SELECT
   t.IdInstalacion AS idInstalacion,
 
   -- Instalación
-  ins.IdDispositivo AS idDispositivo,
-  -- Dispositivo
-  d.NumeroSerie AS numeroSerieDispositivo,
-  ins.IdBlueVox AS idBlueVox,
-  -- BlueVox
-  bv.NumeroSerie AS numeroSerieBlueVox,
+  ins.IdValidador AS idValidador,
+  -- Validador
+  d.NumeroSerie AS numeroSerieValidador,
+  ins.IdContador AS idContador,
+  -- Contador
+  bv.NumeroSerie AS numeroSerieContador,
   ins.IdVehiculo AS idVehiculo,
   -- Vehículo
   vhl.Placa AS placaVehiculo,
@@ -378,7 +378,7 @@ SELECT
   u.ApellidoMaterno AS apellidoMaternoOperador,
 
   -- Derrotero
-  der.Id AS idDerrotero,
+  der.Id AS idVariante,
   der.Nombre AS nombreDerrotero,
   der.PuntoInicio AS puntoInicioDerrotero,
   der.PuntoFin AS puntoFinDerrotero,
@@ -387,12 +387,12 @@ SELECT
   -- Ruta
   r.Id AS idRuta,
   r.Nombre AS nombreRuta,
-  r.IdRegion AS idRegion,
-  -- Regiones (Inicio y Fin)
-  regInicio.Nombre AS nombreRegionInicio,
-  r.IdRegionFin AS idRegionFin,
-  -- Regiones (Inicio y Fin)
-  regFin.Nombre AS nombreRegionFin
+  r.IdZona AS idZona,
+  -- Zonas (Inicio y Fin)
+  regInicio.Nombre AS nombreZonaInicio,
+  r.IdZonaFin AS idZonaFin,
+  -- Zonas (Inicio y Fin)
+  regFin.Nombre AS nombreZonaFin
 
 FROM Viajes v
 -- Cliente
@@ -404,11 +404,11 @@ JOIN Turnos t ON v.IdTurno = t.Id
 -- Instalación
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
 
--- Dispositivo
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
+-- Validador
+JOIN Validadores d ON ins.IdCliente = d.IdCliente AND ins.IdValidador = d.Id
 
--- BlueVox
-JOIN BlueVoxs bv ON ins.IdCliente = bv.IdCliente AND ins.IdBlueVox = bv.Id
+-- Contador
+JOIN Contadores bv ON ins.IdCliente = bv.IdCliente AND ins.IdContador = bv.Id
 
 -- Vehículo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
@@ -420,16 +420,16 @@ JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
 
 -- Derrotero
-JOIN Derroteros der ON v.IdDerrotero = der.Id
+JOIN Variantes der ON v.IdDerrotero = der.Id
 
 -- Ruta
 JOIN Rutas r ON der.IdRuta = r.Id
 
--- Región de inicio
-LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
+-- Zona de inicio
+LEFT JOIN Zonas regInicio ON r.IdZona = regInicio.Id
 
--- Región de fin
-LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
+-- Zona de fin
+LEFT JOIN Zonas regFin ON r.IdZonaFin = regFin.Id
 
         WHERE v.Estatus = 1
         AND c.Id = ?
@@ -449,15 +449,15 @@ FROM Viajes v
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
-JOIN BlueVoxs bv ON ins.IdCliente = bv.IdCliente AND ins.IdBlueVox = bv.Id
+JOIN Validadores d ON ins.IdCliente = d.IdCliente AND ins.IdValidador = d.Id
+JOIN Contadores bv ON ins.IdCliente = bv.IdCliente AND ins.IdContador = bv.Id
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
-JOIN Derroteros der ON v.IdDerrotero = der.Id
+JOIN Variantes der ON v.IdDerrotero = der.Id
 JOIN Rutas r ON der.IdRuta = r.Id
-LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
-LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
+LEFT JOIN Zonas regInicio ON r.IdZona = regInicio.Id
+LEFT JOIN Zonas regFin ON r.IdZonaFin = regFin.Id
 
         WHERE v.Estatus = 1
         AND c.Id = ?
@@ -499,12 +499,12 @@ SELECT
   t.IdInstalacion AS idInstalacion,
 
   -- Instalación
-  ins.IdDispositivo AS idDispositivo,
-  -- Dispositivo
-  d.NumeroSerie AS numeroSerieDispositivo,
-  ins.IdBlueVox AS idBlueVox,
-  -- BlueVox
-  bv.NumeroSerie AS numeroSerieBlueVox,
+  ins.IdValidador AS idValidador,
+  -- Validador
+  d.NumeroSerie AS numeroSerieValidador,
+  ins.IdContador AS idContador,
+  -- Contador
+  bv.NumeroSerie AS numeroSerieContador,
   ins.IdVehiculo AS idVehiculo,
   -- Vehículo
   vhl.Placa AS placaVehiculo,
@@ -520,7 +520,7 @@ SELECT
   u.ApellidoMaterno AS apellidoMaternoOperador,
 
   -- Derrotero
-  der.Id AS idDerrotero,
+  der.Id AS idVariante,
   der.Nombre AS nombreDerrotero,
   der.PuntoInicio AS puntoInicioDerrotero,
   der.PuntoFin AS puntoFinDerrotero,
@@ -529,12 +529,12 @@ SELECT
   -- Ruta
   r.Id AS idRuta,
   r.Nombre AS nombreRuta,
-  r.IdRegion AS idRegion,
-  -- Regiones (Inicio y Fin)
-  regInicio.Nombre AS nombreRegionInicio,
-  r.IdRegionFin AS idRegionFin,
-  -- Regiones (Inicio y Fin)
-  regFin.Nombre AS nombreRegionFin
+  r.IdZona AS idZona,
+  -- Zonas (Inicio y Fin)
+  regInicio.Nombre AS nombreZonaInicio,
+  r.IdZonaFin AS idZonaFin,
+  -- Zonas (Inicio y Fin)
+  regFin.Nombre AS nombreZonaFin
 
 FROM Viajes v
 -- Cliente
@@ -546,11 +546,11 @@ JOIN Turnos t ON v.IdTurno = t.Id
 -- Instalación
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
 
--- Dispositivo
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
+-- Validador
+JOIN Validadores d ON ins.IdCliente = d.IdCliente AND ins.IdValidador = d.Id
 
--- BlueVox
-JOIN BlueVoxs bv ON ins.IdCliente = bv.IdCliente AND ins.IdBlueVox = bv.Id
+-- Contador
+JOIN Contadores bv ON ins.IdCliente = bv.IdCliente AND ins.IdContador = bv.Id
 
 -- Vehículo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
@@ -562,16 +562,16 @@ JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
 
 -- Derrotero
-JOIN Derroteros der ON v.IdDerrotero = der.Id
+JOIN Variantes der ON v.IdDerrotero = der.Id
 
 -- Ruta
 JOIN Rutas r ON der.IdRuta = r.Id
 
--- Región de inicio
-LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
+-- Zona de inicio
+LEFT JOIN Zonas regInicio ON r.IdZona = regInicio.Id
 
--- Región de fin
-LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
+-- Zona de fin
+LEFT JOIN Zonas regFin ON r.IdZonaFin = regFin.Id
 
         WHERE v.Estatus = 1
 
@@ -605,20 +605,20 @@ LIMIT ? OFFSET ?;
         idCliente: Number(item.idCliente),
         idTurno: Number(item.idTurno),
         idInstalacion: Number(item.idInstalacion),
-        idDispositivo: Number(item.idDispositivo),
-        idBlueVox: Number(item.idBlueVox),
+        idValidador: Number(item.idValidador),
+        idContador: Number(item.idContador),
         idVehiculo: Number(item.idVehiculo),
         idOperador: Number(item.idOperador),
         idUsuario: Number(item.idUsuario),
-        idDerrotero: Number(item.idDerrotero),
+        idVariante: Number(item.idVariante),
         distanciaKmDerrotero:
           item.distanciaKmDerrotero !== null
             ? Number(item.distanciaKmDerrotero)
             : null,
         idRuta: Number(item.idRuta),
-        idRegion: Number(item.idRegion),
-        idRegionFin:
-          item.idRegionFin !== null ? Number(item.idRegionFin) : null,
+        idZona: Number(item.idZona),
+        idZonaFin:
+          item.idZonaFin !== null ? Number(item.idZonaFin) : null,
       }));
 
       const total = Number(totalResult[0]?.total || 0);
@@ -666,12 +666,12 @@ SELECT
   t.IdInstalacion AS idInstalacion,
 
   -- Instalación
-  ins.IdDispositivo AS idDispositivo,
-  -- Dispositivo
-  d.NumeroSerie AS numeroSerieDispositivo,
-  ins.IdBlueVox AS idBlueVox,
-  -- BlueVox
-  bv.NumeroSerie AS numeroSerieBlueVox,
+  ins.IdValidador AS idValidador,
+  -- Validador
+  d.NumeroSerie AS numeroSerieValidador,
+  ins.IdContador AS idContador,
+  -- Contador
+  bv.NumeroSerie AS numeroSerieContador,
   ins.IdVehiculo AS idVehiculo,
   -- Vehículo
   vhl.Placa AS placaVehiculo,
@@ -687,7 +687,7 @@ SELECT
   u.ApellidoMaterno AS apellidoMaternoOperador,
 
   -- Derrotero
-  der.Id AS idDerrotero,
+  der.Id AS idVariante,
   der.Nombre AS nombreDerrotero,
   der.PuntoInicio AS puntoInicioDerrotero,
   der.PuntoFin AS puntoFinDerrotero,
@@ -696,12 +696,12 @@ SELECT
   -- Ruta
   r.Id AS idRuta,
   r.Nombre AS nombreRuta,
-  r.IdRegion AS idRegion,
-  -- Regiones (Inicio y Fin)
-  regInicio.Nombre AS nombreRegionInicio,
-  r.IdRegionFin AS idRegionFin,
-  -- Regiones (Inicio y Fin)
-  regFin.Nombre AS nombreRegionFin
+  r.IdZona AS idZona,
+  -- Zonas (Inicio y Fin)
+  regInicio.Nombre AS nombreZonaInicio,
+  r.IdZonaFin AS idZonaFin,
+  -- Zonas (Inicio y Fin)
+  regFin.Nombre AS nombreZonaFin
 
 FROM Viajes v
 -- Cliente
@@ -713,11 +713,11 @@ JOIN Turnos t ON v.IdTurno = t.Id
 -- Instalación
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
 
--- Dispositivo
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
+-- Validador
+JOIN Validadores d ON ins.IdCliente = d.IdCliente AND ins.IdValidador = d.Id
 
--- BlueVox
-JOIN BlueVoxs bv ON ins.IdCliente = bv.IdCliente AND ins.IdBlueVox = bv.Id
+-- Contador
+JOIN Contadores bv ON ins.IdCliente = bv.IdCliente AND ins.IdContador = bv.Id
 
 -- Vehículo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
@@ -729,16 +729,16 @@ JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
 
 -- Derrotero
-JOIN Derroteros der ON v.IdDerrotero = der.Id
+JOIN Variantes der ON v.IdDerrotero = der.Id
 
 -- Ruta
 JOIN Rutas r ON der.IdRuta = r.Id
 
--- Región de inicio
-LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
+-- Zona de inicio
+LEFT JOIN Zonas regInicio ON r.IdZona = regInicio.Id
 
--- Región de fin
-LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
+-- Zona de fin
+LEFT JOIN Zonas regFin ON r.IdZonaFin = regFin.Id
 
         WHERE c.Id = ?
         AND v.Id = ?
@@ -774,12 +774,12 @@ SELECT
   t.IdInstalacion AS idInstalacion,
 
   -- Instalación
-  ins.IdDispositivo AS idDispositivo,
-  -- Dispositivo
-  d.NumeroSerie AS numeroSerieDispositivo,
-  ins.IdBlueVox AS idBlueVox,
-  -- BlueVox
-  bv.NumeroSerie AS numeroSerieBlueVox,
+  ins.IdValidador AS idValidador,
+  -- Validador
+  d.NumeroSerie AS numeroSerieValidador,
+  ins.IdContador AS idContador,
+  -- Contador
+  bv.NumeroSerie AS numeroSerieContador,
   ins.IdVehiculo AS idVehiculo,
   -- Vehículo
   vhl.Placa AS placaVehiculo,
@@ -795,7 +795,7 @@ SELECT
   u.ApellidoMaterno AS apellidoMaternoOperador,
 
   -- Derrotero
-  der.Id AS idDerrotero,
+  der.Id AS idVariante,
   der.Nombre AS nombreDerrotero,
   der.PuntoInicio AS puntoInicioDerrotero,
   der.PuntoFin AS puntoFinDerrotero,
@@ -804,12 +804,12 @@ SELECT
   -- Ruta
   r.Id AS idRuta,
   r.Nombre AS nombreRuta,
-  r.IdRegion AS idRegion,
-  -- Regiones (Inicio y Fin)
-  regInicio.Nombre AS nombreRegionInicio,
-  r.IdRegionFin AS idRegionFin,
-  -- Regiones (Inicio y Fin)
-  regFin.Nombre AS nombreRegionFin
+  r.IdZona AS idZona,
+  -- Zonas (Inicio y Fin)
+  regInicio.Nombre AS nombreZonaInicio,
+  r.IdZonaFin AS idZonaFin,
+  -- Zonas (Inicio y Fin)
+  regFin.Nombre AS nombreZonaFin
 
 FROM Viajes v
 -- Cliente
@@ -821,11 +821,11 @@ JOIN Turnos t ON v.IdTurno = t.Id
 -- Instalación
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
 
--- Dispositivo
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
+-- Validador
+JOIN Validadores d ON ins.IdCliente = d.IdCliente AND ins.IdValidador = d.Id
 
--- BlueVox
-JOIN BlueVoxs bv ON ins.IdCliente = bv.IdCliente AND ins.IdBlueVox = bv.Id
+-- Contador
+JOIN Contadores bv ON ins.IdCliente = bv.IdCliente AND ins.IdContador = bv.Id
 
 -- Vehículo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
@@ -837,16 +837,16 @@ JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
 
 -- Derrotero
-JOIN Derroteros der ON v.IdDerrotero = der.Id
+JOIN Variantes der ON v.IdDerrotero = der.Id
 
 -- Ruta
 JOIN Rutas r ON der.IdRuta = r.Id
 
--- Región de inicio
-LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
+-- Zona de inicio
+LEFT JOIN Zonas regInicio ON r.IdZona = regInicio.Id
 
--- Región de fin
-LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
+-- Zona de fin
+LEFT JOIN Zonas regFin ON r.IdZonaFin = regFin.Id
 
         WHERE v.Id = ?
 
@@ -873,20 +873,20 @@ ORDER BY v.Id DESC
         idCliente: Number(viaje.idCliente),
         idTurno: Number(viaje.idTurno),
         idInstalacion: Number(viaje.idInstalacion),
-        idDispositivo: Number(viaje.idDispositivo),
-        idBlueVox: Number(viaje.idBlueVox),
+        idValidador: Number(viaje.idValidador),
+        idContador: Number(viaje.idContador),
         idVehiculo: Number(viaje.idVehiculo),
         idOperador: Number(viaje.idOperador),
         idUsuario: Number(viaje.idUsuario),
-        idDerrotero: Number(viaje.idDerrotero),
+        idVariante: Number(viaje.idVariante),
         distanciaKmDerrotero:
           viaje.distanciaKmDerrotero !== null
             ? Number(viaje.distanciaKmDerrotero)
             : null,
         idRuta: Number(viaje.idRuta),
-        idRegion: Number(viaje.idRegion),
-        idRegionFin:
-          viaje.idRegionFin !== null ? Number(viaje.idRegionFin) : null,
+        idZona: Number(viaje.idZona),
+        idZonaFin:
+          viaje.idZonaFin !== null ? Number(viaje.idZonaFin) : null,
       };
 
       //APi response

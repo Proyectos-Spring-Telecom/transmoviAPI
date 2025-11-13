@@ -32,7 +32,7 @@ export class PosicionesService {
       const querylogger = { createPosicionesDto };
       await this.bitacoraLogger.logToBitacora(
         'Posiciones',
-        `Se creó una Posicion con Numero de serie Dispositivo: ${posicionSave.numeroSerieDispositivo}`,
+        `Se creó una Posicion con Numero de serie Validador: ${posicionSave.numeroSerieValidador}`,
         'CREATE',
         querylogger,
         idUser,
@@ -46,7 +46,7 @@ export class PosicionesService {
         message: 'Posicion creada correctamente',
         data: {
           id: Number(posicionSave.id),
-          nombre: `${posicionSave.id} ${posicionSave.numeroSerieDispositivo}` || '',
+          nombre: `${posicionSave.id} ${posicionSave.numeroSerieValidador}` || '',
         },
       };
       return result;
@@ -55,7 +55,7 @@ export class PosicionesService {
       const querylogger = { createPosicionesDto };
       await this.bitacoraLogger.logToBitacora(
         'Posiciones',
-        `Se creó una Posicion con Numero de serie Dispositivo: ${createPosicionesDto.numeroSerieDispositivo}`,
+        `Se creó una Posicion con Numero de serie Validador: ${createPosicionesDto.numeroSerieValidador}`,
         'CREATE',
         querylogger,
         idUser,

@@ -11,15 +11,15 @@ import {
 
 export class UpdateInstalacioneDto extends PartialType(CreateInstalacionesDto) {
   @ApiProperty({
-    description: 'ID del dispositivo asociado a la instalación',
+    description: 'ID del validador asociado a la instalación',
     example: 101,
   })
-  @IsOptional({ message: 'El IdDispositivo es obligatorio' })
+  @IsOptional({ message: 'El IdValidador es obligatorio' })
   @IsNumber()
-  idDispositivo?: number;
+  idValidador?: number;
 
   @ApiProperty({
-    description: 'ID del dispositivo asociado a la instalación',
+    description: 'ID del validador asociado a la instalación',
     example: 101,
   })
   @IsOptional({
@@ -27,18 +27,18 @@ export class UpdateInstalacioneDto extends PartialType(CreateInstalacionesDto) {
   })
   @IsInt()
   @IsIn([0, 1, 2, 3, 4, 5], { message: 'Solo se permite 0, 1, 2, 3, 4, 5' })
-  estatusDispositivoAnterior?: number;
+  estatusValidadorAnterior?: number;
 
   @ApiProperty({
-    description: 'ID del BlueVox asociado a la instalación',
+    description: 'ID del contador asociado a la instalación',
     example: 202,
   })
-  @IsOptional({ message: 'El IdBlueVox es obligatorio' })
+  @IsOptional({ message: 'El IdContador es obligatorio' })
   @IsNumber()
-  idBlueVox?: number;
+  idContador?: number;
 
   @ApiProperty({
-    description: 'ID del dispositivo asociado a la instalación',
+    description: 'ID del validador asociado a la instalación',
     example: 101,
   })
   @IsOptional({
@@ -46,7 +46,7 @@ export class UpdateInstalacioneDto extends PartialType(CreateInstalacionesDto) {
   })
   @IsInt()
   @IsIn([0, 1, 2, 3, 4, 5], { message: 'Solo se permite 0, 1, 2, 3, 4, 5' })
-  estatusBluevoxsAnterior?: number;
+  estatusContadoresAnterior?: number;
 
   @ApiProperty({
     description: 'Comentario acerca de los componentes',
@@ -54,7 +54,7 @@ export class UpdateInstalacioneDto extends PartialType(CreateInstalacionesDto) {
   })
   @IsString()
   @IsOptional()
-  comentariosDispositivo?: string;
+  comentariosValidador?: string;
 
   @ApiProperty({
     description: 'Comentario acerca de los componentes',
@@ -62,5 +62,5 @@ export class UpdateInstalacioneDto extends PartialType(CreateInstalacionesDto) {
   })
   @IsString()
   @IsOptional()
-  comentariosBluevox?: string;
+  comentariosContador?: string;
 }

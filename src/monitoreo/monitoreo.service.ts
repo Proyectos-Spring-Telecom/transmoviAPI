@@ -6,17 +6,17 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
 import { Clientes } from 'src/entities/Clientes';
-import { Derroteros } from 'src/entities/Derroteros';
-import { UsuariosRegiones } from 'src/entities/UsuariosRegiones';
+import { Variantes } from 'src/entities/Variantes';
+import { UsuariosZonas } from 'src/entities/UsuariosZonas';
 import { Repository } from 'typeorm';
 
 @Injectable()
 export class MonitoreoService {
   constructor(
-    @InjectRepository(UsuariosRegiones)
-    private readonly usuariosregionesRepository: Repository<UsuariosRegiones>,
-    @InjectRepository(Derroteros)
-    private readonly derroterosRepository: Repository<Derroteros>,
+    @InjectRepository(UsuariosZonas)
+    private readonly usuarioszonasRepository: Repository<UsuariosZonas>,
+    @InjectRepository(Variantes)
+    private readonly variantesRepository: Repository<Variantes>,
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
   ) {}
@@ -62,21 +62,21 @@ export class MonitoreoService {
     c.ApellidoMaterno AS apellidoMaternoCliente,
     c.Estatus AS estatusCliente
 
-FROM Derroteros d
+FROM Variantes d
 INNER JOIN Rutas ru ON d.IdRuta = ru.Id
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Zonas r ON ru.IdZona = r.Id
+LEFT JOIN Zonas rf ON ru.IdZonaFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
 
 WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
   AND c.Estatus = 1
   AND ru.Estatus = 1         -- Solo rutas activas
-  AND r.Estatus = 1          -- Solo regiones activas
+  AND r.Estatus = 1          -- Solo zonas activas
   AND d.Estatus = 1
 
 ORDER BY d.Id DESC;
     `;
-    return this.usuariosregionesRepository.query(query, [...ids]);
+    return this.usuarioszonasRepository.query(query, [...ids]);
   }
 
   async findAllList(idUser: number, cliente: number, rol: number) {
@@ -85,7 +85,7 @@ ORDER BY d.Id DESC;
       switch (rol) {
         case 1:
           // Consulta de datos paginados Usuario SuperAdministrador
-          data = await this.usuariosregionesRepository.query(
+          data = await this.usuarioszonasRepository.query(
             `
   SELECT 
     -- Datos del derrotero (datos principales)
@@ -104,14 +104,14 @@ ORDER BY d.Id DESC;
     c.ApellidoMaterno AS apellidoMaternoCliente,
     c.Estatus AS estatusCliente
 
-FROM Derroteros d
+FROM Variantes d
 INNER JOIN Rutas ru ON d.IdRuta = ru.Id
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Zonas r ON ru.IdZona = r.Id
+LEFT JOIN Zonas rf ON ru.IdZonaFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
 
 WHERE ru.Estatus = 1         -- Solo rutas activas
-  AND r.Estatus = 1          -- Solo regiones activas
+  AND r.Estatus = 1          -- Solo zonas activas
   AND d.Estatus = 1
   AND c.Estatus = 1
 
@@ -138,7 +138,7 @@ ORDER BY d.Id DESC;
         default:
           // Consulta de datos paginados Usuario
           const { ids, placeholders } = await this.clienteHijos(cliente);
-          data = await this.usuariosregionesRepository.query(
+          data = await this.usuarioszonasRepository.query(
             `
       SELECT 
   -- Datos del derrotero (datos principales)
@@ -157,12 +157,12 @@ ORDER BY d.Id DESC;
   c.ApellidoMaterno AS apellidoMaternoCliente,
   c.Estatus AS estatusCliente
 
-FROM Derroteros d
+FROM Variantes d
 INNER JOIN Rutas ru ON d.IdRuta = ru.Id
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Zonas r ON ru.IdZona = r.Id
+LEFT JOIN Zonas rf ON ru.IdZonaFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
-INNER JOIN UsuariosRegiones ur ON ur.IdRegion = r.Id
+INNER JOIN UsuariosZonas ur ON ur.IdZona = r.Id
 
 WHERE ur.IdUsuario = ?
   AND ur.Estatus = 1
@@ -179,7 +179,7 @@ ORDER BY d.Id DESC;
           break;
       }
 
-      const derroteros = data.map((item) => ({
+      const variantes = data.map((item) => ({
         ...item,
         id: Number(item.id),
         idCliente: Number(item.idCliente),
@@ -188,14 +188,14 @@ ORDER BY d.Id DESC;
 
       // Transformación de resultados
       const result: ApiResponseCommon = {
-        data: derroteros,
+        data: variantes,
       };
       return result;
     } catch (error) {
       if (error instanceof HttpException) throw error;
 
       throw new InternalServerErrorException({
-        message: 'Error al obtener listado derroteros',
+        message: 'Error al obtener listado variantes',
         error: error.message,
       });
     }

@@ -3,11 +3,11 @@ import { MonitoreoService } from './monitoreo.service';
 import { MonitoreoController } from './monitoreo.controller';
 import { Clientes } from 'src/entities/Clientes';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Derroteros } from 'src/entities/Derroteros';
-import { UsuariosRegiones } from 'src/entities/UsuariosRegiones';
+import { Variantes } from 'src/entities/Variantes';
+import { UsuariosZonas } from 'src/entities/UsuariosZonas';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Derroteros,UsuariosRegiones,Clientes]), ],
+  imports: [TypeOrmModule.forFeature([Variantes,UsuariosZonas,Clientes]), ],
   controllers: [MonitoreoController],
   providers: [MonitoreoService],
 })

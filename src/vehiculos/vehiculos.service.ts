@@ -110,7 +110,7 @@ export class VehiculosService {
     return { ids, placeholders };
   }
 
-  //Obtener los bluevox por cliente /*/*Nulos
+  //Obtener los contadores por cliente /*/*Nulos
   async findAllListClientes(id: number, cliente: number) {
     try {
       const vehiculos = await this.vehiculoRepository.find({

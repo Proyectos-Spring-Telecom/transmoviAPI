@@ -4,7 +4,7 @@ import { TransaccionesController } from './transacciones.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MonederosModule } from 'src/monederos/monederos.module';
 import { BitacoraModule } from 'src/bitacora/bitacora.module';
-import { Dispositivos } from 'src/entities/Dispositivos';
+import { Validadores } from 'src/entities/Validadores';
 import { PasajerosModule } from 'src/pasajeros/pasajeros.module';
 import { Clientes } from 'src/entities/Clientes';
 import { TransaccionesRecarga } from 'src/entities/TransaccionesRecarga';
@@ -14,7 +14,7 @@ import { CatTiposPasajeros } from 'src/entities/CatTiposPasajeros';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([TransaccionesRecarga, TransaccionesDebito, Dispositivos, Clientes, Monederos, CatTiposPasajeros]),
+    TypeOrmModule.forFeature([TransaccionesRecarga, TransaccionesDebito, Validadores, Clientes, Monederos, CatTiposPasajeros]),
     MonederosModule,
     BitacoraModule,
     PasajerosModule,

@@ -67,9 +67,9 @@ export class CreateTarifaDto {
 
   @ApiProperty({
     example: 2001,
-    description: 'Id del derrotero asociado a la tarifa',
+    description: 'Id de la variante asociada a la tarifa',
   })
-  @IsNotEmpty({ message: 'El IdDerrotero es obligatorio' })
-  @IsInt({ message: 'El IdDerrotero debe ser un número entero' })
-  idDerrotero: number;
+  @IsNotEmpty({ message: 'El IdVariante es obligatorio' })
+  @IsInt({ message: 'El IdVariante debe ser un número entero' })
+  idVariante: number;
 }

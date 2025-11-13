@@ -37,10 +37,10 @@ export class CreateConteoPasajerosDto {
   fechaHora: Date;
 
   @ApiProperty({
-    description: 'Número de serie del dispositivo BlueVox asociado',
+    description: 'Número de serie del contador asociado',
     example: 'BVX-2025-XYZ123',
   })
   @IsString()
   @IsNotEmpty()
-  numeroSerieBlueVox: string;
+  numeroSerieContador: string;
 }

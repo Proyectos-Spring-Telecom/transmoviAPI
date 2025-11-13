@@ -10,8 +10,8 @@ import { applySchema } from 'src/common/apply-schema.decorator';
 
 @applySchema
 @Index('FK_HistoricoInstalaciones_Instalaciones', ['idInstalacion'], {})
-@Index('FK_HistoricoInstalaciones_Dispositivo', ['idDispositivo'], {})
-@Index('FK_HistoricoInstalaciones_BlueVox', ['idBlueVox'], {})
+@Index('FK_HistoricoInstalaciones_Validador', ['idValidador'], {})
+@Index('FK_HistoricoInstalaciones_Contador', ['idContador'], {})
 @Index('FK_HistoricoInstalaciones_Vehiculo', ['idVehiculo'], {})
 @Index('FK_HistoricoInstalaciones_Cliente', ['idCliente'], {})
 @Entity('HistoricoInstalaciones')
@@ -22,11 +22,11 @@ export class HistoricoInstalaciones {
   @Column('bigint', { name: 'IdInstalacion' })
   idInstalacion: number;
 
-  @Column('bigint', { name: 'IdDispositivo' })
-  idDispositivo: number;
+  @Column('bigint', { name: 'IdValidador' })
+  idValidador: number;
 
-  @Column('bigint', { name: 'IdBlueVox' })
-  idBlueVox: number;
+  @Column('bigint', { name: 'IdContador' })
+  idContador: number;
 
   @Column('bigint', { name: 'IdVehiculo' })
   idVehiculo: number;

@@ -3,20 +3,20 @@ import { IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional } from 'class-validator';
 
 export class CreateInstalacionesDto {
   @ApiProperty({
-    description: 'ID del dispositivo asociado a la instalación',
+    description: 'ID del validador asociado a la instalación',
     example: 101,
   })
-  @IsNotEmpty({ message: 'El IdDispositivo es obligatorio' })
+  @IsNotEmpty({ message: 'El IdValidador es obligatorio' })
   @IsNumber()
-  idDispositivo: number;
+  idValidador: number;
 
   @ApiProperty({
-    description: 'ID del BlueVox asociado a la instalación',
+    description: 'ID del contador asociado a la instalación',
     example: 202,
   })
-  @IsNotEmpty({ message: 'El IdBlueVox es obligatorio' })
+  @IsNotEmpty({ message: 'El IdContador es obligatorio' })
   @IsNumber()
-  idBlueVox: number;
+  idContador: number;
 
   @ApiProperty({
     description: 'ID del vehículo asociado a la instalación',

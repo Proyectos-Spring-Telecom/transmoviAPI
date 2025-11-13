@@ -4,12 +4,12 @@ import { TarifasController } from './tarifas.controller';
 import { BitacoraModule } from 'src/bitacora/bitacora.module';
 import { Tarifas } from 'src/entities/Tarifas';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Derroteros } from 'src/entities/Derroteros';
-import { UsuariosRegiones } from 'src/entities/UsuariosRegiones';
+import { Variantes } from 'src/entities/Variantes';
+import { UsuariosZonas } from 'src/entities/UsuariosZonas';
 import { Clientes } from 'src/entities/Clientes';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Tarifas,Derroteros,UsuariosRegiones,Clientes]), BitacoraModule],
+  imports: [TypeOrmModule.forFeature([Tarifas,Variantes,UsuariosZonas,Clientes]), BitacoraModule],
   controllers: [TarifasController],
   providers: [TarifasService],
 })

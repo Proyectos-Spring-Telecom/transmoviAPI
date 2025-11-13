@@ -28,8 +28,8 @@ export class HistoricoinstalacionesService {
   //Crear un historico
   async createHistorico(
     idInstalacion: number,
-    idDispositivo: number,
-    idBlueVox: number,
+    idValidador: number,
+    idContador: number,
     idVehiculo: number,
     idCliente: number,
     idUser: number,
@@ -37,8 +37,8 @@ export class HistoricoinstalacionesService {
     try {
       const historico = {
         idInstalacion: idInstalacion,
-        idDispositivo: idDispositivo,
-        idBlueVox: idBlueVox,
+        idValidador: idValidador,
+        idContador: idContador,
         idVehiculo: idVehiculo,
         idCliente: idCliente,
       };
@@ -63,8 +63,8 @@ export class HistoricoinstalacionesService {
       // Registro en la bitácora SUCCESS
       const querylogger = {
         instalacion: idInstalacion,
-        dispositivo: idDispositivo,
-        bluevoxs: idBlueVox,
+        validador: idValidador,
+        contadores: idContador,
         vehiculo: idVehiculo,
         cliente: idCliente,
       };
@@ -90,8 +90,8 @@ export class HistoricoinstalacionesService {
 
   async updateHistorico(
     instalacion: UpdateHistoricoDto,
-    idDispositivoUp: number,
-    idBlueVoxUp: number,
+    idValidadorUp: number,
+    idContadorUp: number,
     idVehiculoUp: number,
     idClienteUp: number,
     idUser: number,
@@ -107,12 +107,12 @@ export class HistoricoinstalacionesService {
           },
         });
 
-      const mismoDispositivo =
-        historicoActivo?.idDispositivo === idDispositivoUp;
-      const mismoBlueVox = historicoActivo?.idBlueVox === idBlueVoxUp;
+      const mismoValidador =
+        historicoActivo?.idValidador === idValidadorUp;
+      const mismoContador = historicoActivo?.idContador === idContadorUp;
 
       // 🚫 Si no hay cambios reales, no hacer nada
-      if (historicoActivo && mismoDispositivo && mismoBlueVox) {
+      if (historicoActivo && mismoValidador && mismoContador) {
         return;
       }
 
@@ -138,8 +138,8 @@ export class HistoricoinstalacionesService {
       // 🆕 Insertar nuevo histórico con los datos actualizados
       const historico = this.historicoInstalacionesRepository.create({
         idInstalacion: instalacion.idInstalacion,
-        idDispositivo: idDispositivoUp,
-        idBlueVox: idBlueVoxUp,
+        idValidador: idValidadorUp,
+        idContador: idContadorUp,
         idVehiculo: idVehiculoUp, // el vehículo no cambia, pero se registra
         idCliente: idClienteUp,
       });
@@ -162,8 +162,8 @@ export class HistoricoinstalacionesService {
       // Registro en la bitácora de errores
       const querylogger = {
         instalacion: instalacion.idInstalacion,
-        dispositivo: idDispositivoUp,
-        bluevoxs: idBlueVoxUp,
+        validador: idValidadorUp,
+        contadores: idContadorUp,
         vehiculo: idVehiculoUp,
         cliente: idClienteUp,
       };

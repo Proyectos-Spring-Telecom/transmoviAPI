@@ -7,11 +7,11 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
 } from "typeorm";
-import { BlueVoxs } from "./BlueVoxs";
-import { Dispositivos } from "./Dispositivos";
+import { Contadores } from "./Contadores";
+import { Validadores } from "./Validadores";
 import { Instalaciones } from "./Instalaciones";
 import { Monederos } from "./Monederos";
-import { Regiones } from "./Regiones";
+import { Zonas } from "./Zonas";
 import { Turnos } from "./Turnos";
 import { Usuarios } from "./Usuarios";
 import { Vehiculos } from "./Vehiculos";
@@ -121,8 +121,8 @@ export class Clientes {
   @Column("tinyint", { name: "Estatus", default: () => "'1'" })
   estatus: number;
 
-  @OneToMany(() => BlueVoxs, (blueVoxs) => blueVoxs.idCliente2)
-  blueVoxs: BlueVoxs[];
+  @OneToMany(() => Contadores, (contadores) => contadores.idCliente2)
+  contadores: Contadores[];
 
   @ManyToOne(() => Clientes, (clientes) => clientes.clientes, {
     onDelete: "NO ACTION",
@@ -134,8 +134,8 @@ export class Clientes {
   @OneToMany(() => Clientes, (clientes) => clientes.idPadre2)
   clientes: Clientes[];
 
-  @OneToMany(() => Dispositivos, (dispositivos) => dispositivos.idCliente2)
-  dispositivos: Dispositivos[];
+  @OneToMany(() => Validadores, (validadores) => validadores.idCliente2)
+  validadores: Validadores[];
 
   @OneToMany(() => Instalaciones, (instalaciones) => instalaciones.idCliente2)
   instalaciones: Instalaciones[];
@@ -143,8 +143,8 @@ export class Clientes {
   @OneToMany(() => Monederos, (monederos) => monederos.idCliente2)
   monederos: Monederos[];
 
-  @OneToMany(() => Regiones, (regiones) => regiones.idCliente2)
-  regiones: Regiones[];
+  @OneToMany(() => Zonas, (zonas) => zonas.idCliente2)
+  zonas: Zonas[];
 
   @OneToMany(() => Turnos, (turnos) => turnos.idCliente2)
   turnos: Turnos[];

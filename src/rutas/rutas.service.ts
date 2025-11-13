@@ -9,7 +9,7 @@ import { CreateRutaDto } from './dto/create-ruta.dto';
 import { UpdateRutaDto } from './dto/update-ruta.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Regiones } from 'src/entities/Regiones';
+import { Zonas } from 'src/entities/Zonas';
 import { Rutas } from 'src/entities/Rutas';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import {
@@ -17,19 +17,19 @@ import {
   ApiResponseCommon,
   EstatusEnumBitcora,
 } from 'src/common/ApiResponse';
-import { UsuariosRegiones } from 'src/entities/UsuariosRegiones';
+import { UsuariosZonas } from 'src/entities/UsuariosZonas';
 import { UpdateRutasEstatusDto } from './dto/update-ruta-estatus.dto';
 import { Clientes } from 'src/entities/Clientes';
 
 @Injectable()
 export class RutasService {
   constructor(
-    @InjectRepository(Regiones)
-    private readonly regionesRepository: Repository<Regiones>,
+    @InjectRepository(Zonas)
+    private readonly zonasRepository: Repository<Zonas>,
     @InjectRepository(Rutas)
     private readonly rutasRepository: Repository<Rutas>,
-    @InjectRepository(UsuariosRegiones)
-    private readonly usuarioregionesRepository: Repository<UsuariosRegiones>,
+    @InjectRepository(UsuariosZonas)
+    private readonly usuarioszonasRepository: Repository<UsuariosZonas>,
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
@@ -42,13 +42,13 @@ export class RutasService {
     createRutaDto: CreateRutaDto,
   ): Promise<ApiCrudResponse> {
     try {
-      let region;
-      const idRegionRuta = createRutaDto.idRegion;
+      let zona;
+      const idZonaRuta = createRutaDto.idZona;
 
-      region = await this.regionesRepository.findOne({
-        where: { id: createRutaDto.idRegion },
+      zona = await this.zonasRepository.findOne({
+        where: { id: createRutaDto.idZona },
       });
-      if (!region) throw new NotFoundException('Region no encontrada');
+      if (!zona) throw new NotFoundException('Zona no encontrada');
 
       const newRuta = this.rutasRepository.create(createRutaDto);
       const rutaSave = await this.rutasRepository.save(newRuta);
@@ -135,23 +135,23 @@ SELECT
     ru.NombreFin AS nombreFin,
     ru.FechaCreacion AS fechaCreacionRuta,
     ru.Estatus AS estatusRuta,
-    ru.IdRegionFin AS idRegionFin,
+    ru.IdZonaFin AS idZonaFin,
 
-  -- REGIÓN INICIAL
-  r.Id AS idRegion,
-  r.Nombre AS nombreRegion,
-  r.Descripcion AS descripcionRegion,
-  r.FechaCreacion AS fechaCreacionRegion,
-  r.FechaActualizacion AS fechaActualizacionRegion,
-  r.Estatus AS estatusRegion,
+  -- ZONA INICIAL
+  r.Id AS idZona,
+  r.Nombre AS nombreZona,
+  r.Descripcion AS descripcionZona,
+  r.FechaCreacion AS fechaCreacionZona,
+  r.FechaActualizacion AS fechaActualizacionZona,
+  r.Estatus AS estatusZona,
 
-  -- REGIÓN FINAL (si existe)
-  rf.Id AS idRegionFinDetalle,
-  rf.Nombre AS nombreRegionFinDetalle,
-  rf.Descripcion AS descripcionRegionFin,
-  rf.FechaCreacion AS fechaCreacionRegionFin,
-  rf.FechaActualizacion AS fechaActualizacionRegionFin,
-  rf.Estatus AS estatusRegionFin,
+  -- ZONA FINAL (si existe)
+  rf.Id AS idZonaFinDetalle,
+  rf.Nombre AS nombreZonaFinDetalle,
+  rf.Descripcion AS descripcionZonaFin,
+  rf.FechaCreacion AS fechaCreacionZonaFin,
+  rf.FechaActualizacion AS fechaActualizacionZonaFin,
+  rf.Estatus AS estatusZonaFin,
 
   -- CLIENTE
   c.Id AS idCliente,
@@ -162,8 +162,8 @@ SELECT
   CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
 FROM Rutas ru
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Zonas r ON ru.IdZona = r.Id
+LEFT JOIN Zonas rf ON ru.IdZonaFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
 
 WHERE 
@@ -173,7 +173,7 @@ ORDER BY ru.Id DESC
 
   LIMIT ? OFFSET ?;
     `;
-    return this.usuarioregionesRepository.query(query, [
+    return this.usuarioszonasRepository.query(query, [
       ...ids,
       limit,
       offset,
@@ -185,15 +185,15 @@ ORDER BY ru.Id DESC
     const query = `  
     SELECT COUNT(*) AS total
 FROM Rutas ru
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Zonas r ON ru.IdZona = r.Id
+LEFT JOIN Zonas rf ON ru.IdZonaFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
 
 WHERE 
   c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
   AND r.Estatus = 1
 `;
-    return await this.usuarioregionesRepository.query(query, [...ids]);
+    return await this.usuarioszonasRepository.query(query, [...ids]);
   }
 
   async obtenerRutasPorUsuarioSQL(
@@ -209,7 +209,7 @@ WHERE
     switch (rol) {
       case 1:
         // Consulta de datos paginados Usuario SuperAdministrador
-        data = await this.usuarioregionesRepository.query(
+        data = await this.usuarioszonasRepository.query(
           `
 SELECT 
   -- RUTA
@@ -221,23 +221,23 @@ SELECT
     ru.NombreFin AS nombreFin,
     ru.FechaCreacion AS fechaCreacionRuta,
     ru.Estatus AS estatusRuta,
-    ru.IdRegionFin AS idRegionFin,
+    ru.IdZonaFin AS idZonaFin,
 
-  -- REGIÓN INICIAL
-  r.Id AS idRegion,
-  r.Nombre AS nombreRegion,
-  r.Descripcion AS descripcionRegion,
-  r.FechaCreacion AS fechaCreacionRegion,
-  r.FechaActualizacion AS fechaActualizacionRegion,
-  r.Estatus AS estatusRegion,
+  -- ZONA INICIAL
+  r.Id AS idZona,
+  r.Nombre AS nombreZona,
+  r.Descripcion AS descripcionZona,
+  r.FechaCreacion AS fechaCreacionZona,
+  r.FechaActualizacion AS fechaActualizacionZona,
+  r.Estatus AS estatusZona,
 
-  -- REGIÓN FINAL (si existe)
-  rf.Id AS idRegionFinDetalle,
-  rf.Nombre AS nombreRegionFinDetalle,
-  rf.Descripcion AS descripcionRegionFin,
-  rf.FechaCreacion AS fechaCreacionRegionFin,
-  rf.FechaActualizacion AS fechaActualizacionRegionFin,
-  rf.Estatus AS estatusRegionFin,
+  -- ZONA FINAL (si existe)
+  rf.Id AS idZonaFinDetalle,
+  rf.Nombre AS nombreZonaFinDetalle,
+  rf.Descripcion AS descripcionZonaFin,
+  rf.FechaCreacion AS fechaCreacionZonaFin,
+  rf.FechaActualizacion AS fechaActualizacionZonaFin,
+  rf.Estatus AS estatusZonaFin,
 
   -- CLIENTE
   c.Id AS idCliente,
@@ -248,8 +248,8 @@ SELECT
   CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
 FROM Rutas ru
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Zonas r ON ru.IdZona = r.Id
+LEFT JOIN Zonas rf ON ru.IdZonaFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
 
 WHERE 
@@ -262,12 +262,12 @@ ORDER BY ru.Id DESC
         );
 
         // Query para total (sin paginación)
-        totalResult = await this.usuarioregionesRepository.query(
+        totalResult = await this.usuarioszonasRepository.query(
           `
   SELECT COUNT(*) AS total
 FROM Rutas ru
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Zonas r ON ru.IdZona = r.Id
+LEFT JOIN Zonas rf ON ru.IdZonaFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
 
 WHERE 
@@ -302,7 +302,7 @@ WHERE
 
       default:
         // Consulta de datos paginados resto Usuario
-        data = await this.usuarioregionesRepository.query(
+        data = await this.usuarioszonasRepository.query(
           `
   SELECT 
     ru.Id AS id,
@@ -313,23 +313,23 @@ WHERE
     ru.NombreFin AS nombreFin,
     ru.FechaCreacion AS fechaCreacionRuta,
     ru.Estatus AS estatusRuta,
-    ru.IdRegionFin AS idRegionFin,
+    ru.IdZonaFin AS idZonaFin,
 
     -- Datos de la región inicial
-    r.Id AS idRegion,
-    r.Nombre AS nombreRegion,
-    r.Descripcion AS descripcionRegion,
-    r.FechaCreacion AS fechaCreacionRegion,
-    r.FechaActualizacion AS fechaActualizacionRegion,
-    r.Estatus AS estatusRegion,
+    r.Id AS idZona,
+    r.Nombre AS nombreZona,
+    r.Descripcion AS descripcionZona,
+    r.FechaCreacion AS fechaCreacionZona,
+    r.FechaActualizacion AS fechaActualizacionZona,
+    r.Estatus AS estatusZona,
 
     -- Datos de la región final (si existe)
-    rf.Id AS idRegionFinDetalle,
-    rf.Nombre AS nombreRegionFinDetalle,
-    rf.Descripcion AS descripcionRegionFin,
-    rf.FechaCreacion AS fechaCreacionRegionFin,
-    rf.FechaActualizacion AS fechaActualizacionRegionFin,
-    rf.Estatus AS estatusRegionFin,
+    rf.Id AS idZonaFinDetalle,
+    rf.Nombre AS nombreZonaFinDetalle,
+    rf.Descripcion AS descripcionZonaFin,
+    rf.FechaCreacion AS fechaCreacionZonaFin,
+    rf.FechaActualizacion AS fechaActualizacionZonaFin,
+    rf.Estatus AS estatusZonaFin,
 
   -- CLIENTE
   c.Id AS idCliente,
@@ -339,10 +339,10 @@ WHERE
   c.Estatus AS estatusCliente,
     CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
-  FROM UsuariosRegiones ur
-  INNER JOIN Regiones r ON ur.IdRegion = r.Id
-  INNER JOIN Rutas ru ON ru.IdRegion = r.Id
-  LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+  FROM UsuariosZonas ur
+  INNER JOIN Zonas r ON ur.IdZona = r.Id
+  INNER JOIN Rutas ru ON ru.IdZona = r.Id
+  LEFT JOIN Zonas rf ON ru.IdZonaFin = rf.Id
   INNER JOIN Clientes c ON r.IdCliente = c.Id
 
   WHERE ur.IdUsuario = ?
@@ -356,13 +356,13 @@ WHERE
         );
 
         // Query para total (sin paginación)
-        totalResult = await this.usuarioregionesRepository.query(
+        totalResult = await this.usuarioszonasRepository.query(
           `
   SELECT COUNT(*) AS total
-  FROM UsuariosRegiones ur
-  INNER JOIN Regiones r ON ur.IdRegion = r.Id
-  INNER JOIN Rutas ru ON ru.IdRegion = r.Id
-  LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+  FROM UsuariosZonas ur
+  INNER JOIN Zonas r ON ur.IdZona = r.Id
+  INNER JOIN Rutas ru ON ru.IdZona = r.Id
+  LEFT JOIN Zonas rf ON ru.IdZonaFin = rf.Id
   INNER JOIN Clientes c ON r.IdCliente = c.Id
 
   WHERE ur.IdUsuario = ?
@@ -376,14 +376,14 @@ WHERE
 
     const total = Number(totalResult[0]?.total || 0);
 
-    // Mapeo de resultados con conversión de tipos y manejo de idRegionFin
+    // Mapeo de resultados con conversión de tipos y manejo de idZonaFin
     const rutas = data.map((item) => ({
       ...item,
       id: item.id ? Number(item.id) : null,
-      idRegion: item.idRegion ? Number(item.idRegion) : null,
-      idRegionFin: item.idRegionFin ? Number(item.idRegionFin) : null,
-      idRegionFinDetalle: item.idRegionFinDetalle
-        ? Number(item.idRegionFinDetalle)
+      idZona: item.idZona ? Number(item.idZona) : null,
+      idZonaFin: item.idZonaFin ? Number(item.idZonaFin) : null,
+      idZonaFinDetalle: item.idZonaFinDetalle
+        ? Number(item.idZonaFinDetalle)
         : null,
       idCliente: item.idCliente ? Number(item.idCliente) : null,
     }));
@@ -411,23 +411,23 @@ WHERE
     ru.NombreFin AS nombreFin,
     ru.FechaCreacion AS fechaCreacionRuta,
     ru.Estatus AS estatusRuta,
-    ru.IdRegionFin AS idRegionFin,
+    ru.IdZonaFin AS idZonaFin,
 
-  -- REGIÓN INICIAL
-  r.Id AS idRegion,
-  r.Nombre AS nombreRegion,
-  r.Descripcion AS descripcionRegion,
-  r.FechaCreacion AS fechaCreacionRegion,
-  r.FechaActualizacion AS fechaActualizacionRegion,
-  r.Estatus AS estatusRegion,
+  -- ZONA INICIAL
+  r.Id AS idZona,
+  r.Nombre AS nombreZona,
+  r.Descripcion AS descripcionZona,
+  r.FechaCreacion AS fechaCreacionZona,
+  r.FechaActualizacion AS fechaActualizacionZona,
+  r.Estatus AS estatusZona,
 
-  -- REGIÓN FINAL (si existe)
-  rf.Id AS idRegionFinDetalle,
-  rf.Nombre AS nombreRegionFinDetalle,
-  rf.Descripcion AS descripcionRegionFin,
-  rf.FechaCreacion AS fechaCreacionRegionFin,
-  rf.FechaActualizacion AS fechaActualizacionRegionFin,
-  rf.Estatus AS estatusRegionFin,
+  -- ZONA FINAL (si existe)
+  rf.Id AS idZonaFinDetalle,
+  rf.Nombre AS nombreZonaFinDetalle,
+  rf.Descripcion AS descripcionZonaFin,
+  rf.FechaCreacion AS fechaCreacionZonaFin,
+  rf.FechaActualizacion AS fechaActualizacionZonaFin,
+  rf.Estatus AS estatusZonaFin,
 
   -- CLIENTE
   c.Id AS idCliente,
@@ -438,8 +438,8 @@ WHERE
   CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
 FROM Rutas ru
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Zonas r ON ru.IdZona = r.Id
+LEFT JOIN Zonas rf ON ru.IdZonaFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
 
 WHERE 
@@ -449,7 +449,7 @@ WHERE
   AND ru.Estatus = 1
 ORDER BY ru.Id DESC;
     `;
-    return await this.usuarioregionesRepository.query(query, [...ids]);
+    return await this.usuarioszonasRepository.query(query, [...ids]);
   }
 
   async findAllList(idUser: number, cliente: number, rol: number) {
@@ -458,7 +458,7 @@ ORDER BY ru.Id DESC;
       switch (rol) {
         case 1:
           // Consulta de datos paginados Usuario Administrador
-          rutas = await this.usuarioregionesRepository.query(
+          rutas = await this.usuarioszonasRepository.query(
             `
 SELECT 
   -- RUTA
@@ -470,23 +470,23 @@ SELECT
     ru.NombreFin AS nombreFin,
     ru.FechaCreacion AS fechaCreacionRuta,
     ru.Estatus AS estatusRuta,
-    ru.IdRegionFin AS idRegionFin,
+    ru.IdZonaFin AS idZonaFin,
 
-  -- REGIÓN INICIAL
-  r.Id AS idRegion,
-  r.Nombre AS nombreRegion,
-  r.Descripcion AS descripcionRegion,
-  r.FechaCreacion AS fechaCreacionRegion,
-  r.FechaActualizacion AS fechaActualizacionRegion,
-  r.Estatus AS estatusRegion,
+  -- ZONA INICIAL
+  r.Id AS idZona,
+  r.Nombre AS nombreZona,
+  r.Descripcion AS descripcionZona,
+  r.FechaCreacion AS fechaCreacionZona,
+  r.FechaActualizacion AS fechaActualizacionZona,
+  r.Estatus AS estatusZona,
 
-  -- REGIÓN FINAL (si existe)
-  rf.Id AS idRegionFinDetalle,
-  rf.Nombre AS nombreRegionFinDetalle,
-  rf.Descripcion AS descripcionRegionFin,
-  rf.FechaCreacion AS fechaCreacionRegionFin,
-  rf.FechaActualizacion AS fechaActualizacionRegionFin,
-  rf.Estatus AS estatusRegionFin,
+  -- ZONA FINAL (si existe)
+  rf.Id AS idZonaFinDetalle,
+  rf.Nombre AS nombreZonaFinDetalle,
+  rf.Descripcion AS descripcionZonaFin,
+  rf.FechaCreacion AS fechaCreacionZonaFin,
+  rf.FechaActualizacion AS fechaActualizacionZonaFin,
+  rf.Estatus AS estatusZonaFin,
 
   -- CLIENTE
   c.Id AS idCliente,
@@ -497,8 +497,8 @@ SELECT
   CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
 FROM Rutas ru
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Zonas r ON ru.IdZona = r.Id
+LEFT JOIN Zonas rf ON ru.IdZonaFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
 
 WHERE 
@@ -527,7 +527,7 @@ ORDER BY ru.Id DESC
 
         default:
           // Consulta de datos paginados Usuario
-          rutas = await this.usuarioregionesRepository.query(
+          rutas = await this.usuarioszonasRepository.query(
             `
             SELECT 
     ru.Id AS id,
@@ -538,30 +538,30 @@ ORDER BY ru.Id DESC
     ru.NombreFin AS nombreFin,
     ru.FechaCreacion AS fechaCreacionRuta,
     ru.Estatus AS estatusRuta,
-    ru.IdRegionFin AS idRegionFin,
+    ru.IdZonaFin AS idZonaFin,
     
-    r.Id AS idRegion,
-    r.Nombre AS nombreRegion,
-    r.Descripcion AS descripcionRegion,
-    r.FechaCreacion AS fechaCreacionRegion,
-    r.FechaActualizacion AS fechaActualizacionRegion,
-    r.Estatus AS estatusRegion,
+    r.Id AS idZona,
+    r.Nombre AS nombreZona,
+    r.Descripcion AS descripcionZona,
+    r.FechaCreacion AS fechaCreacionZona,
+    r.FechaActualizacion AS fechaActualizacionZona,
+    r.Estatus AS estatusZona,
     
-    rf.Id AS idRegionFinDetalle,
-    rf.Nombre AS nombreRegionFinDetalle,
-    rf.Descripcion AS descripcionRegionFin,
-    rf.FechaCreacion AS fechaCreacionRegionFin,
-    rf.FechaActualizacion AS fechaActualizacionRegionFin,
-    rf.Estatus AS estatusRegionFin,
+    rf.Id AS idZonaFinDetalle,
+    rf.Nombre AS nombreZonaFinDetalle,
+    rf.Descripcion AS descripcionZonaFin,
+    rf.FechaCreacion AS fechaCreacionZonaFin,
+    rf.FechaActualizacion AS fechaActualizacionZonaFin,
+    rf.Estatus AS estatusZonaFin,
     
     c.Id AS idCliente,
     c.Nombre AS nombreCliente,
     CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
-FROM UsuariosRegiones ur
-INNER JOIN Regiones r ON ur.IdRegion = r.Id            -- Región inicial
-INNER JOIN Rutas ru ON ru.IdRegion = r.Id              -- Ruta
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id        -- Región final (puede ser null)
+FROM UsuariosZonas ur
+INNER JOIN Zonas r ON ur.IdZona = r.Id            -- Zona inicial
+INNER JOIN Rutas ru ON ru.IdZona = r.Id              -- Ruta
+LEFT JOIN Zonas rf ON ru.IdZonaFin = rf.Id        -- Zona final (puede ser null)
 INNER JOIN Clientes c ON r.IdCliente = c.Id            -- Cliente
 
 WHERE ur.IdUsuario = ?
@@ -582,14 +582,14 @@ ORDER BY ru.Id DESC;
         throw new NotFoundException('Rutas no encontradas');
       }
 
-      // Mapeo de resultados con conversión de tipos y manejo de idRegionFin
+      // Mapeo de resultados con conversión de tipos y manejo de idZonaFin
       const data = rutas.map((item) => ({
         ...item,
         id: item.id ? Number(item.id) : null,
-        idRegion: item.idRegion ? Number(item.idRegion) : null,
-        idRegionFin: item.idRegionFin ? Number(item.idRegionFin) : null,
-        idRegionFinDetalle: item.idRegionFinDetalle
-          ? Number(item.idRegionFinDetalle)
+        idZona: item.idZona ? Number(item.idZona) : null,
+        idZonaFin: item.idZonaFin ? Number(item.idZonaFin) : null,
+        idZonaFinDetalle: item.idZonaFinDetalle
+          ? Number(item.idZonaFinDetalle)
           : null,
         idCliente: item.idCliente ? Number(item.idCliente) : null,
       }));
@@ -624,23 +624,23 @@ ORDER BY ru.Id DESC;
     ru.NombreFin AS nombreFin,
     ru.FechaCreacion AS fechaCreacionRuta,
     ru.Estatus AS estatusRuta,
-    ru.IdRegionFin AS idRegionFin,
+    ru.IdZonaFin AS idZonaFin,
 
-  -- REGIÓN INICIAL
-  r.Id AS idRegion,
-  r.Nombre AS nombreRegion,
-  r.Descripcion AS descripcionRegion,
-  r.FechaCreacion AS fechaCreacionRegion,
-  r.FechaActualizacion AS fechaActualizacionRegion,
-  r.Estatus AS estatusRegion,
+  -- ZONA INICIAL
+  r.Id AS idZona,
+  r.Nombre AS nombreZona,
+  r.Descripcion AS descripcionZona,
+  r.FechaCreacion AS fechaCreacionZona,
+  r.FechaActualizacion AS fechaActualizacionZona,
+  r.Estatus AS estatusZona,
 
-  -- REGIÓN FINAL (si existe)
-  rf.Id AS idRegionFinDetalle,
-  rf.Nombre AS nombreRegionFinDetalle,
-  rf.Descripcion AS descripcionRegionFin,
-  rf.FechaCreacion AS fechaCreacionRegionFin,
-  rf.FechaActualizacion AS fechaActualizacionRegionFin,
-  rf.Estatus AS estatusRegionFin,
+  -- ZONA FINAL (si existe)
+  rf.Id AS idZonaFinDetalle,
+  rf.Nombre AS nombreZonaFinDetalle,
+  rf.Descripcion AS descripcionZonaFin,
+  rf.FechaCreacion AS fechaCreacionZonaFin,
+  rf.FechaActualizacion AS fechaActualizacionZonaFin,
+  rf.Estatus AS estatusZonaFin,
 
   -- CLIENTE
   c.Id AS idCliente,
@@ -651,8 +651,8 @@ ORDER BY ru.Id DESC;
   CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
 FROM Rutas ru
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Zonas r ON ru.IdZona = r.Id
+LEFT JOIN Zonas rf ON ru.IdZonaFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
 
 WHERE 
@@ -661,7 +661,7 @@ WHERE
   AND ru.Id = ?
 ORDER BY ru.Id DESC;
     `;
-    return await this.usuarioregionesRepository.query(query, [...ids, id]);
+    return await this.usuarioszonasRepository.query(query, [...ids, id]);
   }
 
   async findOne(id: number, idUser: number, cliente: number, rol: number) {
@@ -670,7 +670,7 @@ ORDER BY ru.Id DESC;
       switch (rol) {
         case 1:
           // Consulta de datos paginados Usuario SuperAdministrador
-          ruta = await this.usuarioregionesRepository.query(
+          ruta = await this.usuarioszonasRepository.query(
             `
      SELECT 
   -- RUTA
@@ -682,23 +682,23 @@ ORDER BY ru.Id DESC;
     ru.NombreFin AS nombreFin,
     ru.FechaCreacion AS fechaCreacionRuta,
     ru.Estatus AS estatusRuta,
-    ru.IdRegionFin AS idRegionFin,
+    ru.IdZonaFin AS idZonaFin,
 
-  -- REGIÓN INICIAL
-  r.Id AS idRegion,
-  r.Nombre AS nombreRegion,
-  r.Descripcion AS descripcionRegion,
-  r.FechaCreacion AS fechaCreacionRegion,
-  r.FechaActualizacion AS fechaActualizacionRegion,
-  r.Estatus AS estatusRegion,
+  -- ZONA INICIAL
+  r.Id AS idZona,
+  r.Nombre AS nombreZona,
+  r.Descripcion AS descripcionZona,
+  r.FechaCreacion AS fechaCreacionZona,
+  r.FechaActualizacion AS fechaActualizacionZona,
+  r.Estatus AS estatusZona,
 
-  -- REGIÓN FINAL (si existe)
-  rf.Id AS idRegionFinDetalle,
-  rf.Nombre AS nombreRegionFinDetalle,
-  rf.Descripcion AS descripcionRegionFin,
-  rf.FechaCreacion AS fechaCreacionRegionFin,
-  rf.FechaActualizacion AS fechaActualizacionRegionFin,
-  rf.Estatus AS estatusRegionFin,
+  -- ZONA FINAL (si existe)
+  rf.Id AS idZonaFinDetalle,
+  rf.Nombre AS nombreZonaFinDetalle,
+  rf.Descripcion AS descripcionZonaFin,
+  rf.FechaCreacion AS fechaCreacionZonaFin,
+  rf.FechaActualizacion AS fechaActualizacionZonaFin,
+  rf.Estatus AS estatusZonaFin,
 
   -- CLIENTE
   c.Id AS idCliente,
@@ -709,8 +709,8 @@ ORDER BY ru.Id DESC;
   CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
 FROM Rutas ru
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Zonas r ON ru.IdZona = r.Id
+LEFT JOIN Zonas rf ON ru.IdZonaFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
 
 WHERE 
@@ -734,14 +734,14 @@ ORDER BY ru.Id DESC;
       }
 
       // Conversión directa de IDs
-      const region = ruta.idRegion2;
+      const zona = ruta.idZona2;
 
       const data = ruta.map((item) => ({
         ...item,
         id: Number(item.id),
-        idRegion: Number(item.idRegion),
-        idRegionFin: Number(item.idRegionFin),
-        idRegionFinDetalle: Number(item.idRegionFinDetalle),
+        idZona: Number(item.idZona),
+        idZonaFin: Number(item.idZonaFin),
+        idZonaFinDetalle: Number(item.idZonaFinDetalle),
         idCliente: Number(item.idCliente),
       }));
 
@@ -944,7 +944,7 @@ ORDER BY ru.Id DESC;
           break;
 
         default:
-          // Usuarios normales - solo sus regiones asignadas
+          // Usuarios normales - solo sus zonas asignadas
           throw new BadRequestException(`Acceso denegado`);
           break;
       }

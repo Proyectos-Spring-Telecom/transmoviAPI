@@ -9,7 +9,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Clientes } from './Clientes';
-import { Derroteros } from './Derroteros';
+import { Variantes } from './Variantes';
 import { Operadores } from './Operadores';
 import { Turnos } from './Turnos';
 import { ConteoPasajeros } from './ConteoPasajeros';
@@ -20,7 +20,7 @@ import { applySchema } from "src/common/apply-schema.decorator";
 @Index('IX_Viajes_IdTurno_Inicio', ['inicio', 'idTurno'], {})
 @Index('IX_Viajes_IdOperador_Inicio', ['inicio', 'idOperador'], {})
 @Index('IX_Viajes_IdCliente_Inicio', ['inicio', 'idCliente'], {})
-@Index('FK_Viajes_Derroteros', ['idDerrotero'], {})
+@Index('FK_Viajes_Derroteros', ['idVariante'], {})
 @Index('FK_Viajes_Clientes', ['idCliente'], {})
 @Entity('Viajes')
 export class Viajes {
@@ -58,7 +58,7 @@ export class Viajes {
   idOperador: number;
 
   @Column('bigint', { name: 'IdDerrotero' })
-  idDerrotero: number;
+  idVariante: number;
 
   @ManyToOne(() => Clientes, (clientes) => clientes.viajes, {
     onDelete: 'NO ACTION',
@@ -67,12 +67,12 @@ export class Viajes {
   @JoinColumn([{ name: 'IdCliente', referencedColumnName: 'id' }])
   idCliente2: Clientes;
 
-  @ManyToOne(() => Derroteros, (derroteros) => derroteros.viajes, {
+  @ManyToOne(() => Variantes, (variantes) => variantes.viajes, {
     onDelete: 'NO ACTION',
     onUpdate: 'NO ACTION',
   })
   @JoinColumn([{ name: 'IdDerrotero', referencedColumnName: 'id' }])
-  idDerrotero2: Derroteros;
+  idVariante2: Variantes;
 
   @ManyToOne(() => Operadores, (operadores) => operadores.viajes, {
     onDelete: 'NO ACTION',

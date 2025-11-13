@@ -67,9 +67,9 @@ export class CreatePosicionesDto {
   fechaHora: Date;
 
   @ApiProperty({
-    description: 'Número de serie del dispositivo asociado',
+    description: 'Número de serie del validador asociado',
     example: 'DEV-123456',
   })
   @IsString()
-  numeroSerieDispositivo: string;
+  numeroSerieValidador: string;
 }

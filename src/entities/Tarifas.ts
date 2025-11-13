@@ -6,11 +6,11 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
-import { Derroteros } from "./Derroteros";
+import { Variantes } from "./Variantes";
 import { applySchema } from "src/common/apply-schema.decorator";
 
 @applySchema
-@Index("FK_Tarifas_Derroteros", ["idDerrotero"], {})
+@Index("FK_Tarifas_Derroteros", ["idVariante"], {})
 @Entity("Tarifas")
 export class Tarifas {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
@@ -47,12 +47,12 @@ export class Tarifas {
   estatus: number;
 
   @Column("bigint", { name: "IdDerrotero" })
-  idDerrotero: number;
+  idVariante: number;
 
-  @ManyToOne(() => Derroteros, (derroteros) => derroteros.tarifas, {
+  @ManyToOne(() => Variantes, (variantes) => variantes.tarifas, {
     onDelete: "CASCADE",
     onUpdate: "NO ACTION",
   })
   @JoinColumn([{ name: "IdDerrotero", referencedColumnName: "id" }])
-  idDerrotero2: Derroteros;
+  idVariante2: Variantes;
 }

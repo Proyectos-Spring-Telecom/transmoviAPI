@@ -5,15 +5,15 @@ import { BitacoraModule } from 'src/bitacora/bitacora.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Instalaciones } from 'src/entities/Instalaciones';
 import { UsuariosInstalaciones } from 'src/entities/UsuariosInstalaciones';
-import { Dispositivos } from 'src/entities/Dispositivos';
-import { BlueVoxs } from 'src/entities/BlueVoxs';
+import { Validadores } from 'src/entities/Validadores';
+import { Contadores } from 'src/entities/Contadores';
 import { Vehiculos } from 'src/entities/Vehiculos';
 import { Clientes } from 'src/entities/Clientes';
 import { HistoricoInstalaciones } from 'src/entities/historico-instalaciones';
 import { HistoricoinstalacionesModule } from 'src/historicoinstalaciones/historicoinstalaciones.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Instalaciones,UsuariosInstalaciones,Dispositivos,BlueVoxs,Vehiculos,Clientes]), BitacoraModule,HistoricoinstalacionesModule],
+  imports: [TypeOrmModule.forFeature([Instalaciones,UsuariosInstalaciones,Validadores,Contadores,Vehiculos,Clientes]), BitacoraModule,HistoricoinstalacionesModule],
   controllers: [InstalacionesController],
   providers: [InstalacionesService],
 })

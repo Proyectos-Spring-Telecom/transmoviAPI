@@ -221,7 +221,7 @@ export class AuthService {
         relations: ['idRol2', 'idCliente2'],
         where: {
           userName: loginAuthPin.userName,
-          dispositivoId: loginAuthPin.dispositivoId,
+          validadorId: loginAuthPin.validadorId,
           estatus: 1,
           emailConfirmado: 1,
           idCliente2: {

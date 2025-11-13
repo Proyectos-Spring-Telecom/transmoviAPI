@@ -63,9 +63,9 @@ export class CreateTransaccioneDebitoDto {
 
   @ApiProperty({
     example: 'DISP-0001',
-    description: 'Número de serie del dispositivo',
+    description: 'Número de serie del validador',
   })
   @IsString()
   @IsNotEmpty()
-  numeroSerieDispositivo: string;
+  numeroSerieValidador: string;
 }

@@ -7,7 +7,7 @@ import { UsuariosModule } from './usuarios/usuarios.module';
 import { AuthModule } from './auth/auth.module';
 import { BitacoraModule } from './bitacora/bitacora.module';
 import { ClientesModule } from './clientes/clientes.module';
-import { DispositivosModule } from './dispositivos/dispositivos.module';
+import { ValidadoresModule } from './validadores/validadores.module';
 import { ModulosModule } from './modulos/modulos.module';
 import { MonederosModule } from './monederos/monederos.module';
 import { OperadoresModule } from './operadores/operadores.module';
@@ -16,17 +16,17 @@ import { PermisosModule } from './permisos/permisos.module';
 import { RolesModule } from './roles/roles.module';
 import { TransaccionesModule } from './transacciones/transacciones.module';
 import { VehiculosModule } from './vehiculos/vehiculos.module';
-import { BluevoxModule } from './bluevox/bluevox.module';
+import { ContadoresModule } from './contadores/contadores.module';
 import { RutasModule } from './rutas/rutas.module';
 import { PosicionesModule } from './posiciones/posiciones.module';
 import { S3Module } from './s3/s3.module';
 import { ConteopasajerosModule } from './conteopasajeros/conteopasajeros.module';
 import { InstalacionesModule } from './instalaciones/instalaciones.module';
 import { TurnosModule } from './turnos/turnos.module';
-import { RegionesModule } from './regiones/regiones.module';
-import { UsuariosregionesModule } from './usuariosregiones/usuariosregiones.module';
+import { ZonasModule } from './zonas/zonas.module';
+import { UsuarioszonasModule } from './usuarioszonas/usuarioszonas.module';
 import { UsuariosinstalacionesModule } from './usuariosinstalaciones/usuariosinstalaciones.module';
-import { DerroterosModule } from './derroteros/derroteros.module';
+import { VariantesModule } from './variantes/variantes.module';
 import { TarifasModule } from './tarifas/tarifas.module';
 import { ViajesModule } from './viajes/viajes.module';
 import { ViajesconteosModule } from './viajesconteos/viajesconteos.module';
@@ -102,7 +102,7 @@ import Joi from 'joi';
 
     ClientesModule,
 
-    DispositivosModule,
+    ValidadoresModule,
 
     ModulosModule,
 
@@ -120,7 +120,7 @@ import Joi from 'joi';
 
     VehiculosModule,
 
-    BluevoxModule,
+    ContadoresModule,
 
     RutasModule,
 
@@ -134,13 +134,13 @@ import Joi from 'joi';
 
     TurnosModule,
 
-    RegionesModule,
+    ZonasModule,
 
-    UsuariosregionesModule,
+    UsuarioszonasModule,
 
     UsuariosinstalacionesModule,
 
-    DerroterosModule,
+    VariantesModule,
 
     TarifasModule,
 

@@ -85,7 +85,7 @@ SELECT
   v.IdCliente AS idCliente,
   v.IdTurno AS idTurno,
   v.IdOperador AS idOperador,
-  v.IdDerrotero AS idDerrotero,
+  v.IdDerrotero AS idVariante,
 
   c.Id AS idConteo,
   c.Entradas AS entradas,
@@ -93,7 +93,7 @@ SELECT
   c.Diferencia AS diferencia,
   c.FechaHora AS fechaConteo,
   c.FHRegistro AS fechaRegistroConteo,
-  c.NumeroSerieBlueVox AS numeroSerieBlueVox
+  c.NumeroSerieContador AS numeroSerieContador
 
 FROM ViajesConteos vc
 INNER JOIN Viajes v ON v.Id = vc.IdViaje
@@ -107,7 +107,7 @@ ORDER BY v.Id DESC
         idCliente: Number(item.idCliente),
         idTurno: Number(item.idTurno),
         idOperador: Number(item.idOperador),
-        idDerrotero: Number(item.idDerrotero),
+        idVariante: Number(item.idVariante),
         idConteo: Number(item.idConteo),
       }));
       const result: ApiResponseCommon = {
@@ -143,7 +143,7 @@ SELECT
   v.IdCliente AS idCliente,
   v.IdTurno AS idTurno,
   v.IdOperador AS idOperador,
-  v.IdDerrotero AS idDerrotero,
+  v.IdDerrotero AS idVariante,
 
   c.Id AS idConteo,
   c.Entradas AS entradas,
@@ -151,7 +151,7 @@ SELECT
   c.Diferencia AS diferencia,
   c.FechaHora AS fechaConteo,
   c.FHRegistro AS fechaRegistroConteo,
-  c.NumeroSerieBlueVox AS numeroSerieBlueVox
+  c.NumeroSerieContador AS numeroSerieContador
 
 FROM ViajesConteos vc
 INNER JOIN Viajes v ON v.Id = vc.IdViaje
@@ -180,7 +180,7 @@ ORDER BY v.Id DESC
         idCliente: Number(item.idCliente),
         idTurno: Number(item.idTurno),
         idOperador: Number(item.idOperador),
-        idDerrotero: Number(item.idDerrotero),
+        idVariante: Number(item.idVariante),
         idConteo: Number(item.idConteo),
       }));
       const result: ApiResponseCommon = {
@@ -217,7 +217,7 @@ SELECT
   v.IdCliente AS idCliente,
   v.IdTurno AS idTurno,
   v.IdOperador AS idOperador,
-  v.IdDerrotero AS idDerrotero,
+  v.IdDerrotero AS idVariante,
 
   c.Id AS idConteo,
   c.Entradas AS entradas,
@@ -225,7 +225,7 @@ SELECT
   c.Diferencia AS diferencia,
   c.FechaHora AS fechaConteo,
   c.FHRegistro AS fechaRegistroConteo,
-  c.NumeroSerieBlueVox AS numeroSerieBlueVox
+  c.NumeroSerieContador AS numeroSerieContador
 
 FROM ViajesConteos vc
 INNER JOIN Viajes v ON v.Id = vc.IdViaje
@@ -241,7 +241,7 @@ ORDER BY v.Id DESC
         idCliente: Number(item.idCliente),
         idTurno: Number(item.idTurno),
         idOperador: Number(item.idOperador),
-        idDerrotero: Number(item.idDerrotero),
+        idVariante: Number(item.idVariante),
         idConteo: Number(item.idConteo),
       }));
       const result: ApiResponseCommon = {
@@ -274,7 +274,7 @@ SELECT
   v.IdCliente AS idCliente,
   v.IdTurno AS idTurno,
   v.IdOperador AS idOperador,
-  v.IdDerrotero AS idDerrotero,
+  v.IdDerrotero AS idVariante,
 
   c.Id AS idConteo,
   c.Entradas AS entradas,
@@ -282,7 +282,7 @@ SELECT
   c.Diferencia AS diferencia,
   c.FechaHora AS fechaConteo,
   c.FHRegistro AS fechaRegistroConteo,
-  c.NumeroSerieBlueVox AS numeroSerieBlueVox
+  c.NumeroSerieContador AS numeroSerieContador
 
 FROM ViajesConteos vc
 INNER JOIN Viajes v ON v.Id = vc.IdViaje
@@ -298,7 +298,7 @@ ORDER BY v.Id DESC
         idCliente: Number(item.idCliente),
         idTurno: Number(item.idTurno),
         idOperador: Number(item.idOperador),
-        idDerrotero: Number(item.idDerrotero),
+        idVariante: Number(item.idVariante),
         idConteo: Number(item.idConteo),
       }));
       const result: ApiResponseCommon = {

@@ -9,7 +9,7 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { BlueVoxs } from './BlueVoxs';
+import { Contadores } from './Contadores';
 import { Viajes } from './Viajes';
 import { ViajesConteos } from './ViajesConteos';
 import { applySchema } from "src/common/apply-schema.decorator";
@@ -17,7 +17,7 @@ import { applySchema } from "src/common/apply-schema.decorator";
 @applySchema
 @Index(
   'IX_ConteoPasajeros_Serie_FechaHora',
-  ['fechaHora', 'numeroSerieBlueVox'],
+  ['fechaHora', 'numeroSerieContador'],
   {},
 )
 @Entity('ConteoPasajeros')
@@ -43,17 +43,17 @@ export class ConteoPasajeros {
   })
   fhRegistro: Date;
 
-  @Column('varchar', { name: 'NumeroSerieBlueVox', length: 100 })
-  numeroSerieBlueVox: string;
+  @Column('varchar', { name: 'NumeroSerieContador', length: 100 })
+  numeroSerieContador: string;
 
-  @ManyToOne(() => BlueVoxs, (blueVoxs) => blueVoxs.conteoPasajeros, {
+  @ManyToOne(() => Contadores, (contadores) => contadores.conteoPasajeros, {
     onDelete: 'NO ACTION',
     onUpdate: 'NO ACTION',
   })
   @JoinColumn([
-    { name: 'NumeroSerieBlueVox', referencedColumnName: 'numeroSerie' },
+    { name: 'NumeroSerieContador', referencedColumnName: 'numeroSerie' },
   ])
-  numeroSerieBlueVox2: BlueVoxs;
+  numeroSerieContador2: Contadores;
 
   @ManyToMany(() => Viajes, (viajes) => viajes.conteoPasajeros)
   @JoinTable({

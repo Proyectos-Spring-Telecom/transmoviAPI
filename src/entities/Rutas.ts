@@ -7,12 +7,12 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { Derroteros } from './Derroteros';
-import { Regiones } from './Regiones';
+import { Variantes } from './Variantes';
+import { Zonas } from './Zonas';
 import { applySchema } from "src/common/apply-schema.decorator";
 
 @applySchema
-@Index('FK_Rutas_Regiones', ['idRegion'], {})
+@Index('FK_Rutas_Zonas', ['idZona'], {})
 @Entity('Rutas')
 export class Rutas {
   @PrimaryGeneratedColumn({ type: 'bigint', name: 'Id' })
@@ -49,23 +49,23 @@ export class Rutas {
   @Column('tinyint', { name: 'Estatus', default: () => "'1'" })
   estatus: number;
 
-  @Column('bigint', { name: 'IdRegion' })
-  idRegion: number;
+  @Column('bigint', { name: 'IdZona' })
+  idZona: number;
 
-  @Column("bigint", { name: "IdRegionFin", nullable: true })
-  idRegionFin: number | null;
+  @Column("bigint", { name: "IdZonaFin", nullable: true })
+  idZonaFin: number | null;
 
-  @OneToMany(() => Derroteros, (derroteros) => derroteros.idRuta2)
-  derroteros: Derroteros[];
+  @OneToMany(() => Variantes, (variantes) => variantes.idRuta2)
+  variantes: Variantes[];
 
-  @ManyToOne(() => Regiones, (regiones) => regiones.rutas, {
+  @ManyToOne(() => Zonas, (zonas) => zonas.rutas, {
     onDelete: 'NO ACTION',
     onUpdate: 'NO ACTION',
   })
-  @JoinColumn([{ name: 'IdRegion', referencedColumnName: 'id' }])
-  idRegion2: Regiones;
+  @JoinColumn([{ name: 'IdZona', referencedColumnName: 'id' }])
+  idZona2: Zonas;
 
-  @ManyToOne(() => Regiones, { nullable: true })
-  @JoinColumn([{ name: "IdRegionFin", referencedColumnName: "id" }])
-  idRegionFin2: Regiones | null;
+  @ManyToOne(() => Zonas, { nullable: true })
+  @JoinColumn([{ name: "IdZonaFin", referencedColumnName: "id" }])
+  idZonaFin2: Zonas | null;
 }

@@ -151,7 +151,7 @@ export class ClientesService {
       let clientes;
       switch (rol) {
         case 1:
-          // Usuario SuperAdministrador - obtiene todas las regiones
+          // Usuario SuperAdministrador - obtiene todas las zonas
           clientes = await this.clienteRepository.query(
             `
 SELECT
@@ -289,7 +289,7 @@ ORDER BY Id ASC
       let clientes;
       switch (rol) {
         case 1:
-          // Usuario SuperAdministrador - obtiene todas las regiones
+          // Usuario SuperAdministrador - obtiene todas las zonas
           clientes = await this.clienteRepository.query(
             `
 SELECT
@@ -305,7 +305,7 @@ ORDER BY Id ASC;
           break;
 
         default:
-          // Usuarios normales - solo sus regiones asignadas
+          // Usuarios normales - solo sus zonas asignadas
           const { ids, placeholders } = await this.clienteHijos(cliente);
           clientes = await this.clienteRepository.query(
             `

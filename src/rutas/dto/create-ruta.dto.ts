@@ -64,18 +64,18 @@ export class CreateRutaDto {
   estatus: number = 1;
 
   @ApiProperty({
-    description: 'Identificador de la región de inicio asociada',
+    description: 'Identificador de la zona de inicio asociada',
     example: 2,
   })
   @IsNumber()
   @IsNotEmpty()
-  idRegion: number;
+  idZona: number;
 
   @ApiPropertyOptional({
-    description: 'Identificador de la región final asociada (opcional)',
+    description: 'Identificador de la zona final asociada (opcional)',
     example: 3,
   })
   @IsOptional()
   @IsNumber()
-  idRegionFin?: number | null;
+  idZonaFin?: number | null;
 }

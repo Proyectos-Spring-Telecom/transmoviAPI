@@ -60,10 +60,10 @@ export class UpdateUsuarioOperadorDto {
   @IsString()
   @IsNotEmpty()
   @ApiProperty({
-    description: 'Identificador del dispositivo',
+    description: 'Identificador del validador',
     example: '15aBW',
   })
-  dispositivoId: string;
+  validadorId: string;
 
   @IsOptional()
   @IsDateString()

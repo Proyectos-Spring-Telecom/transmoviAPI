@@ -7,9 +7,9 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
 } from "typeorm";
-import { BlueVoxs } from "./BlueVoxs";
+import { Contadores } from "./Contadores";
 import { Clientes } from "./Clientes";
-import { Dispositivos } from "./Dispositivos";
+import { Validadores } from "./Validadores";
 import { Vehiculos } from "./Vehiculos";
 import { Turnos } from "./Turnos";
 import { UsuariosInstalaciones } from "./UsuariosInstalaciones";
@@ -21,11 +21,11 @@ import { applySchema } from "src/common/apply-schema.decorator";
 
 @applySchema
 @Index(
-  "IX_Instalaciones_IdCliente_IdDispositivo",
-  ["idDispositivo", "idCliente"],
+  "IX_Instalaciones_IdCliente_IdValidador",
+  ["idValidador", "idCliente"],
   {}
 )
-@Index("IX_Instalaciones_IdCliente_IdBlueVox", ["idBlueVox", "idCliente"], {})
+@Index("IX_Instalaciones_IdCliente_IdContador", ["idContador", "idCliente"], {})
 @Index("IX_Instalaciones_IdCliente_IdVehiculo", ["idVehiculo", "idCliente"], {})
 @Index("FK_Instalaciones_Clientes", ["idCliente"], {})
 @Entity("Instalaciones")
@@ -48,11 +48,11 @@ export class Instalaciones {
   @Column("tinyint", { name: "Estatus", default: () => "'1'" })
   estatus: number;
 
-  @Column("bigint", { name: "IdDispositivo" })
-  idDispositivo: number;
+  @Column("bigint", { name: "IdValidador" })
+  idValidador: number;
 
-  @Column("bigint", { name: "IdBlueVox" })
-  idBlueVox: number;
+  @Column("bigint", { name: "IdContador" })
+  idContador: number;
 
   @Column("bigint", { name: "IdVehiculo" })
   idVehiculo: number;
@@ -60,15 +60,15 @@ export class Instalaciones {
   @Column("bigint", { name: "IdCliente" })
   idCliente: number;
 
-  @ManyToOne(() => BlueVoxs, (blueVoxs) => blueVoxs.instalaciones, {
+  @ManyToOne(() => Contadores, (contadores) => contadores.instalaciones, {
     onDelete: "NO ACTION",
     onUpdate: "NO ACTION",
   })
   @JoinColumn([
     { name: "IdCliente", referencedColumnName: "idCliente" },
-    { name: "IdBlueVox", referencedColumnName: "id" },
+    { name: "IdContador", referencedColumnName: "id" },
   ])
-  blueVoxs: BlueVoxs;
+  contadores: Contadores;
 
   @ManyToOne(() => Clientes, (clientes) => clientes.instalaciones, {
     onDelete: "NO ACTION",
@@ -77,15 +77,15 @@ export class Instalaciones {
   @JoinColumn([{ name: "IdCliente", referencedColumnName: "id" }])
   idCliente2: Clientes;
 
-  @ManyToOne(() => Dispositivos, (dispositivos) => dispositivos.instalaciones, {
+  @ManyToOne(() => Validadores, (validadores) => validadores.instalaciones, {
     onDelete: "NO ACTION",
     onUpdate: "NO ACTION",
   })
   @JoinColumn([
     { name: "IdCliente", referencedColumnName: "idCliente" },
-    { name: "IdDispositivo", referencedColumnName: "id" },
+    { name: "IdValidador", referencedColumnName: "id" },
   ])
-  dispositivos: Dispositivos;
+  validadores: Validadores;
 
   @ManyToOne(() => Vehiculos, (vehiculos) => vehiculos.instalaciones, {
     onDelete: "NO ACTION",

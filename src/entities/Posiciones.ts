@@ -6,13 +6,13 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
-import { Dispositivos } from "./Dispositivos";
+import { Validadores } from "./Validadores";
 import { applySchema } from "src/common/apply-schema.decorator";
 
 @applySchema
 @Index(
-  "IX_Posiciones_NumeroSerieDispositivo_FechaHora",
-  ["fechaHora", "numeroSerieDispositivo"],
+  "IX_Posiciones_NumeroSerieValidador_FechaHora",
+  ["fechaHora", "numeroSerieValidador"],
   {}
 )
 @Entity("Posiciones")
@@ -47,15 +47,15 @@ export class Posiciones {
   })
   fhRegistro: Date;
 
-  @Column("varchar", { name: "NumeroSerieDispositivo", length: 100 })
-  numeroSerieDispositivo: string;
+  @Column("varchar", { name: "NumeroSerieValidador", length: 100 })
+  numeroSerieValidador: string;
 
-  @ManyToOne(() => Dispositivos, (dispositivos) => dispositivos.posiciones, {
+  @ManyToOne(() => Validadores, (validadores) => validadores.posiciones, {
     onDelete: "NO ACTION",
     onUpdate: "NO ACTION",
   })
   @JoinColumn([
-    { name: "NumeroSerieDispositivo", referencedColumnName: "numeroSerie" },
+    { name: "NumeroSerieValidador", referencedColumnName: "numeroSerie" },
   ])
-  numeroSerieDispositivo2: Dispositivos;
+  numeroSerieValidador2: Validadores;
 }

@@ -63,9 +63,9 @@ export class CreateTransaccioneRecargaDto {
 
   @ApiProperty({
     example: 'DISP-0001',
-    description: 'Número de serie del dispositivo',
+    description: 'Número de serie del validador',
   })
   @IsString()
   @IsOptional()
-  numeroSerieDispositivo?: string;
+  numeroSerieValidador?: string;
 }

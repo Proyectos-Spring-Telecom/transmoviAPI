@@ -11,7 +11,7 @@ import { applySchema } from 'src/common/apply-schema.decorator';
 @applySchema
 @Index('FK_TransaccionesRecargas_CatTiposTransacciones_idx', ['idTipoTransaccion'], {})
 @Index('FK_TransaccionesRecarga_NumeroSerieMonedero_idx', ['numeroSerieMonedero'], {})
-@Index('FK_TransaccionesRecarga_NumeroSerieDispositivo_idx', ['numeroSerieDispositivo'], {})
+@Index('FK_TransaccionesRecarga_NumeroSerieValidador_idx', ['numeroSerieValidador'], {})
 @Entity('TransaccionesRecarga')
 export class TransaccionesRecarga {
   @PrimaryGeneratedColumn({ type: 'bigint', name: 'Id' })
@@ -44,7 +44,7 @@ export class TransaccionesRecarga {
   @Column('varchar', { name: 'NumeroSerieMonedero', length: 100 })
   numeroSerieMonedero: string;
 
-  @Column('varchar', { name: 'NumeroSerieDispositivo', length: 100, nullable: true })
-  numeroSerieDispositivo: string | null;
+  @Column('varchar', { name: 'NumeroSerieValidador', length: 100, nullable: true })
+  numeroSerieValidador: string | null;
 
 }

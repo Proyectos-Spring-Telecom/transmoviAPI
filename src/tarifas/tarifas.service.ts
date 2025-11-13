@@ -11,8 +11,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Tarifas } from 'src/entities/Tarifas';
 import { Repository } from 'typeorm';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
-import { Derroteros } from 'src/entities/Derroteros';
-import { UsuariosRegiones } from 'src/entities/UsuariosRegiones';
+import { Variantes } from 'src/entities/Variantes';
+import { UsuariosZonas } from 'src/entities/UsuariosZonas';
 import {
   ApiCrudResponse,
   ApiResponseCommon,
@@ -26,10 +26,10 @@ export class TarifasService {
   constructor(
     @InjectRepository(Tarifas)
     private readonly tarifasRepository: Repository<Tarifas>,
-    @InjectRepository(Derroteros)
-    private readonly derroterosRepository: Repository<Derroteros>,
-    @InjectRepository(UsuariosRegiones)
-    private readonly usuariosregionesRepository: Repository<UsuariosRegiones>,
+    @InjectRepository(Variantes)
+    private readonly variantesRepository: Repository<Variantes>,
+    @InjectRepository(UsuariosZonas)
+    private readonly usuarioszonasRepository: Repository<UsuariosZonas>,
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
@@ -41,12 +41,12 @@ export class TarifasService {
     createTarifaDto: CreateTarifaDto,
   ): Promise<ApiCrudResponse> {
     try {
-      let derrotero;
-      derrotero = await this.derroterosRepository.findOne({
-        where: { id: createTarifaDto.idDerrotero },
+      let variante;
+      variante = await this.variantesRepository.findOne({
+        where: { id: createTarifaDto.idVariante },
       });
-      if (!derrotero)
-        throw new NotFoundException(`El derrotero no fue encontrado.`);
+      if (!variante)
+        throw new NotFoundException(`La variante no fue encontrada.`);
 
       const newTarifas = this.tarifasRepository.create(createTarifaDto);
       const tarifaSave = await this.tarifasRepository.save(newTarifas);
@@ -78,7 +78,7 @@ export class TarifasService {
       const querylogger = { createTarifaDto };
       await this.bitacoraLogger.logToBitacora(
         'Tarifas',
-        `Se creó una tarifa con ID de derrotero: ${createTarifaDto.idDerrotero}.`,
+        `Se creó una tarifa con ID de variante: ${createTarifaDto.idVariante}.`,
         'CREATE',
         querylogger,
         idUser,
@@ -132,9 +132,9 @@ SELECT
   t.FechaActualizacion AS fechaActualizacionTarifa,
   t.Estatus AS estatusTarifa,
 
-  -- Datos del derrotero
-  d.Id AS idDerrotero,
-  d.Nombre AS nombreDerrotero,
+  -- Datos de la variante
+  d.Id AS idVariante,
+  d.Nombre AS nombreVariante,
   d.PuntoInicio AS puntoInicio,
   d.PuntoFin AS puntoFin,
   d.DistanciaKm AS distanciaKm,
@@ -146,12 +146,12 @@ SELECT
   ru.NombreFin,
 
   -- Región de inicio
-  r.Id AS idRegionInicio,
-  r.Nombre AS nombreRegionInicio,
+  r.Id AS idZonaInicio,
+  r.Nombre AS nombreZonaInicio,
 
   -- Región de fin
-  rf.Id AS idRegionFin,
-  rf.Nombre AS nombreRegionFin,
+  rf.Id AS idZonaFin,
+  rf.Nombre AS nombreZonaFin,
 
   -- Cliente
   c.Id AS idCliente,
@@ -162,10 +162,10 @@ SELECT
   CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
 FROM Tarifas t
-INNER JOIN Derroteros d ON t.IdDerrotero = d.Id
+INNER JOIN Variantes d ON t.IdDerrotero = d.Id
 INNER JOIN Rutas ru ON d.IdRuta = ru.Id
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Zonas r ON ru.IdZona = r.Id
+LEFT JOIN Zonas rf ON ru.IdZonaFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
 
 WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
@@ -177,7 +177,7 @@ WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que qu
 
 ORDER BY t.Id DESC
     `;
-    return this.usuariosregionesRepository.query(query, [...ids]);
+    return this.usuarioszonasRepository.query(query, [...ids]);
   }
 
   async findAllList(idUser: number, cliente: number, rol: number) {
@@ -185,8 +185,8 @@ ORDER BY t.Id DESC
       let data;
       switch (rol) {
         case 1:
-          // Usuario SuperAdministrador - obtiene todas las regiones
-          data = await this.usuariosregionesRepository.query(
+          // Usuario SuperAdministrador - obtiene todas las zonas
+          data = await this.usuarioszonasRepository.query(
             `
 SELECT 
   -- Datos de la tarifa
@@ -200,9 +200,9 @@ SELECT
   t.FechaActualizacion AS fechaActualizacionTarifa,
   t.Estatus AS estatusTarifa,
 
-  -- Datos del derrotero
-  d.Id AS idDerrotero,
-  d.Nombre AS nombreDerrotero,
+  -- Datos de la variante
+  d.Id AS idVariante,
+  d.Nombre AS nombreVariante,
   d.PuntoInicio AS puntoInicio,
   d.PuntoFin AS puntoFin,
   d.DistanciaKm AS distanciaKm,
@@ -214,12 +214,12 @@ SELECT
   ru.NombreFin,
 
   -- Región de inicio
-  r.Id AS idRegionInicio,
-  r.Nombre AS nombreRegionInicio,
+  r.Id AS idZonaInicio,
+  r.Nombre AS nombreZonaInicio,
 
   -- Región de fin
-  rf.Id AS idRegionFin,
-  rf.Nombre AS nombreRegionFin,
+  rf.Id AS idZonaFin,
+  rf.Nombre AS nombreZonaFin,
 
   -- Cliente
   c.Id AS idCliente,
@@ -230,10 +230,10 @@ SELECT
   CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
 FROM Tarifas t
-INNER JOIN Derroteros d ON t.IdDerrotero = d.Id
+INNER JOIN Variantes d ON t.IdDerrotero = d.Id
 INNER JOIN Rutas ru ON d.IdRuta = ru.Id
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Zonas r ON ru.IdZona = r.Id
+LEFT JOIN Zonas rf ON ru.IdZonaFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
 
 WHERE c.Estatus = 1
@@ -249,7 +249,7 @@ ORDER BY t.Id DESC
           break;
 
         case 2:
-          // Usuario Administrador - obtiene todas las regiones
+          // Usuario Administrador - obtiene todas las zonas
           data = await this.consultarTarifasListado(cliente);
           break;
 
@@ -259,13 +259,13 @@ ORDER BY t.Id DESC
           break;
 
         case 10:
-          // Usuario Administrador - obtiene todas las regiones
+          // Usuario Administrador - obtiene todas las zonas
           data = await this.consultarTarifasListado(cliente);
           break;
 
         default:
           // Consulta de datos paginados Usuario Capturista
-          data = await this.usuariosregionesRepository.query(
+          data = await this.usuarioszonasRepository.query(
             `
 SELECT 
   -- Datos de la tarifa
@@ -279,9 +279,9 @@ SELECT
   t.FechaActualizacion AS fechaActualizacionTarifa,
   t.Estatus AS estatusTarifa,
 
-  -- Datos del derrotero
-  d.Id AS idDerrotero,
-  d.Nombre AS nombreDerrotero,
+  -- Datos de la variante
+  d.Id AS idVariante,
+  d.Nombre AS nombreVariante,
   d.PuntoInicio AS puntoInicio,
   d.PuntoFin AS puntoFin,
   d.DistanciaKm AS distanciaKm,
@@ -293,12 +293,12 @@ SELECT
   ru.NombreFin,
 
   -- Región de inicio (la importante para filtro del usuario)
-  r.Id AS idRegionInicio,
-  r.Nombre AS nombreRegionInicio,
+  r.Id AS idZonaInicio,
+  r.Nombre AS nombreZonaInicio,
 
   -- Región de fin
-  rf.Id AS idRegionFin,
-  rf.Nombre AS nombreRegionFin,
+  rf.Id AS idZonaFin,
+  rf.Nombre AS nombreZonaFin,
 
   -- Cliente
   c.Id AS idCliente,
@@ -308,12 +308,12 @@ SELECT
   CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
 FROM Tarifas t
-INNER JOIN Derroteros d ON t.IdDerrotero = d.Id
+INNER JOIN Variantes d ON t.IdDerrotero = d.Id
 INNER JOIN Rutas ru ON d.IdRuta = ru.Id
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Zonas r ON ru.IdZona = r.Id
+LEFT JOIN Zonas rf ON ru.IdZonaFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
-INNER JOIN UsuariosRegiones ur ON ur.IdRegion = r.Id
+INNER JOIN UsuariosZonas ur ON ur.IdZona = r.Id
 
 WHERE ur.IdUsuario = ?
   AND ur.Estatus = 1
@@ -337,12 +337,12 @@ ORDER BY t.Id DESC;
         DistanciaBaseKm: Number(item.DistanciaBaseKm),
         CostoAdicional: Number(item.CostoAdicional),
         distanciaKm: Number(item.distanciaKm),
-        idDerrotero: Number(item.idDerrotero),
+        idVariante: Number(item.idVariante),
         idRuta: Number(item.idRuta),
-        idRegionInicio: item.idRegionInicio
-          ? Number(item.idRegionInicio)
+        idZonaInicio: item.idZonaInicio
+          ? Number(item.idZonaInicio)
           : null,
-        idRegionFin: item.idRegionFin ? Number(item.idRegionFin) : null,
+        idZonaFin: item.idZonaFin ? Number(item.idZonaFin) : null,
         idCliente: Number(item.idCliente),
       }));
 
@@ -381,9 +381,9 @@ SELECT
   t.FechaActualizacion AS fechaActualizacionTarifa,
   t.Estatus AS estatusTarifa,
 
-  -- Datos del derrotero
-  d.Id AS idDerrotero,
-  d.Nombre AS nombreDerrotero,
+  -- Datos de la variante
+  d.Id AS idVariante,
+  d.Nombre AS nombreVariante,
   d.PuntoInicio AS puntoInicio,
   d.PuntoFin AS puntoFin,
   d.DistanciaKm AS distanciaKm,
@@ -395,12 +395,12 @@ SELECT
   ru.NombreFin,
 
   -- Región de inicio
-  r.Id AS idRegionInicio,
-  r.Nombre AS nombreRegionInicio,
+  r.Id AS idZonaInicio,
+  r.Nombre AS nombreZonaInicio,
 
   -- Región de fin
-  rf.Id AS idRegionFin,
-  rf.Nombre AS nombreRegionFin,
+  rf.Id AS idZonaFin,
+  rf.Nombre AS nombreZonaFin,
 
   -- Cliente
   c.Id AS idCliente,
@@ -411,10 +411,10 @@ SELECT
   CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
 FROM Tarifas t
-INNER JOIN Derroteros d ON t.IdDerrotero = d.Id
+INNER JOIN Variantes d ON t.IdDerrotero = d.Id
 INNER JOIN Rutas ru ON d.IdRuta = ru.Id
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Zonas r ON ru.IdZona = r.Id
+LEFT JOIN Zonas rf ON ru.IdZonaFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
 
 WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
@@ -427,7 +427,7 @@ ORDER BY t.Id DESC
 
   LIMIT ? OFFSET ?;
     `;
-    return this.usuariosregionesRepository.query(query, [
+    return this.usuarioszonasRepository.query(query, [
       ...ids,
       limit,
       offset,
@@ -440,10 +440,10 @@ ORDER BY t.Id DESC
 
 SELECT COUNT(*) AS total
 FROM Tarifas t
-INNER JOIN Derroteros d ON t.IdDerrotero = d.Id
+INNER JOIN Variantes d ON t.IdDerrotero = d.Id
 INNER JOIN Rutas ru ON d.IdRuta = ru.Id
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Zonas r ON ru.IdZona = r.Id
+LEFT JOIN Zonas rf ON ru.IdZonaFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
 
 WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
@@ -452,7 +452,7 @@ WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que qu
   AND ru.Estatus = 1
   AND d.Estatus = 1
 `;
-    return await this.usuariosregionesRepository.query(query, [...ids]);
+    return await this.usuarioszonasRepository.query(query, [...ids]);
   }
 
   async findAll(
@@ -469,7 +469,7 @@ WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que qu
       switch (rol) {
         case 1:
           // Consulta de datos paginados Usuario SuperAdministrador
-          data = await this.usuariosregionesRepository.query(
+          data = await this.usuarioszonasRepository.query(
             `
 SELECT 
   -- Datos de la tarifa
@@ -483,9 +483,9 @@ SELECT
   t.FechaActualizacion AS fechaActualizacionTarifa,
   t.Estatus AS estatusTarifa,
 
-  -- Datos del derrotero
-  d.Id AS idDerrotero,
-  d.Nombre AS nombreDerrotero,
+  -- Datos de la variante
+  d.Id AS idVariante,
+  d.Nombre AS nombreVariante,
   d.PuntoInicio AS puntoInicio,
   d.PuntoFin AS puntoFin,
   d.DistanciaKm AS distanciaKm,
@@ -497,12 +497,12 @@ SELECT
   ru.NombreFin,
 
   -- Región de inicio
-  r.Id AS idRegionInicio,
-  r.Nombre AS nombreRegionInicio,
+  r.Id AS idZonaInicio,
+  r.Nombre AS nombreZonaInicio,
 
   -- Región de fin
-  rf.Id AS idRegionFin,
-  rf.Nombre AS nombreRegionFin,
+  rf.Id AS idZonaFin,
+  rf.Nombre AS nombreZonaFin,
 
   -- Cliente
   c.Id AS idCliente,
@@ -513,10 +513,10 @@ SELECT
   CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
 FROM Tarifas t
-INNER JOIN Derroteros d ON t.IdDerrotero = d.Id
+INNER JOIN Variantes d ON t.IdDerrotero = d.Id
 INNER JOIN Rutas ru ON d.IdRuta = ru.Id
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Zonas r ON ru.IdZona = r.Id
+LEFT JOIN Zonas rf ON ru.IdZonaFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
 
 WHERE r.Estatus = 1
@@ -530,14 +530,14 @@ ORDER BY t.Id DESC
           );
 
           // Query para total (sin paginación)
-          totalResult = await this.usuariosregionesRepository.query(
+          totalResult = await this.usuarioszonasRepository.query(
             `
 SELECT COUNT(*) AS total
 FROM Tarifas t
-INNER JOIN Derroteros d ON t.IdDerrotero = d.Id
+INNER JOIN Variantes d ON t.IdDerrotero = d.Id
 INNER JOIN Rutas ru ON d.IdRuta = ru.Id
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Zonas r ON ru.IdZona = r.Id
+LEFT JOIN Zonas rf ON ru.IdZonaFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
 
 WHERE r.Estatus = 1
@@ -572,7 +572,7 @@ WHERE r.Estatus = 1
           break;
 
         default:
-          data = await this.usuariosregionesRepository.query(
+          data = await this.usuarioszonasRepository.query(
             `
 SELECT 
   -- Datos de la tarifa
@@ -586,9 +586,9 @@ SELECT
   t.FechaActualizacion AS fechaActualizacionTarifa,
   t.Estatus AS estatusTarifa,
 
-  -- Datos del derrotero
-  d.Id AS idDerrotero,
-  d.Nombre AS nombreDerrotero,
+  -- Datos de la variante
+  d.Id AS idVariante,
+  d.Nombre AS nombreVariante,
   d.PuntoInicio AS puntoInicio,
   d.PuntoFin AS puntoFin,
   d.DistanciaKm AS distanciaKm,
@@ -600,12 +600,12 @@ SELECT
   ru.NombreFin,
 
   -- Región de inicio (la importante para filtro del usuario)
-  r.Id AS idRegionInicio,
-  r.Nombre AS nombreRegionInicio,
+  r.Id AS idZonaInicio,
+  r.Nombre AS nombreZonaInicio,
 
   -- Región de fin
-  rf.Id AS idRegionFin,
-  rf.Nombre AS nombreRegionFin,
+  rf.Id AS idZonaFin,
+  rf.Nombre AS nombreZonaFin,
 
   -- Cliente
   c.Id AS idCliente,
@@ -615,12 +615,12 @@ SELECT
   CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
 FROM Tarifas t
-INNER JOIN Derroteros d ON t.IdDerrotero = d.Id
+INNER JOIN Variantes d ON t.IdDerrotero = d.Id
 INNER JOIN Rutas ru ON d.IdRuta = ru.Id
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Zonas r ON ru.IdZona = r.Id
+LEFT JOIN Zonas rf ON ru.IdZonaFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
-INNER JOIN UsuariosRegiones ur ON ur.IdRegion = r.Id
+INNER JOIN UsuariosZonas ur ON ur.IdZona = r.Id
 
 WHERE ur.IdUsuario = ?
   AND ur.Estatus = 1
@@ -636,19 +636,19 @@ ORDER BY t.Id DESC
           );
 
           // Query para total (sin paginación)
-          totalResult = await this.usuariosregionesRepository.query(
+          totalResult = await this.usuarioszonasRepository.query(
             `
 SELECT COUNT(*) AS total
 FROM Tarifas t
-INNER JOIN Derroteros d ON t.IdDerrotero = d.Id
+INNER JOIN Variantes d ON t.IdDerrotero = d.Id
 INNER JOIN Rutas ru ON d.IdRuta = ru.Id
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-INNER JOIN UsuariosRegiones ur ON ur.IdRegion = r.Id
+INNER JOIN Zonas r ON ru.IdZona = r.Id
+INNER JOIN UsuariosZonas ur ON ur.IdZona = r.Id
 WHERE ur.IdUsuario = ?
   AND ur.Estatus = 1         -- Relación usuario-región activa
   AND r.Estatus = 1          -- Región activa
   AND ru.Estatus = 1         -- Ruta activa
-  AND d.Estatus = 1          -- Derrotero activo
+  AND d.Estatus = 1          -- Variante activa
   AND t.Estatus = 1          -- Tarifa activa
   `,
             [idUser],
@@ -665,12 +665,12 @@ WHERE ur.IdUsuario = ?
         DistanciaBaseKm: Number(item.DistanciaBaseKm),
         CostoAdicional: Number(item.CostoAdicional),
         distanciaKm: Number(item.distanciaKm),
-        idDerrotero: Number(item.idDerrotero),
+        idVariante: Number(item.idVariante),
         idRuta: Number(item.idRuta),
-        idRegionInicio: item.idRegionInicio
-          ? Number(item.idRegionInicio)
+        idZonaInicio: item.idZonaInicio
+          ? Number(item.idZonaInicio)
           : null,
-        idRegionFin: item.idRegionFin ? Number(item.idRegionFin) : null,
+        idZonaFin: item.idZonaFin ? Number(item.idZonaFin) : null,
         idCliente: Number(item.idCliente),
       }));
 
@@ -713,9 +713,9 @@ SELECT
   t.FechaActualizacion AS fechaActualizacionTarifa,
   t.Estatus AS estatusTarifa,
 
-  -- Datos del derrotero
-  d.Id AS idDerrotero,
-  d.Nombre AS nombreDerrotero,
+  -- Datos de la variante
+  d.Id AS idVariante,
+  d.Nombre AS nombreVariante,
   d.PuntoInicio AS puntoInicio,
   d.PuntoFin AS puntoFin,
   d.DistanciaKm AS distanciaKm,
@@ -727,12 +727,12 @@ SELECT
   ru.NombreFin,
 
   -- Región de inicio
-  r.Id AS idRegionInicio,
-  r.Nombre AS nombreRegionInicio,
+  r.Id AS idZonaInicio,
+  r.Nombre AS nombreZonaInicio,
 
   -- Región de fin
-  rf.Id AS idRegionFin,
-  rf.Nombre AS nombreRegionFin,
+  rf.Id AS idZonaFin,
+  rf.Nombre AS nombreZonaFin,
 
   -- Cliente
   c.Id AS idCliente,
@@ -743,10 +743,10 @@ SELECT
   CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
 FROM Tarifas t
-INNER JOIN Derroteros d ON t.IdDerrotero = d.Id
+INNER JOIN Variantes d ON t.IdDerrotero = d.Id
 INNER JOIN Rutas ru ON d.IdRuta = ru.Id
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Zonas r ON ru.IdZona = r.Id
+LEFT JOIN Zonas rf ON ru.IdZonaFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
 
 WHERE r.Estatus = 1
@@ -757,7 +757,7 @@ WHERE r.Estatus = 1
 
 ORDER BY t.Id DESC
 `;
-    return await this.usuariosregionesRepository.query(query, [...ids, id]);
+    return await this.usuarioszonasRepository.query(query, [...ids, id]);
   }
 
   async findOne(id: number, idUser: number, cliente: number, rol: number) {
@@ -765,7 +765,7 @@ ORDER BY t.Id DESC
       let data;
       switch (rol) {
         case 1:
-          data = await this.usuariosregionesRepository.query(
+          data = await this.usuarioszonasRepository.query(
             `
 SELECT 
   -- Datos de la tarifa
@@ -779,9 +779,9 @@ SELECT
   t.FechaActualizacion AS fechaActualizacionTarifa,
   t.Estatus AS estatusTarifa,
 
-  -- Datos del derrotero
-  d.Id AS idDerrotero,
-  d.Nombre AS nombreDerrotero,
+  -- Datos de la variante
+  d.Id AS idVariante,
+  d.Nombre AS nombreVariante,
   d.PuntoInicio AS puntoInicio,
   d.PuntoFin AS puntoFin,
   d.DistanciaKm AS distanciaKm,
@@ -793,12 +793,12 @@ SELECT
   ru.NombreFin,
 
   -- Región de inicio
-  r.Id AS idRegionInicio,
-  r.Nombre AS nombreRegionInicio,
+  r.Id AS idZonaInicio,
+  r.Nombre AS nombreZonaInicio,
 
   -- Región de fin
-  rf.Id AS idRegionFin,
-  rf.Nombre AS nombreRegionFin,
+  rf.Id AS idZonaFin,
+  rf.Nombre AS nombreZonaFin,
 
   -- Cliente
   c.Id AS idCliente,
@@ -809,10 +809,10 @@ SELECT
   CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
 FROM Tarifas t
-INNER JOIN Derroteros d ON t.IdDerrotero = d.Id
+INNER JOIN Variantes d ON t.IdDerrotero = d.Id
 INNER JOIN Rutas ru ON d.IdRuta = ru.Id
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Zonas r ON ru.IdZona = r.Id
+LEFT JOIN Zonas rf ON ru.IdZonaFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
 
 WHERE r.Estatus = 1
@@ -827,7 +827,7 @@ ORDER BY t.Id DESC
           break;
 
         case 2:
-          // Usuario Administrador - obtiene todas las regiones
+          // Usuario Administrador - obtiene todas las zonas
           data = await this.consultarTotalTarifasOne(id, cliente);
           break;
 
@@ -837,12 +837,12 @@ ORDER BY t.Id DESC
           break;
 
         case 10:
-          // Usuario Administrador - obtiene todas las regiones
+          // Usuario Administrador - obtiene todas las zonas
           data = await this.consultarTotalTarifasOne(id, cliente);
           break;
 
         default:
-          data = await this.usuariosregionesRepository.query(
+          data = await this.usuarioszonasRepository.query(
             `
 SELECT 
   -- Datos de la tarifa
@@ -856,9 +856,9 @@ SELECT
   t.FechaActualizacion AS fechaActualizacionTarifa,
   t.Estatus AS estatusTarifa,
 
-  -- Datos del derrotero
-  d.Id AS idDerrotero,
-  d.Nombre AS nombreDerrotero,
+  -- Datos de la variante
+  d.Id AS idVariante,
+  d.Nombre AS nombreVariante,
   d.PuntoInicio AS puntoInicio,
   d.PuntoFin AS puntoFin,
   d.DistanciaKm AS distanciaKm,
@@ -870,12 +870,12 @@ SELECT
   ru.NombreFin,
 
   -- Región de inicio (la importante para filtro del usuario)
-  r.Id AS idRegionInicio,
-  r.Nombre AS nombreRegionInicio,
+  r.Id AS idZonaInicio,
+  r.Nombre AS nombreZonaInicio,
 
   -- Región de fin
-  rf.Id AS idRegionFin,
-  rf.Nombre AS nombreRegionFin,
+  rf.Id AS idZonaFin,
+  rf.Nombre AS nombreZonaFin,
 
   -- Cliente
   c.Id AS idCliente,
@@ -885,12 +885,12 @@ SELECT
   CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
 FROM Tarifas t
-INNER JOIN Derroteros d ON t.IdDerrotero = d.Id
+INNER JOIN Variantes d ON t.IdDerrotero = d.Id
 INNER JOIN Rutas ru ON d.IdRuta = ru.Id
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Zonas r ON ru.IdZona = r.Id
+LEFT JOIN Zonas rf ON ru.IdZonaFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
-INNER JOIN UsuariosRegiones ur ON ur.IdRegion = r.Id
+INNER JOIN UsuariosZonas ur ON ur.IdZona = r.Id
 
 WHERE ur.IdUsuario = ?
   AND ur.Estatus = 1
@@ -918,12 +918,12 @@ ORDER BY t.Id DESC
         DistanciaBaseKm: Number(item.DistanciaBaseKm),
         CostoAdicional: Number(item.CostoAdicional),
         distanciaKm: Number(item.distanciaKm),
-        idDerrotero: Number(item.idDerrotero),
+        idVariante: Number(item.idVariante),
         idRuta: Number(item.idRuta),
-        idRegionInicio: item.idRegionInicio
-          ? Number(item.idRegionInicio)
+        idZonaInicio: item.idZonaInicio
+          ? Number(item.idZonaInicio)
           : null,
-        idRegionFin: item.idRegionFin ? Number(item.idRegionFin) : null,
+        idZonaFin: item.idZonaFin ? Number(item.idZonaFin) : null,
         idCliente: Number(item.idCliente),
       }));
 
@@ -987,7 +987,7 @@ ORDER BY t.Id DESC
       // Registro en la bitácora Error
       const querylogger = { updateTarifasEstatusDto };
       await this.bitacoraLogger.logToBitacora(
-        'Regiones',
+        'Zonas',
         `Se actualizo el estatus: ${updateTarifasEstatusDto.estatus} de una Tarifa con Id: ${id}`,
         'UPDATE',
         querylogger,

@@ -33,7 +33,7 @@ export class ConteopasajerosService {
       const querylogger = { createConteopasajeroDto };
       await this.bitacoraLogger.logToBitacora(
         'ConteoPasajeros',
-        `Se creó un ConteoPasajeros con Numero de serie BlueVoxs: ${createConteopasajeroDto.numeroSerieBlueVox}`,
+        `Se creó un ConteoPasajeros con Numero de serie Contador: ${createConteopasajeroDto.numeroSerieContador}`,
         'CREATE',
         querylogger,
         idUser,
@@ -46,7 +46,7 @@ export class ConteopasajerosService {
         message: 'El registro de ConteoPasajero se realizó con éxito.',
         data: {
           id: Number(conteoPasajeroSave.id),
-          nombre: `${conteoPasajeroSave.id} ${conteoPasajeroSave.numeroSerieBlueVox}` || '',
+          nombre: `${conteoPasajeroSave.id} ${conteoPasajeroSave.numeroSerieContador}` || '',
         },
       };
       return result;
@@ -55,7 +55,7 @@ export class ConteopasajerosService {
       const querylogger = { createConteopasajeroDto };
       await this.bitacoraLogger.logToBitacora(
         'ConteoPasajeros',
-        `Se creó un ConteoPasajeros con Numero de serie BlueVoxs: ${createConteopasajeroDto.numeroSerieBlueVox}`,
+        `Se creó un ConteoPasajeros con Numero de serie Contador: ${createConteopasajeroDto.numeroSerieContador}`,
         'CREATE',
         querylogger,
         idUser,
@@ -338,7 +338,7 @@ export class ConteopasajerosService {
 }
 
   // 🔍 6. BUSCAR CON FILTROS ESPECÍFICOS + FECHA
-  async findByBlueVoxAndDatePaginated(
+  async findByContadorAndDatePaginated(
     numeroSerie: string,
     fechaInicio: string,
     fechaFin: string,
@@ -351,10 +351,10 @@ export class ConteopasajerosService {
 
       const [data, total] = await this.conteopasajeroRepository.findAndCount({
         where: {
-          numeroSerieBlueVox: numeroSerie,
+          numeroSerieContador: numeroSerie,
           fechaHora: Between(startDate, endDate),
         },
-        relations: ['numeroSerieBlueVox2'],
+        relations: ['numeroSerieContador2'],
         skip: (page - 1) * limit,
         take: limit,
         order: { fechaHora: 'DESC' },
@@ -375,7 +375,7 @@ export class ConteopasajerosService {
       };
     } catch (error) {
       throw new InternalServerErrorException({
-        message: 'Error al obtener conteo pasajeros por BlueVox y fecha',
+          message: 'Error al obtener conteo pasajeros por Contador y fecha',
         error: error.message,
       });
     }

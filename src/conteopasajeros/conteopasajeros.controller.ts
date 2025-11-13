@@ -98,14 +98,14 @@ async findLastWeek(
     );
   }
 
-  @Get('bluevox/:numeroSerie/hoy')
-  async findByBlueVoxToday(
+  @Get('contador/:numeroSerie/hoy')
+  async findByContadorToday(
     @Param('numeroSerie') numeroSerie: string,
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
   ): Promise<ApiResponseCommon> {
     const today = new Date().toISOString().split('T')[0];
-    return await this.conteopasajerosService.findByBlueVoxAndDatePaginated(
+    return await this.conteopasajerosService.findByContadorAndDatePaginated(
       numeroSerie,
       today,
       today,
@@ -114,15 +114,15 @@ async findLastWeek(
     );
   }
 
-  @Get('bluevox/:numeroSerie/rango/:fechaInicio/:fechaFin')
-  async findByBlueVoxAndDate(
+  @Get('contador/:numeroSerie/rango/:fechaInicio/:fechaFin')
+  async findByContadorAndDate(
     @Param('numeroSerie') numeroSerie: string,
     @Param('fechaInicio') fechaInicio: string,
     @Param('fechaFin') fechaFin: string,
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
   ): Promise<ApiResponseCommon> {
-    return await this.conteopasajerosService.findByBlueVoxAndDatePaginated(
+    return await this.conteopasajerosService.findByContadorAndDatePaginated(
       numeroSerie,
       fechaInicio,
       fechaFin,

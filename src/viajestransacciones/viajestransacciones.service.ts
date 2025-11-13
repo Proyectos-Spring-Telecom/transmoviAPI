@@ -92,7 +92,7 @@ SELECT
   v.IdCliente AS idCliente,
   v.IdOperador AS idOperador,
   v.IdTurno AS idTurno,
-  v.IdDerrotero AS idDerrotero,
+  v.IdDerrotero AS idVariante,
 
   t.Id AS IdTransaccion,
   t.TipoTransaccion AS tipoTransaccion,
@@ -102,7 +102,7 @@ SELECT
   t.FechaHora AS fecheHora,
   t.FHRegistro AS fhRegistro,
   t.NumeroSerieMonedero AS NumeroSerieMonedero,
-  t.NumeroSerieDispositivo AS numeroSerieDispositivo 
+  t.NumeroSerieValidador AS numeroSerieValidador 
 
 FROM ViajesTransacciones vt
 INNER JOIN Viajes v ON v.Id = vt.IdViaje
@@ -116,7 +116,7 @@ ORDER BY v.Id DESC;
         idCliente: Number(item.idCliente),
         idTurno: Number(item.idTurno),
         idOperador: Number(item.idOperador),
-        idDerrotero: Number(item.idDerrotero),
+        idVariante: Number(item.idVariante),
         idTransaccion: Number(item.idTransaccion),
         monto: Number(item.monto),
       }));
@@ -149,7 +149,7 @@ SELECT
   v.IdCliente AS idCliente,
   v.IdOperador AS idOperador,
   v.IdTurno AS idTurno,
-  v.IdDerrotero AS idDerrotero,
+  v.IdDerrotero AS idVariante,
 
   t.Id AS IdTransaccion,
   t.TipoTransaccion AS tipoTransaccion,
@@ -159,7 +159,7 @@ SELECT
   t.FechaHora AS fecheHora,
   t.FHRegistro AS fhRegistro,
   t.NumeroSerieMonedero AS NumeroSerieMonedero,
-  t.NumeroSerieDispositivo AS numeroSerieDispositivo 
+  t.NumeroSerieValidador AS numeroSerieValidador 
 
 FROM ViajesTransacciones vt
 INNER JOIN Viajes v ON v.Id = vt.IdViaje
@@ -187,7 +187,7 @@ ORDER BY v.Id DESC;
         idCliente: Number(item.idCliente),
         idTurno: Number(item.idTurno),
         idOperador: Number(item.idOperador),
-        idDerrotero: Number(item.idDerrotero),
+        idVariante: Number(item.idVariante),
         idTransaccion: Number(item.idTransaccion),
         monto: Number(item.monto),
       }));
@@ -223,7 +223,7 @@ SELECT
   v.IdCliente AS idCliente,
   v.IdOperador AS idOperador,
   v.IdTurno AS idTurno,
-  v.IdDerrotero AS idDerrotero,
+  v.IdDerrotero AS idVariante,
 
   t.Id AS IdTransaccion,
   t.TipoTransaccion AS tipoTransaccion,
@@ -233,7 +233,7 @@ SELECT
   t.FechaHora AS fecheHora,
   t.FHRegistro AS fhRegistro,
   t.NumeroSerieMonedero AS NumeroSerieMonedero,
-  t.NumeroSerieDispositivo AS numeroSerieDispositivo 
+  t.NumeroSerieValidador AS numeroSerieValidador 
 
 FROM ViajesTransacciones vt
 INNER JOIN Viajes v ON v.Id = vt.IdViaje
@@ -249,7 +249,7 @@ ORDER BY v.Id DESC;
         idCliente: Number(item.idCliente),
         idTurno: Number(item.idTurno),
         idOperador: Number(item.idOperador),
-        idDerrotero: Number(item.idDerrotero),
+        idVariante: Number(item.idVariante),
         idTransaccion: Number(item.idTransaccion),
         monto: Number(item.monto),
       }));
@@ -280,7 +280,7 @@ SELECT
   v.IdCliente AS idCliente,
   v.IdOperador AS idOperador,
   v.IdTurno AS idTurno,
-  v.IdDerrotero AS idDerrotero,
+  v.IdDerrotero AS idVariante,
 
   t.Id AS IdTransaccion,
   t.TipoTransaccion AS tipoTransaccion,
@@ -290,7 +290,7 @@ SELECT
   t.FechaHora AS fecheHora,
   t.FHRegistro AS fhRegistro,
   t.NumeroSerieMonedero AS NumeroSerieMonedero,
-  t.NumeroSerieDispositivo AS numeroSerieDispositivo 
+  t.NumeroSerieValidador AS numeroSerieValidador 
 
 FROM ViajesTransacciones vt
 INNER JOIN Viajes v ON v.Id = vt.IdViaje
@@ -306,7 +306,7 @@ ORDER BY v.Id DESC;
         idCliente: Number(item.idCliente),
         idTurno: Number(item.idTurno),
         idOperador: Number(item.idOperador),
-        idDerrotero: Number(item.idDerrotero),
+        idVariante: Number(item.idVariante),
         idTransaccion: Number(item.idTransaccion),
         monto: Number(item.monto),
       }));

@@ -127,17 +127,17 @@ SELECT
   i.FechaActualizacion AS fechaActualizacionInstalacion,
   i.Estatus AS estatusInstalacion,
 
-  -- Dispositivo
-  d.Id AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
+  -- Validador
+  d.Id AS idValidador,
+  d.NumeroSerie AS numeroSerieValidador,
+  d.Marca AS marcaValidador,
+  d.Modelo AS modeloValidador,
 
-  -- BlueVox
-  b.Id AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  -- Contador
+  b.Id AS idContador,
+  b.NumeroSerie AS numeroSerieContador,
+  b.Marca AS marcaContador,
+  b.Modelo AS modeloContador,
 
   -- Vehículo
   v.Id AS idVehiculo,
@@ -163,8 +163,8 @@ SELECT
 
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id
+INNER JOIN Validadores d ON i.IdValidador = d.Id
+INNER JOIN Contadores b ON i.IdContador = b.Id
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
@@ -184,8 +184,8 @@ ORDER BY t.Id DESC
   SELECT COUNT(*) AS total
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id
+INNER JOIN Validadores d ON i.IdValidador = d.Id
+INNER JOIN Contadores b ON i.IdContador = b.Id
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
@@ -228,17 +228,17 @@ SELECT
   i.FechaActualizacion AS fechaActualizacionInstalacion,
   i.Estatus AS estatusInstalacion,
 
-  -- Dispositivo
-  d.Id AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
+  -- Validador
+  d.Id AS idValidador,
+  d.NumeroSerie AS numeroSerieValidador,
+  d.Marca AS marcaValidador,
+  d.Modelo AS modeloValidador,
 
-  -- BlueVox
-  b.Id AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  -- Contador
+  b.Id AS idContador,
+  b.NumeroSerie AS numeroSerieContador,
+  b.Marca AS marcaContador,
+  b.Modelo AS modeloContador,
 
   -- Vehículo
   v.Id AS idVehiculo,
@@ -264,8 +264,8 @@ SELECT
 
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id
+INNER JOIN Validadores d ON i.IdValidador = d.Id
+INNER JOIN Contadores b ON i.IdContador = b.Id
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
@@ -285,8 +285,8 @@ ORDER BY t.Id DESC
   SELECT COUNT(*) AS total
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id
+INNER JOIN Validadores d ON i.IdValidador = d.Id
+INNER JOIN Contadores b ON i.IdContador = b.Id
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
@@ -334,17 +334,17 @@ SELECT
   i.FechaActualizacion AS fechaActualizacionInstalacion,
   i.Estatus AS estatusInstalacion,
 
-  -- Dispositivo
-  d.Id AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
+  -- Validador
+  d.Id AS idValidador,
+  d.NumeroSerie AS numeroSerieValidador,
+  d.Marca AS marcaValidador,
+  d.Modelo AS modeloValidador,
 
-  -- BlueVox
-  b.Id AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  -- Contador
+  b.Id AS idContador,
+  b.NumeroSerie AS numeroSerieContador,
+  b.Marca AS marcaContador,
+  b.Modelo AS modeloContador,
 
   -- Vehículo
   v.Id AS idVehiculo,
@@ -372,8 +372,8 @@ FROM UsuariosInstalaciones ui
 INNER JOIN Instalaciones i ON ui.IdInstalacion = i.Id
 INNER JOIN Turnos t ON t.IdInstalacion = i.Id
 INNER JOIN Clientes c ON i.IdCliente = c.Id
-LEFT JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-LEFT JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
+LEFT JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
+LEFT JOIN Contadores b ON i.IdContador = b.Id AND i.IdCliente = b.IdCliente
 LEFT JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 LEFT JOIN Operadores o ON t.IdOperador = o.Id
 LEFT JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -397,8 +397,8 @@ ORDER BY t.Inicio DESC
 FROM UsuariosInstalaciones ui
 INNER JOIN Instalaciones i ON ui.IdInstalacion = i.Id
 INNER JOIN Turnos t ON t.IdInstalacion = i.Id AND t.IdCliente = i.IdCliente
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
+INNER JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN Contadores b ON i.IdContador = b.Id AND i.IdCliente = b.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
@@ -420,8 +420,8 @@ WHERE ui.IdUsuario = ?
         ...item,
         id: Number(item.id),
         idInstalacion: Number(item.idInstalacion),
-        idDispositivo: Number(item.idDispositivo),
-        idBlueVox: Number(item.idBlueVox),
+        idValidador: Number(item.idValidador),
+        idContador: Number(item.idContador),
         idVehiculo: Number(item.idVehiculo),
         idCliente: Number(item.idCliente),
         idOperador: Number(item.idOperador),
@@ -465,17 +465,17 @@ SELECT
   i.FechaActualizacion AS fechaActualizacionInstalacion,
   i.Estatus AS estatusInstalacion,
 
-  -- Dispositivo
-  d.Id AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
+  -- Validador
+  d.Id AS idValidador,
+  d.NumeroSerie AS numeroSerieValidador,
+  d.Marca AS marcaValidador,
+  d.Modelo AS modeloValidador,
 
-  -- BlueVox
-  b.Id AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  -- Contador
+  b.Id AS idContador,
+  b.NumeroSerie AS numeroSerieContador,
+  b.Marca AS marcaContador,
+  b.Modelo AS modeloContador,
 
   -- Vehículo
   v.Id AS idVehiculo,
@@ -501,8 +501,8 @@ SELECT
 
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id
+INNER JOIN Validadores d ON i.IdValidador = d.Id
+INNER JOIN Contadores b ON i.IdContador = b.Id
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
@@ -540,17 +540,17 @@ SELECT
   i.FechaActualizacion AS fechaActualizacionInstalacion,
   i.Estatus AS estatusInstalacion,
 
-  -- Dispositivo
-  d.Id AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
+  -- Validador
+  d.Id AS idValidador,
+  d.NumeroSerie AS numeroSerieValidador,
+  d.Marca AS marcaValidador,
+  d.Modelo AS modeloValidador,
 
-  -- BlueVox
-  b.Id AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  -- Contador
+  b.Id AS idContador,
+  b.NumeroSerie AS numeroSerieContador,
+  b.Marca AS marcaContador,
+  b.Modelo AS modeloContador,
 
   -- Vehículo
   v.Id AS idVehiculo,
@@ -576,8 +576,8 @@ SELECT
 
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id
+INNER JOIN Validadores d ON i.IdValidador = d.Id
+INNER JOIN Contadores b ON i.IdContador = b.Id
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
@@ -621,17 +621,17 @@ SELECT
   i.FechaActualizacion AS fechaActualizacionInstalacion,
   i.Estatus AS estatusInstalacion,
 
-  -- Dispositivo
-  d.Id AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
+  -- Validador
+  d.Id AS idValidador,
+  d.NumeroSerie AS numeroSerieValidador,
+  d.Marca AS marcaValidador,
+  d.Modelo AS modeloValidador,
 
-  -- BlueVox
-  b.Id AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  -- Contador
+  b.Id AS idContador,
+  b.NumeroSerie AS numeroSerieContador,
+  b.Marca AS marcaContador,
+  b.Modelo AS modeloContador,
 
   -- Vehículo
   v.Id AS idVehiculo,
@@ -658,8 +658,8 @@ SELECT
 FROM UsuariosInstalaciones ui
 INNER JOIN Instalaciones i ON ui.IdInstalacion = i.Id
 INNER JOIN Turnos t ON t.IdInstalacion = i.Id AND t.IdCliente = i.IdCliente
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
+INNER JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN Contadores b ON i.IdContador = b.Id AND i.IdCliente = b.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
@@ -683,8 +683,8 @@ ORDER BY t.Id DESC;
         ...item,
         id: Number(item.id),
         idInstalacion: Number(item.idInstalacion),
-        idDispositivo: Number(item.idDispositivo),
-        idBlueVox: Number(item.idBlueVox),
+        idValidador: Number(item.idValidador),
+        idContador: Number(item.idContador),
         idVehiculo: Number(item.idVehiculo),
         idCliente: Number(item.idCliente),
         idOperador: Number(item.idOperador),
@@ -721,17 +721,17 @@ SELECT
   i.FechaActualizacion AS fechaActualizacionInstalacion,
   i.Estatus AS estatusInstalacion,
 
-  -- Dispositivo
-  d.Id AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
+  -- Validador
+  d.Id AS idValidador,
+  d.NumeroSerie AS numeroSerieValidador,
+  d.Marca AS marcaValidador,
+  d.Modelo AS modeloValidador,
 
-  -- BlueVox
-  b.Id AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  -- Contador
+  b.Id AS idContador,
+  b.NumeroSerie AS numeroSerieContador,
+  b.Marca AS marcaContador,
+  b.Modelo AS modeloContador,
 
   -- Vehículo
   v.Id AS idVehiculo,
@@ -757,8 +757,8 @@ SELECT
 
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id
+INNER JOIN Validadores d ON i.IdValidador = d.Id
+INNER JOIN Contadores b ON i.IdContador = b.Id
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
@@ -795,17 +795,17 @@ SELECT
   i.FechaActualizacion AS fechaActualizacionInstalacion,
   i.Estatus AS estatusInstalacion,
 
-  -- Dispositivo
-  d.Id AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
+  -- Validador
+  d.Id AS idValidador,
+  d.NumeroSerie AS numeroSerieValidador,
+  d.Marca AS marcaValidador,
+  d.Modelo AS modeloValidador,
 
-  -- BlueVox
-  b.Id AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  -- Contador
+  b.Id AS idContador,
+  b.NumeroSerie AS numeroSerieContador,
+  b.Marca AS marcaContador,
+  b.Modelo AS modeloContador,
 
   -- Vehículo
   v.Id AS idVehiculo,
@@ -831,8 +831,8 @@ SELECT
 
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id
+INNER JOIN Validadores d ON i.IdValidador = d.Id
+INNER JOIN Contadores b ON i.IdContador = b.Id
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
@@ -876,17 +876,17 @@ SELECT
   i.FechaActualizacion AS fechaActualizacionInstalacion,
   i.Estatus AS estatusInstalacion,
 
-  -- Dispositivo
-  d.Id AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
+  -- Validador
+  d.Id AS idValidador,
+  d.NumeroSerie AS numeroSerieValidador,
+  d.Marca AS marcaValidador,
+  d.Modelo AS modeloValidador,
 
-  -- BlueVox
-  b.Id AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  -- Contador
+  b.Id AS idContador,
+  b.NumeroSerie AS numeroSerieContador,
+  b.Marca AS marcaContador,
+  b.Modelo AS modeloContador,
 
   -- Vehículo
   v.Id AS idVehiculo,
@@ -913,8 +913,8 @@ SELECT
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
 INNER JOIN Clientes c ON t.IdCliente = c.Id
-LEFT JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-LEFT JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
+LEFT JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
+LEFT JOIN Contadores b ON i.IdContador = b.Id AND i.IdCliente = b.IdCliente
 LEFT JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 LEFT JOIN Operadores o ON t.IdOperador = o.Id
 LEFT JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -948,8 +948,8 @@ ORDER BY t.Inicio DESC;
         ...item,
         id: Number(item.id),
         idInstalacion: Number(item.idInstalacion),
-        idDispositivo: Number(item.idDispositivo),
-        idBlueVox: Number(item.idBlueVox),
+        idValidador: Number(item.idValidador),
+        idContador: Number(item.idContador),
         idVehiculo: Number(item.idVehiculo),
         idCliente: Number(item.idCliente),
         idOperador: Number(item.idOperador),

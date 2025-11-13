@@ -56,10 +56,10 @@ export class CreateViajeDto {
   idOperador: number;
 
   @ApiProperty({
-    description: 'Id del derrotero asociado al viaje',
+    description: 'Id de la variante asociada al viaje',
     example: 20,
   })
-  @IsNotEmpty({ message: 'El IdDerrotero es obligatorio' })
-  @IsInt({ message: 'IdDerrotero debe ser un número entero' })
-  idDerrotero: number;
+  @IsNotEmpty({ message: 'El IdVariante es obligatorio' })
+  @IsInt({ message: 'IdVariante debe ser un número entero' })
+  idVariante: number;
 }

@@ -37,7 +37,7 @@ export class VehiculosController {
   }
 
   @Get('clientes/:id')
-  async findAllDispositivosClientes(
+  async findAllValidadoresClientes(
     @Param('id', ParseIntPipe) id: number,
     @Request() req
   ): Promise<ApiResponseCommon> {

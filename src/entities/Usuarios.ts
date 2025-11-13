@@ -14,7 +14,7 @@ import { Clientes } from "./Clientes";
 import { Roles } from "./Roles";
 import { UsuariosInstalaciones } from "./UsuariosInstalaciones";
 import { UsuariosPermisos } from "./UsuariosPermisos";
-import { UsuariosRegiones } from "./UsuariosRegiones";
+import { UsuariosZonas } from "./UsuariosZonas";
 import { applySchema } from "src/common/apply-schema.decorator";
 
 @applySchema
@@ -61,8 +61,8 @@ export class Usuarios {
   @Column("datetime", { name: "ActualizacionPin", nullable: true })
   actualizacionPin: string | null;
 
-  @Column("varchar", { name: "DispositivoId", nullable: true, length: 100 })
-  dispositivoId: string | null;
+  @Column("varchar", { name: "ValidadorId", nullable: true, length: 100 })
+  validadorId: string | null;
 
   @Column("varchar", { name: "FotoPerfil", nullable: true, length: 500 })
   fotoPerfil: string | null;
@@ -121,8 +121,8 @@ export class Usuarios {
   usuariosPermisos: UsuariosPermisos[];
 
   @OneToMany(
-    () => UsuariosRegiones,
-    (usuariosRegiones) => usuariosRegiones.idUsuario2
+    () => UsuariosZonas,
+    (usuariosZonas) => usuariosZonas.idUsuario2
   )
-  usuariosRegiones: UsuariosRegiones[];
+  usuariosZonas: UsuariosZonas[];
 }

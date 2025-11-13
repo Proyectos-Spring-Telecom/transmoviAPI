@@ -18,8 +18,8 @@ import {
 } from 'src/common/ApiResponse';
 import { UpdateInstalacioneEstatusDto } from './dto/update-instalacione-estatus.dto';
 import { UsuariosInstalaciones } from 'src/entities/UsuariosInstalaciones';
-import { Dispositivos } from 'src/entities/Dispositivos';
-import { BlueVoxs } from 'src/entities/BlueVoxs';
+import { Validadores } from 'src/entities/Validadores';
+import { Contadores } from 'src/entities/Contadores';
 import { Vehiculos } from 'src/entities/Vehiculos';
 import { Clientes } from 'src/entities/Clientes';
 import { HistoricoInstalaciones } from 'src/entities/historico-instalaciones';
@@ -31,10 +31,10 @@ export class InstalacionesService {
   constructor(
     @InjectRepository(Instalaciones)
     private readonly instalacionesRepository: Repository<Instalaciones>,
-    @InjectRepository(Dispositivos)
-    private readonly dispositivosRepository: Repository<Dispositivos>,
-    @InjectRepository(BlueVoxs)
-    private readonly bluevoxsRepository: Repository<BlueVoxs>,
+    @InjectRepository(Validadores)
+    private readonly validadoresRepository: Repository<Validadores>,
+    @InjectRepository(Contadores)
+    private readonly contadoresRepository: Repository<Contadores>,
     @InjectRepository(Vehiculos)
     private readonly vehiculosRepository: Repository<Vehiculos>,
     @InjectRepository(UsuariosInstalaciones)
@@ -56,28 +56,28 @@ export class InstalacionesService {
       // ✅ VALIDACIÓN MEJORADA: Verificar todos los conflictos con relaciones
       const errores: string[] = [];
 
-      // Verificar dispositivo CON relaciones
-      const dispositivoEnUso = await this.instalacionesRepository.findOne({
+      // Verificar validador CON relaciones
+      const validadorEnUso = await this.instalacionesRepository.findOne({
         where: {
-          idDispositivo: createInstalacioneDto.idDispositivo,
+          idValidador: createInstalacioneDto.idValidador,
           estatus: 1,
         },
-        relations: ['dispositivos'],
+        relations: ['validadores'],
       });
-      if (dispositivoEnUso) {
+      if (validadorEnUso) {
         errores.push(
-          ` Dispositivo ${dispositivoEnUso.dispositivos.numeroSerie} ya está en uso.`,
+          ` Validador ${validadorEnUso.validadores.numeroSerie} ya está en uso.`,
         );
       }
 
-      // Verificar BlueVox CON relaciones
-      const blueVoxEnUso = await this.instalacionesRepository.findOne({
-        where: { idBlueVox: createInstalacioneDto.idBlueVox, estatus: 1 },
-        relations: ['blueVoxs'],
+      // Verificar Contador CON relaciones
+      const contadorEnUso = await this.instalacionesRepository.findOne({
+        where: { idContador: createInstalacioneDto.idContador, estatus: 1 },
+        relations: ['contadores'],
       });
-      if (blueVoxEnUso) {
+      if (contadorEnUso) {
         errores.push(
-          ` BlueVox ${blueVoxEnUso.blueVoxs.numeroSerie} ya está en uso.`,
+          ` Contador ${contadorEnUso.contadores.numeroSerie} ya está en uso.`,
         );
       }
 
@@ -108,7 +108,7 @@ export class InstalacionesService {
       const instalacionSave =
         await this.instalacionesRepository.save(newInstalaciones);
 
-      //Asignamos a root la region
+      //Asignamos a root la zona
       switch (rol) {
         case 1:
           permiso = {
@@ -146,12 +146,12 @@ export class InstalacionesService {
       const body = { estadoActual: EstadoComponente.ASIGNADO };
 
       //actualizamos estatus de los componentes de la instalacion
-      await this.dispositivosRepository.update(
-        createInstalacioneDto.idDispositivo,
+      await this.validadoresRepository.update(
+        createInstalacioneDto.idValidador,
         body,
       );
-      await this.bluevoxsRepository.update(
-        createInstalacioneDto.idBlueVox,
+      await this.contadoresRepository.update(
+        createInstalacioneDto.idContador,
         body,
       );
       await this.vehiculosRepository.update(
@@ -174,8 +174,8 @@ export class InstalacionesService {
       //Registro historico
       await this.historicoinstalacionesService.createHistorico(
         instalacionSave.id,
-        instalacionSave.idDispositivo,
-        instalacionSave.idBlueVox,
+        instalacionSave.idValidador,
+        instalacionSave.idContador,
         instalacionSave.idVehiculo,
         instalacionSave.idCliente,
         idUser,
@@ -187,7 +187,7 @@ export class InstalacionesService {
         message: 'La instalación ha sido creada correctamente.',
         data: {
           id: Number(instalacionSave.id),
-          nombre: `Instalación ${instalacionSave.id} registrada con los siguientes detalles: Dispositivo: ${instalacionSave.idDispositivo}, BlueVox: ${instalacionSave.idBlueVox}, Vehículo: ${instalacionSave.idVehiculo}.`, // ✅ Mejorado
+          nombre: `Instalación ${instalacionSave.id} registrada con los siguientes detalles: Validador: ${instalacionSave.idValidador}, Contador: ${instalacionSave.idContador}, Vehículo: ${instalacionSave.idVehiculo}.`, // ✅ Mejorado
         },
       };
 
@@ -214,8 +214,8 @@ export class InstalacionesService {
         throw new BadRequestException({
           message: 'Error de referencia en la base de datos',
           details:
-            'Verifica que los IDs de Cliente, Dispositivo, BlueVox y Vehículo sean válidos y existan en el sistema',
-          sqlError: 'La combinación Cliente-Dispositivo no es válida',
+            'Verifica que los IDs de Cliente, Validador, Contador y Vehículo sean válidos y existan en el sistema',
+          sqlError: 'La combinación Cliente-Validador no es válida',
         });
       }
 
@@ -260,17 +260,17 @@ SELECT
   i.FechaActualizacion AS fechaActualizacion,
   i.Estatus AS estatus,
 
-  -- Dispositivo
-  i.IdDispositivo AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
+  -- Validador
+  i.IdValidador AS idValidador,
+  d.NumeroSerie AS numeroSerieValidador,
+  d.Marca AS marcaValidador,
+  d.Modelo AS modeloValidador,
 
-  -- BlueVox
-  i.IdBlueVox AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  -- Contador
+  i.IdContador AS idContador,
+  b.NumeroSerie AS numeroSerieContador,
+  b.Marca AS marcaContador,
+  b.Modelo AS modeloContador,
 
   -- Vehículo
   i.IdVehiculo AS idVehiculo,
@@ -287,8 +287,8 @@ SELECT
   c.Estatus AS estatusCliente
 
 FROM Instalaciones i
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
+INNER JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN Contadores b ON i.IdContador = b.Id AND i.IdCliente = b.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -306,8 +306,8 @@ LIMIT ? OFFSET ?;
     const query = `  
   SELECT COUNT(*) AS total
   FROM Instalaciones i
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
+INNER JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN Contadores b ON i.IdContador = b.Id AND i.IdCliente = b.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -340,17 +340,17 @@ SELECT
   i.FechaActualizacion AS fechaActualizacion,
   i.Estatus AS estatus,
 
-  -- Dispositivo
-  i.IdDispositivo AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
+  -- Validador
+  i.IdValidador AS idValidador,
+  d.NumeroSerie AS numeroSerieValidador,
+  d.Marca AS marcaValidador,
+  d.Modelo AS modeloValidador,
 
-  -- BlueVox
-  i.IdBlueVox AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  -- Contador
+  i.IdContador AS idContador,
+  b.NumeroSerie AS numeroSerieContador,
+  b.Marca AS marcaContador,
+  b.Modelo AS modeloContador,
 
   -- Vehículo
   i.IdVehiculo AS idVehiculo,
@@ -367,8 +367,8 @@ SELECT
   c.Estatus AS estatusCliente
 
 FROM Instalaciones i
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
+INNER JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN Contadores b ON i.IdContador = b.Id AND i.IdCliente = b.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -386,8 +386,8 @@ ORDER BY i.Id DESC
             `
   SELECT COUNT(*) AS total
   FROM Instalaciones i
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
+INNER JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN Contadores b ON i.IdContador = b.Id AND i.IdCliente = b.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -444,17 +444,17 @@ SELECT
   i.FechaActualizacion AS fechaActualizacion,
   i.Estatus AS estatus,
   
-  -- Dispositivo
-  i.IdDispositivo AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
+  -- Validador
+  i.IdValidador AS idValidador,
+  d.NumeroSerie AS numeroSerieValidador,
+  d.Marca AS marcaValidador,
+  d.Modelo AS modeloValidador,
   
-  -- BlueVox
-  i.IdBlueVox AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  -- Contador
+  i.IdContador AS idContador,
+  b.NumeroSerie AS numeroSerieContador,
+  b.Marca AS marcaContador,
+  b.Modelo AS modeloContador,
   
   -- Vehículo
   i.IdVehiculo AS idVehiculo,
@@ -472,8 +472,8 @@ SELECT
 
 FROM UsuariosInstalaciones ui
 INNER JOIN Instalaciones i ON ui.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
+INNER JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN Contadores b ON i.IdContador = b.Id AND i.IdCliente = b.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -492,8 +492,8 @@ ORDER BY i.Id DESC
     SELECT COUNT(*) AS total
   FROM UsuariosInstalaciones ui
 INNER JOIN Instalaciones i ON ui.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
+INNER JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN Contadores b ON i.IdContador = b.Id AND i.IdCliente = b.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 	WHERE ui.IdUsuario = ?
@@ -510,8 +510,8 @@ INNER JOIN Clientes c ON i.IdCliente = c.Id
       const data = instalaciones.map((item) => ({
         ...item,
         id: Number(item.id),
-        idDispositivo: Number(item.idDispositivo),
-        idBlueVox: Number(item.idBlueVox),
+        idValidador: Number(item.idValidador),
+        idContador: Number(item.idContador),
         idVehiculo: Number(item.idVehiculo),
         idCliente: Number(item.idCliente),
       }));
@@ -548,17 +548,17 @@ SELECT
   i.FechaActualizacion AS fechaActualizacion,
   i.Estatus AS estatus,
 
-  -- Dispositivo
-  i.IdDispositivo AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
+  -- Validador
+  i.IdValidador AS idValidador,
+  d.NumeroSerie AS numeroSerieValidador,
+  d.Marca AS marcaValidador,
+  d.Modelo AS modeloValidador,
 
-  -- BlueVox
-  i.IdBlueVox AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  -- Contador
+  i.IdContador AS idContador,
+  b.NumeroSerie AS numeroSerieContador,
+  b.Marca AS marcaContador,
+  b.Modelo AS modeloContador,
 
   -- Vehículo
   i.IdVehiculo AS idVehiculo,
@@ -575,8 +575,8 @@ SELECT
   c.Estatus AS estatusCliente
 
 FROM Instalaciones i
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
+INNER JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN Contadores b ON i.IdContador = b.Id AND i.IdCliente = b.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -610,17 +610,17 @@ SELECT
   i.FechaActualizacion AS fechaActualizacion,
   i.Estatus AS estatus,
 
-  -- Dispositivo
-  i.IdDispositivo AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
+  -- Validador
+  i.IdValidador AS idValidador,
+  d.NumeroSerie AS numeroSerieValidador,
+  d.Marca AS marcaValidador,
+  d.Modelo AS modeloValidador,
 
-  -- BlueVox
-  i.IdBlueVox AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  -- Contador
+  i.IdContador AS idContador,
+  b.NumeroSerie AS numeroSerieContador,
+  b.Marca AS marcaContador,
+  b.Modelo AS modeloContador,
 
   -- Vehículo
   i.IdVehiculo AS idVehiculo,
@@ -637,8 +637,8 @@ SELECT
   c.Estatus AS estatusCliente
 
 FROM Instalaciones i
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
+INNER JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN Contadores b ON i.IdContador = b.Id AND i.IdCliente = b.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -677,17 +677,17 @@ SELECT
   i.FechaActualizacion AS fechaActualizacion,
   i.Estatus AS estatus,
   
-  -- Dispositivo
-  i.IdDispositivo AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
+  -- Validador
+  i.IdValidador AS idValidador,
+  d.NumeroSerie AS numeroSerieValidador,
+  d.Marca AS marcaValidador,
+  d.Modelo AS modeloValidador,
   
-  -- BlueVox
-  i.IdBlueVox AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  -- Contador
+  i.IdContador AS idContador,
+  b.NumeroSerie AS numeroSerieContador,
+  b.Marca AS marcaContador,
+  b.Modelo AS modeloContador,
   
   -- Vehículo
   i.IdVehiculo AS idVehiculo,
@@ -705,8 +705,8 @@ SELECT
 
 FROM UsuariosInstalaciones ui
 INNER JOIN Instalaciones i ON ui.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
+INNER JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN Contadores b ON i.IdContador = b.Id AND i.IdCliente = b.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -727,8 +727,8 @@ ORDER BY i.Id DESC;
       const data = instalaciones.map((item) => ({
         ...item,
         id: Number(item.id),
-        idDispositivo: Number(item.idDispositivo),
-        idBlueVox: Number(item.idBlueVox),
+        idValidador: Number(item.idValidador),
+        idContador: Number(item.idContador),
         idVehiculo: Number(item.idVehiculo),
         idCliente: Number(item.idCliente),
       }));
@@ -759,17 +759,17 @@ SELECT
   i.FechaActualizacion AS fechaActualizacion,
   i.Estatus AS estatus,
 
-  -- Dispositivo
-  i.IdDispositivo AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
+  -- Validador
+  i.IdValidador AS idValidador,
+  d.NumeroSerie AS numeroSerieValidador,
+  d.Marca AS marcaValidador,
+  d.Modelo AS modeloValidador,
 
-  -- BlueVox
-  i.IdBlueVox AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  -- Contador
+  i.IdContador AS idContador,
+  b.NumeroSerie AS numeroSerieContador,
+  b.Marca AS marcaContador,
+  b.Modelo AS modeloContador,
 
   -- Vehículo
   i.IdVehiculo AS idVehiculo,
@@ -786,8 +786,8 @@ SELECT
   c.Estatus AS estatusCliente
 
 FROM Instalaciones i
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
+INNER JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN Contadores b ON i.IdContador = b.Id AND i.IdCliente = b.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -814,17 +814,17 @@ SELECT
   i.FechaActualizacion AS fechaActualizacion,
   i.Estatus AS estatus,
 
-  -- Dispositivo
-  i.IdDispositivo AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
+  -- Validador
+  i.IdValidador AS idValidador,
+  d.NumeroSerie AS numeroSerieValidador,
+  d.Marca AS marcaValidador,
+  d.Modelo AS modeloValidador,
 
-  -- BlueVox
-  i.IdBlueVox AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  -- Contador
+  i.IdContador AS idContador,
+  b.NumeroSerie AS numeroSerieContador,
+  b.Marca AS marcaContador,
+  b.Modelo AS modeloContador,
 
   -- Vehículo
   i.IdVehiculo AS idVehiculo,
@@ -841,8 +841,8 @@ SELECT
   c.Estatus AS estatusCliente
 
 FROM Instalaciones i
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
+INNER JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN Contadores b ON i.IdContador = b.Id AND i.IdCliente = b.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -881,17 +881,17 @@ SELECT
   i.FechaActualizacion AS fechaActualizacion,
   i.Estatus AS estatus,
   
-  -- Dispositivo
-  i.IdDispositivo AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
+  -- Validador
+  i.IdValidador AS idValidador,
+  d.NumeroSerie AS numeroSerieValidador,
+  d.Marca AS marcaValidador,
+  d.Modelo AS modeloValidador,
   
-  -- BlueVox
-  i.IdBlueVox AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  -- Contador
+  i.IdContador AS idContador,
+  b.NumeroSerie AS numeroSerieContador,
+  b.Marca AS marcaContador,
+  b.Modelo AS modeloContador,
   
   -- Vehículo
   i.IdVehiculo AS idVehiculo,
@@ -909,8 +909,8 @@ SELECT
 
 FROM UsuariosInstalaciones ui
 INNER JOIN Instalaciones i ON ui.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
+INNER JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN Contadores b ON i.IdContador = b.Id AND i.IdCliente = b.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -934,8 +934,8 @@ ORDER BY i.Id DESC;
       const data = instalaciones.map((item) => ({
         ...item,
         id: Number(item.id),
-        idDispositivo: Number(item.idDispositivo),
-        idBlueVox: Number(item.idBlueVox),
+        idValidador: Number(item.idValidador),
+        idContador: Number(item.idContador),
         idVehiculo: Number(item.idVehiculo),
         idCliente: Number(item.idCliente),
       }));
@@ -978,28 +978,28 @@ ORDER BY i.Id DESC;
         // ✅ VALIDACIÓN MEJORADA: Verificar todos los conflictos con relaciones
         const errores: string[] = [];
 
-        // Verificar dispositivo CON relaciones
-        const dispositivoEnUso = await this.instalacionesRepository.findOne({
+        // Verificar validador CON relaciones
+        const validadorEnUso = await this.instalacionesRepository.findOne({
           where: {
-            idDispositivo: instalacion.idDispositivo,
+            idValidador: instalacion.idValidador,
             estatus: 1,
           },
-          relations: ['dispositivos'],
+          relations: ['validadores'],
         });
-        if (dispositivoEnUso) {
+        if (validadorEnUso) {
           errores.push(
-            `Dispositivo "${dispositivoEnUso.dispositivos.numeroSerie}" ya está en uso`,
+            `Validador "${validadorEnUso.validadores.numeroSerie}" ya está en uso`,
           );
         }
 
-        // Verificar BlueVox CON relaciones
-        const blueVoxEnUso = await this.instalacionesRepository.findOne({
-          where: { idBlueVox: instalacion.idBlueVox, estatus: 1 },
-          relations: ['blueVoxs'],
+        // Verificar Contador CON relaciones
+        const contadorEnUso = await this.instalacionesRepository.findOne({
+          where: { idContador: instalacion.idContador, estatus: 1 },
+          relations: ['contadores'],
         });
-        if (blueVoxEnUso) {
+        if (contadorEnUso) {
           errores.push(
-            `BlueVox "${blueVoxEnUso.blueVoxs.numeroSerie}" ya está en uso`,
+            `Contador "${contadorEnUso.contadores.numeroSerie}" ya está en uso`,
           );
         }
 
@@ -1025,28 +1025,28 @@ ORDER BY i.Id DESC;
 
         // ✅ Verificar todos los componentes esten disponibles
         const erroresEstado: string[] = [];
-        console.log(instalacion.idDispositivo)
-        // Verificar dispositivo este disponible
-        const dispositivoEstado = await this.dispositivosRepository.findOne({
+        console.log(instalacion.idValidador)
+        // Verificar validador este disponible
+        const validadorEstado = await this.validadoresRepository.findOne({
           where: {
-            id: instalacion.idDispositivo,
+            id: instalacion.idValidador,
             estatus: 1,
             estadoActual: 1,
           },
         });
-        if (!dispositivoEstado) {
+        if (!validadorEstado) {
           erroresEstado.push(
-            `Dispositivo "${instalacion.idDispositivo}" su estado actual, no esta disponible`,
+            `Validador "${instalacion.idValidador}" su estado actual, no esta disponible`,
           );
         }
 
-        // Verificar BlueVox este disponible
-        const blueVoxEstado = await this.bluevoxsRepository.findOne({
-          where: { id: instalacion.idBlueVox, estatus: 1, estadoActual: 1 },
+        // Verificar Contador este disponible
+        const contadorEstado = await this.contadoresRepository.findOne({
+          where: { id: instalacion.idContador, estatus: 1, estadoActual: 1 },
         });
-        if (!blueVoxEstado) {
+        if (!contadorEstado) {
           erroresEstado.push(
-            `BlueVox "${instalacion.idBlueVox}" su estado actual, no esta disponible`,
+            `Contador "${instalacion.idContador}" su estado actual, no esta disponible`,
           );
         }
 
@@ -1071,20 +1071,20 @@ ORDER BY i.Id DESC;
 
         // Cambiar estatus de componentes a 2 (Asignado)
         const body = { estadoActual: EstadoComponente.ASIGNADO };
-        await this.dispositivosRepository.update(
-          instalacion.idDispositivo,
+        await this.validadoresRepository.update(
+          instalacion.idValidador,
           body,
         );
-        await this.bluevoxsRepository.update(instalacion.idBlueVox, body);
+        await this.contadoresRepository.update(instalacion.idContador, body);
         await this.vehiculosRepository.update(instalacion.idVehiculo, body);
       } else if (estatus === 0) {
         // Desactivar instalación → activar componentes a 1(Disponible)
         const body = { estadoActual: EstadoComponente.DISPONIBLE };
-        await this.dispositivosRepository.update(
-          instalacion.idDispositivo,
+        await this.validadoresRepository.update(
+          instalacion.idValidador,
           body,
         );
-        await this.bluevoxsRepository.update(instalacion.idBlueVox, body);
+        await this.contadoresRepository.update(instalacion.idContador, body);
         await this.vehiculosRepository.update(instalacion.idVehiculo, body);
       }
 
@@ -1111,7 +1111,7 @@ ORDER BY i.Id DESC;
         data: {
           id: id,
           nombre:
-            `${instalacion.id} dispositivo:${instalacion.idDispositivo} bluevox: ${instalacion.idBlueVox} vehiculo: ${instalacion.idVehiculo}` ||
+            `${instalacion.id} validador:${instalacion.idValidador} contador: ${instalacion.idContador} vehiculo: ${instalacion.idVehiculo}` ||
             '',
         },
       };
@@ -1157,24 +1157,24 @@ ORDER BY i.Id DESC;
         );
       }
 
-      //verificamos que exista el dispositivo a actualizar
-      if (updateInstalacioneDto.estatusDispositivoAnterior) {
-        //Actualizamos el estado del dispositivo anterior
-        await this.dispositivosRepository.update(instalacion.idDispositivo, {
-          estadoActual: updateInstalacioneDto.estatusDispositivoAnterior,
+      //verificamos que exista el validador a actualizar
+      if (updateInstalacioneDto.estatusValidadorAnterior) {
+        //Actualizamos el estado del validador anterior
+        await this.validadoresRepository.update(instalacion.idValidador, {
+          estadoActual: updateInstalacioneDto.estatusValidadorAnterior,
         });
-        //Actualizamos el dispositivo en la instalacion
+        //Actualizamos el validador en la instalacion
         await this.instalacionesRepository.update(id, {
-          idDispositivo: updateInstalacioneDto.idDispositivo,
+          idValidador: updateInstalacioneDto.idValidador,
         });
       }
 
-      if (updateInstalacioneDto.estatusBluevoxsAnterior) {
-        await this.bluevoxsRepository.update(instalacion.idBlueVox, {
-          estadoActual: updateInstalacioneDto.estatusBluevoxsAnterior,
+      if (updateInstalacioneDto.estatusContadoresAnterior) {
+        await this.contadoresRepository.update(instalacion.idContador, {
+          estadoActual: updateInstalacioneDto.estatusContadoresAnterior,
         });
         await this.instalacionesRepository.update(id, {
-          idDispositivo: updateInstalacioneDto.idBlueVox,
+          idContador: updateInstalacioneDto.idContador,
         });
       }
 
@@ -1198,18 +1198,18 @@ ORDER BY i.Id DESC;
 
       const body = {
         idInstalacion: id,
-        idDispositivo: instalacion.idDispositivo,
-        idBlueVox: instalacion.idBlueVox,
+        idValidador: instalacion.idValidador,
+        idContador: instalacion.idContador,
         idVehiculo: instalacion.idVehiculo,
         idCliente: instalacion.idCliente,
       };
-      const comentario = `${updateInstalacioneDto.comentariosBluevox ?? ''} ${updateInstalacioneDto.comentariosDispositivo ?? ''}`
+      const comentario = `${updateInstalacioneDto.comentariosContador ?? ''} ${updateInstalacioneDto.comentariosValidador ?? ''}`
 
       //Registro historico
       await this.historicoinstalacionesService.updateHistorico(
         body,
-        Number(instalacionActualizada?.idDispositivo),
-        Number(instalacionActualizada?.idBlueVox),
+        Number(instalacionActualizada?.idValidador),
+        Number(instalacionActualizada?.idContador),
         Number(instalacionActualizada?.idVehiculo),
         Number(instalacionActualizada?.idCliente),
         idUser,
@@ -1223,7 +1223,7 @@ ORDER BY i.Id DESC;
         data: {
           id: id,
           nombre:
-            `Instalación ${instalacion.id} asociada a Dispositivo: ${instalacion.idDispositivo}, BlueVox: ${instalacion.idBlueVox} y Vehículo: ${instalacion.idVehiculo}.` ||
+            `Instalación ${instalacion.id} asociada a Validador: ${instalacion.idValidador}, Contador: ${instalacion.idContador} y Vehículo: ${instalacion.idVehiculo}.` ||
             '',
         },
       };
@@ -1274,8 +1274,8 @@ ORDER BY i.Id DESC;
 
       // Desactivar instalación → activar componentes
       const body = { estadoActual: EstadoComponente.DISPONIBLE };
-      await this.dispositivosRepository.update(instalacion.idDispositivo, body);
-      await this.bluevoxsRepository.update(instalacion.idBlueVox, body);
+      await this.validadoresRepository.update(instalacion.idValidador, body);
+      await this.contadoresRepository.update(instalacion.idContador, body);
       await this.vehiculosRepository.update(instalacion.idVehiculo, body);
 
       //-----Registro en la bitacora----- SUCCESS
@@ -1297,7 +1297,7 @@ ORDER BY i.Id DESC;
         data: {
           id: id,
           nombre:
-            `${instalacion.id} dispositivo:${instalacion.idDispositivo} bluevox: ${instalacion.idBlueVox} vehiculo: ${instalacion.idVehiculo}` ||
+            `${instalacion.id} validador:${instalacion.idValidador} contador: ${instalacion.idContador} vehiculo: ${instalacion.idVehiculo}` ||
             '',
         },
       };
