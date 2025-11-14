@@ -188,6 +188,11 @@ SELECT
   o.FechaActualizacion AS fechaActualizacionOperador,
   o.Estatus AS estatusOperador,
 
+  -- Datos Del Clientes
+  c.Nombre As nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+
   -- Datos del Usuario
   u.Id AS idUsuario,
   u.UserName AS userNameUsuario,
@@ -216,6 +221,7 @@ SELECT
 
 FROM Operadores o
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
+INNER JOIN Clientes c ON u.IdCliente = c.Id
 LEFT JOIN Licencias l ON l.IdOperador = o.Id
 LEFT JOIN CatTipoLicencia ctl ON l.IdTipoLicencia = ctl.Id
 LEFT JOIN CatCategoriaLicencia ccl ON l.IdCategoriaLicencia = ccl.Id
@@ -277,6 +283,11 @@ SELECT
   o.FechaActualizacion AS fechaActualizacionOperador,
   o.Estatus AS estatusOperador,
 
+  -- Datos Del Clientes
+  c.Nombre As nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+
   -- Datos del Usuario
   u.Id AS idUsuario,
   u.UserName AS userNameUsuario,
@@ -305,6 +316,7 @@ SELECT
 
 FROM Operadores o
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
+INNER JOIN Clientes c ON u.IdCliente = c.Id
 LEFT JOIN Licencias l ON l.IdOperador = o.Id
 LEFT JOIN CatTipoLicencia ctl ON l.IdTipoLicencia = ctl.Id
 LEFT JOIN CatCategoriaLicencia ccl ON l.IdCategoriaLicencia = ccl.Id
