@@ -60,7 +60,7 @@ export enum EnumModulos {
 export enum EnumSolicitudPasajero {
   NOSOLICITADO = 0,
   SOLICITADO = 1,
-  APROVADO = 2,
+  APROBADO = 2,
   RECHAZADO = 3,
 }
 

@@ -16,7 +16,9 @@ import { CreateZonasDto } from './dto/create-zona.dto';
 import { UpdateZonaDto } from './dto/update-zona.dto';
 import { UpdateZonasEstatusDto } from './dto/update-zona-estatus.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('zonas')
 export class ZonasController {

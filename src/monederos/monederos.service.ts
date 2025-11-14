@@ -758,7 +758,7 @@ ORDER BY m.Id DESC;
         //Actualizamos el estado de la solicitud
         const idPasajero = Number(monedero.idPasajero);
         const bodyPasajero = {
-          estadoSolicitud: EnumSolicitudPasajero.APROVADO,
+          estadoSolicitud: EnumSolicitudPasajero.APROBADO,
         };
         await this.pasajerosService.updatePasajero(
           idPasajero,

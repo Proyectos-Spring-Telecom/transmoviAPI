@@ -16,7 +16,9 @@ import { CreateTallereDto } from './dto/create-tallere.dto';
 import { UpdateTallereDto } from './dto/update-tallere.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth('bearer-token')
 @Controller('talleres')
 @UseGuards(JwtAuthGuard)
 export class TalleresController {

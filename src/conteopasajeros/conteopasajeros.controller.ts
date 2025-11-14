@@ -13,7 +13,9 @@ import { ConteopasajerosService } from './conteopasajeros.service';
 import { CreateConteoPasajerosDto } from './dto/create-conteopasajero.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('conteopasajeros')
 export class ConteopasajerosController {

@@ -17,7 +17,9 @@ import { UpdateVehiculoDto } from './dto/update-vehiculo.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
 import { UpdateVehiculoEstatusDto } from './dto/update-vehiculos-estatus.dto';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('vehiculos')
 export class VehiculosController {

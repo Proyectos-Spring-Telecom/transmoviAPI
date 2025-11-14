@@ -17,7 +17,9 @@ import { LoginAuthResetDto } from './dto/login-recuperacion.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { CodigoPasajeroAutenticacion } from './dto/login-autenticacion.dto';
 import { CreateAltaPasajaroDto } from './dto/create-pasajero.dto';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth('bearer-token')
 @Controller('login')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}

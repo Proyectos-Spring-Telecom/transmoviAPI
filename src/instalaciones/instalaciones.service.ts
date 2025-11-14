@@ -43,7 +43,7 @@ export class InstalacionesService {
     private readonly clienteRepository: Repository<Clientes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
     private readonly historicoinstalacionesService: HistoricoinstalacionesService,
-  ) {}
+  ) { }
 
   // ========================================
   // 🔹 CREAR UN INSTALACION
@@ -415,6 +415,18 @@ INNER JOIN Clientes c ON i.IdCliente = c.Id
             await this.consultarTotalInstalacionesPaginados(cliente);
           break;
 
+        case 3:
+          // Consulta de datos paginados Usuario Operador
+          instalaciones = await this.consultarInstalacionesPaginado(
+            cliente,
+            limit,
+            offset,
+          );
+          // Query para total (sin paginación)
+          totalResult =
+            await this.consultarTotalInstalacionesPaginados(cliente);
+          break;
+
         case 8:
           // Consulta de datos paginados Usuario Reportes
           instalaciones = await this.consultarInstalacionesPaginado(
@@ -665,6 +677,11 @@ ORDER BY i.Id DESC;
           instalaciones = await this.consultarInstalacionesListado(cliente);
           break;
 
+        case 3:
+          // Consulta de datos paginados Usuario Operador
+          instalaciones = await this.consultarInstalacionesListado(cliente);
+          break;
+
         case 8:
           // Consulta de datos paginados Usuario Reportes
           instalaciones = await this.consultarInstalacionesListado(cliente);
@@ -869,6 +886,11 @@ ORDER BY i.Id DESC;
 
         case 2:
           // Consulta de datos paginados Usuario Administrador
+          instalaciones = await this.consultarInstalacionesOne(cliente, id);
+          break;
+
+        case 3:
+          // Consulta de datos paginados Usuario Operador
           instalaciones = await this.consultarInstalacionesOne(cliente, id);
           break;
 

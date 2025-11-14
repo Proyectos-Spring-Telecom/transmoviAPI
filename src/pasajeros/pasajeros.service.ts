@@ -117,7 +117,7 @@ export class PasajerosService {
       const userSave = await this.usuariosRepository.save(newUser); //creamos el usuario
 
       //Le añadimos los permisos correspondientes
-      const permisosIds = [77, 80, 90];
+      const permisosIds = [122];
       if (permisosIds.length > 0) {
         const usuariosPermisos = permisosIds.map((permisoId) =>
           this.permisosRepository.create({
@@ -347,6 +347,9 @@ SELECT DISTINCT
     p.Curp AS curp,
     c.Id AS idCliente,
     c.Nombre AS nombreCliente,
+    c.ApellidoPaterno AS apellidoPaternoCliente,
+    c.ApellidoMaterno AS apellidoMaternoCliente,
+    c.Nombre AS nombreCliente,
     m.Id AS idMonedero,
     m.NumeroSerie AS numeroSerie,
     ct.Id AS idTipoPasajero,
@@ -406,6 +409,9 @@ SELECT DISTINCT
     p.Curp AS curp,
     c.Id AS idCliente,
     c.Nombre AS nombreCliente,
+    c.ApellidoPaterno AS apellidoPaternoCliente,
+    c.ApellidoMaterno AS apellidoMaternoCliente,
+    c.Nombre AS nombreCliente,
     m.Id AS idMonedero,
     m.NumeroSerie AS numeroSerie,
     ct.Id AS idTipoPasajero,
@@ -421,7 +427,6 @@ LEFT JOIN CatTiposPasajeros ct
     ON m.IdTipoPasajero = ct.Id
 LEFT JOIN CatTipoDescuento ctd
 	ON ct.IdCatTipoDescuento = ctd.Id
-    ON m.IdTipoPasajero = ct.Id
 
     
 WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
@@ -442,6 +447,8 @@ INNER JOIN Clientes c
     ON m.IdCliente = c.Id
 LEFT JOIN CatTiposPasajeros ct
     ON m.IdTipoPasajero = ct.Id
+LEFT JOIN CatTipoDescuento ctd
+	ON ct.IdCatTipoDescuento = ctd.Id
 	WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
   `,
             [...ids],
@@ -831,7 +838,7 @@ GROUP BY p.Id, u.Id, u.UserName, NombreCompleto;
 
       //En caso de ser aprovado el pasajero se solicitada el tipo de pasajero asociado a su monedero
       //buscamos y validamos el monedero
-      if (estadoSolicitud == EnumSolicitudPasajero.APROVADO) {
+      if (estadoSolicitud == EnumSolicitudPasajero.APROBADO) {
         const monedero = await this.monederosRepository.findOne({
           where: { idPasajero: pasajero.id, estatus: EstatusEnum.ACTIVO },
         });

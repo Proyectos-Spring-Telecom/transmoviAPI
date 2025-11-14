@@ -16,7 +16,9 @@ import { CreateVarianteDto } from './dto/create-variante.dto';
 import { UpdateVarianteDto } from './dto/update-variante.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { UpdateVariantesEstatusDto } from './dto/update-variante-estatus.dto';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('variantes')
 export class VariantesController {

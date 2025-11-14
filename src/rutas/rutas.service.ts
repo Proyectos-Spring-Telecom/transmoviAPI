@@ -284,6 +284,14 @@ WHERE
         totalResult = await this.consultarTotalRutasPaginados(cliente);
         break;
 
+      case 3:
+        // Consulta de datos paginados Usuario Operador
+        data = await this.consultarRutasPaginado(cliente, limit, offset);
+
+        // Query para total (sin paginación)
+        totalResult = await this.consultarTotalRutasPaginados(cliente);
+        break;
+
       case 8:
         // Consulta de datos paginados Usuario Reportes
         data = await this.consultarRutasPaginado(cliente, limit, offset);
@@ -512,6 +520,11 @@ ORDER BY ru.Id DESC
 
         case 2:
           // Consulta de datos paginados Usuario Administrador
+          rutas = await this.consultarRutasListado(cliente);
+          break;
+
+        case 3:
+          // Consulta de datos paginados Usuario Operador
           rutas = await this.consultarRutasListado(cliente);
           break;
 

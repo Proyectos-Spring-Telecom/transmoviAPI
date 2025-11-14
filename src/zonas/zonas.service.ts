@@ -30,7 +30,7 @@ export class ZonasService {
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
-  ) {}
+  ) { }
 
   //Crear Zona
   async create(
@@ -259,6 +259,14 @@ INNER JOIN Clientes c ON r.IdCliente = c.Id
           totalResult = await this.consultarTotalZonasPaginados(cliente);
           break;
 
+        case 3:
+          // Usuario operador - obtiene todas las regiones de su cliente
+          regiones = await this.consultarRegionesPagina(cliente, limit, offset);
+
+          // Query para total (sin paginación)
+          totalResult = await this.consultarTotalRegionesPaginados(cliente);
+          break;
+
         case 8:
           // Usuario Reportes - obtiene todas las zonas de su cliente
           zonas = await this.consultarZonasPagina(cliente, limit, offset);
@@ -440,6 +448,10 @@ ORDER BY r.Id DESC;
           // Usuario administrador - obtiene todas las zonas de su cliente
           zonas = await this.consultarZonasListado(cliente);
           break;
+        case 3:
+          // Usuario Operador - obtiene todas las regiones de su cliente
+          regiones = await this.consultarRegionesListado(cliente);
+          break;
         case 8:
           // Usuario Reportes - obtiene todas las zonas de su cliente
           zonas = await this.consultarZonasListado(cliente);
@@ -590,6 +602,10 @@ ORDER BY r.Id DESC;
         case 2:
           // Usuario administrador - obtiene todas las zonas de su cliente
           zonas = await this.consultarZonasOne(cliente, id)
+          break;
+        case 3:
+          // Usuario operador - obtiene todas las regiones de su cliente
+          regiones = await this.consultarRegionesOne(cliente, id)
           break;
         case 8:
           // Usuario Reportes - obtiene todas las zonas de su cliente

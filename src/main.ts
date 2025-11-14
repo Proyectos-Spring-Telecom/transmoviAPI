@@ -19,7 +19,20 @@ async function bootstrap() {
     .setTitle('Transmovi API')
     .setDescription('Documentación de la API de Transmovi') 
     .setVersion('2.0') 
-    .addBearerAuth() 
+    .addServer('http://localhost:3010', 'Servidor Local')
+    .addServer('https://transmovi.mx/apidev/', 'Servidor de Desarrollo')
+    .addServer('https://transmovi.mx/api/', 'Servidor de Producción')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'bearer-token',
+        description: 'Ingresa el token Bearer',
+        in: 'header',
+      },
+      'bearer-token',
+    ) 
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

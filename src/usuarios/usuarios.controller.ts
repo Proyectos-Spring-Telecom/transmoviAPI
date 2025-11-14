@@ -30,7 +30,7 @@ import { UpdateUsuarioContrasena } from './dto/update-usuario-contrasena.dto';
 
 @UseGuards(JwtAuthGuard)
 @ApiTags('Usuarios')
-@ApiBearerAuth()
+@ApiBearerAuth('bearer-token')
 @Controller('usuarios')
 export class UsuariosController {
   constructor(private readonly usuariosService: UsuariosService) {}

@@ -52,7 +52,7 @@ export class TransaccionesService {
     private readonly bitacoraLogger: BitacoraLoggerService,
     private readonly monederosService: MonederosService,
     private readonly pasajeroService: PasajerosService,
-  ) {}
+  ) { }
 
   //Funcion para transaccion Recarga
   async createTransaccionRecarga(
@@ -451,6 +451,14 @@ SELECT
     -- Datos del validador
     d.Marca AS marcaValidador,
     d.Modelo AS modeloValidador,
+    -- Datos del cliente
+    c.Id AS idCliente,
+    c.Nombre AS nombreCliente,
+    c.ApellidoPaterno AS apellidoPaternoCliente,
+    c.ApellidoMaterno AS apellidoMaternoCliente,
+    
+
+
 
     -- Pasajero (vía Monedero)
     p.Id AS idPasajero,
@@ -467,6 +475,8 @@ INNER JOIN Monederos m
     ON td.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
     ON m.IdPasajero = p.Id
+INNER JOIN Clientes c
+	ON m.IdCliente = c.Id
 
 UNION ALL
 
@@ -486,6 +496,15 @@ SELECT
     d.Marca AS marcaValidador,
     d.Modelo AS modeloValidador,
 
+    -- Datos del cliente
+    c.Id AS idCliente,
+    c.Nombre AS nombreCliente,
+    c.ApellidoPaterno AS apellidoPaternoCliente,
+    c.ApellidoMaterno AS apellidoMaternoCliente,
+    
+
+  
+
     p.Id AS idPasajero,
     p.Nombre AS nombrePasajero,
     p.ApellidoPaterno AS apellidoPaternoPasajero,
@@ -500,6 +519,8 @@ INNER JOIN Monederos m
     ON tr.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
     ON m.IdPasajero = p.Id
+INNER JOIN Clientes c
+	ON m.IdCliente = c.Id
 
 ORDER BY FHRegistro DESC
   LIMIT ? OFFSET ?;
@@ -642,6 +663,7 @@ FROM (
           break;
 
         default:
+          //resto usuarios
           const { ids, placeholders } = await this.clienteHijos(cliente);
           transacciones = await this.transaccionesrecargaRepository.query(
             `
@@ -661,6 +683,14 @@ FROM (
 
       d.Marca AS marcaValidador,
       d.Modelo AS modeloValidador,
+      -- Datos del cliente
+    c.Id AS idCliente,
+    c.Nombre AS nombreCliente,
+    c.ApellidoPaterno AS apellidoPaternoCliente,
+    c.ApellidoMaterno AS apellidoMaternoCliente,
+    
+
+
 
       p.Id AS idPasajero,
       p.Nombre AS nombrePasajero,
@@ -676,6 +706,9 @@ FROM (
       ON td.NumeroSerieMonedero = m.NumeroSerie
   LEFT JOIN Pasajeros p 
       ON m.IdPasajero = p.Id
+  INNER JOIN Clientes c
+	ON m.IdCliente = c.Id
+
   WHERE m.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
 
   UNION ALL
@@ -696,6 +729,14 @@ FROM (
       d.Marca AS marcaValidador,
       d.Modelo AS modeloValidador,
 
+      -- Datos del cliente
+    c.Id AS idCliente,
+    c.Nombre AS nombreCliente,
+    c.ApellidoPaterno AS apellidoPaternoCliente,
+    c.ApellidoMaterno AS apellidoMaternoCliente,
+    
+
+
       p.Id AS idPasajero,
       p.Nombre AS nombrePasajero,
       p.ApellidoPaterno AS apellidoPaternoPasajero,
@@ -710,6 +751,9 @@ FROM (
       ON tr.NumeroSerieMonedero = m.NumeroSerie
   LEFT JOIN Pasajeros p 
       ON m.IdPasajero = p.Id
+  INNER JOIN Clientes c
+	ON m.IdCliente = c.Id
+
   WHERE m.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
 )
 ORDER BY FHRegistro DESC

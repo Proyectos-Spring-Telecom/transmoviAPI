@@ -17,7 +17,9 @@ import { UpdateOperadoreDto } from './dto/update-operadore.dto';
 import { UpdateOperadorStatusDto } from './dto/update-operadores-estatus.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('operadores')
 export class OperadoresController {

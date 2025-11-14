@@ -12,7 +12,9 @@ import { PosicionesService } from './posiciones.service';
 import { CreatePosicionesDto } from './dto/create-posicione.dto';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('posiciones')
 export class PosicionesController {
