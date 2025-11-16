@@ -36,7 +36,7 @@ export class MantenimientoKilometraje {
     nullable: true,
     default: () => "CURRENT_TIMESTAMP",
   })
-  fhRegistro: string | null;
+  fhRegistro: Date | null;
 
   @Column("tinyint", { name: "Estatus", nullable: true, default: () => "'1'" })
   estatus: number | null;

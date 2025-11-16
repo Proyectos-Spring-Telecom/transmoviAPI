@@ -79,7 +79,7 @@ export class MantenimientoVehicular {
     onDelete: "NO ACTION",
     onUpdate: "NO ACTION",
   })
-  @JoinColumn([{ name: "idTaller", referencedColumnName: "id" }])
+  @JoinColumn([{ name: "IdTaller", referencedColumnName: "id" }])
   taller: Talleres | null;
 
   @ManyToOne(() => CatReferenciaServicio, (catReferenciaServicio) => catReferenciaServicio.mantenimientosVehiculares, {
