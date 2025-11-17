@@ -10,7 +10,6 @@ import {
   UseGuards,
   ParseIntPipe,
   Request,
-  Query,
 } from '@nestjs/common';
 import { UsuariosService } from './usuarios.service';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
@@ -103,7 +102,9 @@ export class UsuariosController {
   ): Promise<ApiResponseCommon> {
     const cliente = req.user.cliente;
     const rol = req.user.rol;
+    const idUser = req.user.userId;
     return await this.usuariosService.getAllUsuario(
+      +idUser,
       +cliente,
       +rol,
       page,

@@ -42,7 +42,6 @@ export class OperadoresController {
   ): Promise<ApiResponseCommon> {
     const cliente = req.user.cliente;
     const rol = req.user.rol;
-    console.log('ERRORASDASDASDASDAs', rol)
     return this.operadoresService.findAllOperadores(+cliente, +rol, page, limit);
   }
 

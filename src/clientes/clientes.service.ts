@@ -31,7 +31,7 @@ export class ClientesService {
     private readonly clienteRepository: Repository<Clientes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
     private readonly catpasajeroService: CatpasajeroService,
-  ) {}
+  ) { }
 
   // ========================================
   // 🔹 CREAR UN CLIENTE
@@ -115,7 +115,7 @@ export class ClientesService {
     }
   }
 
-  //funcion para obtener los clientes hijos
+  //funcion para obtener los clientes padre e hijos
   private async clienteHijos(cliente: number) {
     const clientesFiltrado = await this.clienteRepository.query(
       `CALL spGetClientes(?);`,
@@ -132,6 +132,28 @@ export class ClientesService {
 
     // 3. Construir el query dinámico con los IDs
     const placeholders = ids.map(() => '?').join(', ');
+    return { ids, placeholders };
+  }
+
+  private async clienteHijosPag(cliente: number) {
+    const result = await this.clienteRepository.query(
+      'CALL spGetClientes(?);',
+      [cliente],
+    );
+
+    let rows = result?.[0] ?? [];
+
+    // Construir ids y quitar el cliente padre
+    const ids = rows
+      .map((row: any) => Number(row.Id))
+      .filter(id => !isNaN(id) && id !== cliente); // 👈 QUITAR EL CLIENTE PADRE
+
+    if (ids.length === 0) {
+      return { ids: [], placeholders: '' };
+    }
+
+    const placeholders = ids.map(() => '?').join(', ');
+
     return { ids, placeholders };
   }
 
@@ -184,7 +206,7 @@ FROM Clientes
 ORDER BY Id ASC
   LIMIT ? OFFSET ?;
             `,
-            [limit, offset],
+            [ limit, offset],
           );
 
           // Query para total (sin paginación)
@@ -193,13 +215,12 @@ ORDER BY Id ASC
   SELECT COUNT(*) AS total
 FROM Clientes
 
-
-  `,
+  `, 
           );
           break;
 
         default:
-          const { ids, placeholders } = await this.clienteHijos(cliente);
+          const { ids, placeholders } = await this.clienteHijosPag(cliente);
           clientes = await this.clienteRepository.query(
             `
 SELECT
@@ -387,7 +408,7 @@ ORDER BY Id ASC;
           `El cliente con ID: ${id} no fue encontrado.`,
         );
       }
-      
+
       //Actualizamos datos del cliente
       await this.clienteRepository.update(id, updateClienteDto);
 

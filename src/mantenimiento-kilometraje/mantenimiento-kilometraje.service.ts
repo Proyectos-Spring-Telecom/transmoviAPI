@@ -83,7 +83,7 @@ export class MantenimientoKilometrajeService {
   async findAll(page: number, limit: number): Promise<ApiResponseCommon> {
     try {
       const [data, total] = await this.mantenimientoKilometrajeRepository.findAndCount({
-        relations: ['instalacion'],
+        relations: ['instalacion', 'instalacion.validadores', 'instalacion.contadores', 'instalacion.vehiculos', 'instalacion.idCliente2'],
         order: { fhRegistro: 'DESC' },
         skip: (page - 1) * limit,
         take: limit,
@@ -101,6 +101,30 @@ export class MantenimientoKilometrajeService {
         estatus: item.estatus,
         instalacion: item.instalacion ? {
           id: Number(item.instalacion.id),
+        } : null,
+        instalacionValidador: item.instalacion?.validadores ? {
+          id: Number(item.instalacion.validadores.id),
+          numeroSerie: item.instalacion.validadores.numeroSerie,
+          marca: item.instalacion.validadores.marca,
+          modelo: item.instalacion.validadores.modelo,
+        } : null,
+        instalacionContador: item.instalacion?.contadores ? {
+          id: Number(item.instalacion.contadores.id),
+          numeroSerie: item.instalacion.contadores.numeroSerie,
+          marca: item.instalacion.contadores.marca,
+          modelo: item.instalacion.contadores.modelo,
+        } : null,
+        instalacionVehiculo: item.instalacion?.vehiculos ? {
+          id: Number(item.instalacion.vehiculos.id),
+          marca: item.instalacion.vehiculos.marca,
+          modelo: item.instalacion.vehiculos.modelo,
+        } : null,
+        instalacionCliente: item.instalacion?.idCliente2 ? {
+          id: Number(item.instalacion.idCliente2.id),
+          nombre: item.instalacion.idCliente2.nombre,
+          apellidoPaterno: item.instalacion.idCliente2.apellidoPaterno,
+          apellidoMaterno: item.instalacion.idCliente2.apellidoMaterno,
+          estatus: item.instalacion.idCliente2.estatus,
         } : null,
       }));
 
@@ -127,7 +151,7 @@ export class MantenimientoKilometrajeService {
     try {
       const mantenimiento = await this.mantenimientoKilometrajeRepository.findOne({
         where: { id: id },
-        relations: ['instalacion'],
+        relations: ['instalacion', 'instalacion.validadores', 'instalacion.contadores', 'instalacion.vehiculos', 'instalacion.idCliente2'],
       });
       if (!mantenimiento) {
         throw new NotFoundException('Mantenimiento por kilometraje no encontrado');
@@ -146,6 +170,30 @@ export class MantenimientoKilometrajeService {
             estatus: mantenimiento.estatus,
             instalacion: mantenimiento.instalacion ? {
               id: Number(mantenimiento.instalacion.id),
+            } : null,
+            instalacionValidador: mantenimiento.instalacion?.validadores ? {
+              id: Number(mantenimiento.instalacion.validadores.id),
+              numeroSerie: mantenimiento.instalacion.validadores.numeroSerie,
+              marca: mantenimiento.instalacion.validadores.marca,
+              modelo: mantenimiento.instalacion.validadores.modelo,
+            } : null,
+            instalacionContador: mantenimiento.instalacion?.contadores ? {
+              id: Number(mantenimiento.instalacion.contadores.id),
+              numeroSerie: mantenimiento.instalacion.contadores.numeroSerie,
+              marca: mantenimiento.instalacion.contadores.marca,
+              modelo: mantenimiento.instalacion.contadores.modelo,
+            } : null,
+            instalacionVehiculo: mantenimiento.instalacion?.vehiculos ? {
+              id: Number(mantenimiento.instalacion.vehiculos.id),
+              marca: mantenimiento.instalacion.vehiculos.marca,
+              modelo: mantenimiento.instalacion.vehiculos.modelo,
+            } : null,
+            instalacionCliente: mantenimiento.instalacion?.idCliente2 ? {
+              id: Number(mantenimiento.instalacion.idCliente2.id),
+              nombre: mantenimiento.instalacion.idCliente2.nombre,
+              apellidoPaterno: mantenimiento.instalacion.idCliente2.apellidoPaterno,
+              apellidoMaterno: mantenimiento.instalacion.idCliente2.apellidoMaterno,
+              estatus: mantenimiento.instalacion.idCliente2.estatus,
             } : null,
           },
         ],

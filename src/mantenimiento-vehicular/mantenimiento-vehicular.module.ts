@@ -4,10 +4,20 @@ import { MantenimientoVehicularController } from './mantenimiento-vehicular.cont
 import { BitacoraModule } from 'src/bitacora/bitacora.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MantenimientoVehicular } from 'src/entities/MantenimientoVehicular';
+import { CatEstatusMantenimiento } from 'src/entities/CatEstatusMantenimiento';
+import { Talleres } from 'src/entities/Talleres';
+import { Instalaciones } from 'src/entities/Instalaciones';
+import { CatReferenciaServicio } from 'src/entities/CatReferenciaServicio';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([MantenimientoVehicular]),
+    TypeOrmModule.forFeature([
+      MantenimientoVehicular,
+      CatEstatusMantenimiento,
+      Talleres,
+      Instalaciones,
+      CatReferenciaServicio,
+    ]),
     BitacoraModule,
   ],
   controllers: [MantenimientoVehicularController],

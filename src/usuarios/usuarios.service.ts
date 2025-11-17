@@ -41,7 +41,7 @@ export class UsuariosService {
     private readonly clienteRepository: Repository<Clientes>,
     private readonly emailService: MailService,
     private readonly jwtService: JwtService,
-  ) {}
+  ) { }
 
   //funcion para obtener los clientes hijos
   private async clienteHijos(cliente: number) {
@@ -65,6 +65,7 @@ export class UsuariosService {
 
   // Obtener todos los usuarios con paginación
   async getAllUsuario(
+    idUser: number,
     cliente: number,
     rol: number,
     page: number,
@@ -161,10 +162,11 @@ INNER JOIN Roles r ON u.IdRol = r.Id
 LEFT JOIN Clientes c ON u.IdCliente = c.Id
 WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
 AND u.Estatus = 1
+AND u.Id != ?
 ORDER BY u.Id DESC
 LIMIT ? OFFSET ?;
         `,
-            [...ids, limit, offset],
+            [...ids, idUser, limit, offset],
           );
 
           // Query para total (sin paginación)
@@ -175,8 +177,9 @@ LIMIT ? OFFSET ?;
   INNER JOIN Clientes c ON u.IdCliente = c.Id
 	WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
 AND u.Estatus = 1
+AND u.Id != ? 
   `,
-            [...ids],
+            [...ids, idUser],
           );
           break;
       }
@@ -324,7 +327,7 @@ ORDER BY u.Id DESC;
   async getAllListUsuariosRol(id: number): Promise<ApiResponseCommon> {
     try {
       const usuarios = await this.usuarioRepository.query(
-            `
+        `
 SELECT
   u.Id AS id,
   u.Nombre AS nombre,
@@ -341,8 +344,8 @@ AND u.Estatus = 1
   )
 ORDER BY u.Id DESC;
         `,
-            [id]
-          );
+        [id]
+      );
 
       const data = usuarios.map((item) => ({
         ...item,
@@ -652,16 +655,16 @@ ORDER BY u.Id DESC
       };
 
       //datos del correo
-/*       const token = this.jwtService.sign(payload, {
-        expiresIn: `${process.env.JWT_CONFIRMACION}`,
-      });
-      //Enviar correo de confirmacion
-      const name = `${userSave.nombre} ${userSave.apellidoPaterno} ${userSave.apellidoMaterno??''}`;
-      await this.emailService.sendConfirmationEmail(
-        userSave.userName,
-        name,
-        token,
-      ); */
+      /*       const token = this.jwtService.sign(payload, {
+              expiresIn: `${process.env.JWT_CONFIRMACION}`,
+            });
+            //Enviar correo de confirmacion
+            const name = `${userSave.nombre} ${userSave.apellidoPaterno} ${userSave.apellidoMaterno??''}`;
+            await this.emailService.sendConfirmationEmail(
+              userSave.userName,
+              name,
+              token,
+            ); */
 
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { createUsuarioDto };

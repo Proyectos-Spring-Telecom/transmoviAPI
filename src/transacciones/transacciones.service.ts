@@ -596,6 +596,7 @@ FROM (
   INNER JOIN Monederos m ON td.NumeroSerieMonedero = m.NumeroSerie
   INNER JOIN Pasajeros p ON m.IdPasajero = p.Id
   WHERE p.Id = ?
+  AND m.Estatus = 1
 
   UNION ALL
 
@@ -626,6 +627,7 @@ FROM (
   INNER JOIN Monederos m ON tr.NumeroSerieMonedero = m.NumeroSerie
   INNER JOIN Pasajeros p ON m.IdPasajero = p.Id
   WHERE p.Id = ?
+  AND m.Estatus = 1
 )
 ORDER BY FHRegistro DESC
 LIMIT ? OFFSET ?;
@@ -645,6 +647,7 @@ FROM (
     INNER JOIN Monederos m ON td.NumeroSerieMonedero = m.NumeroSerie
     INNER JOIN Pasajeros p ON m.IdPasajero = p.Id
     WHERE p.Id = ?  -- 👈 pasajero específico
+      AND m.Estatus = 1
 
     UNION ALL
 
@@ -654,6 +657,7 @@ FROM (
     INNER JOIN Monederos m ON tr.NumeroSerieMonedero = m.NumeroSerie
     INNER JOIN Pasajeros p ON m.IdPasajero = p.Id
     WHERE p.Id = ?  -- 👈 mismo pasajero
+      AND m.Estatus = 1
 ) AS transacciones_pasajero;
 
   `,
