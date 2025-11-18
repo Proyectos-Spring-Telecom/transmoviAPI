@@ -32,6 +32,7 @@ export class TransaccionesController {
     return this.transaccionesService.createTransaccionDebitoPrueba(
       createTransaccioneDebitoDto,
       idUser,
+      req.user.cliente,
     );
   }
 

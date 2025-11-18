@@ -47,4 +47,7 @@ export class TransaccionesDebito {
   @Column('varchar', { name: 'NumeroSerieValidador', length: 100 })
   numeroSerieValidador: string;
 
+  @Column('int', { name: 'NumeroTransbordo', nullable: true })
+  numeroTransbordo: number | null;
+
 }

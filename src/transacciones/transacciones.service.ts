@@ -33,6 +33,8 @@ import {
 } from '../utils/transaccion.util';
 import { Monederos } from 'src/entities/Monederos';
 import { CatTiposPasajeros } from 'src/entities/CatTiposPasajeros';
+import { TransbordosPermitidos } from 'src/entities/TransbordosPermitidos';
+import { DetalleTransbordos } from 'src/entities/DetalleTransbordos';
 
 @Injectable()
 export class TransaccionesService {
@@ -49,6 +51,10 @@ export class TransaccionesService {
     private readonly CatTiposPasajerosRepository: Repository<CatTiposPasajeros>,
     @InjectRepository(Monederos)
     private readonly monederoRepository: Repository<Monederos>,
+    @InjectRepository(TransbordosPermitidos)
+    private readonly transbordosPermitidosRepository: Repository<TransbordosPermitidos>,
+    @InjectRepository(DetalleTransbordos)
+    private readonly detalleTransbordosRepository: Repository<DetalleTransbordos>,
     private readonly bitacoraLogger: BitacoraLoggerService,
     private readonly monederosService: MonederosService,
     private readonly pasajeroService: PasajerosService,
@@ -74,16 +80,7 @@ export class TransaccionesService {
         Number(monedero.data.saldo) +
         Number(createTransaccioneRecargaDto.monto);
 
-      console.log(
-        'Saldo Inicial: ',
-        monedero.data.saldo,
-        ' Tipo Transaccion: ',
-        transaccion,
-        ' Monto: ',
-        createTransaccioneRecargaDto.monto,
-        ' Monto Final: ',
-        montoFinal,
-      );
+  
 
       //actualizamos el saldo del monedero
       await this.monederosService.updateMonederoSaldo(
@@ -150,6 +147,7 @@ export class TransaccionesService {
   async createTransaccionDebitoPrueba(
     createTransaccioneDebitoDto: CreateTransaccioneDebitoDto,
     idUser: number,
+    cliente: number,
   ): Promise<ApiCrudResponse> {
     let estado: EstadoTransaccion = EstadoTransaccion.INICIADA;
 
@@ -168,6 +166,81 @@ export class TransaccionesService {
       if (!monedero) {
         estado = EstadoTransaccion.ERROR;
         throw new BadRequestException('Monedero no encontrado');
+      }
+
+      // 2.5️⃣ Calculamos el numeroTransbordo y reemplazamos el monto con el costo del transbordo
+      let numeroTransbordo: number | null = null;
+      const transbordoPermitido = await this.transbordosPermitidosRepository.findOne({
+        where: { idCliente: monedero.idCliente },
+      });
+
+      if (transbordoPermitido && transbordoPermitido.tiempo && transbordoPermitido.numeroTransbordos) {
+        // Calculamos la fecha límite hacia atrás (tiempo en minutos)
+        const fechaHoraTransaccion = new Date(createTransaccioneDebitoDto.fechaHora);
+        const tiempoEnMs = transbordoPermitido.tiempo * 60 * 1000; // Convertir minutos a milisegundos
+        const fechaLimite = new Date(fechaHoraTransaccion.getTime() - tiempoEnMs);
+
+        // Buscamos transacciones en el rango de tiempo con el mismo numeroSerieMonedero
+        const transaccionesEnRango = await this.transaccionesdebitoRepository
+          .createQueryBuilder('td')
+          .where('td.numeroSerieMonedero = :numeroSerieMonedero', {
+            numeroSerieMonedero: createTransaccioneDebitoDto.numeroSerieMonedero,
+          })
+          .andWhere('td.fechaHora >= :fechaLimite', { fechaLimite })
+          .andWhere('td.fechaHora <= :fechaHoraTransaccion', { fechaHoraTransaccion })
+          .orderBy('td.fechaHora', 'ASC')
+          .getMany();
+
+        if (transaccionesEnRango.length === 0) {
+          // Es la primera transacción en ese rango de tiempo
+          numeroTransbordo = 1;
+        } else {
+          // Buscamos la primera transacción con numeroTransbordo = 1 (el primer transbordo)
+          const primerTransbordo = transaccionesEnRango.find((t) => t.numeroTransbordo === 1);
+          
+          if (primerTransbordo) {
+            // Calculamos si el tiempo desde el primer transbordo ya pasó
+            const fechaPrimerTransbordo = new Date(primerTransbordo.fechaHora);
+            const fechaExpiracionPrimerTransbordo = new Date(
+              fechaPrimerTransbordo.getTime() + tiempoEnMs,
+            );
+
+            // Si el tiempo desde el primer transbordo ya pasó, reiniciamos el contador a 1
+            if (fechaHoraTransaccion > fechaExpiracionPrimerTransbordo) {
+              numeroTransbordo = 1;
+            } else {
+              // El primer transbordo todavía está vigente, continuamos con el consecutivo
+              const numerosTransbordo = transaccionesEnRango
+                .map((t) => t.numeroTransbordo)
+                .filter((n) => n !== null && n !== undefined) as number[];
+
+              if (numerosTransbordo.length > 0) {
+                const maxNumeroTransbordo = Math.max(...numerosTransbordo);
+                numeroTransbordo = maxNumeroTransbordo + 1;
+              } else {
+                numeroTransbordo = 1;
+              }
+            }
+          } else {
+            // No hay primer transbordo (numeroTransbordo = 1) en el rango, empezamos en 1
+            numeroTransbordo = 1;
+          }
+        }
+
+        // Buscamos el costo del transbordo en DetalleTransbordos
+        if (numeroTransbordo && transbordoPermitido.id) {
+          const detalleTransbordo = await this.detalleTransbordosRepository.findOne({
+            where: {
+              idTransbordo: transbordoPermitido.id,
+              nroTransbordo: numeroTransbordo,
+            },
+          });
+
+          // Si encontramos el detalle, reemplazamos el monto con el costo del transbordo
+          if (detalleTransbordo && detalleTransbordo.costo !== null) {
+            createTransaccioneDebitoDto.monto = Number(detalleTransbordo.costo);
+          }
+        }
       }
 
       // 3️⃣ Calculamos monto final (aquí se pueden aplicar descuentos si existen)
@@ -242,9 +315,10 @@ export class TransaccionesService {
       );
 
       // 6️⃣ Guardamos transacción aprobada
-      const newTransaccion = this.transaccionesdebitoRepository.create(
-        createTransaccioneDebitoDto,
-      );
+      const newTransaccion = this.transaccionesdebitoRepository.create({
+        ...createTransaccioneDebitoDto,
+        numeroTransbordo,
+      });
       const transaccionSave =
         await this.transaccionesdebitoRepository.save(newTransaccion);
 
