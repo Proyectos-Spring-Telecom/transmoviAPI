@@ -168,12 +168,14 @@ export class TransaccionesService {
         throw new BadRequestException('Monedero no encontrado');
       }
 
-      // 2.5️⃣ Calculamos el numeroTransbordo y reemplazamos el monto con el costo del transbordo
+      // 2.5️⃣ Calculamos el numeroTransbordo y reemplazamos el monto con el costo del transbordo (opcional)
+      // Si no existe un transbordo para el cliente, continuamos con la lógica normal
       let numeroTransbordo: number | null = null;
       const transbordoPermitido = await this.transbordosPermitidosRepository.findOne({
         where: { idCliente: monedero.idCliente },
       });
 
+      // Solo aplicamos la lógica de transbordos si existe configuración para el cliente
       if (transbordoPermitido && transbordoPermitido.tiempo && transbordoPermitido.numeroTransbordos) {
         // Calculamos la fecha límite hacia atrás (tiempo en minutos)
         const fechaHoraTransaccion = new Date(createTransaccioneDebitoDto.fechaHora);
