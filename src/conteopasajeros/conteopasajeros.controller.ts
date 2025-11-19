@@ -32,13 +32,6 @@ export class ConteopasajerosController {
     return this.conteopasajerosService.create(createConteopasajeroDto);
   }
 
-  @Patch(':id')
-  async update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() updateConteoPasajerosDto: UpdateConteoPasajerosDto): Promise<ApiCrudResponse> {
-    return this.conteopasajerosService.update(+id, updateConteoPasajerosDto)
-  }
-
   // RUTAS ESPECÍFICAS PRIMERO (orden correcto)
   @UseGuards(JwtAuthGuard)
   @Get('list')

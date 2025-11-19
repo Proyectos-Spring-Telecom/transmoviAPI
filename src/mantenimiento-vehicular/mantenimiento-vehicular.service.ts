@@ -9,6 +9,10 @@ import { CreateMantenimientoVehicularDto } from './dto/create-mantenimiento-vehi
 import { UpdateMantenimientoVehicularDto } from './dto/update-mantenimiento-vehicular.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { MantenimientoVehicular } from 'src/entities/MantenimientoVehicular';
+import { CatEstatusMantenimiento } from 'src/entities/CatEstatusMantenimiento';
+import { Talleres } from 'src/entities/Talleres';
+import { Instalaciones } from 'src/entities/Instalaciones';
+import { CatReferenciaServicio } from 'src/entities/CatReferenciaServicio';
 import { Repository } from 'typeorm';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import {
@@ -22,6 +26,14 @@ export class MantenimientoVehicularService {
   constructor(
     @InjectRepository(MantenimientoVehicular)
     private readonly mantenimientoVehicularRepository: Repository<MantenimientoVehicular>,
+    @InjectRepository(CatEstatusMantenimiento)
+    private readonly catEstatusMantenimientoRepository: Repository<CatEstatusMantenimiento>,
+    @InjectRepository(Talleres)
+    private readonly talleresRepository: Repository<Talleres>,
+    @InjectRepository(Instalaciones)
+    private readonly instalacionesRepository: Repository<Instalaciones>,
+    @InjectRepository(CatReferenciaServicio)
+    private readonly catReferenciaServicioRepository: Repository<CatReferenciaServicio>,
     private readonly bitacoraLogger: BitacoraLoggerService,
   ) {}
 
@@ -30,6 +42,51 @@ export class MantenimientoVehicularService {
     idUser: number,
   ): Promise<ApiCrudResponse> {
     try {
+      // Validar claves foráneas si se proporcionan
+      if (createMantenimientoVehicularDto.idEstatus !== undefined && createMantenimientoVehicularDto.idEstatus !== null) {
+        const estatusExists = await this.catEstatusMantenimientoRepository.findOne({
+          where: { id: createMantenimientoVehicularDto.idEstatus },
+        });
+        if (!estatusExists) {
+          throw new BadRequestException(
+            `El estatus de mantenimiento con ID ${createMantenimientoVehicularDto.idEstatus} no existe.`,
+          );
+        }
+      }
+
+      if (createMantenimientoVehicularDto.idTaller !== undefined && createMantenimientoVehicularDto.idTaller !== null) {
+        const tallerExists = await this.talleresRepository.findOne({
+          where: { id: createMantenimientoVehicularDto.idTaller },
+        });
+        if (!tallerExists) {
+          throw new BadRequestException(
+            `El taller con ID ${createMantenimientoVehicularDto.idTaller} no existe.`,
+          );
+        }
+      }
+
+      if (createMantenimientoVehicularDto.idInstalacion !== undefined && createMantenimientoVehicularDto.idInstalacion !== null) {
+        const instalacionExists = await this.instalacionesRepository.findOne({
+          where: { id: createMantenimientoVehicularDto.idInstalacion },
+        });
+        if (!instalacionExists) {
+          throw new BadRequestException(
+            `La instalación con ID ${createMantenimientoVehicularDto.idInstalacion} no existe.`,
+          );
+        }
+      }
+
+      if (createMantenimientoVehicularDto.idReferencia !== undefined && createMantenimientoVehicularDto.idReferencia !== null) {
+        const referenciaExists = await this.catReferenciaServicioRepository.findOne({
+          where: { id: createMantenimientoVehicularDto.idReferencia },
+        });
+        if (!referenciaExists) {
+          throw new BadRequestException(
+            `La referencia de servicio con ID ${createMantenimientoVehicularDto.idReferencia} no existe.`,
+          );
+        }
+      }
+
       const create = await this.mantenimientoVehicularRepository.create(
         createMantenimientoVehicularDto,
       );
@@ -60,6 +117,7 @@ export class MantenimientoVehicularService {
       return result;
     } catch (error) {
       //-----Registro en la bitacora----- ERROR
+      console.log(error); 
       const querylogger = { createMantenimientoVehicularDto };
       await this.bitacoraLogger.logToBitacora(
         'MantenimientoVehicular',
@@ -206,6 +264,51 @@ export class MantenimientoVehicularService {
       });
       if (!mantenimiento) {
         throw new NotFoundException('Mantenimiento vehicular no encontrado');
+      }
+
+      // Validar claves foráneas si se proporcionan
+      if (updateMantenimientoVehicularDto.idEstatus !== undefined && updateMantenimientoVehicularDto.idEstatus !== null) {
+        const estatusExists = await this.catEstatusMantenimientoRepository.findOne({
+          where: { id: updateMantenimientoVehicularDto.idEstatus },
+        });
+        if (!estatusExists) {
+          throw new BadRequestException(
+            `El estatus de mantenimiento con ID ${updateMantenimientoVehicularDto.idEstatus} no existe.`,
+          );
+        }
+      }
+
+      if (updateMantenimientoVehicularDto.idTaller !== undefined && updateMantenimientoVehicularDto.idTaller !== null) {
+        const tallerExists = await this.talleresRepository.findOne({
+          where: { id: updateMantenimientoVehicularDto.idTaller },
+        });
+        if (!tallerExists) {
+          throw new BadRequestException(
+            `El taller con ID ${updateMantenimientoVehicularDto.idTaller} no existe.`,
+          );
+        }
+      }
+
+      if (updateMantenimientoVehicularDto.idInstalacion !== undefined && updateMantenimientoVehicularDto.idInstalacion !== null) {
+        const instalacionExists = await this.instalacionesRepository.findOne({
+          where: { id: updateMantenimientoVehicularDto.idInstalacion },
+        });
+        if (!instalacionExists) {
+          throw new BadRequestException(
+            `La instalación con ID ${updateMantenimientoVehicularDto.idInstalacion} no existe.`,
+          );
+        }
+      }
+
+      if (updateMantenimientoVehicularDto.idReferencia !== undefined && updateMantenimientoVehicularDto.idReferencia !== null) {
+        const referenciaExists = await this.catReferenciaServicioRepository.findOne({
+          where: { id: updateMantenimientoVehicularDto.idReferencia },
+        });
+        if (!referenciaExists) {
+          throw new BadRequestException(
+            `La referencia de servicio con ID ${updateMantenimientoVehicularDto.idReferencia} no existe.`,
+          );
+        }
       }
 
       await this.mantenimientoVehicularRepository.update(

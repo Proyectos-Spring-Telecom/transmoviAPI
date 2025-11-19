@@ -210,9 +210,6 @@ WHERE c.Id = ?   -- 🔹 aquí colocas el ID del cliente que quieres consultar
     return await this.conteopasajeroRepository.query(query, [cliente]);
   }
 
-  // ========================================
-  // 🔹 OBTENER PAGINADO CONTEOPASAJEROS
-  // ========================================
   async findAll(
     idUser: number,
     cliente: number,
@@ -472,9 +469,6 @@ AND c.Id = ?   -- 🔹 aquí colocas el ID del cliente que quieres consultar
     return await this.conteopasajeroRepository.query(query, [cliente]);
   }
 
-  // ========================================
-  // 🔹 OBTENER LISTADO CONTEOPASAJEROS
-  // ========================================
   async findAllList(): Promise<ApiResponseCommon> {
     try {
       const conteopasajero = await this.conteopasajeroRepository.find({
