@@ -317,7 +317,8 @@ SELECT
   Id AS id,
   Nombre AS nombre,
   ApellidoPaterno AS apellidoPaterno,
-  ApellidoMaterno AS apellidoMaterno
+  ApellidoMaterno AS apellidoMaterno,
+  Logotipo AS logotipo
 FROM Clientes
 WHERE Estatus = 1
 ORDER BY Id ASC;
@@ -334,7 +335,8 @@ SELECT
   Id AS id,
   Nombre AS nombre,
   ApellidoPaterno AS apellidoPaterno,
-  ApellidoMaterno AS apellidoMaterno
+  ApellidoMaterno AS apellidoMaterno,
+  Logotipo AS logotipo
 FROM Clientes
 WHERE Id IN (${placeholders})  -- 🔹 aquí colocas el ID del cliente que quieres consultar
   AND Estatus = 1
