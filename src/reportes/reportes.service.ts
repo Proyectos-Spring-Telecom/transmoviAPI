@@ -4,6 +4,8 @@ import { Repository } from 'typeorm';
 import { Clientes } from 'src/entities/Clientes';
 import { RecaudacionDiariaRutaDto } from './dto/recaudacion-diaria-ruta.dto';
 import { RecaudacionPorOperadorDto } from './dto/recaudacion-por-operador.dto';
+import { RecaudacionPorVehiculoDto } from './dto/recaudacion-por-vehiculo.dto';
+import { RecaudacionPorDispositivoDto } from './dto/recaudacion-por-dispositivo.dto';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
 
 @Injectable()
@@ -45,25 +47,23 @@ export class ReportesService {
         };
       }
 
-      // Construir condiciones WHERE dinámicas
+      // Construir condiciones WHERE para transacciones
       const condiciones: string[] = [];
       const parametros: any[] = [];
 
-      // Filtro de clientes
-      condiciones.push(`c.Id IN (${placeholders})`);
+      // Filtro de clientes a través de Monederos
+      condiciones.push(`m.IdCliente IN (${placeholders})`);
       parametros.push(...clienteIds);
 
-      // Filtro de fecha
+      // Filtro de fecha - SOLO EN TRANSACCIONES
       if (filtros.fechaInicio) {
-        // Convertir fecha ISO a formato MySQL y usar solo la fecha
         const fechaInicio = filtros.fechaInicio.split('T')[0];
-        condiciones.push(`DATE(v.Inicio) >= ?`);
+        condiciones.push(`DATE(td.FechaHora) >= ?`);
         parametros.push(fechaInicio);
       }
       if (filtros.fechaFin) {
-        // Convertir fecha ISO a formato MySQL y usar solo la fecha
         const fechaFin = filtros.fechaFin.split('T')[0];
-        condiciones.push(`DATE(v.Inicio) <= ?`);
+        condiciones.push(`DATE(td.FechaHora) <= ?`);
         parametros.push(fechaFin);
       }
 
@@ -87,33 +87,9 @@ export class ReportesService {
 
       const whereClause = condiciones.length > 0 ? `WHERE ${condiciones.join(' AND ')}` : '';
 
-      // Ya no necesitamos la segunda subconsulta, usamos una sola consulta con LEFT JOINs
-
-      // Construir condiciones para transacciones (sin depender de viajes)
-      const condicionesTransacciones: string[] = [];
-      const parametrosTransacciones: any[] = [];
-
-      // Filtro de clientes a través de Monederos
-      condicionesTransacciones.push(`m.IdCliente IN (${placeholders})`);
-      parametrosTransacciones.push(...clienteIds);
-
-      // Filtro de fecha para transacciones
-      if (filtros.fechaInicio) {
-        const fechaInicio = filtros.fechaInicio.split('T')[0];
-        condicionesTransacciones.push(`DATE(td.FechaHora) >= ?`);
-        parametrosTransacciones.push(fechaInicio);
-      }
-      if (filtros.fechaFin) {
-        const fechaFin = filtros.fechaFin.split('T')[0];
-        condicionesTransacciones.push(`DATE(td.FechaHora) <= ?`);
-        parametrosTransacciones.push(fechaFin);
-      }
-
-      const whereClauseTransacciones = condicionesTransacciones.length > 0 ? `WHERE ${condicionesTransacciones.join(' AND ')}` : '';
-
       const query = `
 SELECT
-    COALESCE(DATE(v.Inicio), DATE(td.FechaHora)) AS fecha,
+    DATE(td.FechaHora) AS fecha,
     reg.Id AS idRegion,
     reg.Nombre AS nombreRegion,
     r.Id AS idRuta,
@@ -133,11 +109,11 @@ SELECT
         THEN (COUNT(DISTINCT CASE WHEN td.ControlTransaccion = 1 THEN td.Id END) * 100.0) / COUNT(DISTINCT td.Id)
         ELSE 0
     END AS porcentajeElectronico,
-    COALESCE(SUM(vc.Diferencia), 0) AS pasajerosContados,
-    COALESCE(SUM(vc.Diferencia), 0) - COUNT(DISTINCT td.Id) AS evasionAbsoluta,
+    COALESCE(SUM(vc.Diferencia), 0) AS ascensos,
+    GREATEST(COALESCE(SUM(vc.Diferencia), 0) - COUNT(DISTINCT td.Id), 0) AS evasionAbsoluta,
     CASE 
         WHEN COALESCE(SUM(vc.Diferencia), 0) > 0
-        THEN ((COALESCE(SUM(vc.Diferencia), 0) - COUNT(DISTINCT td.Id)) * 100.0) / COALESCE(SUM(vc.Diferencia), 0)
+        THEN (GREATEST(COALESCE(SUM(vc.Diferencia), 0) - COUNT(DISTINCT td.Id), 0) * 100.0) / COALESCE(SUM(vc.Diferencia), 0)
         ELSE 0
     END AS evasionPorcentual
 FROM TransaccionesDebito td
@@ -150,123 +126,20 @@ LEFT JOIN Rutas r ON d.IdRuta = r.Id
 LEFT JOIN Regiones reg ON r.IdRegion = reg.Id
 LEFT JOIN ViajesConteos vc_rel ON vc_rel.IdViaje = v.Id
 LEFT JOIN ConteoPasajeros vc ON vc_rel.IdConteo = vc.Id
-${whereClauseTransacciones}
-GROUP BY COALESCE(DATE(v.Inicio), DATE(td.FechaHora)), reg.Id, reg.Nombre, r.Id, r.Nombre, d.Id, d.Nombre
-ORDER BY COALESCE(DATE(v.Inicio), DATE(td.FechaHora)) DESC, reg.Nombre, r.Nombre, d.Nombre;
+${whereClause}
+GROUP BY DATE(td.FechaHora), reg.Id, reg.Nombre, r.Id, r.Nombre, d.Id, d.Nombre
+HAVING COUNT(DISTINCT td.Id) > 0
+ORDER BY DATE(td.FechaHora) DESC, reg.Nombre, r.Nombre, d.Nombre;
       `;
 
-      // Log temporal para debugging (remover en producción)
-      console.log('=== DEBUG REPORTE RECAUDACIÓN ===');
+      console.log('=== DEBUG REPORTE RECAUDACIÓN DIARIA POR RUTA ===');
       console.log('Filtros recibidos:', filtros);
       console.log('Cliente IDs:', clienteIds);
-      console.log('Where clause transacciones:', whereClauseTransacciones);
-      console.log('Parámetros transacciones:', parametrosTransacciones);
-      console.log('Cantidad de placeholders en query:', (query.match(/\?/g) || []).length);
-      console.log('Cantidad de parámetros:', parametrosTransacciones.length);
-
-      // Consulta de prueba para verificar que hay viajes
-      const queryTest = `
-        SELECT COUNT(*) as totalViajes
-        FROM Viajes v
-        INNER JOIN Clientes c ON v.IdCliente = c.Id
-        WHERE c.Id IN (${placeholders})
-        ${filtros.fechaInicio ? `AND DATE(v.Inicio) >= ?` : ''}
-        ${filtros.fechaFin ? `AND DATE(v.Inicio) <= ?` : ''}
-      `;
-      const paramsTest = [
-        ...clienteIds,
-        ...(filtros.fechaInicio ? [filtros.fechaInicio.split('T')[0]] : []),
-        ...(filtros.fechaFin ? [filtros.fechaFin.split('T')[0]] : []),
-      ];
-      const testResult = await this.clienteRepository.query(queryTest, paramsTest);
-      const totalViajes = testResult[0]?.totalViajes || 0;
-      console.log('Total de viajes que cumplen filtros básicos:', totalViajes);
+      console.log('Parámetros:', parametros);
       
-      if (totalViajes === 0) {
-        console.warn('⚠️ ADVERTENCIA: No se encontraron viajes en el rango de fechas especificado.');
-        console.warn('El reporte de recaudación diaria por ruta requiere viajes para obtener información de rutas y derroteros.');
-        console.warn('Por favor, asegúrese de que existan viajes en el rango de fechas especificado.');
-      }
-
-      // Verificar si hay transacciones relacionadas con viajes
-      const queryTestTransacciones = `
-        SELECT COUNT(DISTINCT v.Id) as viajesConTransacciones
-        FROM Viajes v
-        INNER JOIN Clientes c ON v.IdCliente = c.Id
-        INNER JOIN ViajesTransacciones vt ON vt.IdViaje = v.Id
-        INNER JOIN TransaccionesDebito td ON vt.IdTransaccionDebito = td.Id
-        WHERE c.Id IN (${placeholders})
-        ${filtros.fechaInicio ? `AND DATE(v.Inicio) >= ?` : ''}
-        ${filtros.fechaFin ? `AND DATE(v.Inicio) <= ?` : ''}
-      `;
-      const testTransacciones = await this.clienteRepository.query(queryTestTransacciones, paramsTest);
-      console.log('Viajes con transacciones relacionadas:', testTransacciones[0]?.viajesConTransacciones || 0);
-
-      // Verificar estructura de ViajesTransacciones
-      const queryTestVT = `
-        SELECT COUNT(*) as totalRelaciones
-        FROM ViajesTransacciones vt
-        INNER JOIN Viajes v ON vt.IdViaje = v.Id
-        INNER JOIN Clientes c ON v.IdCliente = c.Id
-        WHERE c.Id IN (${placeholders})
-        ${filtros.fechaInicio ? `AND DATE(v.Inicio) >= ?` : ''}
-        ${filtros.fechaFin ? `AND DATE(v.Inicio) <= ?` : ''}
-      `;
-      const testVT = await this.clienteRepository.query(queryTestVT, paramsTest);
-      console.log('Total relaciones ViajesTransacciones:', testVT[0]?.totalRelaciones || 0);
+      const resultados = await this.clienteRepository.query(query, parametros);
       
-      // Verificar columnas de ViajesTransacciones
-      const queryColumns = `
-        SHOW COLUMNS FROM ViajesTransacciones
-      `;
-      const columns = await this.clienteRepository.query(queryColumns);
-      console.log('Columnas de ViajesTransacciones:', columns.map((c: any) => c.Field));
-
-      // Verificar si hay viajes en ese rango SIN filtrar por cliente
-      const queryTestSinCliente = `
-        SELECT COUNT(*) as totalViajesSinCliente
-        FROM Viajes v
-        WHERE DATE(v.Inicio) >= ? AND DATE(v.Inicio) <= ?
-      `;
-      const paramsTestSinCliente = [
-        filtros.fechaInicio ? filtros.fechaInicio.split('T')[0] : null,
-        filtros.fechaFin ? filtros.fechaFin.split('T')[0] : null,
-      ].filter(Boolean);
-      if (paramsTestSinCliente.length === 2) {
-        const testSinCliente = await this.clienteRepository.query(queryTestSinCliente, paramsTestSinCliente);
-        console.log('Total de viajes en rango (sin filtro cliente):', testSinCliente[0]?.totalViajesSinCliente || 0);
-      }
-
-      // Verificar transacciones en ese rango
-      const queryTestTransaccionesRango = `
-        SELECT COUNT(*) as totalTransacciones
-        FROM TransaccionesDebito td
-        WHERE DATE(td.FechaHora) >= ? AND DATE(td.FechaHora) <= ?
-      `;
-      const testTransaccionesRango = await this.clienteRepository.query(queryTestTransaccionesRango, [
-        filtros.fechaInicio ? filtros.fechaInicio.split('T')[0] : null,
-        filtros.fechaFin ? filtros.fechaFin.split('T')[0] : null,
-      ].filter(Boolean));
-      console.log('Total transacciones en rango:', testTransaccionesRango[0]?.totalTransacciones || 0);
-
-      // Verificar si las transacciones tienen viajes asociados
-      const queryTestTransaccionesConViajes = `
-        SELECT COUNT(*) as transaccionesConViajes
-        FROM TransaccionesDebito td
-        INNER JOIN ViajesTransacciones vt ON vt.IdTransaccionDebito = td.Id
-        INNER JOIN Viajes v ON vt.IdViaje = v.Id
-        WHERE DATE(td.FechaHora) >= ? AND DATE(td.FechaHora) <= ?
-      `;
-      const testTransaccionesConViajes = await this.clienteRepository.query(queryTestTransaccionesConViajes, [
-        filtros.fechaInicio ? filtros.fechaInicio.split('T')[0] : null,
-        filtros.fechaFin ? filtros.fechaFin.split('T')[0] : null,
-      ].filter(Boolean));
-      console.log('Transacciones con viajes asociados:', testTransaccionesConViajes[0]?.transaccionesConViajes || 0);
-
-      const resultados = await this.clienteRepository.query(query, parametrosTransacciones);
-      
-      console.log('Resultados obtenidos del reporte:', resultados.length);
-      console.log('Primeros 3 resultados:', resultados.slice(0, 3));
+      console.log('Resultados obtenidos:', resultados.length);
       console.log('=== FIN DEBUG ===');
 
       // Formatear resultados
@@ -283,7 +156,7 @@ ORDER BY COALESCE(DATE(v.Inicio), DATE(td.FechaHora)) DESC, reg.Nombre, r.Nombre
         ingresos: row.ingresos ? Number(parseFloat(String(row.ingresos)).toFixed(2)) : 0,
         ticketPromedio: row.ticketPromedio ? Number(parseFloat(String(row.ticketPromedio)).toFixed(2)) : 0,
         porcentajeElectronico: row.porcentajeElectronico ? Number(parseFloat(String(row.porcentajeElectronico)).toFixed(2)) : 0,
-        pasajerosContados: row.pasajerosContados ? Number(row.pasajerosContados) : 0,
+        ascensos: row.ascensos ? Number(row.ascensos) : 0,
         evasionAbsoluta: row.evasionAbsoluta !== null && row.evasionAbsoluta !== undefined ? Number(row.evasionAbsoluta) : 0,
         evasionPorcentual: row.evasionPorcentual ? Number(parseFloat(String(row.evasionPorcentual)).toFixed(2)) : 0,
       }));
@@ -318,28 +191,12 @@ ORDER BY COALESCE(DATE(v.Inicio), DATE(td.FechaHora)) DESC, reg.Nombre, r.Nombre
         };
       }
 
-      // Preparar filtros de fecha
+      // Preparar filtros de fecha - SOLO PARA TRANSACCIONES
       const fechaInicio = filtros.fechaInicio ? filtros.fechaInicio.split('T')[0] : null;
       const fechaFin = filtros.fechaFin ? filtros.fechaFin.split('T')[0] : null;
 
-      // Construir condiciones de fecha para subconsultas
-      const condicionesFechaTurnos: string[] = [];
-      const condicionesFechaViajes: string[] = [];
-      
-      if (fechaInicio) {
-        condicionesFechaTurnos.push(`DATE(t.Inicio) >= ?`);
-        condicionesFechaViajes.push(`DATE(v2.Inicio) >= ?`); // Usar v2 porque es el alias en la subconsulta
-      }
-      if (fechaFin) {
-        condicionesFechaTurnos.push(`DATE(t.Inicio) <= ?`);
-        condicionesFechaViajes.push(`DATE(v2.Inicio) <= ?`); // Usar v2 porque es el alias en la subconsulta
-      }
-
-      const fechaTurnosWhere = condicionesFechaTurnos.length > 0 ? `AND ${condicionesFechaTurnos.join(' AND ')}` : '';
-      const fechaViajesWhere = condicionesFechaViajes.length > 0 ? `AND ${condicionesFechaViajes.join(' AND ')}` : '';
-
-      // Consulta simplificada: empezar desde transacciones y agrupar por operador (o NULL)
-      // Usamos subconsultas separadas para evitar problemas con GROUP BY
+      // Consulta: empezar desde transacciones y agrupar por operador
+      // Las subconsultas de turnos y viajes NO tienen filtro de fecha
       const query = `
 SELECT
     datos.idOperador,
@@ -374,7 +231,7 @@ FROM (
         END AS ticketPromedio,
         CASE 
             WHEN COALESCE(SUM(vc.Diferencia), 0) > 0
-            THEN ((COALESCE(SUM(vc.Diferencia), 0) - COUNT(DISTINCT td.Id)) * 100.0) / COALESCE(SUM(vc.Diferencia), 0)
+            THEN (GREATEST(COALESCE(SUM(vc.Diferencia), 0) - COUNT(DISTINCT td.Id), 0) * 100.0) / COALESCE(SUM(vc.Diferencia), 0)
             ELSE 0
         END AS evasionPorcentual
     FROM TransaccionesDebito td
@@ -399,7 +256,6 @@ LEFT JOIN (
         COUNT(DISTINCT t.Id) AS totalTurnos,
         MAX(t.Inicio) AS ultimoTurno
     FROM Turnos t
-    WHERE 1=1 ${fechaTurnosWhere}
     GROUP BY COALESCE(t.IdOperador, 0)
 ) AS turnos_data ON turnos_data.IdOperador = datos.idOperador
 LEFT JOIN (
@@ -407,17 +263,16 @@ LEFT JOIN (
         COALESCE(v2.IdOperador, 0) AS IdOperador,
         COUNT(DISTINCT v2.Id) AS totalViajes
     FROM Viajes v2
-    WHERE 1=1 ${fechaViajesWhere}
     GROUP BY COALESCE(v2.IdOperador, 0)
 ) AS viajes_data ON viajes_data.IdOperador = datos.idOperador
 ORDER BY datos.ingresos DESC, datos.operador ASC;
       `;
 
       // Construir parámetros para la consulta principal
-      // Orden: clienteIds, fechas WHERE principal, idOperador, fechas subconsultas (turnos y viajes)
+      // Orden: clienteIds, fechas WHERE principal (solo transacciones), idOperador
       const parametrosCompletos = [...clienteIds];
       
-      // Parámetros de fecha para el WHERE principal (transacciones)
+      // Parámetros de fecha para el WHERE principal (solo transacciones)
       if (fechaInicio) {
         parametrosCompletos.push(fechaInicio);
       }
@@ -429,143 +284,16 @@ ORDER BY datos.ingresos DESC, datos.operador ASC;
       if (filtros.idOperador) {
         parametrosCompletos.push(filtros.idOperador);
       }
-      
-      // Parámetros de fecha para las subconsultas de turnos (primero)
-      if (fechaInicio) {
-        parametrosCompletos.push(fechaInicio);
-      }
-      if (fechaFin) {
-        parametrosCompletos.push(fechaFin);
-      }
-      
-      // Parámetros de fecha para las subconsultas de viajes (después)
-      if (fechaInicio) {
-        parametrosCompletos.push(fechaInicio);
-      }
-      if (fechaFin) {
-        parametrosCompletos.push(fechaFin);
-      }
 
       console.log('=== DEBUG RECAUDACIÓN POR OPERADOR ===');
       console.log('Filtros:', filtros);
       console.log('Cliente IDs:', clienteIds);
       console.log('Parámetros completos:', parametrosCompletos);
-      console.log('Cantidad de placeholders en query:', (query.match(/\?/g) || []).length);
-      console.log('Cantidad de parámetros:', parametrosCompletos.length);
-      
-      // Consulta de prueba para verificar transacciones
-      const queryTestTransacciones = `
-        SELECT COUNT(*) as totalTransacciones
-        FROM TransaccionesDebito td
-        INNER JOIN Monederos m ON td.NumeroSerieMonedero = m.NumeroSerie
-        INNER JOIN Clientes c ON m.IdCliente = c.Id
-        WHERE c.Id IN (${placeholders})
-        ${fechaInicio ? `AND DATE(td.FechaHora) >= ?` : ''}
-        ${fechaFin ? `AND DATE(td.FechaHora) <= ?` : ''}
-      `;
-      const paramsTestTransacciones = [
-        ...clienteIds,
-        ...(fechaInicio ? [fechaInicio] : []),
-        ...(fechaFin ? [fechaFin] : []),
-      ];
-      const testTransacciones = await this.clienteRepository.query(queryTestTransacciones, paramsTestTransacciones);
-      console.log('Total transacciones que cumplen filtros:', testTransacciones[0]?.totalTransacciones || 0);
-
-      // Consulta de prueba para verificar transacciones con operadores
-      const queryTestConOperadores = `
-        SELECT COUNT(DISTINCT COALESCE(o.Id, 0)) as operadoresConTransacciones
-        FROM TransaccionesDebito td
-        INNER JOIN Monederos m ON td.NumeroSerieMonedero = m.NumeroSerie
-        INNER JOIN Clientes c ON m.IdCliente = c.Id
-        LEFT JOIN ViajesTransacciones vt ON vt.IdTransaccionDebito = td.Id
-        LEFT JOIN Viajes v ON vt.IdViaje = v.Id
-        LEFT JOIN Operadores o ON v.IdOperador = o.Id
-        WHERE c.Id IN (${placeholders})
-        ${fechaInicio ? `AND DATE(td.FechaHora) >= ?` : ''}
-        ${fechaFin ? `AND DATE(td.FechaHora) <= ?` : ''}
-      `;
-      const testConOperadores = await this.clienteRepository.query(queryTestConOperadores, paramsTestTransacciones);
-      console.log('Operadores distintos con transacciones:', testConOperadores[0]?.operadoresConTransacciones || 0);
-
-      // Consulta de prueba simplificada para ver qué está pasando
-      const queryTestSimple = `
-        SELECT 
-          COALESCE(o.Id, 0) AS idOperador,
-          COUNT(DISTINCT td.Id) AS validaciones,
-          COALESCE(SUM(td.Monto), 0) AS ingresos
-        FROM TransaccionesDebito td
-        INNER JOIN Monederos m ON td.NumeroSerieMonedero = m.NumeroSerie
-        INNER JOIN Clientes c ON m.IdCliente = c.Id
-        LEFT JOIN ViajesTransacciones vt ON vt.IdTransaccionDebito = td.Id
-        LEFT JOIN Viajes v ON vt.IdViaje = v.Id
-        LEFT JOIN Operadores o ON v.IdOperador = o.Id
-        WHERE c.Id IN (${placeholders})
-        ${fechaInicio ? `AND DATE(td.FechaHora) >= ?` : ''}
-        ${fechaFin ? `AND DATE(td.FechaHora) <= ?` : ''}
-        GROUP BY COALESCE(o.Id, 0)
-      `;
-      const testSimple = await this.clienteRepository.query(queryTestSimple, paramsTestTransacciones);
-      console.log('Consulta simplificada - resultados:', testSimple.length);
-      console.log('Datos de consulta simplificada:', JSON.stringify(testSimple, null, 2));
-      
-      // Verificar si el problema está en las subconsultas
-      const queryTestSubconsultas = `
-        SELECT 
-          t.IdOperador,
-          COUNT(DISTINCT t.Id) AS totalTurnos
-        FROM Turnos t
-        WHERE 1=1 ${fechaTurnosWhere}
-        GROUP BY t.IdOperador
-      `;
-      const paramsSubconsultas: any[] = [];
-      if (fechaInicio) paramsSubconsultas.push(fechaInicio);
-      if (fechaFin) paramsSubconsultas.push(fechaFin);
-      const testSubconsultas = await this.clienteRepository.query(queryTestSubconsultas, paramsSubconsultas);
-      console.log('Subconsulta turnos - resultados:', testSubconsultas.length);
-
-      // Consulta de prueba sin subconsultas para verificar
-      const queryTestSinSubconsultas = `
-        SELECT
-          COALESCE(o.Id, 0) AS idOperador,
-          COALESCE(
-              CONCAT(
-                  u.Nombre,
-                  ' ',
-                  u.ApellidoPaterno,
-                  IFNULL(CONCAT(' ', u.ApellidoMaterno), '')
-              ),
-              'Sin operador asignado'
-          ) AS operador,
-          COUNT(DISTINCT td.Id) AS validaciones,
-          COALESCE(SUM(td.Monto), 0) AS ingresos
-        FROM TransaccionesDebito td
-        INNER JOIN Monederos m ON td.NumeroSerieMonedero = m.NumeroSerie
-        INNER JOIN Clientes c ON m.IdCliente = c.Id
-        LEFT JOIN ViajesTransacciones vt ON vt.IdTransaccionDebito = td.Id
-        LEFT JOIN Viajes v ON vt.IdViaje = v.Id
-        LEFT JOIN Operadores o ON v.IdOperador = o.Id
-        LEFT JOIN Usuarios u ON o.IdUsuario = u.Id
-        WHERE c.Id IN (${placeholders})
-        ${fechaInicio ? `AND DATE(td.FechaHora) >= ?` : ''}
-        ${fechaFin ? `AND DATE(td.FechaHora) <= ?` : ''}
-        GROUP BY COALESCE(o.Id, 0), u.Nombre, u.ApellidoPaterno, u.ApellidoMaterno
-      `;
-      const paramsTestSinSubconsultas = [
-        ...clienteIds,
-        ...(fechaInicio ? [fechaInicio] : []),
-        ...(fechaFin ? [fechaFin] : []),
-      ];
-      const testSinSubconsultas = await this.clienteRepository.query(queryTestSinSubconsultas, paramsTestSinSubconsultas);
-      console.log('Consulta sin subconsultas - resultados:', testSinSubconsultas.length);
-      console.log('Datos sin subconsultas:', JSON.stringify(testSinSubconsultas, null, 2));
-
-      console.log('Ejecutando consulta principal...');
-      console.log('Query completa (primeros 1000 chars):', query.substring(0, 1000));
       
       const resultados = await this.clienteRepository.query(query, parametrosCompletos);
       
-      console.log('Resultados obtenidos del reporte:', resultados.length);
-      console.log('Primeros 3 resultados:', JSON.stringify(resultados.slice(0, 3), null, 2));
+      console.log('Resultados obtenidos:', resultados.length);
+      console.log('=== FIN DEBUG ===');
 
       // Formatear resultados
       const data = resultados.map((row: any) => {
@@ -594,6 +322,312 @@ ORDER BY datos.ingresos DESC, datos.operador ASC;
       }
       throw new InternalServerErrorException({
         message: 'Error al generar el reporte de recaudación por operador',
+        error: error.message,
+        stack: error.stack,
+      });
+    }
+  }
+
+  async recaudacionPorVehiculo(
+    filtros: RecaudacionPorVehiculoDto,
+    cliente: number,
+  ): Promise<ApiResponseCommon> {
+    try {
+      // Obtener jerarquía de clientes
+      const { ids: clienteIds, placeholders } = await this.clienteHijos(cliente);
+      
+      if (clienteIds.length === 0) {
+        return {
+          data: [],
+        };
+      }
+
+      // Preparar filtros de fecha - SOLO PARA TRANSACCIONES
+      const fechaInicio = filtros.fechaInicio ? filtros.fechaInicio.split('T')[0] : null;
+      const fechaFin = filtros.fechaFin ? filtros.fechaFin.split('T')[0] : null;
+
+      // Consulta principal: empezar desde transacciones y agrupar por vehículo
+      // Las subconsultas de turnos y viajes NO tienen filtro de fecha
+      const query = `
+SELECT
+    datos.idVehiculo,
+    datos.numeroEconomico,
+    datos.placa,
+    datos.marca,
+    datos.modelo,
+    datos.ano,
+    COALESCE(turnos_data.totalTurnos, 0) AS turnos,
+    COALESCE(viajes_data.totalViajes, 0) AS viajes,
+    datos.validaciones,
+    datos.ingresos,
+    datos.ticketPromedio,
+    COALESCE(turnos_data.horasServicio, 0) AS horasServicio
+FROM (
+    SELECT
+        veh.Id AS idVehiculo,
+        veh.NumeroEconomico AS numeroEconomico,
+        veh.Placa AS placa,
+        veh.Marca AS marca,
+        veh.Modelo AS modelo,
+        veh.Ano AS ano,
+        COUNT(DISTINCT td.Id) AS validaciones,
+        COALESCE(SUM(td.Monto), 0) AS ingresos,
+        CASE 
+            WHEN COUNT(DISTINCT td.Id) > 0 
+            THEN COALESCE(SUM(td.Monto), 0) / COUNT(DISTINCT td.Id)
+            ELSE 0 
+        END AS ticketPromedio
+    FROM TransaccionesDebito td
+    INNER JOIN Monederos m ON td.NumeroSerieMonedero = m.NumeroSerie
+    INNER JOIN Clientes c ON m.IdCliente = c.Id
+    LEFT JOIN ViajesTransacciones vt ON vt.IdTransaccionDebito = td.Id
+    LEFT JOIN Viajes v ON vt.IdViaje = v.Id
+    LEFT JOIN Turnos t ON v.IdTurno = t.Id
+    LEFT JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
+    LEFT JOIN Vehiculos veh ON ins.IdVehiculo = veh.Id
+    LEFT JOIN Derroteros d ON v.IdDerrotero = d.Id
+    LEFT JOIN Rutas r ON d.IdRuta = r.Id
+    WHERE c.Id IN (${placeholders})
+    ${fechaInicio ? `AND DATE(td.FechaHora) >= ?` : ''}
+    ${fechaFin ? `AND DATE(td.FechaHora) <= ?` : ''}
+    ${filtros.idVehiculo ? 'AND veh.Id = ?' : ''}
+    ${filtros.idRuta ? 'AND r.Id = ?' : ''}
+    GROUP BY veh.Id, veh.NumeroEconomico, veh.Placa, veh.Marca, veh.Modelo, veh.Ano
+) AS datos
+LEFT JOIN (
+    SELECT 
+        veh2.Id AS IdVehiculo,
+        COUNT(DISTINCT t2.Id) AS totalTurnos,
+        COALESCE(SUM(
+            CASE 
+                WHEN t2.Fin IS NOT NULL 
+                THEN TIMESTAMPDIFF(HOUR, t2.Inicio, t2.Fin)
+                ELSE 0
+            END
+        ), 0) AS horasServicio
+    FROM Vehiculos veh2
+    INNER JOIN Instalaciones ins2 ON ins2.IdVehiculo = veh2.Id
+    INNER JOIN Turnos t2 ON t2.IdInstalacion = ins2.Id
+    GROUP BY veh2.Id
+) AS turnos_data ON turnos_data.IdVehiculo = datos.idVehiculo
+LEFT JOIN (
+    SELECT 
+        veh3.Id AS IdVehiculo,
+        COUNT(DISTINCT v3.Id) AS totalViajes
+    FROM Vehiculos veh3
+    INNER JOIN Instalaciones ins3 ON ins3.IdVehiculo = veh3.Id
+    INNER JOIN Turnos t3 ON t3.IdInstalacion = ins3.Id
+    INNER JOIN Viajes v3 ON v3.IdTurno = t3.Id
+    GROUP BY veh3.Id
+) AS viajes_data ON viajes_data.IdVehiculo = datos.idVehiculo
+ORDER BY datos.ingresos DESC, datos.numeroEconomico ASC;
+      `;
+
+      // Construir parámetros para la consulta principal
+      // Orden: clienteIds, fechas (solo transacciones), idVehiculo, idRuta
+      const parametrosCompletos = [...clienteIds];
+      
+      // Parámetros de fecha (solo para transacciones)
+      if (fechaInicio) {
+        parametrosCompletos.push(fechaInicio);
+      }
+      if (fechaFin) {
+        parametrosCompletos.push(fechaFin);
+      }
+      
+      // Parámetro de vehículo si existe
+      if (filtros.idVehiculo) {
+        parametrosCompletos.push(filtros.idVehiculo);
+      }
+      
+      // Parámetro de ruta si existe
+      if (filtros.idRuta) {
+        parametrosCompletos.push(filtros.idRuta);
+      }
+
+      console.log('=== DEBUG RECAUDACIÓN POR VEHÍCULO ===');
+      console.log('Filtros:', filtros);
+      console.log('Cliente IDs:', clienteIds);
+      console.log('Parámetros completos:', parametrosCompletos);
+      
+      const resultados = await this.clienteRepository.query(query, parametrosCompletos);
+      
+      console.log('Resultados obtenidos:', resultados.length);
+      console.log('=== FIN DEBUG ===');
+
+      // Formatear resultados
+      const data = resultados.map((row: any) => ({
+        idVehiculo: row.idVehiculo ? Number(row.idVehiculo) : null,
+        numeroEconomico: row.numeroEconomico || null,
+        placa: row.placa || null,
+        marca: row.marca || null,
+        modelo: row.modelo || null,
+        ano: row.ano ? Number(row.ano) : null,
+        marcaModeloAno: `${row.marca || ''} ${row.modelo || ''} ${row.ano || ''}`.trim(),
+        turnos: Number(row.turnos) || 0,
+        viajes: Number(row.viajes) || 0,
+        validaciones: Number(row.validaciones) || 0,
+        ingresos: Number(parseFloat(String(row.ingresos)).toFixed(2)) || 0,
+        ticketPromedio: Number(parseFloat(String(row.ticketPromedio)).toFixed(2)) || 0,
+        horasServicio: Number(parseFloat(String(row.horasServicio)).toFixed(2)) || 0,
+      }));
+
+      return {
+        data,
+      };
+    } catch (error) {
+      console.error('Error en recaudacionPorVehiculo:', error);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Error al generar el reporte de recaudación por vehículo',
+        error: error.message,
+        stack: error.stack,
+      });
+    }
+  }
+
+  async recaudacionPorDispositivo(
+    filtros: RecaudacionPorDispositivoDto,
+    cliente: number,
+  ): Promise<ApiResponseCommon> {
+    try {
+      // Obtener jerarquía de clientes
+      const { ids: clienteIds, placeholders } = await this.clienteHijos(cliente);
+      
+      if (clienteIds.length === 0) {
+        return {
+          data: [],
+        };
+      }
+
+      // Preparar filtros de fecha - SOLO PARA TRANSACCIONES
+      const fechaInicio = filtros.fechaInicio ? filtros.fechaInicio.split('T')[0] : null;
+      const fechaFin = filtros.fechaFin ? filtros.fechaFin.split('T')[0] : null;
+
+      // Consulta principal: empezar desde transacciones y agrupar por instalación/dispositivo
+      const query = `
+SELECT
+    datos.idInstalacion,
+    datos.serieDispositivo,
+    datos.serieBlueVox,
+    datos.numeroEconomico,
+    datos.placa,
+    datos.vehiculo,
+    datos.validaciones,
+    datos.ingresos,
+    datos.estadoDispositivo,
+    pos.latitud AS ultimaPosicionLatitud,
+    pos.longitud AS ultimaPosicionLongitud,
+    pos.fechaHora AS ultimaPosicionFecha
+FROM (
+    SELECT
+        ins.Id AS idInstalacion,
+        disp.NumeroSerie AS serieDispositivo,
+        bv.NumeroSerie AS serieBlueVox,
+        veh.NumeroEconomico AS numeroEconomico,
+        veh.Placa AS placa,
+        CONCAT(veh.NumeroEconomico, ' - ', veh.Placa) AS vehiculo,
+        COUNT(DISTINCT td.Id) AS validaciones,
+        COALESCE(SUM(td.Monto), 0) AS ingresos,
+        disp.EstadoActual AS estadoDispositivo
+    FROM TransaccionesDebito td
+    INNER JOIN Monederos m ON td.NumeroSerieMonedero = m.NumeroSerie
+    INNER JOIN Clientes c ON m.IdCliente = c.Id
+    LEFT JOIN ViajesTransacciones vt ON vt.IdTransaccionDebito = td.Id
+    LEFT JOIN Viajes v ON vt.IdViaje = v.Id
+    LEFT JOIN Turnos t ON v.IdTurno = t.Id
+    LEFT JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
+    LEFT JOIN Dispositivos disp ON ins.IdDispositivo = disp.Id
+    LEFT JOIN BlueVoxs bv ON ins.IdBlueVox = bv.Id
+    LEFT JOIN Vehiculos veh ON ins.IdVehiculo = veh.Id
+    WHERE c.Id IN (${placeholders})
+    ${fechaInicio ? `AND DATE(td.FechaHora) >= ?` : ''}
+    ${fechaFin ? `AND DATE(td.FechaHora) <= ?` : ''}
+    ${filtros.idDispositivo ? 'AND disp.Id = ?' : ''}
+    ${filtros.idInstalacion ? 'AND ins.Id = ?' : ''}
+    GROUP BY ins.Id, disp.NumeroSerie, bv.NumeroSerie, veh.NumeroEconomico, veh.Placa, disp.EstadoActual
+) AS datos
+LEFT JOIN (
+    SELECT 
+        p1.NumeroSerieDispositivo,
+        p1.Latitud,
+        p1.Longitud,
+        p1.FechaHora
+    FROM Posiciones p1
+    INNER JOIN (
+        SELECT 
+            NumeroSerieDispositivo,
+            MAX(FechaHora) AS MaxFechaHora
+        FROM Posiciones
+        GROUP BY NumeroSerieDispositivo
+    ) p2 ON p1.NumeroSerieDispositivo = p2.NumeroSerieDispositivo 
+        AND p1.FechaHora = p2.MaxFechaHora
+) AS pos ON pos.NumeroSerieDispositivo = datos.serieDispositivo
+ORDER BY datos.ingresos DESC, datos.serieDispositivo ASC;
+      `;
+
+      // Construir parámetros para la consulta principal
+      // Orden: clienteIds, fechas (solo transacciones), idDispositivo, idInstalacion
+      const parametrosCompletos = [...clienteIds];
+      
+      // Parámetros de fecha (solo para transacciones)
+      if (fechaInicio) {
+        parametrosCompletos.push(fechaInicio);
+      }
+      if (fechaFin) {
+        parametrosCompletos.push(fechaFin);
+      }
+      
+      // Parámetro de dispositivo si existe
+      if (filtros.idDispositivo) {
+        parametrosCompletos.push(filtros.idDispositivo);
+      }
+      
+      // Parámetro de instalación si existe
+      if (filtros.idInstalacion) {
+        parametrosCompletos.push(filtros.idInstalacion);
+      }
+
+      console.log('=== DEBUG RECAUDACIÓN POR DISPOSITIVO ===');
+      console.log('Filtros:', filtros);
+      console.log('Cliente IDs:', clienteIds);
+      console.log('Parámetros completos:', parametrosCompletos);
+      
+      const resultados = await this.clienteRepository.query(query, parametrosCompletos);
+      
+      console.log('Resultados obtenidos:', resultados.length);
+      console.log('=== FIN DEBUG ===');
+
+      // Formatear resultados
+      const data = resultados.map((row: any) => ({
+        idInstalacion: row.idInstalacion ? Number(row.idInstalacion) : null,
+        serieDispositivo: row.serieDispositivo || null,
+        serieBlueVox: row.serieBlueVox || null,
+        numeroEconomico: row.numeroEconomico || null,
+        placa: row.placa || null,
+        vehiculo: row.vehiculo || null,
+        validaciones: Number(row.validaciones) || 0,
+        ingresos: Number(parseFloat(String(row.ingresos)).toFixed(2)) || 0,
+        estadoDispositivo: row.estadoDispositivo !== null ? Number(row.estadoDispositivo) : null,
+        ultimaPosicion: row.ultimaPosicionLatitud && row.ultimaPosicionLongitud ? {
+          latitud: Number(parseFloat(String(row.ultimaPosicionLatitud)).toFixed(7)),
+          longitud: Number(parseFloat(String(row.ultimaPosicionLongitud)).toFixed(7)),
+          fecha: row.ultimaPosicionFecha || null,
+        } : null,
+      }));
+
+      return {
+        data,
+      };
+    } catch (error) {
+      console.error('Error en recaudacionPorDispositivo:', error);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Error al generar el reporte de recaudación por dispositivo',
         error: error.message,
         stack: error.stack,
       });

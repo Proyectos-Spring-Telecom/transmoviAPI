@@ -2,6 +2,8 @@ import { Controller, Post, Body, UseGuards, Request } from '@nestjs/common';
 import { ReportesService } from './reportes.service';
 import { RecaudacionDiariaRutaDto } from './dto/recaudacion-diaria-ruta.dto';
 import { RecaudacionPorOperadorDto } from './dto/recaudacion-por-operador.dto';
+import { RecaudacionPorVehiculoDto } from './dto/recaudacion-por-vehiculo.dto';
+import { RecaudacionPorDispositivoDto } from './dto/recaudacion-por-dispositivo.dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
@@ -72,6 +74,70 @@ export class ReportesController {
   ): Promise<ApiResponseCommon> {
     const cliente = req.user.cliente;
     return await this.reportesService.recaudacionPorOperador(
+      filtros,
+      Number(cliente),
+    );
+  }
+
+  @Post('recaudacion-por-vehiculo')
+  @ApiOperation({
+    summary: 'Reporte de recaudación por vehículo',
+    description: 'Genera un reporte de recaudación agrupado por vehículo, incluyendo turnos, viajes, validaciones, ingresos, ticket promedio y horas en servicio.',
+  })
+  @ApiBody({
+    type: RecaudacionPorVehiculoDto,
+    description: 'Filtros para el reporte',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Reporte generado exitosamente',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Error de validación en los filtros',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'No autorizado',
+  })
+  async recaudacionPorVehiculo(
+    @Body() filtros: RecaudacionPorVehiculoDto,
+    @Request() req,
+  ): Promise<ApiResponseCommon> {
+    const cliente = req.user.cliente;
+    return await this.reportesService.recaudacionPorVehiculo(
+      filtros,
+      Number(cliente),
+    );
+  }
+
+  @Post('recaudacion-por-dispositivo')
+  @ApiOperation({
+    summary: 'Reporte de recaudación por dispositivo/instalación',
+    description: 'Genera un reporte de recaudación agrupado por dispositivo e instalación, incluyendo validaciones, ingresos, última posición y estado.',
+  })
+  @ApiBody({
+    type: RecaudacionPorDispositivoDto,
+    description: 'Filtros para el reporte',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Reporte generado exitosamente',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Error de validación en los filtros',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'No autorizado',
+  })
+  async recaudacionPorDispositivo(
+    @Body() filtros: RecaudacionPorDispositivoDto,
+    @Request() req,
+  ): Promise<ApiResponseCommon> {
+    const cliente = req.user.cliente;
+    return await this.reportesService.recaudacionPorDispositivo(
       filtros,
       Number(cliente),
     );
