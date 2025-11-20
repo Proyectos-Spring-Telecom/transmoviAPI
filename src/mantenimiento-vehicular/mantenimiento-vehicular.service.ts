@@ -102,38 +102,11 @@ export class MantenimientoVehicularService {
         notaServicioUrl = uploadResult.url;
       }
 
-      // Parsear campos numéricos desde FormData (vienen como strings)
-      const dataToCreate: any = {
+      // Crear el registro con los datos del DTO (ya convertidos automáticamente)
+      const dataToCreate = {
         ...createMantenimientoVehicularDto,
         notaServicio: notaServicioUrl,
       };
-
-      // Convertir strings a números si existen
-      if (dataToCreate.idInstalacion !== undefined && dataToCreate.idInstalacion !== null) {
-        dataToCreate.idInstalacion = typeof dataToCreate.idInstalacion === 'string' 
-          ? parseInt(dataToCreate.idInstalacion, 10) 
-          : dataToCreate.idInstalacion;
-      }
-      if (dataToCreate.idReferencia !== undefined && dataToCreate.idReferencia !== null) {
-        dataToCreate.idReferencia = typeof dataToCreate.idReferencia === 'string' 
-          ? parseInt(dataToCreate.idReferencia, 10) 
-          : dataToCreate.idReferencia;
-      }
-      if (dataToCreate.idEstatus !== undefined && dataToCreate.idEstatus !== null) {
-        dataToCreate.idEstatus = typeof dataToCreate.idEstatus === 'string' 
-          ? parseInt(dataToCreate.idEstatus, 10) 
-          : dataToCreate.idEstatus;
-      }
-      if (dataToCreate.idTaller !== undefined && dataToCreate.idTaller !== null) {
-        dataToCreate.idTaller = typeof dataToCreate.idTaller === 'string' 
-          ? parseInt(dataToCreate.idTaller, 10) 
-          : dataToCreate.idTaller;
-      }
-      if (dataToCreate.costo !== undefined && dataToCreate.costo !== null) {
-        dataToCreate.costo = typeof dataToCreate.costo === 'string' 
-          ? parseFloat(dataToCreate.costo) 
-          : dataToCreate.costo;
-      }
 
       const create = this.mantenimientoVehicularRepository.create(
         dataToCreate,
