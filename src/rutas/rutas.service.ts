@@ -634,6 +634,95 @@ ORDER BY ru.Id DESC;
     }
   }
 
+  // ========================================
+  // 🔹 OBTENER RUTAS POR REGIÓN
+  // ========================================
+  async findByRegion(idRegion: number, idUser: number, rol: number) {
+    try {
+      // Consulta directa de rutas por región (solo la región especificada)
+      const rutas = await this.rutasRepository.query(
+        `
+SELECT 
+  -- RUTA
+  ru.Id AS id,
+  ru.Nombre AS nombre,
+  ru.PuntoInicio AS puntoInicio,
+  ru.NombreInicio AS nombreInicio,
+  ru.PuntoFin AS puntoFin,
+  ru.NombreFin AS nombreFin,
+  ru.FechaCreacion AS fechaCreacionRuta,
+  ru.Estatus AS estatusRuta,
+  ru.IdRegionFin AS idRegionFin,
+
+  -- REGIÓN INICIAL
+  r.Id AS idRegion,
+  r.Nombre AS nombreRegion,
+  r.Descripcion AS descripcionRegion,
+  r.FechaCreacion AS fechaCreacionRegion,
+  r.FechaActualizacion AS fechaActualizacionRegion,
+  r.Estatus AS estatusRegion,
+
+  -- REGIÓN FINAL (si existe)
+  rf.Id AS idRegionFinDetalle,
+  rf.Nombre AS nombreRegionFinDetalle,
+  rf.Descripcion AS descripcionRegionFin,
+  rf.FechaCreacion AS fechaCreacionRegionFin,
+  rf.FechaActualizacion AS fechaActualizacionRegionFin,
+  rf.Estatus AS estatusRegionFin,
+
+  -- CLIENTE
+  c.Id AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente,
+  CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
+
+FROM Rutas ru
+INNER JOIN Regiones r ON ru.IdRegion = r.Id
+LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Clientes c ON r.IdCliente = c.Id
+
+WHERE 
+  ru.IdRegion = ?
+  AND r.Estatus = 1
+  AND ru.Estatus = 1
+  AND c.Estatus = 1
+
+ORDER BY ru.Id DESC
+        `,
+        [idRegion],
+      );
+
+      // Mapeo de resultados con conversión de tipos
+      const data = rutas.map((item) => ({
+        ...item,
+        id: item.id ? Number(item.id) : null,
+        idRegion: item.idRegion ? Number(item.idRegion) : null,
+        idRegionFin: item.idRegionFin ? Number(item.idRegionFin) : null,
+        idRegionFinDetalle: item.idRegionFinDetalle
+          ? Number(item.idRegionFinDetalle)
+          : null,
+        idCliente: item.idCliente ? Number(item.idCliente) : null,
+      }));
+
+      // API response
+      const result: ApiResponseCommon = {
+        data: data,
+      };
+
+      return result;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Error al obtener rutas por región',
+        error: error.message,
+      });
+    }
+  }
+
   private async consultarRutasOne(id: number, cliente: number) {
     const { ids, placeholders } = await this.clienteHijos(cliente);
     const query = `

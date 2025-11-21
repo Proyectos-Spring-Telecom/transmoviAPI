@@ -16,8 +16,9 @@ import { CreateRegionesDto } from './dto/create-regione.dto';
 import { UpdateRegioneDto } from './dto/update-regione.dto';
 import { UpdateRegionesEstatusDto } from './dto/update-regione-estatus.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 
+@ApiTags('Regiones')
 @ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('regiones')
@@ -43,6 +44,38 @@ export class RegionesController {
     const idUser = req.user.userId;
     const rol = req.user.rol;
     return await this.regionesService.findAllList(+cliente, +idUser, +rol);
+  }
+
+  @Get('by-cliente/:idCliente')
+  @ApiOperation({
+    summary: 'Listar regiones por ID de cliente',
+    description: 'Obtiene todas las regiones activas pertenecientes únicamente al cliente especificado (sin incluir clientes hijos).',
+  })
+  @ApiParam({
+    name: 'idCliente',
+    type: Number,
+    description: 'ID del cliente del cual se desean obtener las regiones',
+    example: 1,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Regiones obtenidas exitosamente',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'No autorizado',
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Error interno del servidor',
+  })
+  async findByCliente(
+    @Param('idCliente', ParseIntPipe) idCliente: number,
+    @Request() req,
+  ) {
+    const idUser = req.user.userId;
+    const rol = req.user.rol;
+    return await this.regionesService.findByCliente(+idCliente, +idUser, +rol);
   }
 
   @Get(':page/:limit')

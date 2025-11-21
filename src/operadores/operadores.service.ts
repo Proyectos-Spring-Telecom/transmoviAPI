@@ -521,6 +521,92 @@ ORDER BY o.Id DESC;
   }
 
   // ========================================
+  // 🔹 OBTENER OPERADORES POR ID DE CLIENTE
+  // ========================================
+  async findByCliente(
+    idCliente: number,
+    idUser: number,
+    rol: number,
+  ): Promise<ApiResponseCommon> {
+    try {
+      // Consulta directa de operadores por cliente (solo el cliente especificado)
+      const operadores = await this.operadoresRepository.query(
+        `
+SELECT
+  -- Datos del Operador
+  o.Id AS id,
+  o.FechaNacimiento AS fechaNacimiento,
+  o.Identificacion AS identificacion,
+  o.Foto AS foto,
+  o.ComprobanteDomicilio AS comprobanteDomicilio,
+  o.CertificadoMedico AS certificadoMedico,
+  o.AntecedentesNoPenales AS antecedentesNoPenales,
+  o.FechaCreacion AS fechaCreacion,
+  o.FechaActualizacion AS fechaActualizacion,
+  o.Estatus AS estatus,
+
+  -- Datos del Usuario
+  u.Id AS idUsuario,
+  u.UserName AS userNameUsuario,
+  u.Nombre AS nombreUsuario,
+  u.ApellidoPaterno AS apellidoPaternoUsuario,
+  u.ApellidoMaterno AS apellidoMaternoUsuario,
+  u.Telefono AS telefonoUsuario,
+  u.DispositivoId AS dispositivoId,
+  u.FotoPerfil AS fotoPerfil,
+  u.FechaCreacion AS fechaCreacionUsuario,
+  u.FechaActualizacion AS fechaActualizacionUsuario,
+  u.Estatus AS estatusUsuario,
+  u.IdRol AS idRol,
+
+  -- Datos del Cliente
+  u.IdCliente AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', IFNULL(c.ApellidoMaterno, '')) AS nombreCompletoCliente
+
+FROM Operadores o
+INNER JOIN Usuarios u ON o.IdUsuario = u.Id
+INNER JOIN Clientes c ON u.IdCliente = c.Id
+
+WHERE 
+  u.IdCliente = ?
+  AND o.Estatus = 1
+  AND u.Estatus = 1
+  AND c.Estatus = 1
+
+ORDER BY o.Id DESC
+        `,
+        [idCliente],
+      );
+
+      // Forzamos a cambiar el id a number
+      const data = operadores.map((item) => ({
+        ...item,
+        id: Number(item.id),
+        idUsuario: Number(item.idUsuario),
+        idRol: Number(item.idRol),
+        idCliente: Number(item.idCliente),
+      }));
+
+      const result: ApiResponseCommon = {
+        data: data,
+      };
+
+      return result;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Error al obtener operadores por cliente',
+        error: error.message,
+      });
+    }
+  }
+
+  // ========================================
   // 🔹 OBTENER OPERADORES POR ID
   // ========================================
   async findOneOperador(id: number, cliente: number, rol: number) {
