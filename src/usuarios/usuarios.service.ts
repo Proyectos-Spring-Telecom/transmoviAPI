@@ -26,8 +26,9 @@ import { UpdateUsuarioContrasena } from './dto/update-usuario-contrasena.dto';
 import { MailService } from 'src/mail/mail.service';
 import { JwtService } from '@nestjs/jwt';
 import { Clientes } from 'src/entities/Clientes';
-import { EstatusEnum } from 'src/common/estatus.enum';
+import { EnumModulos, EstatusEnum } from 'src/common/estatus.enum';
 import { UpdateUsuarioDispositivoDto } from './dto/update-usuario-dispositivo.dto';
+import { Dispositivos } from 'src/entities/Dispositivos';
 
 @Injectable()
 export class UsuariosService {
@@ -38,6 +39,8 @@ export class UsuariosService {
     private readonly clientesService: ClientesService,
     @InjectRepository(UsuariosPermisos)
     private usuariosPermisosRepository: Repository<UsuariosPermisos>,
+    @InjectRepository(Dispositivos)
+    private dispositivosRepository: Repository<Dispositivos>,
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
     private readonly emailService: MailService,
@@ -91,7 +94,7 @@ SELECT
   u.ApellidoMaterno AS ApellidoMaterno,
   u.Telefono AS Telefono,
   u.UltimoLogin AS UltimoLogin,
-  u.DispositivoId AS DispositivoId,
+  u.DeviceId AS deviceId,
   u.FotoPerfil AS FotoPerfil,
   u.FechaCreacion AS FechaCreacion,
   u.FechaActualizacion AS FechaActualizacion,
@@ -142,7 +145,7 @@ SELECT
   u.ApellidoMaterno AS ApellidoMaterno,
   u.Telefono AS Telefono,
   u.UltimoLogin AS UltimoLogin,
-  u.DispositivoId AS DispositivoId,
+  u.DeviceId AS deviceId,
   u.FotoPerfil AS FotoPerfil,
   u.FechaCreacion AS FechaCreacion,
   u.FechaActualizacion AS FechaActualizacion,
@@ -234,7 +237,7 @@ SELECT
   u.ApellidoMaterno AS ApellidoMaterno,
   u.Telefono AS Telefono,
   u.UltimoLogin AS UltimoLogin,
-  u.DispositivoId AS DispositivoId,
+  u.DeviceId AS deviceId,
   u.FotoPerfil AS FotoPerfil,
   u.FechaCreacion AS FechaCreacion,
   u.FechaActualizacion AS FechaActualizacion,
@@ -273,7 +276,7 @@ SELECT
   u.ApellidoMaterno AS ApellidoMaterno,
   u.Telefono AS Telefono,
   u.UltimoLogin AS UltimoLogin,
-  u.DispositivoId AS DispositivoId,
+  u.DeviceId AS deviceId,
   u.FotoPerfil AS FotoPerfil,
   u.FechaCreacion AS FechaCreacion,
   u.FechaActualizacion AS FechaActualizacion,
@@ -417,7 +420,7 @@ SELECT
   u.ApellidoMaterno AS apellidoMaterno,
   u.Telefono AS telefono,
   u.UltimoLogin AS ultimoLogin,
-  u.DispositivoId AS dispositivoId,
+  u.DeviceId AS deviceId,
   u.FotoPerfil AS fotoPerfil,
   u.FechaCreacion AS fechaCreacion,
   u.FechaActualizacion AS fechaActualizacion,
@@ -457,7 +460,7 @@ SELECT
   u.ApellidoMaterno AS apellidoMaterno,
   u.Telefono AS telefono,
   u.UltimoLogin AS ultimoLogin,
-  u.DispositivoId AS dispositivoId,
+  u.DeviceId AS deviceId,
   u.FotoPerfil AS fotoPerfil,
   u.FechaCreacion AS fechaCreacion,
   u.FechaActualizacion AS fechaActualizacion,
@@ -542,7 +545,7 @@ ORDER BY u.Id DESC
         10,
       );
 
-      
+
 
       //Agregamos le fecha de la actualizacion
       function pad(n: number) {
@@ -557,7 +560,7 @@ ORDER BY u.Id DESC
       const bodyOperador = {
         userName: updateUsuarioOperadorDto.userName,
         pinHash: pinPassword,
-        dispositivoId: updateUsuarioOperadorDto.dispositivoId || null,
+        deviceId: updateUsuarioOperadorDto.deviceId,
         actualizacionPin: fechaActual
       }
 
@@ -575,7 +578,7 @@ ORDER BY u.Id DESC
         'UPDATE',
         querylogger,
         idUser,
-        2,
+        EnumModulos.USUARIOS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -598,7 +601,7 @@ ORDER BY u.Id DESC
         'UPDATE',
         querylogger,
         idUser,
-        2,
+        EnumModulos.USUARIOS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -628,12 +631,19 @@ ORDER BY u.Id DESC
           `Usuario con nombre de usuario: ${updateUsuarioDispositivoDto.userName} no encontrado.`,
         );
       }
-      
-      const bodyOperador = {
-        dispositivoId: updateUsuarioDispositivoDto.dispositivoId || null,
+
+      const dispositivo = await this.dispositivosRepository.findOne({ where: { numeroSerie: updateUsuarioDispositivoDto.deviceId } })
+      if (!dispositivo) {
+        throw new NotFoundException(
+          `Dispositivo numero de serie: ${updateUsuarioDispositivoDto.deviceId} no fue encontrado.`,
+        );
       }
 
-      //Agregamos el pin al updateUsuarioDispositivoDto
+      const bodyOperador = {
+        deviceId: updateUsuarioDispositivoDto.deviceId,
+      }
+
+      //Agregamos el dispositivo al usuario
       const newPin = await this.usuarioRepository.update(
         usuario.id,
         bodyOperador,
@@ -643,11 +653,11 @@ ORDER BY u.Id DESC
       const querylogger = { updateUsuarioDispositivoDto };
       await this.bitacoraLogger.logToBitacora(
         'Usuarios',
-        `El dispositivoId ha sido actualizado para el usuario con ID: ${usuario.id}.`,
+        `El deviceId ha sido actualizado para el usuario con ID: ${usuario.id}.`,
         'UPDATE',
         querylogger,
         idUser,
-        2,
+        EnumModulos.USUARIOS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -666,11 +676,11 @@ ORDER BY u.Id DESC
       const querylogger = { updateUsuarioDispositivoDto };
       await this.bitacoraLogger.logToBitacora(
         'Usuarios',
-        `El dispositivoId ha sido actualizado para el usuario con ID: ${idUser}.`,
+        `El deviceId ha sido actualizado para el usuario con ID: ${idUser}.`,
         'UPDATE',
         querylogger,
         idUser,
-        2,
+        EnumModulos.USUARIOS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -748,7 +758,7 @@ ORDER BY u.Id DESC
         'CREATE',
         querylogger,
         Number(idUser),
-        2,
+        EnumModulos.USUARIOS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -775,7 +785,7 @@ ORDER BY u.Id DESC
         'CREATE',
         querylogger,
         Number(idUser),
-        2,
+        EnumModulos.USUARIOS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -853,7 +863,7 @@ ORDER BY u.Id DESC
         'UPDATE',
         querylogger,
         Number(idUser),
-        2,
+        EnumModulos.USUARIOS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -876,7 +886,7 @@ ORDER BY u.Id DESC
         'UPDATE',
         querylogger,
         Number(idUser),
-        2,
+        EnumModulos.USUARIOS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -931,7 +941,7 @@ ORDER BY u.Id DESC
         updateUsuarioDto.permisosIds &&
         Array.isArray(updateUsuarioDto.permisosIds)
       ) {
-        const nuevaLista: number[] = updateUsuarioDto.permisosIds.map(Number); // lista nueva de permisos (ej. [1,2,3])
+        const nuevaLista: number[] = updateUsuarioDto.permisosIds.map(Number); // lista nueva de permisos (ej. [1,EnumModulos.USUARIOS,3])
 
         // Permisos actuales en BD
         const creadaLista = await this.usuariosPermisosRepository.find({
@@ -999,7 +1009,7 @@ ORDER BY u.Id DESC
         'UPDATE',
         querylogger,
         Number(idUser),
-        2,
+        EnumModulos.USUARIOS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -1024,7 +1034,7 @@ ORDER BY u.Id DESC
         'UPDATE',
         querylogger,
         Number(idUser),
-        2,
+        EnumModulos.USUARIOS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -1069,7 +1079,7 @@ ORDER BY u.Id DESC
         'UPDATE',
         querylogger,
         idUser,
-        2,
+        EnumModulos.USUARIOS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -1096,7 +1106,7 @@ ORDER BY u.Id DESC
         'UPDATE',
         querylogger,
         idUser,
-        2,
+        EnumModulos.USUARIOS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -1137,7 +1147,7 @@ ORDER BY u.Id DESC
         'UPDATE',
         querylogger,
         Number(idUser),
-        2,
+        EnumModulos.USUARIOS,
         EstatusEnumBitcora.SUCCESS,
       );
       //Api response
@@ -1159,7 +1169,7 @@ ORDER BY u.Id DESC
         'UPDATE',
         querylogger,
         Number(idUser),
-        2,
+        EnumModulos.USUARIOS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );

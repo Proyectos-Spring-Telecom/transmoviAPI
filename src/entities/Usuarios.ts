@@ -61,8 +61,8 @@ export class Usuarios {
   @Column("datetime", { name: "ActualizacionPin", nullable: true })
   actualizacionPin: string | null;
 
-  @Column("varchar", { name: "DispositivoId", nullable: true, length: 100 })
-  dispositivoId: string | null;
+  @Column("varchar", { name: "DeviceId", nullable: true, length: 100 })
+  deviceId: string | null;
 
   @Column("varchar", { name: "FotoPerfil", nullable: true, length: 500 })
   fotoPerfil: string | null;

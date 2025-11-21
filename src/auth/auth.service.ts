@@ -25,6 +25,7 @@ import { CreateAltaPasajaroDto } from './dto/create-pasajero.dto';
 import { MonederosService } from 'src/monederos/monederos.service';
 import { PasajerosService } from 'src/pasajeros/pasajeros.service';
 import { CodigoPasajeroAutenticacion } from './dto/login-autenticacion.dto';
+import { number } from 'joi';
 
 @Injectable()
 export class AuthService {
@@ -40,7 +41,7 @@ export class AuthService {
     private readonly bitacoraLogger: BitacoraLoggerService,
     private readonly monederoService: MonederosService,
     private readonly pasajeroService: PasajerosService,
-  ) {}
+  ) { }
 
   // ========================================
   //Creacion de una afiliacion
@@ -221,7 +222,6 @@ export class AuthService {
         relations: ['idRol2', 'idCliente2'],
         where: {
           userName: loginAuthPin.userName,
-          dispositivoId: loginAuthPin.dispositivoId,
           estatus: 1,
           emailConfirmado: 1,
           idCliente2: {
@@ -238,6 +238,9 @@ export class AuthService {
       }
       if (!user) {
         throw new NotFoundException('No se encontró al usuario.');
+      }
+      if (user.deviceId !== loginAuthPin.deviceId) {
+        throw new NotFoundException('El dispositivo reportado no coincide con el dispositivo asignado al usuario.');
       }
 
       if (
@@ -272,17 +275,24 @@ export class AuthService {
       await this.usuariosRepository.update(user.id, {
         ultimoLogin: fechaActual,
       });
+      const pin = user.pinHash ? 1 : 0;
       return {
         message: `login exitoso`,
         id: Number(`${user.id}`),
-        idCliente: Number(`${user.idCliente}`),
         nombre: `${user.nombre}`,
         apellidoPaterno: `${user.apellidoPaterno}`,
         apellidoMaterno: `${user.apellidoMaterno}`,
+        idCliente: Number(`${user.idCliente}`),
+        nombreCliente: `${user.idCliente2?.nombre}`,
+        apellidoPaternoCliente: `${user.idCliente2?.apellidoPaterno}`,
+        apellidoMaternoCliente: `${user.idCliente2?.apellidoMaterno}`,
+        logotipo: `${user.idCliente2?.logotipo}`,
         telefono: `${user.telefono}`,
         ultimoLogin: `${user.ultimoLogin}`,
         fechaCreacion: `${user.fechaCreacion}`,
         fotoPerfil: `${user.fotoPerfil}`,
+        deviceId: `${user?.deviceId}`,
+        pinExist: pin,
         userName: `${user.userName}`,
         rol: user.idRol2,
         token: this.jwtService.sign(payload),
@@ -352,6 +362,31 @@ export class AuthService {
       await this.usuariosRepository.update(user.id, {
         ultimoLogin: fechaActual,
       });
+      if (Number(user.idRol) === 3) {
+        const pin = user.pinHash ? 1 : 0;
+        return {
+          message: `login exitoso`,
+          id: Number(`${user.id}`),
+          nombre: `${user.nombre}`,
+          apellidoPaterno: `${user.apellidoPaterno}`,
+          apellidoMaterno: `${user.apellidoMaterno}`,
+          idCliente: Number(`${user.idCliente}`),
+          nombreCliente: `${user.idCliente2?.nombre}`,
+          apellidoPaternoCliente: `${user.idCliente2?.apellidoPaterno}`,
+          apellidoMaternoCliente: `${user.idCliente2?.apellidoMaterno}`,
+          logotipo: `${user.idCliente2?.logotipo}`,
+          telefono: `${user.telefono}`,
+          ultimoLogin: `${user.ultimoLogin}`,
+          fechaCreacion: `${user.fechaCreacion}`,
+          fotoPerfil: `${user.fotoPerfil}`,
+          deviceId: `${user?.deviceId}`,
+          pinExist: pin,
+          userName: `${user.userName}`,
+          rol: user.idRol2,
+          token: this.jwtService.sign(payload),
+          permisos: permisos,
+        };
+      }
       return {
         message: `login exitoso`,
         id: Number(`${user.id}`),

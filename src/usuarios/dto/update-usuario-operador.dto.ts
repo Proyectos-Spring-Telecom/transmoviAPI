@@ -64,6 +64,6 @@ export class UpdateUsuarioOperadorDto {
     example: '15aBW',
     required: false,
   })
-  dispositivoId?: string;
+  deviceId?: string;
   
 }
