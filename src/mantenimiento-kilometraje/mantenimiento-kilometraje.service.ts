@@ -80,9 +80,17 @@ export class MantenimientoKilometrajeService {
     }
   }
 
-  async findAll(page: number, limit: number): Promise<ApiResponseCommon> {
+  async findAll(page: number, limit: number, idCliente: number, rol: number): Promise<ApiResponseCommon> {
     try {
+      const whereCondition: any = {};
+      
+      // Filtrar por idCliente si el rol no es 1 o 2
+      if (rol !== 1 && rol !== 2) {
+        whereCondition.instalacion = { idCliente: idCliente };
+      }
+
       const [data, total] = await this.mantenimientoKilometrajeRepository.findAndCount({
+        where: Object.keys(whereCondition).length > 0 ? whereCondition : undefined,
         relations: ['instalacion', 'instalacion.dispositivos', 'instalacion.blueVoxs', 'instalacion.vehiculos', 'instalacion.idCliente2'],
         order: { fhRegistro: 'DESC' },
         skip: (page - 1) * limit,
@@ -121,13 +129,14 @@ export class MantenimientoKilometrajeService {
           marca: item.instalacion.vehiculos.marca,
           modelo: item.instalacion.vehiculos.modelo,
         } : null,
-        instalacionCliente: item.instalacion?.idCliente2 ? {
-          id: Number(item.instalacion.idCliente2.id),
-          nombre: item.instalacion.idCliente2.nombre,
-          apellidoPaterno: item.instalacion.idCliente2.apellidoPaterno,
-          apellidoMaterno: item.instalacion.idCliente2.apellidoMaterno,
-          estatus: item.instalacion.idCliente2.estatus,
-        } : null,
+            // Incluir datos del cliente cuando el rol es 1 o 2
+            instalacionCliente: (rol === 1 || rol === 2) && item.instalacion?.idCliente2 ? {
+              id: Number(item.instalacion.idCliente2.id),
+              nombre: item.instalacion.idCliente2.nombre,
+              apellidoPaterno: item.instalacion.idCliente2.apellidoPaterno,
+              apellidoMaterno: item.instalacion.idCliente2.apellidoMaterno,
+              estatus: item.instalacion.idCliente2.estatus,
+            } : null,
       }));
 
       const result: ApiResponseCommon = {
@@ -149,12 +158,20 @@ export class MantenimientoKilometrajeService {
     }
   }
 
-  async findOne(id: number): Promise<ApiResponseCommon> {
+  async findOne(id: number, idCliente: number, rol: number): Promise<ApiResponseCommon> {
     try {
+      const whereCondition: any = { id: id };
+      
+      // Filtrar por idCliente si el rol no es 1 o 2
+      if (rol !== 1 && rol !== 2) {
+        whereCondition.instalacion = { idCliente: idCliente };
+      }
+
       const mantenimiento = await this.mantenimientoKilometrajeRepository.findOne({
-        where: { id: id },
+        where: whereCondition,
         relations: ['instalacion', 'instalacion.dispositivos', 'instalacion.blueVoxs', 'instalacion.vehiculos', 'instalacion.idCliente2'],
       });
+
       if (!mantenimiento) {
         throw new NotFoundException('Mantenimiento por kilometraje no encontrado');
       }
@@ -192,7 +209,8 @@ export class MantenimientoKilometrajeService {
               marca: mantenimiento.instalacion.vehiculos.marca,
               modelo: mantenimiento.instalacion.vehiculos.modelo,
             } : null,
-            instalacionCliente: mantenimiento.instalacion?.idCliente2 ? {
+            // Incluir datos del cliente cuando el rol es 1 o 2
+            instalacionCliente: (rol === 1 || rol === 2) && mantenimiento.instalacion?.idCliente2 ? {
               id: Number(mantenimiento.instalacion.idCliente2.id),
               nombre: mantenimiento.instalacion.idCliente2.nombre,
               apellidoPaterno: mantenimiento.instalacion.idCliente2.apellidoPaterno,
