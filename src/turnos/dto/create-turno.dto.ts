@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDateString, IsInt, IsNotEmpty, IsIn } from 'class-validator';
+import { IsDateString, IsInt, IsNotEmpty, IsIn, IsOptional } from 'class-validator';
 
 export class CreateTurnoDto {
   @ApiProperty({
@@ -16,6 +16,7 @@ export class CreateTurnoDto {
     required: false,
   })
   @IsDateString({}, { message: 'El fin debe estar en formato ISO8601' })
+  @IsOptional()
   fin?: Date;
 
   @ApiProperty({

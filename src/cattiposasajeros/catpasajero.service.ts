@@ -240,21 +240,25 @@ ORDER BY cp.Id DESC;
     try {
       const catpasajeros = await this.catTiposPasajerosRepository.query(
         `
-                SELECT 
+SELECT 
     cp.Id AS id,
     cp.Nombre AS nombre,
-    cp.TipoDescuento AS tipoDescuento,
+    cp.IdCatTipoDescuento AS idCatTipoDescuento,
+    ctd.Nombre AS nombreTipoDescuento,
     cp.Cantidad AS cantidad,
     cp.Estatus AS estatus,
     cp.IdCliente AS idCliente,
     c.Nombre AS nombreCliente,
     c.ApellidoPaterno AS apellidoPaternoCliente,
     c.ApellidoMaterno AS apellidoMaternoCliente
-FROM CatPasajeros cp
+FROM CatTiposPasajeros cp
 INNER JOIN Clientes c 
     ON cp.IdCliente = c.Id
-WHERE cp.IdTipoPasajero = ?
-ORDER BY cp.IdTipoPasajero DESC;          
+INNER JOIN CatTipoDescuento ctd
+	ON cp.IdCatTipoDescuento = ctd.Id
+WHERE cp.Id = ?
+AND c.Estatus = 1
+ORDER BY cp.Id DESC;        
             `,
         [id],
       );

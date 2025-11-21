@@ -369,6 +369,55 @@ ORDER BY Id ASC;
   }
 
   // ========================================
+  // 🔹 OBTENER UN LISTADO POR ID CLIENTE
+  // ========================================
+  async getAllListClientesId(
+    idUser: number,
+    cliente: number,
+    rol: number,
+  ): Promise<ApiResponseCommon> {
+    try {
+      let clientes;
+      // Usuarios normales - solo sus regiones asignadas
+          const { ids, placeholders } = await this.clienteHijos(cliente);
+          clientes = await this.clienteRepository.query(
+            `
+SELECT
+  Id AS id,
+  Nombre AS nombre,
+  ApellidoPaterno AS apellidoPaterno,
+  ApellidoMaterno AS apellidoMaterno
+FROM Clientes
+WHERE Id IN (${placeholders})  -- 🔹 aquí colocas el ID del cliente que quieres consultar
+  
+ORDER BY Id ASC
+
+            `,
+            [...ids],
+          );
+
+      // 🔥 Forzamos ids a number y agregamos nombreCompleto
+      const data = clientes.map((item) => ({
+        ...item,
+        id: Number(item.id),
+      }));
+
+      const result: ApiResponseCommon = {
+        data: data,
+      };
+      return result;
+    } catch (error) {
+      console.log(error)
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new BadRequestException({
+        message: 'Ocurrió un error al obtener listado de los clientes.',
+      });
+    }
+  }
+
+  // ========================================
   // 🔹 OBTENER UN CLIENTE
   // ========================================
   async getOneCliente(id: number) {
