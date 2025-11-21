@@ -92,8 +92,11 @@ export class MantenimientoCombustibleController {
   findAll(
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,
+    @Request() req,
   ): Promise<ApiResponseCommon> {
-    return this.mantenimientoCombustibleService.findAll(page, limit);
+    const idCliente = req.user.cliente;
+    const rol = req.user.rol;
+    return this.mantenimientoCombustibleService.findAll(page, limit, Number(idCliente), Number(rol));
   }
 
   @Get(':id')
@@ -119,8 +122,10 @@ export class MantenimientoCombustibleController {
     status: 401,
     description: 'No autorizado',
   })
-  findOne(@Param('id', ParseIntPipe) id: number): Promise<ApiResponseCommon> {
-    return this.mantenimientoCombustibleService.findOne(id);
+  findOne(@Param('id', ParseIntPipe) id: number, @Request() req): Promise<ApiResponseCommon> {
+    const idCliente = req.user.cliente;
+    const rol = req.user.rol;
+    return this.mantenimientoCombustibleService.findOne(id, Number(idCliente), Number(rol));
   }
 
   @Patch(':id')

@@ -160,10 +160,18 @@ export class MantenimientoVehicularService {
     }
   }
 
-  async findAll(page: number, limit: number): Promise<ApiResponseCommon> {
+  async findAll(page: number, limit: number, idCliente: number, rol: number): Promise<ApiResponseCommon> {
     try {
+      const whereCondition: any = {};
+      
+      // Filtrar por idCliente si el rol no es 1 o 2
+      if (rol !== 1 && rol !== 2) {
+        whereCondition.instalacion = { idCliente: idCliente };
+      }
+
       const [data, total] = await this.mantenimientoVehicularRepository.findAndCount({
-        relations: ['instalacion', 'instalacion.vehiculos', 'idEstatusRelacion', 'taller', 'referenciaServicio'],
+        where: Object.keys(whereCondition).length > 0 ? whereCondition : undefined,
+        relations: ['instalacion', 'instalacion.vehiculos', 'instalacion.idCliente2', 'idEstatusRelacion', 'taller', 'referenciaServicio'],
         order: { fhRegistro: 'DESC' },
         skip: (page - 1) * limit,
         take: limit,
@@ -201,6 +209,14 @@ export class MantenimientoVehicularService {
           id: Number(item.referenciaServicio.id),
           nombre: item.referenciaServicio.nombre,
         } : null,
+        // Incluir datos del cliente cuando el rol es 1 o 2
+        cliente: (rol === 1 || rol === 2) && item.instalacion?.idCliente2 ? {
+          id: Number(item.instalacion.idCliente2.id),
+          nombre: item.instalacion.idCliente2.nombre,
+          apellidoPaterno: item.instalacion.idCliente2.apellidoPaterno,
+          apellidoMaterno: item.instalacion.idCliente2.apellidoMaterno,
+          estatus: item.instalacion.idCliente2.estatus,
+        } : null,
       }));
 
       const result: ApiResponseCommon = {
@@ -222,12 +238,20 @@ export class MantenimientoVehicularService {
     }
   }
 
-  async findOne(id: number): Promise<ApiResponseCommon> {
+  async findOne(id: number, idCliente: number, rol: number): Promise<ApiResponseCommon> {
     try {
+      const whereCondition: any = { id: id };
+      
+      // Filtrar por idCliente si el rol no es 1 o 2
+      if (rol !== 1 && rol !== 2) {
+        whereCondition.instalacion = { idCliente: idCliente };
+      }
+
       const mantenimiento = await this.mantenimientoVehicularRepository.findOne({
-        where: { id: id },
-        relations: ['instalacion', 'instalacion.vehiculos', 'idEstatusRelacion', 'taller', 'referenciaServicio'],
+        where: whereCondition,
+        relations: ['instalacion', 'instalacion.vehiculos', 'instalacion.idCliente2', 'idEstatusRelacion', 'taller', 'referenciaServicio'],
       });
+
       if (!mantenimiento) {
         throw new NotFoundException('Mantenimiento vehicular no encontrado');
       }
@@ -264,6 +288,14 @@ export class MantenimientoVehicularService {
             referenciaServicio: mantenimiento.referenciaServicio ? {
               id: Number(mantenimiento.referenciaServicio.id),
               nombre: mantenimiento.referenciaServicio.nombre,
+            } : null,
+            // Incluir datos del cliente cuando el rol es 1 o 2
+            cliente: (rol === 1 || rol === 2) && mantenimiento.instalacion?.idCliente2 ? {
+              id: Number(mantenimiento.instalacion.idCliente2.id),
+              nombre: mantenimiento.instalacion.idCliente2.nombre,
+              apellidoPaterno: mantenimiento.instalacion.idCliente2.apellidoPaterno,
+              apellidoMaterno: mantenimiento.instalacion.idCliente2.apellidoMaterno,
+              estatus: mantenimiento.instalacion.idCliente2.estatus,
             } : null,
           },
         ],
