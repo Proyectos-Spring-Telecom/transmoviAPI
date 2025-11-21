@@ -27,6 +27,7 @@ import { MailService } from 'src/mail/mail.service';
 import { JwtService } from '@nestjs/jwt';
 import { Clientes } from 'src/entities/Clientes';
 import { EstatusEnum } from 'src/common/estatus.enum';
+import { UpdateUsuarioDispositivoDto } from './dto/update-usuario-dispositivo.dto';
 
 @Injectable()
 export class UsuariosService {
@@ -527,7 +528,7 @@ ORDER BY u.Id DESC
     try {
       //Buscamos al usuario
       const usuario = await this.usuarioRepository.findOne({
-        where: { userName: userName, id: idUser },
+        where: { userName: updateUsuarioOperadorDto.userName },
       });
       if (!usuario) {
         throw new NotFoundException(
@@ -535,17 +536,13 @@ ORDER BY u.Id DESC
         );
       }
 
-      if (updateUsuarioOperadorDto.userName !== usuario.userName)
-        throw new BadRequestException(
-          'El usuario está intentando ingresar con datos pertenecientes a otro usuario.',
-        );
-
       //encriptamos la contraseña
       const pinPassword = await bcrypt.hash(
         updateUsuarioOperadorDto.pinHash,
         10,
       );
-      updateUsuarioOperadorDto.pinHash = pinPassword;
+
+      
 
       //Agregamos le fecha de la actualizacion
       function pad(n: number) {
@@ -557,12 +554,17 @@ ORDER BY u.Id DESC
       const fechaDesfasada = new Date(ahora.getTime() + desfaseMs);
 
       const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())} ${pad(fechaDesfasada.getHours())}:${pad(fechaDesfasada.getMinutes())}:${pad(fechaDesfasada.getSeconds())}`;
-      updateUsuarioOperadorDto.actualizacionPin = fechaActual;
+      const bodyOperador = {
+        userName: updateUsuarioOperadorDto.userName,
+        pinHash: pinPassword,
+        dispositivoId: updateUsuarioOperadorDto.dispositivoId || null,
+        actualizacionPin: fechaActual
+      }
 
       //Agregamos el pin al updateUsuarioOperadorDto
       const newPin = await this.usuarioRepository.update(
         usuario.id,
-        updateUsuarioOperadorDto,
+        bodyOperador,
       );
 
       //-----Registro en la bitacora----- SUCCESS
@@ -593,6 +595,78 @@ ORDER BY u.Id DESC
       await this.bitacoraLogger.logToBitacora(
         'Usuarios',
         `El PIN ha sido generado para el usuario con ID: ${idUser}.`,
+        'UPDATE',
+        querylogger,
+        idUser,
+        2,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Error al crear el PIN del usuario.',
+        error: error.message,
+      });
+    }
+  }
+
+  //Creacion de pin operador
+  async updateDispositivo(
+    userName: string,
+    idUser: number,
+    updateUsuarioDispositivoDto: UpdateUsuarioDispositivoDto,
+  ): Promise<ApiCrudResponse> {
+    try {
+      //Buscamos al usuario
+      const usuario = await this.usuarioRepository.findOne({
+        where: { userName: updateUsuarioDispositivoDto.userName },
+      });
+      if (!usuario) {
+        throw new NotFoundException(
+          `Usuario con nombre de usuario: ${updateUsuarioDispositivoDto.userName} no encontrado.`,
+        );
+      }
+      
+      const bodyOperador = {
+        dispositivoId: updateUsuarioDispositivoDto.dispositivoId || null,
+      }
+
+      //Agregamos el pin al updateUsuarioDispositivoDto
+      const newPin = await this.usuarioRepository.update(
+        usuario.id,
+        bodyOperador,
+      );
+
+      //-----Registro en la bitacora----- SUCCESS
+      const querylogger = { updateUsuarioDispositivoDto };
+      await this.bitacoraLogger.logToBitacora(
+        'Usuarios',
+        `El dispositivoId ha sido actualizado para el usuario con ID: ${usuario.id}.`,
+        'UPDATE',
+        querylogger,
+        idUser,
+        2,
+        EstatusEnumBitcora.SUCCESS,
+      );
+
+      //Api response
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'El dispositivo ha sido actualizado correctamente.',
+        data: {
+          id: Number(usuario.id),
+          nombre: `${usuario.nombre} ${usuario.apellidoPaterno} ` || '',
+        },
+      };
+      return result;
+    } catch (error) {
+      //-----Registro en la bitacora----- SUCCESS
+      const querylogger = { updateUsuarioDispositivoDto };
+      await this.bitacoraLogger.logToBitacora(
+        'Usuarios',
+        `El dispositivoId ha sido actualizado para el usuario con ID: ${idUser}.`,
         'UPDATE',
         querylogger,
         idUser,

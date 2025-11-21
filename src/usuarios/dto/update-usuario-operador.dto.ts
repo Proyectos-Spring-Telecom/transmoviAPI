@@ -58,16 +58,12 @@ export class UpdateUsuarioOperadorDto {
   pinHash: string;
 
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @ApiProperty({
     description: 'Identificador del dispositivo',
     example: '15aBW',
+    required: false,
   })
-  dispositivoId: string;
-
-  @IsOptional()
-  @IsDateString()
-  @ApiProperty({ description: 'Actualización de PIN', required: false })
-  actualizacionPin?: string;
+  dispositivoId?: string;
   
 }
