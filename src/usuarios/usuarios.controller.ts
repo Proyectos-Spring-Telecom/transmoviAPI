@@ -174,7 +174,7 @@ export class UsuariosController {
   // 🔹 PATCH ROUTES (actualización parcial)
   // ========================================
 
-  @Patch('operador')
+  @Patch('generar/pin')
   @ApiOperation({ summary: 'Actualizar o crear PIN de operador' })
   @ApiResponse({ status: 200, description: 'PIN de operador actualizado' })
   @ApiResponse({ status: 400, description: 'Datos inválidos' })
@@ -191,7 +191,7 @@ export class UsuariosController {
     );
   }
 
-  @Patch('dispositivo')
+  @Patch('actualizar/dispositivo')
   @ApiOperation({ summary: 'Actualizar dispositivo del operador' })
   @ApiResponse({ status: 200, description: 'Dispositivo Actualizado' })
   @ApiResponse({ status: 400, description: 'Datos inválidos' })

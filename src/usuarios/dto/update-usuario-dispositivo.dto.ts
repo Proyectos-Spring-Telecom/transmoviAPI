@@ -29,6 +29,6 @@ export class UpdateUsuarioDispositivoDto {
     example: '15aBW',
     required: true,
   })
-  dispositivoId: string;
+  deviceId: string;
   
 }

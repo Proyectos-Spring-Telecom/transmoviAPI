@@ -378,4 +378,245 @@ ORDER BY porcentajeEnServicio DESC;`
 
   }
 
+  async resolverPorRol(
+    fechaInicio: string,
+    fechaFin: string,
+    idCliente: number,
+    cliente: number,
+    rol: number
+  ) {
+    try {
+      let kpi1;
+      let kpi2;
+      switch (rol) {
+        case 1:
+          if (idCliente === cliente) {
+            kpi1 = await this.kpiSA(fechaInicio,fechaFin,idCliente);
+            kpi2 = await this.kpi2SA(fechaInicio,fechaFin,idCliente);
+          } else {
+
+
+          }
+
+          break;
+        case 2:
+
+          break;
+
+        default:
+          break;
+      }
+
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Ocurrió un error al intentar obtener datos del kpi.',
+        error: error.message,
+      });
+    }
+  }
+
+
+  private async kpiSA(
+    fechaInicio: string,
+    fechaFin: string,
+    idCliente: number
+  ) {
+    const { ids, placeholders } = await this.clienteHijos(idCliente);
+    const query = `
+SELECT
+    IFNULL(SUM(CASE WHEN td.IdTipoTransaccion = 2 THEN td.Monto ELSE 0 END), 0) AS ingresosDelDia,
+    COUNT(DISTINCT CASE WHEN td.IdTipoTransaccion = 2 THEN td.NumeroSerieMonedero END) AS pasajerosValidados,
+    ROUND(
+        IFNULL(
+            SUM(CASE WHEN td.IdTipoTransaccion = 2 THEN td.Monto ELSE 0 END) /
+            NULLIF(COUNT(DISTINCT CASE WHEN td.IdTipoTransaccion = 2 THEN td.NumeroSerieMonedero END), 0),
+        0), 2) AS ticketPromedio,
+    SUM(CASE WHEN td.IdTipoTransaccion = 2 THEN 1 ELSE 0 END) AS validacionesExitosas,
+    SUM(CASE WHEN td.IdTipoTransaccion = 3 THEN 1 ELSE 0 END) AS validacionesFallidas,
+    COUNT(*) AS totalIntentos,
+    ROUND(SUM(CASE WHEN td.IdTipoTransaccion = 2 THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0) * 100, 2) AS porcentajeExitosas,
+    ROUND(SUM(CASE WHEN td.IdTipoTransaccion = 3 THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0) * 100, 2) AS porcentajeFallidas
+FROM TransaccionesDebito td
+INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
+INNER JOIN Clientes c ON d.IdCliente = c.Id
+WHERE td.FechaHora >= '${fechaInicio}T00:00:00Z'
+  AND td.FechaHora < '${fechaFin}T23:59:59Z'
+  AND c.Id IN (${placeholders});;`
+
+    return this.clienteRepository.query(query, [...ids]);
+  }
+
+  private async kpi2SA(
+    fechaInicio: string,
+    fechaFin: string,
+    idCliente: number
+  ) {
+    const { ids, placeholders } = await this.clienteHijos(idCliente);
+    const query = `
+WITH Ocupacion AS (
+    SELECT
+        t.IdCliente,
+        v.Id AS idVehiculo,
+        ROUND(
+            SUM(cp.Entradas - cp.Salidas) 
+            / NULLIF((v.PasajerosSentados + v.PasajerosParados), 0) * 100,
+            2
+        ) AS ocupacionPromedio
+    FROM Turnos t
+    INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
+    INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id
+    INNER JOIN Viajes vi ON vi.IdTurno = t.Id
+    INNER JOIN ViajesConteos vc ON vc.IdViaje = vi.Id
+    INNER JOIN ConteoPasajeros cp ON cp.Id = vc.IdConteo
+    WHERE t.Estatus = 1
+      AND v.Estatus = 1
+      AND cp.FechaHora >= '${fechaInicio}T00:00:00Z'
+      AND cp.FechaHora < '${fechaFin}T23:59:59Z'
+    GROUP BY t.IdCliente, v.Id
+)
+SELECT
+    COUNT(DISTINCT v.Id) AS totalUnidades,
+
+    COUNT(DISTINCT CASE
+        WHEN up.Id IS NOT NULL AND t.Id IS NOT NULL THEN v.Id
+    END) AS unidadesEnServicio,
+
+    ROUND(
+        COUNT(DISTINCT CASE
+            WHEN up.Id IS NOT NULL AND t.Id IS NOT NULL THEN v.Id
+        END) / NULLIF(COUNT(DISTINCT v.Id), 0) * 100,
+        2
+    ) AS porcentajeEnServicio,
+
+    ROUND(
+        COUNT(DISTINCT CASE
+            WHEN t.Fin IS NOT NULL THEN t.Id END)
+        /
+        NULLIF(
+            COUNT(DISTINCT t.Id),
+            0
+        ) * 100,
+        2
+    ) AS cumplimientoTurnosPorcentaje,
+
+    ROUND(AVG(o.ocupacionPromedio), 2) AS ocupacionPromedioTotal
+
+FROM Vehiculos v
+LEFT JOIN Instalaciones i ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente AND i.Estatus = 1
+LEFT JOIN Dispositivos d ON d.Id = i.IdDispositivo
+LEFT JOIN Posiciones up ON up.NumeroSerieDispositivo = d.NumeroSerie
+    AND up.FechaHora >= NOW() - INTERVAL 30 MINUTE
+LEFT JOIN Turnos t ON t.IdCliente = v.IdCliente
+    AND t.Estatus = 1
+    AND t.Inicio >= '${fechaInicio}T00:00:00Z'
+    AND t.Inicio < '${fechaFin}T23:59:59Z'
+LEFT JOIN Ocupacion o ON o.IdCliente = v.IdCliente AND o.idVehiculo = v.Id
+WHERE v.Estatus = 1
+  AND v.IdCliente IN (${placeholders});`
+    return this.clienteRepository.query(query);
+  }
+
+/////////*/*/*/*/*/*//*//////////////////////////////////////////******/////*/*/*/*/*/*/*/*/*/*/*/*/*/*/*//*/*/**/***/*/****
+  private async kpiDef(
+    fechaInicio: string,
+    fechaFin: string,
+    idCliente: number
+  ) {
+    const { ids, placeholders } = await this.clienteHijos(idCliente);
+    const query = `
+SELECT
+    IFNULL(SUM(CASE WHEN td.IdTipoTransaccion = 2 THEN td.Monto ELSE 0 END), 0) AS ingresosDelDia,
+    COUNT(DISTINCT CASE WHEN td.IdTipoTransaccion = 2 THEN td.NumeroSerieMonedero END) AS pasajerosValidados,
+    ROUND(
+        IFNULL(
+            SUM(CASE WHEN td.IdTipoTransaccion = 2 THEN td.Monto ELSE 0 END) /
+            NULLIF(COUNT(DISTINCT CASE WHEN td.IdTipoTransaccion = 2 THEN td.NumeroSerieMonedero END), 0),
+        0), 2) AS ticketPromedio,
+    SUM(CASE WHEN td.IdTipoTransaccion = 2 THEN 1 ELSE 0 END) AS validacionesExitosas,
+    SUM(CASE WHEN td.IdTipoTransaccion = 3 THEN 1 ELSE 0 END) AS validacionesFallidas,
+    COUNT(*) AS totalIntentos,
+    ROUND(SUM(CASE WHEN td.IdTipoTransaccion = 2 THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0) * 100, 2) AS porcentajeExitosas,
+    ROUND(SUM(CASE WHEN td.IdTipoTransaccion = 3 THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0) * 100, 2) AS porcentajeFallidas
+FROM TransaccionesDebito td
+INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
+INNER JOIN Clientes c ON d.IdCliente = c.Id
+WHERE td.FechaHora >= '${fechaInicio}T00:00:00Z'
+  AND td.FechaHora < '${fechaFin}T23:59:59Z'
+  AND c.Id IN (${placeholders});;`
+
+    return this.clienteRepository.query(query, [...ids]);
+  }
+
+  private async kpi2Def(
+    fechaInicio: string,
+    fechaFin: string,
+    idCliente: number
+  ) {
+    const { ids, placeholders } = await this.clienteHijos(idCliente);
+    const query = `
+WITH Ocupacion AS (
+    SELECT
+        t.IdCliente,
+        v.Id AS idVehiculo,
+        ROUND(
+            SUM(cp.Entradas - cp.Salidas) 
+            / NULLIF((v.PasajerosSentados + v.PasajerosParados), 0) * 100,
+            2
+        ) AS ocupacionPromedio
+    FROM Turnos t
+    INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
+    INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id
+    INNER JOIN Viajes vi ON vi.IdTurno = t.Id
+    INNER JOIN ViajesConteos vc ON vc.IdViaje = vi.Id
+    INNER JOIN ConteoPasajeros cp ON cp.Id = vc.IdConteo
+    WHERE t.Estatus = 1
+      AND v.Estatus = 1
+      AND cp.FechaHora >= '${fechaInicio}T00:00:00Z'
+      AND cp.FechaHora < '${fechaFin}T23:59:59Z'
+    GROUP BY t.IdCliente, v.Id
+)
+SELECT
+    COUNT(DISTINCT v.Id) AS totalUnidades,
+
+    COUNT(DISTINCT CASE
+        WHEN up.Id IS NOT NULL AND t.Id IS NOT NULL THEN v.Id
+    END) AS unidadesEnServicio,
+
+    ROUND(
+        COUNT(DISTINCT CASE
+            WHEN up.Id IS NOT NULL AND t.Id IS NOT NULL THEN v.Id
+        END) / NULLIF(COUNT(DISTINCT v.Id), 0) * 100,
+        2
+    ) AS porcentajeEnServicio,
+
+    ROUND(
+        COUNT(DISTINCT CASE
+            WHEN t.Fin IS NOT NULL THEN t.Id END)
+        /
+        NULLIF(
+            COUNT(DISTINCT t.Id),
+            0
+        ) * 100,
+        2
+    ) AS cumplimientoTurnosPorcentaje,
+
+    ROUND(AVG(o.ocupacionPromedio), 2) AS ocupacionPromedioTotal
+
+FROM Vehiculos v
+LEFT JOIN Instalaciones i ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente AND i.Estatus = 1
+LEFT JOIN Dispositivos d ON d.Id = i.IdDispositivo
+LEFT JOIN Posiciones up ON up.NumeroSerieDispositivo = d.NumeroSerie
+    AND up.FechaHora >= NOW() - INTERVAL 30 MINUTE
+LEFT JOIN Turnos t ON t.IdCliente = v.IdCliente
+    AND t.Estatus = 1
+    AND t.Inicio >= '${fechaInicio}T00:00:00Z'
+    AND t.Inicio < '${fechaFin}T23:59:59Z'
+LEFT JOIN Ocupacion o ON o.IdCliente = v.IdCliente AND o.idVehiculo = v.Id
+WHERE v.Estatus = 1
+  AND v.IdCliente IN (${placeholders});`
+    return this.clienteRepository.query(query);
+  }
 }
