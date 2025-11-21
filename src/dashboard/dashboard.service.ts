@@ -65,7 +65,7 @@ FROM HistoricoTransaccionesDebito td
 INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
 INNER JOIN Clientes c ON d.IdCliente = c.Id
 WHERE td.FechaHora >= '${fechaInicio}'                 -- inicio del día
-  AND td.FechaHora < CURDATE() + INTERVAL 1 DAY -- fin del día
+  AND td.FechaHora < '${fechaFin}' -- fin del día
   AND c.Id IN (${idCliente})              -- IDs de cliente a filtrar
 GROUP BY c.Id, c.Nombre, c.ApellidoPaterno, c.ApellidoMaterno
 ORDER BY ingresosDelDia DESC;`
@@ -264,6 +264,118 @@ ORDER BY porcentajeEnServicio DESC;`
       });
     }
   }
+  /////////////////////////////////////////////////////////Realizar logica de pruebas/////////////////////////////////////
+  async dashboardkpiPrueba(kpiDto: KpiDto, rol: number, cliente: number): Promise<any> {
+    try {
+      const { fechaInicio, fechaFin, filtro, idCliente } = kpiDto
+      let data;
+      if (fechaInicio && fechaFin) {
+        data = await this.resolverPorFecha(fechaInicio, fechaFin, idCliente, rol)
 
+      } else {
+        const { fechaIni, fechaFinal } = await this.resolverPorFiltro(filtro || 1)
+        console.log('INI:', fechaIni, 'FINAL:', fechaFinal);
+      }
+
+
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Ocurrió un error al intentar obtener datos del kpi.',
+        error: error.message,
+      });
+    }
+  }
+
+  async resolverPorFecha(
+    fechaInicio: string,
+    fechaFin: string,
+    idCliente: number,
+    rol: number
+  ) {
+    try {
+      switch (rol) {
+        case 1:
+
+          break;
+        case 2:
+
+          break;
+
+        default:
+          break;
+      }
+
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Ocurrió un error al intentar obtener datos del kpi.',
+        error: error.message,
+      });
+    }
+  }
+
+  async resolverPorFiltro(
+    filtro: number,
+  ): Promise<any> {
+    try {
+      function pad(n: number) {
+        return n < 10 ? '0' + n : n;
+      }
+      const ahora = new Date();
+      const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas
+      const fechaDesfasada = new Date(ahora.getTime() + desfaseMs);
+      // Solo la fecha del momento
+      const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())}`;
+      let fechaIni;
+      let fechaFinal;
+      switch (filtro) {
+        case EnumFiltros.MES:
+          // Restar 1 mes
+          const fechaHaceUnMes = new Date(fechaDesfasada);
+          fechaHaceUnMes.setMonth(fechaHaceUnMes.getMonth() - 1);
+
+          // Solo fecha YYYY-MM-DD
+          const fechaMesAntes = `${fechaHaceUnMes.getFullYear()}-${pad(fechaHaceUnMes.getMonth() + 1)}-${pad(fechaHaceUnMes.getDate())}`;
+
+          //Retornamos las fechas correspondientes
+          fechaIni = fechaMesAntes
+          fechaFinal = fechaActual
+          break;
+        case EnumFiltros.SEMANA:
+          // Restar 7 días (7 * 24 * 60 * 60 * 1000 ms)
+          const hace7Dias = new Date(fechaDesfasada.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+          // Solo la fecha
+          const fechaSemanaAntes = `${hace7Dias.getFullYear()}-${pad(hace7Dias.getMonth() + 1)}-${pad(hace7Dias.getDate())}`;
+
+          //Retornamos las fechas correspondientes
+          fechaIni = fechaSemanaAntes
+          fechaFinal = fechaActual
+          break;
+
+        default:
+
+          //Retornamos las fechas correspondientes
+          fechaIni = fechaActual
+          fechaFinal = fechaActual
+          break;
+      }
+      return { fechaIni, fechaFinal }
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Ocurrió un error al intentar obtener las fechas del filtro para datos del kpi.',
+        error: error.message,
+      });
+    }
+
+  }
 
 }
