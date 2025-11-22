@@ -557,12 +557,22 @@ ORDER BY u.Id DESC
       const fechaDesfasada = new Date(ahora.getTime() + desfaseMs);
 
       const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())} ${pad(fechaDesfasada.getHours())}:${pad(fechaDesfasada.getMinutes())}:${pad(fechaDesfasada.getSeconds())}`;
-      const bodyOperador = {
+      let bodyOperador;
+      if (updateUsuarioOperadorDto.deviceId) {
+        bodyOperador = {
+          userName: updateUsuarioOperadorDto.userName,
+          pinHash: pinPassword,
+          deviceId: updateUsuarioOperadorDto.deviceId,
+          actualizacionPin: fechaActual
+        }
+      } else {
+        bodyOperador = {
         userName: updateUsuarioOperadorDto.userName,
         pinHash: pinPassword,
-        deviceId: updateUsuarioOperadorDto.deviceId,
         actualizacionPin: fechaActual
       }
+      }
+
 
       //Agregamos el pin al updateUsuarioOperadorDto
       const newPin = await this.usuarioRepository.update(
