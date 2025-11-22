@@ -45,7 +45,7 @@ export class UsuariosService {
     private readonly clienteRepository: Repository<Clientes>,
     private readonly emailService: MailService,
     private readonly jwtService: JwtService,
-  ) { }
+  ) {}
 
   //funcion para obtener los clientes hijos
   private async clienteHijos(cliente: number) {
@@ -132,7 +132,7 @@ LIMIT ? OFFSET ?;
           break;
 
         default:
-          const { ids, placeholders } = await this.clienteHijos(cliente)
+          const { ids, placeholders } = await this.clienteHijos(cliente);
           // Consulta de datos paginados resto Usuario
           usuarios = await this.usuarioRepository.query(
             `
@@ -264,7 +264,7 @@ ORDER BY u.Id DESC;
 
         default:
           // Consulta de datos listado resto Usuario
-          const { ids, placeholders } = await this.clienteHijos(cliente)
+          const { ids, placeholders } = await this.clienteHijos(cliente);
           usuarios = await this.usuarioRepository.query(
             `
 SELECT
@@ -348,7 +348,7 @@ AND u.Estatus = 1
   )
 ORDER BY u.Id DESC;
         `,
-        [id]
+        [id],
       );
 
       const data = usuarios.map((item) => ({
@@ -364,7 +364,7 @@ ORDER BY u.Id DESC;
         throw error;
       }
       throw new InternalServerErrorException({
-        message: "Ocurrió un error al obtener los usuarios por roles.",
+        message: 'Ocurrió un error al obtener los usuarios por roles.',
         error: error.message,
       });
     }
@@ -448,7 +448,7 @@ ORDER BY u.Id DESC
 
         default:
           // Consulta de datos paginados resto Usuario
-          const { ids, placeholders } = await this.clienteHijos(cliente)
+          const { ids, placeholders } = await this.clienteHijos(cliente);
           usuarioData = await this.usuarioRepository.query(
             `
 SELECT
@@ -545,8 +545,6 @@ ORDER BY u.Id DESC
         10,
       );
 
-
-
       //Agregamos le fecha de la actualizacion
       function pad(n: number) {
         return n < 10 ? '0' + n : n;
@@ -557,22 +555,11 @@ ORDER BY u.Id DESC
       const fechaDesfasada = new Date(ahora.getTime() + desfaseMs);
 
       const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())} ${pad(fechaDesfasada.getHours())}:${pad(fechaDesfasada.getMinutes())}:${pad(fechaDesfasada.getSeconds())}`;
-      let bodyOperador;
-      if (updateUsuarioOperadorDto.deviceId) {
-        bodyOperador = {
-          userName: updateUsuarioOperadorDto.userName,
-          pinHash: pinPassword,
-          deviceId: updateUsuarioOperadorDto.deviceId,
-          actualizacionPin: fechaActual
-        }
-      } else {
-        bodyOperador = {
+      const bodyOperador = {
         userName: updateUsuarioOperadorDto.userName,
         pinHash: pinPassword,
-        actualizacionPin: fechaActual
-      }
-      }
-
+        actualizacionPin: fechaActual,
+      };
 
       //Agregamos el pin al updateUsuarioOperadorDto
       const newPin = await this.usuarioRepository.update(
@@ -642,7 +629,9 @@ ORDER BY u.Id DESC
         );
       }
 
-      const dispositivo = await this.dispositivosRepository.findOne({ where: { numeroSerie: updateUsuarioDispositivoDto.deviceId } })
+      const dispositivo = await this.dispositivosRepository.findOne({
+        where: { numeroSerie: updateUsuarioDispositivoDto.deviceId },
+      });
       if (!dispositivo) {
         throw new NotFoundException(
           `Dispositivo numero de serie: ${updateUsuarioDispositivoDto.deviceId} no fue encontrado.`,
@@ -651,7 +640,7 @@ ORDER BY u.Id DESC
 
       const bodyOperador = {
         deviceId: updateUsuarioDispositivoDto.deviceId,
-      }
+      };
 
       //Agregamos el dispositivo al usuario
       const newPin = await this.usuarioRepository.update(
@@ -727,8 +716,8 @@ ORDER BY u.Id DESC
       const newUser = await this.usuarioRepository.create(createUsuarioDto);
 
       //Activamos su ingreso
-      newUser.emailConfirmado = 1
-      newUser.estatus = 1
+      newUser.emailConfirmado = 1;
+      newUser.estatus = 1;
 
       const userSave = await this.usuarioRepository.save(newUser); //creamos el usuario
 
@@ -933,7 +922,7 @@ ORDER BY u.Id DESC
             'No se encontró el cliente especificado.',
           );
       }
-      updateUsuarioDto.emailConfirmado = EstatusEnum.ACTIVO
+      updateUsuarioDto.emailConfirmado = EstatusEnum.ACTIVO;
 
       const { permisosIds, ...usuarioUpdate } = updateUsuarioDto;
       // ----- ACTUALIZACIÓN DE USUARIO -----

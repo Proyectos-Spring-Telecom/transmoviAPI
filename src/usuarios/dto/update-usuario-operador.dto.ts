@@ -53,17 +53,7 @@ export class UpdateUsuarioOperadorDto {
   @Validate(PinValidator)
   @ApiProperty({
     description: 'PIN numérico de 6 u 8 dígitos',
-    examples: ['482915', '93746281'],
+    examples: ['[482915, 93746281]'],
   })
   pinHash: string;
-
-  @IsString()
-  @IsOptional()
-  @ApiProperty({
-    description: 'Identificador del dispositivo',
-    example: '15aBW',
-    required: false,
-  })
-  deviceId?: string;
-  
 }
