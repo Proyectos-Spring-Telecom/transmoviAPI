@@ -4,10 +4,11 @@ import { MantenimientoCombustibleController } from './mantenimiento-combustible.
 import { BitacoraModule } from 'src/bitacora/bitacora.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MantenimientoCombustible } from 'src/entities/MantenimientoCombustible';
+import { Instalaciones } from 'src/entities/Instalaciones';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([MantenimientoCombustible]),
+    TypeOrmModule.forFeature([MantenimientoCombustible, Instalaciones]),
     BitacoraModule,
   ],
   controllers: [MantenimientoCombustibleController],

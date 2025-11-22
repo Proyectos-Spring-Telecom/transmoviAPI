@@ -9,7 +9,8 @@ import { CreateMantenimientoCombustibleDto } from './dto/create-mantenimiento-co
 import { UpdateMantenimientoCombustibleDto } from './dto/update-mantenimiento-combustible.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { MantenimientoCombustible } from 'src/entities/MantenimientoCombustible';
-import { Repository } from 'typeorm';
+import { Instalaciones } from 'src/entities/Instalaciones';
+import { Repository, In } from 'typeorm';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import {
   ApiCrudResponse,
@@ -22,6 +23,8 @@ export class MantenimientoCombustibleService {
   constructor(
     @InjectRepository(MantenimientoCombustible)
     private readonly mantenimientoCombustibleRepository: Repository<MantenimientoCombustible>,
+    @InjectRepository(Instalaciones)
+    private readonly instalacionesRepository: Repository<Instalaciones>,
     private readonly bitacoraLogger: BitacoraLoggerService,
   ) {}
 
@@ -80,38 +83,82 @@ export class MantenimientoCombustibleService {
     }
   }
 
-  async findAll(page: number, limit: number): Promise<ApiResponseCommon> {
+  async findAll(page: number, limit: number, idCliente: number, rol: number): Promise<ApiResponseCommon> {
     try {
+      const whereCondition: any = {};
+      
+      // Filtrar por idCliente si el rol no es 1 o 2
+      if (rol !== 1 && rol !== 2) {
+        // Obtener las instalaciones del cliente
+        const instalaciones = await this.instalacionesRepository.find({
+          where: { idCliente: idCliente },
+          select: ['id'],
+        });
+        const idsInstalaciones = instalaciones.map(inst => inst.id);
+        
+        // Si no hay instalaciones, retornar vacío
+        if (idsInstalaciones.length === 0) {
+          return {
+            data: [],
+            paginated: {
+              total: 0,
+              page,
+              lastPage: 0,
+            },
+          };
+        }
+        
+        whereCondition.idInstalacion = In(idsInstalaciones);
+      }
+
       const [data, total] = await this.mantenimientoCombustibleRepository.findAndCount({
-        relations: ['tipoCombustible', 'instalacion', 'operador'],
+        where: Object.keys(whereCondition).length > 0 ? whereCondition : undefined,
+        relations: ['tipoCombustible', 'instalacion', 'instalacion.vehiculos', 'instalacion.idCliente2', 'operador', 'operador.idUsuario2'],
         order: { fhRegistro: 'DESC' },
         skip: (page - 1) * limit,
         take: limit,
       });
 
       // Forzamos ids a number
-      const mantenimientos = data.map((item) => ({
-        id: Number(item.id),
-        idTipoCombustible: item.idTipoCombustible ? Number(item.idTipoCombustible) : null,
-        cantidadCombustible: item.cantidadCombustible ? Number(item.cantidadCombustible) : null,
-        precioCombustible: item.precioCombustible ? Number(item.precioCombustible) : null,
-        idInstalacion: item.idInstalacion ? Number(item.idInstalacion) : null,
-        estatus: item.estatus,
-        fechaHora: item.fechaHora,
-        fhRegistro: item.fhRegistro,
-        kilometraje: item.kilometraje ? Number(item.kilometraje) : null,
-        idOperador: item.idOperador ? Number(item.idOperador) : null,
-        tipoCombustible: item.tipoCombustible ? {
-          id: Number(item.tipoCombustible.id),
-          nombre: item.tipoCombustible.nombre,
-        } : null,
-        instalacion: item.instalacion ? {
-          id: Number(item.instalacion.id),
-        } : null,
-        operador: item.operador ? {
-          id: Number(item.operador.id),
-        } : null,
-      }));
+      const mantenimientos = data.map((item) => {
+        const nombreOperador = item.operador?.idUsuario2 
+          ? `${item.operador.idUsuario2.nombre || ''} ${item.operador.idUsuario2.apellidoPaterno || ''} ${item.operador.idUsuario2.apellidoMaterno || ''}`.trim() || null
+          : null;
+
+        return {
+          id: Number(item.id),
+          idTipoCombustible: item.idTipoCombustible ? Number(item.idTipoCombustible) : null,
+          cantidadCombustible: item.cantidadCombustible ? Number(item.cantidadCombustible) : null,
+          precioCombustible: item.precioCombustible ? Number(item.precioCombustible) : null,
+          idInstalacion: item.idInstalacion ? Number(item.idInstalacion) : null,
+          estatus: item.estatus,
+          fechaHora: item.fechaHora,
+          fhRegistro: item.fhRegistro,
+          kilometraje: item.kilometraje ? Number(item.kilometraje) : null,
+          idOperador: item.idOperador ? Number(item.idOperador) : null,
+          placaVehiculo: item.instalacion?.vehiculos?.placa || null,
+          imagenVehiculo: item.instalacion?.vehiculos?.foto || null,
+          nombreOperador: nombreOperador,
+          tipoCombustible: item.tipoCombustible ? {
+            id: Number(item.tipoCombustible.id),
+            nombre: item.tipoCombustible.nombre,
+          } : null,
+          instalacion: item.instalacion ? {
+            id: Number(item.instalacion.id),
+          } : null,
+          operador: item.operador ? {
+            id: Number(item.operador.id),
+          } : null,
+          // Incluir datos del cliente cuando el rol es 1 o 2
+          cliente: (rol === 1 || rol === 2) && item.instalacion?.idCliente2 ? {
+            id: Number(item.instalacion.idCliente2.id),
+            nombre: item.instalacion.idCliente2.nombre,
+            apellidoPaterno: item.instalacion.idCliente2.apellidoPaterno,
+            apellidoMaterno: item.instalacion.idCliente2.apellidoMaterno,
+            estatus: item.instalacion.idCliente2.estatus,
+          } : null,
+        };
+      });
 
       const result: ApiResponseCommon = {
         data: mantenimientos,
@@ -132,15 +179,27 @@ export class MantenimientoCombustibleService {
     }
   }
 
-  async findOne(id: number): Promise<ApiResponseCommon> {
+  async findOne(id: number, idCliente: number, rol: number): Promise<ApiResponseCommon> {
     try {
       const mantenimiento = await this.mantenimientoCombustibleRepository.findOne({
         where: { id: id },
-        relations: ['tipoCombustible', 'instalacion', 'operador'],
+        relations: ['tipoCombustible', 'instalacion', 'instalacion.vehiculos', 'instalacion.idCliente2', 'operador', 'operador.idUsuario2'],
       });
+
       if (!mantenimiento) {
         throw new NotFoundException('Mantenimiento de combustible no encontrado');
       }
+
+      // Verificar que el mantenimiento pertenece al cliente si el rol no es 1 o 2
+      if (rol !== 1 && rol !== 2) {
+        if (mantenimiento.instalacion?.idCliente !== idCliente) {
+          throw new NotFoundException('Mantenimiento de combustible no encontrado');
+        }
+      }
+
+      const nombreOperador = mantenimiento.operador?.idUsuario2 
+        ? `${mantenimiento.operador.idUsuario2.nombre || ''} ${mantenimiento.operador.idUsuario2.apellidoPaterno || ''} ${mantenimiento.operador.idUsuario2.apellidoMaterno || ''}`.trim() || null
+        : null;
 
       const result: ApiResponseCommon = {
         data: [
@@ -155,6 +214,9 @@ export class MantenimientoCombustibleService {
             fhRegistro: mantenimiento.fhRegistro,
             kilometraje: mantenimiento.kilometraje ? Number(mantenimiento.kilometraje) : null,
             idOperador: mantenimiento.idOperador ? Number(mantenimiento.idOperador) : null,
+            placaVehiculo: mantenimiento.instalacion?.vehiculos?.placa || null,
+            imagenVehiculo: mantenimiento.instalacion?.vehiculos?.foto || null,
+            nombreOperador: nombreOperador,
             tipoCombustible: mantenimiento.tipoCombustible ? {
               id: Number(mantenimiento.tipoCombustible.id),
               nombre: mantenimiento.tipoCombustible.nombre,
@@ -164,6 +226,14 @@ export class MantenimientoCombustibleService {
             } : null,
             operador: mantenimiento.operador ? {
               id: Number(mantenimiento.operador.id),
+            } : null,
+            // Incluir datos del cliente cuando el rol es 1 o 2
+            cliente: (rol === 1 || rol === 2) && mantenimiento.instalacion?.idCliente2 ? {
+              id: Number(mantenimiento.instalacion.idCliente2.id),
+              nombre: mantenimiento.instalacion.idCliente2.nombre,
+              apellidoPaterno: mantenimiento.instalacion.idCliente2.apellidoPaterno,
+              apellidoMaterno: mantenimiento.instalacion.idCliente2.apellidoMaterno,
+              estatus: mantenimiento.instalacion.idCliente2.estatus,
             } : null,
           },
         ],

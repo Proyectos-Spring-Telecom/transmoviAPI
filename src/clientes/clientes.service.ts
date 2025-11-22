@@ -31,7 +31,7 @@ export class ClientesService {
     private readonly clienteRepository: Repository<Clientes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
     private readonly catpasajeroService: CatpasajeroService,
-  ) {}
+  ) { }
 
   // ========================================
   // 🔹 CREAR UN CLIENTE
@@ -115,7 +115,7 @@ export class ClientesService {
     }
   }
 
-  //funcion para obtener los clientes hijos
+  //funcion para obtener los clientes padre e hijos
   private async clienteHijos(cliente: number) {
     const clientesFiltrado = await this.clienteRepository.query(
       `CALL spGetClientes(?);`,
@@ -132,6 +132,28 @@ export class ClientesService {
 
     // 3. Construir el query dinámico con los IDs
     const placeholders = ids.map(() => '?').join(', ');
+    return { ids, placeholders };
+  }
+
+  private async clienteHijosPag(cliente: number) {
+    const result = await this.clienteRepository.query(
+      'CALL spGetClientes(?);',
+      [cliente],
+    );
+
+    let rows = result?.[0] ?? [];
+
+    // Construir ids y quitar el cliente padre
+    const ids = rows
+      .map((row: any) => Number(row.Id))
+      .filter(id => !isNaN(id) && id !== cliente); // 👈 QUITAR EL CLIENTE PADRE
+
+    if (ids.length === 0) {
+      return { ids: [], placeholders: '' };
+    }
+
+    const placeholders = ids.map(() => '?').join(', ');
+
     return { ids, placeholders };
   }
 
@@ -184,7 +206,7 @@ FROM Clientes
 ORDER BY Id ASC
   LIMIT ? OFFSET ?;
             `,
-            [limit, offset],
+            [ limit, offset],
           );
 
           // Query para total (sin paginación)
@@ -193,13 +215,12 @@ ORDER BY Id ASC
   SELECT COUNT(*) AS total
 FROM Clientes
 
-
-  `,
+  `, 
           );
           break;
 
         default:
-          const { ids, placeholders } = await this.clienteHijos(cliente);
+          const { ids, placeholders } = await this.clienteHijosPag(cliente);
           clientes = await this.clienteRepository.query(
             `
 SELECT
@@ -296,7 +317,8 @@ SELECT
   Id AS id,
   Nombre AS nombre,
   ApellidoPaterno AS apellidoPaterno,
-  ApellidoMaterno AS apellidoMaterno
+  ApellidoMaterno AS apellidoMaterno,
+  Logotipo AS logotipo
 FROM Clientes
 WHERE Estatus = 1
 ORDER BY Id ASC;
@@ -313,7 +335,8 @@ SELECT
   Id AS id,
   Nombre AS nombre,
   ApellidoPaterno AS apellidoPaterno,
-  ApellidoMaterno AS apellidoMaterno
+  ApellidoMaterno AS apellidoMaterno,
+  Logotipo AS logotipo
 FROM Clientes
 WHERE Id IN (${placeholders})  -- 🔹 aquí colocas el ID del cliente que quieres consultar
   AND Estatus = 1
@@ -336,6 +359,55 @@ ORDER BY Id ASC;
       };
       return result;
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new BadRequestException({
+        message: 'Ocurrió un error al obtener listado de los clientes.',
+      });
+    }
+  }
+
+  // ========================================
+  // 🔹 OBTENER UN LISTADO POR ID CLIENTE
+  // ========================================
+  async getAllListClientesId(
+    idUser: number,
+    cliente: number,
+    rol: number,
+  ): Promise<ApiResponseCommon> {
+    try {
+      let clientes;
+      // Usuarios normales - solo sus regiones asignadas
+          const { ids, placeholders } = await this.clienteHijos(cliente);
+          clientes = await this.clienteRepository.query(
+            `
+SELECT
+  Id AS id,
+  Nombre AS nombre,
+  ApellidoPaterno AS apellidoPaterno,
+  ApellidoMaterno AS apellidoMaterno
+FROM Clientes
+WHERE Id IN (${placeholders})  -- 🔹 aquí colocas el ID del cliente que quieres consultar
+  
+ORDER BY Id ASC
+
+            `,
+            [...ids],
+          );
+
+      // 🔥 Forzamos ids a number y agregamos nombreCompleto
+      const data = clientes.map((item) => ({
+        ...item,
+        id: Number(item.id),
+      }));
+
+      const result: ApiResponseCommon = {
+        data: data,
+      };
+      return result;
+    } catch (error) {
+      console.log(error)
       if (error instanceof HttpException) {
         throw error;
       }
@@ -387,7 +459,7 @@ ORDER BY Id ASC;
           `El cliente con ID: ${id} no fue encontrado.`,
         );
       }
-      
+
       //Actualizamos datos del cliente
       await this.clienteRepository.update(id, updateClienteDto);
 

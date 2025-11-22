@@ -61,5 +61,5 @@ export class LoginAuthPinDto {
     description: 'Identificador del dispositivo',
     example: '15aBW',
   })
-  dispositivoId: string;
+  deviceId: string;
 }

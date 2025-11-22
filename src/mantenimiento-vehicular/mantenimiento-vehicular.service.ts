@@ -9,8 +9,13 @@ import { CreateMantenimientoVehicularDto } from './dto/create-mantenimiento-vehi
 import { UpdateMantenimientoVehicularDto } from './dto/update-mantenimiento-vehicular.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { MantenimientoVehicular } from 'src/entities/MantenimientoVehicular';
-import { Repository } from 'typeorm';
+import { CatEstatusMantenimiento } from 'src/entities/CatEstatusMantenimiento';
+import { Talleres } from 'src/entities/Talleres';
+import { Instalaciones } from 'src/entities/Instalaciones';
+import { CatReferenciaServicio } from 'src/entities/CatReferenciaServicio';
+import { Repository, In } from 'typeorm';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
+import { S3Service } from 'src/s3/s3.service';
 import {
   ApiCrudResponse,
   ApiResponseCommon,
@@ -22,18 +27,92 @@ export class MantenimientoVehicularService {
   constructor(
     @InjectRepository(MantenimientoVehicular)
     private readonly mantenimientoVehicularRepository: Repository<MantenimientoVehicular>,
+    @InjectRepository(CatEstatusMantenimiento)
+    private readonly catEstatusMantenimientoRepository: Repository<CatEstatusMantenimiento>,
+    @InjectRepository(Talleres)
+    private readonly talleresRepository: Repository<Talleres>,
+    @InjectRepository(Instalaciones)
+    private readonly instalacionesRepository: Repository<Instalaciones>,
+    @InjectRepository(CatReferenciaServicio)
+    private readonly catReferenciaServicioRepository: Repository<CatReferenciaServicio>,
     private readonly bitacoraLogger: BitacoraLoggerService,
+    private readonly s3Service: S3Service,
   ) {}
 
   async create(
     createMantenimientoVehicularDto: CreateMantenimientoVehicularDto,
     idUser: number,
+    notaServicioFile?: Express.Multer.File,
   ): Promise<ApiCrudResponse> {
     try {
-      const create = await this.mantenimientoVehicularRepository.create(
-        createMantenimientoVehicularDto,
+      // Validar claves foráneas si se proporcionan
+      if (createMantenimientoVehicularDto.idEstatus !== undefined && createMantenimientoVehicularDto.idEstatus !== null) {
+        const estatusExists = await this.catEstatusMantenimientoRepository.findOne({
+          where: { id: createMantenimientoVehicularDto.idEstatus },
+        });
+        if (!estatusExists) {
+          throw new BadRequestException(
+            `El estatus de mantenimiento con ID ${createMantenimientoVehicularDto.idEstatus} no existe.`,
+          );
+        }
+      }
+
+      if (createMantenimientoVehicularDto.idTaller !== undefined && createMantenimientoVehicularDto.idTaller !== null) {
+        const tallerExists = await this.talleresRepository.findOne({
+          where: { id: createMantenimientoVehicularDto.idTaller },
+        });
+        if (!tallerExists) {
+          throw new BadRequestException(
+            `El taller con ID ${createMantenimientoVehicularDto.idTaller} no existe.`,
+          );
+        }
+      }
+
+      if (createMantenimientoVehicularDto.idInstalacion !== undefined && createMantenimientoVehicularDto.idInstalacion !== null) {
+        const instalacionExists = await this.instalacionesRepository.findOne({
+          where: { id: createMantenimientoVehicularDto.idInstalacion },
+        });
+        if (!instalacionExists) {
+          throw new BadRequestException(
+            `La instalación con ID ${createMantenimientoVehicularDto.idInstalacion} no existe.`,
+          );
+        }
+      }
+
+      if (createMantenimientoVehicularDto.idReferencia !== undefined && createMantenimientoVehicularDto.idReferencia !== null) {
+        const referenciaExists = await this.catReferenciaServicioRepository.findOne({
+          where: { id: createMantenimientoVehicularDto.idReferencia },
+        });
+        if (!referenciaExists) {
+          throw new BadRequestException(
+            `La referencia de servicio con ID ${createMantenimientoVehicularDto.idReferencia} no existe.`,
+          );
+        }
+      }
+
+      // Subir imagen de notaServicio a S3 si se proporciona
+      let notaServicioUrl: string | null = null;
+      if (notaServicioFile) {
+        const uploadResult = await this.s3Service.uploadFile(
+          notaServicioFile,
+          'NotasServicioMantenimiento',
+          idUser,
+          5, // ID del módulo de mantenimiento vehicular
+        );
+        notaServicioUrl = uploadResult.url;
+      }
+
+      // Crear el registro con los datos del DTO (ya convertidos automáticamente)
+      const dataToCreate = {
+        ...createMantenimientoVehicularDto,
+        notaServicio: notaServicioUrl,
+      };
+
+      const create = this.mantenimientoVehicularRepository.create(
+        dataToCreate,
       );
-      const saved = await this.mantenimientoVehicularRepository.save(create);
+      const savedResult = await this.mantenimientoVehicularRepository.save(create);
+      const saved = Array.isArray(savedResult) ? savedResult[0] : savedResult;
 
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { createMantenimientoVehicularDto };
@@ -60,6 +139,7 @@ export class MantenimientoVehicularService {
       return result;
     } catch (error) {
       //-----Registro en la bitacora----- ERROR
+      console.log(error); 
       const querylogger = { createMantenimientoVehicularDto };
       await this.bitacoraLogger.logToBitacora(
         'MantenimientoVehicular',
@@ -80,10 +160,37 @@ export class MantenimientoVehicularService {
     }
   }
 
-  async findAll(page: number, limit: number): Promise<ApiResponseCommon> {
+  async findAll(page: number, limit: number, idCliente: number, rol: number): Promise<ApiResponseCommon> {
     try {
+      const whereCondition: any = {};
+      
+      // Filtrar por idCliente si el rol no es 1 o 2
+      if (rol !== 1 && rol !== 2) {
+        // Obtener las instalaciones del cliente
+        const instalaciones = await this.instalacionesRepository.find({
+          where: { idCliente: idCliente },
+          select: ['id'],
+        });
+        const idsInstalaciones = instalaciones.map(inst => inst.id);
+        
+        // Si no hay instalaciones, retornar vacío
+        if (idsInstalaciones.length === 0) {
+          return {
+            data: [],
+            paginated: {
+              total: 0,
+              page,
+              lastPage: 0,
+            },
+          };
+        }
+        
+        whereCondition.idInstalacion = In(idsInstalaciones);
+      }
+
       const [data, total] = await this.mantenimientoVehicularRepository.findAndCount({
-        relations: ['instalacion', 'idEstatusRelacion', 'taller', 'referenciaServicio'],
+        where: Object.keys(whereCondition).length > 0 ? whereCondition : undefined,
+        relations: ['instalacion', 'instalacion.vehiculos', 'instalacion.idCliente2', 'idEstatusRelacion', 'taller', 'referenciaServicio'],
         order: { fhRegistro: 'DESC' },
         skip: (page - 1) * limit,
         take: limit,
@@ -104,6 +211,8 @@ export class MantenimientoVehicularService {
         encargado: item.encargado,
         fhRegistro: item.fhRegistro,
         estatus: item.estatus,
+        placaVehiculo: item.instalacion?.vehiculos?.placa || null,
+        imagenVehiculo: item.instalacion?.vehiculos?.foto || null,
         instalacion: item.instalacion ? {
           id: Number(item.instalacion.id),
         } : null,
@@ -118,6 +227,14 @@ export class MantenimientoVehicularService {
         referenciaServicio: item.referenciaServicio ? {
           id: Number(item.referenciaServicio.id),
           nombre: item.referenciaServicio.nombre,
+        } : null,
+        // Incluir datos del cliente cuando el rol es 1 o 2
+        cliente: (rol === 1 || rol === 2) && item.instalacion?.idCliente2 ? {
+          id: Number(item.instalacion.idCliente2.id),
+          nombre: item.instalacion.idCliente2.nombre,
+          apellidoPaterno: item.instalacion.idCliente2.apellidoPaterno,
+          apellidoMaterno: item.instalacion.idCliente2.apellidoMaterno,
+          estatus: item.instalacion.idCliente2.estatus,
         } : null,
       }));
 
@@ -140,12 +257,20 @@ export class MantenimientoVehicularService {
     }
   }
 
-  async findOne(id: number): Promise<ApiResponseCommon> {
+  async findOne(id: number, idCliente: number, rol: number): Promise<ApiResponseCommon> {
     try {
       const mantenimiento = await this.mantenimientoVehicularRepository.findOne({
         where: { id: id },
-        relations: ['instalacion', 'idEstatusRelacion', 'taller', 'referenciaServicio'],
+        relations: ['instalacion', 'instalacion.vehiculos', 'instalacion.idCliente2', 'idEstatusRelacion', 'taller', 'referenciaServicio'],
       });
+
+      // Verificar que el mantenimiento pertenece al cliente si el rol no es 1 o 2
+      if (rol !== 1 && rol !== 2) {
+        if (!mantenimiento || mantenimiento.instalacion?.idCliente !== idCliente) {
+          throw new NotFoundException('Mantenimiento vehicular no encontrado');
+        }
+      }
+
       if (!mantenimiento) {
         throw new NotFoundException('Mantenimiento vehicular no encontrado');
       }
@@ -166,6 +291,8 @@ export class MantenimientoVehicularService {
             encargado: mantenimiento.encargado,
             fhRegistro: mantenimiento.fhRegistro,
             estatus: mantenimiento.estatus,
+            placaVehiculo: mantenimiento.instalacion?.vehiculos?.placa || null,
+            imagenVehiculo: mantenimiento.instalacion?.vehiculos?.foto || null,
             instalacion: mantenimiento.instalacion ? {
               id: Number(mantenimiento.instalacion.id),
             } : null,
@@ -180,6 +307,14 @@ export class MantenimientoVehicularService {
             referenciaServicio: mantenimiento.referenciaServicio ? {
               id: Number(mantenimiento.referenciaServicio.id),
               nombre: mantenimiento.referenciaServicio.nombre,
+            } : null,
+            // Incluir datos del cliente cuando el rol es 1 o 2
+            cliente: (rol === 1 || rol === 2) && mantenimiento.instalacion?.idCliente2 ? {
+              id: Number(mantenimiento.instalacion.idCliente2.id),
+              nombre: mantenimiento.instalacion.idCliente2.nombre,
+              apellidoPaterno: mantenimiento.instalacion.idCliente2.apellidoPaterno,
+              apellidoMaterno: mantenimiento.instalacion.idCliente2.apellidoMaterno,
+              estatus: mantenimiento.instalacion.idCliente2.estatus,
             } : null,
           },
         ],
@@ -206,6 +341,51 @@ export class MantenimientoVehicularService {
       });
       if (!mantenimiento) {
         throw new NotFoundException('Mantenimiento vehicular no encontrado');
+      }
+
+      // Validar claves foráneas si se proporcionan
+      if (updateMantenimientoVehicularDto.idEstatus !== undefined && updateMantenimientoVehicularDto.idEstatus !== null) {
+        const estatusExists = await this.catEstatusMantenimientoRepository.findOne({
+          where: { id: updateMantenimientoVehicularDto.idEstatus },
+        });
+        if (!estatusExists) {
+          throw new BadRequestException(
+            `El estatus de mantenimiento con ID ${updateMantenimientoVehicularDto.idEstatus} no existe.`,
+          );
+        }
+      }
+
+      if (updateMantenimientoVehicularDto.idTaller !== undefined && updateMantenimientoVehicularDto.idTaller !== null) {
+        const tallerExists = await this.talleresRepository.findOne({
+          where: { id: updateMantenimientoVehicularDto.idTaller },
+        });
+        if (!tallerExists) {
+          throw new BadRequestException(
+            `El taller con ID ${updateMantenimientoVehicularDto.idTaller} no existe.`,
+          );
+        }
+      }
+
+      if (updateMantenimientoVehicularDto.idInstalacion !== undefined && updateMantenimientoVehicularDto.idInstalacion !== null) {
+        const instalacionExists = await this.instalacionesRepository.findOne({
+          where: { id: updateMantenimientoVehicularDto.idInstalacion },
+        });
+        if (!instalacionExists) {
+          throw new BadRequestException(
+            `La instalación con ID ${updateMantenimientoVehicularDto.idInstalacion} no existe.`,
+          );
+        }
+      }
+
+      if (updateMantenimientoVehicularDto.idReferencia !== undefined && updateMantenimientoVehicularDto.idReferencia !== null) {
+        const referenciaExists = await this.catReferenciaServicioRepository.findOne({
+          where: { id: updateMantenimientoVehicularDto.idReferencia },
+        });
+        if (!referenciaExists) {
+          throw new BadRequestException(
+            `La referencia de servicio con ID ${updateMantenimientoVehicularDto.idReferencia} no existe.`,
+          );
+        }
       }
 
       await this.mantenimientoVehicularRepository.update(

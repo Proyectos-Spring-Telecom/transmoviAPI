@@ -8,6 +8,7 @@ import {
   IsDateString,
   Min,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class CreateMantenimientoVehicularDto {
   @ApiProperty({
@@ -15,6 +16,7 @@ export class CreateMantenimientoVehicularDto {
     description: 'ID de la instalación relacionada',
     required: false,
   })
+  @Transform(({ value }) => value ? parseInt(value, 10) : value)
   @IsInt({ message: 'El ID de instalación debe ser un número entero.' })
   @IsOptional()
   idInstalacion?: number;
@@ -24,6 +26,7 @@ export class CreateMantenimientoVehicularDto {
     description: 'ID de la referencia de servicio',
     required: false,
   })
+  @Transform(({ value }) => value ? parseInt(value, 10) : value)
   @IsInt({ message: 'El ID de referencia debe ser un número entero.' })
   @IsOptional()
   idReferencia?: number;
@@ -40,21 +43,20 @@ export class CreateMantenimientoVehicularDto {
   servicioDescripcion?: string;
 
   @ApiProperty({
-    example: 'Se cambió aceite 5W-30 y filtro de aceite',
-    description: 'Notas adicionales del servicio',
+    type: 'string',
+    format: 'binary',
+    description: 'Imagen de las notas del servicio (archivo)',
     required: false,
-    maxLength: 1000,
   })
-  @IsString({ message: 'La nota del servicio debe ser una cadena de texto.' })
-  @MaxLength(1000, { message: 'La nota no puede exceder los 1000 caracteres.' })
   @IsOptional()
-  notaServicio?: string;
+  notaServicio?: any;
 
   @ApiProperty({
     example: 1,
     description: 'ID del estatus de mantenimiento',
     required: false,
   })
+  @Transform(({ value }) => value ? parseInt(value, 10) : value)
   @IsInt({ message: 'El ID de estatus debe ser un número entero.' })
   @IsOptional()
   idEstatus?: number;
@@ -82,6 +84,7 @@ export class CreateMantenimientoVehicularDto {
     description: 'ID del centro de servicio (taller)',
     required: false,
   })
+  @Transform(({ value }) => value ? parseInt(value, 10) : value)
   @IsInt({ message: 'El ID del centro de servicio debe ser un número entero.' })
   @IsOptional()
   idTaller?: number;
@@ -91,6 +94,7 @@ export class CreateMantenimientoVehicularDto {
     description: 'Costo del mantenimiento',
     required: false,
   })
+  @Transform(({ value }) => value ? parseFloat(value) : value)
   @IsNumber({}, { message: 'El costo debe ser un número.' })
   @Min(0, { message: 'El costo no puede ser negativo.' })
   @IsOptional()

@@ -36,13 +36,15 @@ export class ViajesconteosController {
   // ========================================
 
   @Get('list')
-  findAllList() {
-    return this.viajesconteosService.findAllList();
-  }
-
-  @Get('conteos/:id')
-  findOneConteos(@Param('id', ParseIntPipe) id: number) {
-    return this.viajesconteosService.findOneConteos(id);
+  findAllList(@Request() req,) {
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+    const idUser = req.user.userId;
+    return this.viajesconteosService.findAllList(
+      +idUser,
+      +cliente,
+      +rol,
+    );
   }
 
   @Get('viajes/:id')
@@ -56,6 +58,15 @@ export class ViajesconteosController {
     @Param('limit', ParseIntPipe) limit: number,
     @Request() req,
   ) {
-    return this.viajesconteosService.findAll(page, limit);
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+    const idUser = req.user.userId;
+    return this.viajesconteosService.findAll(
+      +idUser,
+      +cliente,
+      +rol,
+      page, 
+      limit
+    );
   }
 }

@@ -404,6 +404,65 @@ ORDER BY r.Id DESC
     return this.regionesRepository.query(query, [...ids]);
   }
 
+  //Obtener listado por idCliente recibido por ruta (solo del cliente, sin hijos)
+  async findByCliente(idCliente: number, idUser: number, rol: number) {
+    try {
+      // Consulta directa sin incluir clientes hijos
+      const regiones = await this.regionesRepository.query(
+        `
+SELECT
+  -- Región
+  r.Id AS id,
+  r.Nombre AS nombre,
+  r.Descripcion AS descripcion,
+  r.Geocerca AS geocerca,
+  r.FechaCreacion AS fechaCreacion,
+  r.FechaActualizacion AS fechaActualizacion,
+  r.Estatus AS estatus,
+
+  -- Cliente
+  c.Id AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente
+
+FROM Regiones r
+INNER JOIN Clientes c ON r.IdCliente = c.Id
+
+WHERE 
+  r.IdCliente = ?
+  AND r.Estatus = 1
+  AND c.Estatus = 1
+
+ORDER BY r.Id DESC
+        `,
+        [idCliente],
+      );
+
+      // 🔥 Forzamos ids a number
+      const data = regiones.map((item) => ({
+        ...item,
+        id: Number(item.id),
+        idCliente: Number(item.idCliente),
+      }));
+
+      const result: ApiResponseCommon = {
+        data: data,
+      };
+
+      return result;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Error al obtener regiones por cliente',
+        error: error.message,
+      });
+    }
+  }
+
   //Obtener listado
   async findAllList(cliente: number, idUser: number, rol: number) {
     try {

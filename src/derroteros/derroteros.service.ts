@@ -696,6 +696,103 @@ ORDER BY d.Id DESC;
     }
   }
 
+  // ========================================
+  // 🔹 OBTENER DERROTEROS POR RUTA
+  // ========================================
+  async findByRuta(idRuta: number, idUser: number, rol: number) {
+    try {
+      // Consulta directa de derroteros por ruta (solo la ruta especificada)
+      const derroteros = await this.derroterosRepository.query(
+        `
+SELECT 
+  -- Datos del derrotero (datos principales)
+  d.Id AS id,
+  d.Nombre AS nombreDerrotero,
+  d.PuntoInicio AS puntoInicio,
+  d.PuntoFin AS puntoFin,
+  d.RecorridoDetallado AS recorridoDetallado,
+  d.DistanciaKm AS distanciaKm,
+  d.FechaCreacion AS fechaCreacionDerrotero,
+  d.Estatus AS estatusDerrotero,
+
+  -- Datos de la ruta asociada
+  ru.Id AS idRuta,
+  ru.Nombre AS nombreRuta,
+  ru.NombreInicio AS nombreInicio,
+  ru.NombreFin AS nombreFin,
+  ru.FechaCreacion AS fechaCreacionRuta,
+  ru.Estatus AS estatusRuta,
+
+  -- Región de inicio
+  r.Id AS idRegionInicio,
+  r.Nombre AS nombreRegionInicio,
+  r.Descripcion AS descripcionRegionInicio,
+  r.FechaCreacion AS fechaCreacionRegionInicio,
+  r.FechaActualizacion AS fechaActualizacionRegionInicio,
+  r.Estatus AS estatusRegionInicio,
+
+  -- Región de fin
+  rf.Id AS idRegionFin,
+  rf.Nombre AS nombreRegionFin,
+  rf.Descripcion AS descripcionRegionFin,
+  rf.FechaCreacion AS fechaCreacionRegionFin,
+  rf.FechaActualizacion AS fechaActualizacionRegionFin,
+  rf.Estatus AS estatusRegionFin,
+
+  -- Cliente relacionado
+  c.Id AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente,
+  CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
+
+FROM Derroteros d
+INNER JOIN Rutas ru ON d.IdRuta = ru.Id
+INNER JOIN Regiones r ON ru.IdRegion = r.Id
+LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Clientes c ON r.IdCliente = c.Id
+
+WHERE 
+  d.IdRuta = ?
+  AND r.Estatus = 1
+  AND ru.Estatus = 1
+  AND d.Estatus = 1
+  AND c.Estatus = 1
+
+ORDER BY d.Id DESC
+        `,
+        [idRuta],
+      );
+
+      // Mapeo de resultados con conversión de tipos
+      const data = derroteros.map((item) => ({
+        ...item,
+        id: Number(item.id),
+        idRuta: Number(item.idRuta),
+        idRegionInicio: Number(item.idRegionInicio),
+        idRegionFin: item.idRegionFin ? Number(item.idRegionFin) : null,
+        idCliente: Number(item.idCliente),
+        distanciaKm: Number(item.distanciaKm),
+      }));
+
+      // API response
+      const result: ApiResponseCommon = {
+        data: data,
+      };
+
+      return result;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Error al obtener derroteros por ruta',
+        error: error.message,
+      });
+    }
+  }
+
   private async consultarDerroteroOne(cliente: number, id: number) {
     const { ids, placeholders } = await this.clienteHijos(cliente);
     const query = `

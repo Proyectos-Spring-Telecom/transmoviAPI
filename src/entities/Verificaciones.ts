@@ -12,8 +12,8 @@ import { CatTipoVerificaciones } from "./CatTipoVerificaciones";
 import { applySchema } from "src/common/apply-schema.decorator";
 
 @applySchema
-@Index("FK_Verificacion_Instalacion", ["idInstalacion"], {})
-@Index("FK_Verificaciones_Operador", ["idOperador"], {})
+@Index("FK_Verificacion_Instalacion_idx", ["idInstalacion"], {})
+@Index("FK_Verificaciones_Operador_idx", ["idOperador"], {})
 @Entity("Verificaciones")
 export class Verificaciones {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })

@@ -96,6 +96,7 @@ export class TransaccionesService {
       const newTransaccion = await this.transaccionesrecargaRepository.create(
         createTransaccioneRecargaDto,
       );
+      newTransaccion.idTipoTransaccion = EnumTipoTransaccion.RECARGA
       const transaccionSave =
         await this.transaccionesrecargaRepository.save(newTransaccion);
 
@@ -245,6 +246,7 @@ export class TransaccionesService {
       const newTransaccion = this.transaccionesdebitoRepository.create(
         createTransaccioneDebitoDto,
       );
+      newTransaccion.idTipoTransaccion = EnumTipoTransaccion.DEBITO
       const transaccionSave =
         await this.transaccionesdebitoRepository.save(newTransaccion);
 
@@ -349,6 +351,7 @@ export class TransaccionesService {
       const newTransaccion = await this.transaccionesdebitoRepository.create(
         createTransaccioneDebitoDto,
       );
+      newTransaccion.idTipoTransaccion = EnumTipoTransaccion.RECARGA
       const transaccionSave =
         await this.transaccionesdebitoRepository.save(newTransaccion);
 
@@ -559,6 +562,128 @@ FROM (
           );
           break;
 
+        case 3:
+        default:
+          //Usuarios Operador
+          transacciones = await this.transaccionesrecargaRepository.query(
+            `
+(
+  SELECT 
+      'DEBITO' AS origenTabla,
+      td.Id AS id,
+      ctt.Nombre AS tipoTransaccion,
+      td.Monto AS monto,
+      td.Latitud AS latitud,
+      td.Longitud AS longitud,
+      td.FechaHora AS fechaHora,
+      td.FHRegistro AS fhRegistro,
+      td.NumeroSerieMonedero AS numeroSerieMonedero,
+      td.NumeroSerieDispositivo AS numeroSerieDispositivo,
+      td.ControlTransaccion AS controlTransaccion,
+
+      -- Datos del cliente
+    c.Id AS idCliente,
+    c.Nombre AS nombreCliente,
+    c.ApellidoPaterno AS apellidoPaternoCliente,
+    c.ApellidoMaterno AS apellidoMaternoCliente,
+    
+
+      d.Marca AS marcaDispositivo,
+      d.Modelo AS modeloDispositivo,
+
+      p.Id AS idPasajero,
+      p.Nombre AS nombrePasajero,
+      p.ApellidoPaterno AS apellidoPaternoPasajero,
+      p.ApellidoMaterno AS apellidoMaternoPasajero
+
+  FROM TransaccionesDebito td
+  INNER JOIN CatTiposTransacciones ctt 
+      ON td.IdTipoTransaccion = ctt.Id
+  LEFT JOIN Dispositivos d 
+      ON td.NumeroSerieDispositivo = d.NumeroSerie
+  INNER JOIN Monederos m 
+      ON td.NumeroSerieMonedero = m.NumeroSerie
+  LEFT JOIN Pasajeros p 
+      ON m.IdPasajero = p.Id
+  INNER JOIN Clientes c
+	ON m.IdCliente = c.Id
+
+  WHERE m.IdCliente = ?   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+
+  UNION ALL
+
+  SELECT 
+      'RECARGA' AS origenTabla,
+      tr.Id AS id,
+      ctt.Nombre AS tipoTransaccion,
+      tr.Monto AS monto,
+      tr.Latitud AS latitud,
+      tr.Longitud AS longitud,
+      tr.FechaHora AS fechaHora,
+      tr.FHRegistro AS fhRegistro,
+      tr.NumeroSerieMonedero AS numeroSerieMonedero,
+      tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+      tr.ControlTransaccion AS controlTransaccion,
+
+      -- Datos del cliente
+    c.Id AS idCliente,
+    c.Nombre AS nombreCliente,
+    c.ApellidoPaterno AS apellidoPaternoCliente,
+    c.ApellidoMaterno AS apellidoMaternoCliente,
+    
+
+      d.Marca AS marcaDispositivo,
+      d.Modelo AS modeloDispositivo,
+
+      p.Id AS idPasajero,
+      p.Nombre AS nombrePasajero,
+      p.ApellidoPaterno AS apellidoPaternoPasajero,
+      p.ApellidoMaterno AS apellidoMaternoPasajero
+
+  FROM TransaccionesRecarga tr
+  INNER JOIN CatTiposTransacciones ctt 
+      ON tr.IdTipoTransaccion = ctt.Id
+  LEFT JOIN Dispositivos d 
+      ON tr.NumeroSerieDispositivo = d.NumeroSerie
+  INNER JOIN Monederos m 
+      ON tr.NumeroSerieMonedero = m.NumeroSerie
+  LEFT JOIN Pasajeros p 
+      ON m.IdPasajero = p.Id
+  INNER JOIN Clientes c
+	ON m.IdCliente = c.Id
+
+  WHERE m.IdCliente = ?   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+)
+ORDER BY FHRegistro DESC
+LIMIT ? OFFSET ?;
+
+        `,
+            [cliente, cliente, limit, offset],
+          );
+
+          // Query para total (sin paginación)
+          totalResult = await this.transaccionesrecargaRepository.query(
+            `
+SELECT COUNT(*) AS total
+FROM (
+  SELECT td.Id
+  FROM TransaccionesDebito td
+  INNER JOIN Monederos m ON td.NumeroSerieMonedero = m.NumeroSerie
+  WHERE m.IdCliente = ?   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+
+  UNION ALL
+
+  SELECT tr.Id
+  FROM TransaccionesRecarga tr
+  INNER JOIN Monederos m ON tr.NumeroSerieMonedero = m.NumeroSerie
+  WHERE m.IdCliente = ?   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+) AS todas;
+
+  `,
+            [cliente, cliente],
+          );
+          break;
+
         case 9:
           //Datos por usuario
           const pasajero =
@@ -663,7 +788,9 @@ FROM (
 
           break;
 
-        default:
+        case 2:
+        case 8:
+        case 10:
           //resto usuarios
           const { ids, placeholders } = await this.clienteHijos(cliente);
           transacciones = await this.transaccionesrecargaRepository.query(
@@ -809,7 +936,6 @@ FROM (
       };
       return result;
     } catch (error) {
-      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -900,7 +1026,9 @@ ORDER BY FHRegistro DESC
           );
           break;
 
-        default:
+        case 2: // Administrador
+        case 8: // Reportes
+        case 10: // Capturista
           const { ids, placeholders } = await this.clienteHijos(cliente);
           transacciones = await this.transaccionesrecargaRepository.query(
             `
@@ -975,6 +1103,84 @@ ORDER BY FHRegistro DESC
 
         `,
             [...ids, ...ids],
+          );
+          break;
+
+        case 3:
+        default:
+          transacciones = await this.transaccionesrecargaRepository.query(
+            `
+(
+  SELECT 
+      'DEBITO' AS origenTabla,
+      td.Id AS id,
+      ctt.Nombre AS tipoTransaccion,
+      td.Monto AS monto,
+      td.Latitud AS latitud,
+      td.Longitud AS longitud,
+      td.FechaHora AS fechaHora,
+      td.FHRegistro AS fhRegistro,
+      td.NumeroSerieMonedero AS numeroSerieMonedero,
+      td.NumeroSerieDispositivo AS numeroSerieDispositivo,
+      td.ControlTransaccion AS controlTransaccion,
+
+      d.Marca AS marcaDispositivo,
+      d.Modelo AS modeloDispositivo,
+
+      p.Id AS idPasajero,
+      p.Nombre AS nombrePasajero,
+      p.ApellidoPaterno AS apellidoPaternoPasajero,
+      p.ApellidoMaterno AS apellidoMaternoPasajero
+
+  FROM TransaccionesDebito td
+  INNER JOIN CatTiposTransacciones ctt 
+      ON td.IdTipoTransaccion = ctt.Id
+  LEFT JOIN Dispositivos d 
+      ON td.NumeroSerieDispositivo = d.NumeroSerie
+  INNER JOIN Monederos m 
+      ON td.NumeroSerieMonedero = m.NumeroSerie
+  LEFT JOIN Pasajeros p 
+      ON m.IdPasajero = p.Id
+  WHERE m.IdCliente = ?   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+
+  UNION ALL
+
+  SELECT 
+      'RECARGA' AS origenTabla,
+      tr.Id AS id,
+      ctt.Nombre AS tipoTransaccion,
+      tr.Monto AS monto,
+      tr.Latitud AS latitud,
+      tr.Longitud AS longitud,
+      tr.FechaHora AS fechaHora,
+      tr.FHRegistro AS fhRegistro,
+      tr.NumeroSerieMonedero AS numeroSerieMonedero,
+      tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+      tr.ControlTransaccion AS controlTransaccion,
+
+      d.Marca AS marcaDispositivo,
+      d.Modelo AS modeloDispositivo,
+
+      p.Id AS idPasajero,
+      p.Nombre AS nombrePasajero,
+      p.ApellidoPaterno AS apellidoPaternoPasajero,
+      p.ApellidoMaterno AS apellidoMaternoPasajero
+
+  FROM TransaccionesRecarga tr
+  INNER JOIN CatTiposTransacciones ctt 
+      ON tr.IdTipoTransaccion = ctt.Id
+  LEFT JOIN Dispositivos d 
+      ON tr.NumeroSerieDispositivo = d.NumeroSerie
+  INNER JOIN Monederos m 
+      ON tr.NumeroSerieMonedero = m.NumeroSerie
+  LEFT JOIN Pasajeros p 
+      ON m.IdPasajero = p.Id
+  WHERE m.IdCliente = ?   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+)
+ORDER BY FHRegistro DESC
+
+        `,
+            [cliente, cliente],
           );
           break;
       }

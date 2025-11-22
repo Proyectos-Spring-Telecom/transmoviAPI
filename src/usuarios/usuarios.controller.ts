@@ -10,7 +10,6 @@ import {
   UseGuards,
   ParseIntPipe,
   Request,
-  Query,
 } from '@nestjs/common';
 import { UsuariosService } from './usuarios.service';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
@@ -27,13 +26,14 @@ import {
 import { ApiCrudResponse } from 'src/common/ApiResponse';
 import { UpdateUsuarioOperadorDto } from './dto/update-usuario-operador.dto';
 import { UpdateUsuarioContrasena } from './dto/update-usuario-contrasena.dto';
+import { UpdateUsuarioDispositivoDto } from './dto/update-usuario-dispositivo.dto';
 
 @UseGuards(JwtAuthGuard)
 @ApiTags('Usuarios')
 @ApiBearerAuth('bearer-token')
 @Controller('usuarios')
 export class UsuariosController {
-  constructor(private readonly usuariosService: UsuariosService) {}
+  constructor(private readonly usuariosService: UsuariosService) { }
 
   // ========================================
   // 🔹 POST ROUTES (crear recursos)
@@ -103,7 +103,9 @@ export class UsuariosController {
   ): Promise<ApiResponseCommon> {
     const cliente = req.user.cliente;
     const rol = req.user.rol;
+    const idUser = req.user.userId;
     return await this.usuariosService.getAllUsuario(
+      +idUser,
       +cliente,
       +rol,
       page,
@@ -146,22 +148,9 @@ export class UsuariosController {
     );
   }
 
-  @Put('operador')
-  @ApiOperation({ summary: 'Actualizar o crear PIN de operador' })
-  @ApiResponse({ status: 200, description: 'PIN de operador actualizado' })
-  @ApiResponse({ status: 400, description: 'Datos inválidos' })
-  async updatePin(
-    @Body() updateUsuarioOperadorDto: UpdateUsuarioOperadorDto,
-    @Request() req,
-  ): Promise<ApiCrudResponse> {
-    const idUser = req.user.userId;
-    const userName = req.user.email;
-    return await this.usuariosService.createPin(
-      userName,
-      +idUser,
-      updateUsuarioOperadorDto,
-    );
-  }
+  // ========================================
+  // 🔹 PUT ACTUALIZAR USUARIO
+  // ========================================
 
   @Put(':id')
   @ApiOperation({ summary: 'Actualizar información completa del usuario' })
@@ -184,6 +173,40 @@ export class UsuariosController {
   // ========================================
   // 🔹 PATCH ROUTES (actualización parcial)
   // ========================================
+
+  @Patch('generar/pin')
+  @ApiOperation({ summary: 'Actualizar o crear PIN de operador' })
+  @ApiResponse({ status: 200, description: 'PIN de operador actualizado' })
+  @ApiResponse({ status: 400, description: 'Datos inválidos' })
+  async updatePin(
+    @Body() updateUsuarioOperadorDto: UpdateUsuarioOperadorDto,
+    @Request() req,
+  ): Promise<ApiCrudResponse> {
+    const idUser = req.user.userId;
+    const userName = req.user.email;
+    return await this.usuariosService.createPin(
+      userName,
+      +idUser,
+      updateUsuarioOperadorDto,
+    );
+  }
+
+  @Patch('actualizar/dispositivo')
+  @ApiOperation({ summary: 'Actualizar dispositivo del operador' })
+  @ApiResponse({ status: 200, description: 'Dispositivo Actualizado' })
+  @ApiResponse({ status: 400, description: 'Datos inválidos' })
+  async updateDispositivo(
+    @Body() updateUsuarioDispositivoDto: UpdateUsuarioDispositivoDto,
+    @Request() req,
+  ): Promise<ApiCrudResponse> {
+    const idUser = req.user.userId;
+    const userName = req.user.email;
+    return await this.usuariosService.updateDispositivo(
+      userName,
+      +idUser,
+      updateUsuarioDispositivoDto,
+    );
+  }
 
   @Patch('estatus/:id')
   @ApiOperation({ summary: 'Cambiar estatus del usuario (activar/desactivar)' })

@@ -21,7 +21,7 @@ async function bootstrap() {
     .setVersion('2.0') 
     .addServer('http://localhost:3010', 'Servidor Local')
     .addServer('https://transmovi.mx/apidev/', 'Servidor de Desarrollo')
-    .addServer('https://transmovi.mx/api/', 'Servidor de Producción')
+    .addServer('https://transmovi.mx/api/api', 'Servidor de Producción')
     .addBearerAuth(
       {
         type: 'http',
@@ -36,7 +36,12 @@ async function bootstrap() {
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document); 
+  SwaggerModule.setup('api', app, document, {
+    swaggerOptions: {
+      persistAuthorization: true,
+      defaultModelsExpandDepth: -1,
+    },
+  }); 
   
   app.useGlobalPipes(
     new ValidationPipe({

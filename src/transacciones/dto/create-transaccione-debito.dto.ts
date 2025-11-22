@@ -13,12 +13,8 @@ export class CreateTransaccioneDebitoDto {
   @IsEnum(EnumTipoTransaccion, {
     message: 'El tipo de transaccion a realizar: 1 (Recarga), 2 (Debito)',
   })
-  @ApiProperty({
-    description: 'Tipo de transaccion',
-    example: '1 = Recarga, 2 = Debito',
-  })
-  @IsNotEmpty()
-  idTipoTransaccion: EnumTipoTransaccion;
+  @IsOptional()
+  idTipoTransaccion?: EnumTipoTransaccion;
 
   @ApiProperty({
     example: 150.75,

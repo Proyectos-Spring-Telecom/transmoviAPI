@@ -142,6 +142,89 @@ export class VehiculosService {
     }
   }
 
+  // ========================================
+  // 🔹 OBTENER VEHÍCULOS POR ID DE CLIENTE
+  // ========================================
+  async findByCliente(
+    idCliente: number,
+    idUser: number,
+    rol: number,
+  ): Promise<ApiResponseCommon> {
+    try {
+      // Consulta directa de vehículos por cliente (solo el cliente especificado)
+      const vehiculos = await this.vehiculoRepository.query(
+        `
+SELECT 
+  v.Id AS id,
+  v.Marca AS marca,
+  v.Modelo AS modelo,
+  v.Ano AS ano,
+  v.Placa AS placa,
+  v.NumeroEconomico AS numeroEconomico,
+  v.TarjetaCirculacion AS tarjetaCirculacion,
+  v.PolizaSeguro AS polizaSeguro,
+  v.PermisoConcesion AS permisoConcesion,
+  v.InspeccionMecanica AS inspeccionMecanica,
+  v.Foto AS foto,
+  v.PasajerosSentados AS pasajerosSentados,
+  v.PasajerosParados AS pasajerosParados,
+  v.FechaCreacion AS fechaCreacion,
+  v.FechaActualizacion AS fechaActualizacion,
+  v.Estatus AS estatus,
+  v.EstadoActual AS estadoActual,
+  v.IdCliente AS idCliente,
+  v.KM AS km,
+  v.IdCombustible AS idCombustible,
+  v.CapacidadLitros AS capacidadLitros,
+  
+  -- Datos del Cliente
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  CONCAT(c.Nombre, ' ', IFNULL(c.ApellidoPaterno, ''), ' ', IFNULL(c.ApellidoMaterno, '')) AS nombreCompletoCliente
+
+FROM Vehiculos v
+INNER JOIN Clientes c ON v.IdCliente = c.Id
+
+WHERE 
+  v.IdCliente = ?
+  AND v.Estatus = 1
+  AND c.Estatus = 1
+
+ORDER BY v.Id DESC
+        `,
+        [idCliente],
+      );
+
+      // Forzamos a cambiar el id a number
+      const data = vehiculos.map((item) => ({
+        ...item,
+        id: Number(item.id),
+        ano: Number(item.ano),
+        pasajerosSentados: item.pasajerosSentados ? Number(item.pasajerosSentados) : null,
+        pasajerosParados: item.pasajerosParados ? Number(item.pasajerosParados) : null,
+        idCliente: Number(item.idCliente),
+        km: item.km ? Number(item.km) : null,
+        idCombustible: item.idCombustible ? Number(item.idCombustible) : null,
+        capacidadLitros: item.capacidadLitros ? Number(item.capacidadLitros) : null,
+      }));
+
+      const result: ApiResponseCommon = {
+        data: data,
+      };
+
+      return result;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Error al obtener vehículos por cliente',
+        error: error.message,
+      });
+    }
+  }
+
   async findAll(
     page: number,
     limit: number,
