@@ -26,6 +26,7 @@ import { MonederosService } from 'src/monederos/monederos.service';
 import { PasajerosService } from 'src/pasajeros/pasajeros.service';
 import { CodigoPasajeroAutenticacion } from './dto/login-autenticacion.dto';
 import { number } from 'joi';
+import { Licencias } from 'src/entities/Licencias';
 
 @Injectable()
 export class AuthService {
@@ -276,24 +277,90 @@ export class AuthService {
         ultimoLogin: fechaActual,
       });
       const pin = user.pinHash ? 1 : 0;
+      const operador = await this.usuariosRepository.query(`
+          WITH DatosUsuario AS (
+    SELECT
+        u.Id AS IdUsuario,
+        u.UserName AS userName,
+        u.Nombre AS nombre,
+        u.ApellidoPaterno AS apellidoPaterno,
+        u.ApellidoMaterno AS apellidoMaterno,
+        u.Telefono AS telefono,
+        u.UltimoLogin AS ultimoLogin,
+        u.FechaCreacion AS fechaCreacion,
+        u.FotoPerfil AS fotoPerfil,
+        u.DeviceId AS deviceId,
+
+        -- CLIENTE
+        c.Id AS idCliente,
+        c.Nombre AS nombreCliente,
+        c.ApellidoPaterno AS apellidoPaternoCliente,
+        c.ApellidoMaterno AS apellidoMaternoCliente,
+        c.Logotipo AS logotipo,
+
+        -- OPERADOR
+        o.Id AS idOperador,
+        o.FechaNacimiento AS fechaNacimiento,
+        o.Identificacion AS identificacion,
+        o.Foto AS fotoOperador,
+        o.ComprobanteDomicilio AS comprobanteDomicilioOperador,
+        o.CertificadoMedico AS certificadoMedicoOperador,
+        o.AntecedentesNoPenales AS antecedentesNoPenalesOperador,
+        o.Estatus AS estatusOperador
+    FROM Usuarios u
+    INNER JOIN Clientes c ON c.Id = u.IdCliente
+    LEFT JOIN Operadores o ON o.IdUsuario = u.Id
+    WHERE u.Id = ${user.id}
+),
+LicenciasJSON AS (
+    SELECT
+        o.IdUsuario,
+        JSON_ARRAYAGG(
+            JSON_OBJECT(
+                'IdLicencia', l.Id,
+                'Licencia', l.Licencia,
+                'NumeroLicencia', l.NumeroLicencia,
+                'FechaExpedicion', l.FechaExpedicion,
+                'FechaVencimiento', l.FechaVencimineto,
+                'IdTipoLicencia', l.IdTipoLicencia,
+                'IdCategoriaLicencia', l.IdCategoriaLicencia
+            )
+        ) AS Licencias
+    FROM Operadores o
+    LEFT JOIN Licencias l ON l.IdOperador = o.Id
+    GROUP BY o.IdUsuario
+)
+SELECT 
+    du.*,
+    lj.Licencias
+FROM DatosUsuario du
+LEFT JOIN LicenciasJSON lj ON lj.IdUsuario = du.IdUsuario;
+          `)
       return {
         message: `login exitoso`,
-        id: Number(`${user.id}`),
-        nombre: `${user.nombre}`,
-        apellidoPaterno: `${user.apellidoPaterno}`,
-        apellidoMaterno: `${user.apellidoMaterno}`,
-        idCliente: Number(`${user.idCliente}`),
-        nombreCliente: `${user.idCliente2?.nombre}`,
-        apellidoPaternoCliente: `${user.idCliente2?.apellidoPaterno}`,
-        apellidoMaternoCliente: `${user.idCliente2?.apellidoMaterno}`,
-        logotipo: `${user.idCliente2?.logotipo}`,
-        telefono: `${user.telefono}`,
-        ultimoLogin: `${user.ultimoLogin}`,
-        fechaCreacion: `${user.fechaCreacion}`,
-        fotoPerfil: `${user.fotoPerfil}`,
-        deviceId: `${user?.deviceId}`,
+        id: Number(operador[0].IdUsuario),
+        nombre: operador[0].nombre,
+        apellidoPaterno: operador[0].apellidoPaterno,
+        apellidoMaterno: operador[0].apellidoMaterno,
+        fechaNacimiento: operador[0].fechaNacimiento,
+        identificacion: operador[0].identificacion,
+        comprobanteDomicilioOperador: operador[0].comprobanteDomicilioOperador,
+        certificadoMedicoOperador: operador[0].certificadoMedicoOperador,
+        antecedentesNoPenalesOperador: operador[0].antecedentesNoPenalesOperador,
+        estatusOperador: operador[0].estatusOperador,
+        idCliente: Number(operador[0].idCliente),
+        nombreCliente: operador[0].nombreCliente,
+        apellidoPaternoCliente: operador[0].apellidoPaternoCliente,
+        apellidoMaternoCliente: operador[0].apellidoMaternoCliente,
+        logotipo: operador[0].logotipo,
+        telefono: operador[0].telefono,
+        ultimoLogin: operador[0].ultimoLogin,
+        fechaCreacion: operador[0].fechaCreacion,
+        fotoPerfil: operador[0].fotoOperador,
+        deviceId: operador[0].deviceId,
         pinExist: pin,
-        userName: `${user.userName}`,
+        userName: user.userName,
+        Licencias: operador[0].Licencias,
         rol: user.idRol2,
         token: this.jwtService.sign(payload),
         permisos: permisos,
@@ -362,26 +429,94 @@ export class AuthService {
       await this.usuariosRepository.update(user.id, {
         ultimoLogin: fechaActual,
       });
+
+      //login para operadores
       if (Number(user.idRol) === 3) {
         const pin = user.pinHash ? 1 : 0;
+        const operador = await this.usuariosRepository.query(`
+          WITH DatosUsuario AS (
+    SELECT
+        u.Id AS IdUsuario,
+        u.UserName AS userName,
+        u.Nombre AS nombre,
+        u.ApellidoPaterno AS apellidoPaterno,
+        u.ApellidoMaterno AS apellidoMaterno,
+        u.Telefono AS telefono,
+        u.UltimoLogin AS ultimoLogin,
+        u.FechaCreacion AS fechaCreacion,
+        u.FotoPerfil AS fotoPerfil,
+        u.DeviceId AS deviceId,
+
+        -- CLIENTE
+        c.Id AS idCliente,
+        c.Nombre AS nombreCliente,
+        c.ApellidoPaterno AS apellidoPaternoCliente,
+        c.ApellidoMaterno AS apellidoMaternoCliente,
+        c.Logotipo AS logotipo,
+
+        -- OPERADOR
+        o.Id AS idOperador,
+        o.FechaNacimiento AS fechaNacimiento,
+        o.Identificacion AS identificacion,
+        o.Foto AS fotoOperador,
+        o.ComprobanteDomicilio AS comprobanteDomicilioOperador,
+        o.CertificadoMedico AS certificadoMedicoOperador,
+        o.AntecedentesNoPenales AS antecedentesNoPenalesOperador,
+        o.Estatus AS estatusOperador
+    FROM Usuarios u
+    INNER JOIN Clientes c ON c.Id = u.IdCliente
+    LEFT JOIN Operadores o ON o.IdUsuario = u.Id
+    WHERE u.Id = ${user.id}
+),
+LicenciasJSON AS (
+    SELECT
+        o.IdUsuario,
+        JSON_ARRAYAGG(
+            JSON_OBJECT(
+                'IdLicencia', l.Id,
+                'Licencia', l.Licencia,
+                'NumeroLicencia', l.NumeroLicencia,
+                'FechaExpedicion', l.FechaExpedicion,
+                'FechaVencimiento', l.FechaVencimineto,
+                'IdTipoLicencia', l.IdTipoLicencia,
+                'IdCategoriaLicencia', l.IdCategoriaLicencia
+            )
+        ) AS Licencias
+    FROM Operadores o
+    LEFT JOIN Licencias l ON l.IdOperador = o.Id
+    GROUP BY o.IdUsuario
+)
+SELECT 
+    du.*,
+    lj.Licencias
+FROM DatosUsuario du
+LEFT JOIN LicenciasJSON lj ON lj.IdUsuario = du.IdUsuario;
+          `)
         return {
           message: `login exitoso`,
-          id: Number(`${user.id}`),
-          nombre: `${user.nombre}`,
-          apellidoPaterno: `${user.apellidoPaterno}`,
-          apellidoMaterno: `${user.apellidoMaterno}`,
-          idCliente: Number(`${user.idCliente}`),
-          nombreCliente: `${user.idCliente2?.nombre}`,
-          apellidoPaternoCliente: `${user.idCliente2?.apellidoPaterno}`,
-          apellidoMaternoCliente: `${user.idCliente2?.apellidoMaterno}`,
-          logotipo: `${user.idCliente2?.logotipo}`,
-          telefono: `${user.telefono}`,
-          ultimoLogin: `${user.ultimoLogin}`,
-          fechaCreacion: `${user.fechaCreacion}`,
-          fotoPerfil: `${user.fotoPerfil}`,
-          deviceId: `${user?.deviceId}`,
+          id: Number(operador[0].IdUsuario),
+          nombre: operador[0].nombre,
+          apellidoPaterno: operador[0].apellidoPaterno,
+          apellidoMaterno: operador[0].apellidoMaterno,
+          fechaNacimiento: operador[0].fechaNacimiento,
+          identificacion: operador[0].identificacion,
+          comprobanteDomicilioOperador: operador[0].comprobanteDomicilioOperador,
+          certificadoMedicoOperador: operador[0].certificadoMedicoOperador,
+          antecedentesNoPenalesOperador: operador[0].antecedentesNoPenalesOperador,
+          estatusOperador: operador[0].estatusOperador,
+          idCliente: Number(operador[0].idCliente),
+          nombreCliente: operador[0].nombreCliente,
+          apellidoPaternoCliente: operador[0].apellidoPaternoCliente,
+          apellidoMaternoCliente: operador[0].apellidoMaternoCliente,
+          logotipo: operador[0].logotipo,
+          telefono: operador[0].telefono,
+          ultimoLogin: operador[0].ultimoLogin,
+          fechaCreacion: operador[0].fechaCreacion,
+          fotoPerfil: operador[0].fotoOperador,
+          deviceId: operador[0].deviceId,
           pinExist: pin,
-          userName: `${user.userName}`,
+          userName: user.userName,
+          Licencias: operador[0].Licencias,
           rol: user.idRol2,
           token: this.jwtService.sign(payload),
           permisos: permisos,
