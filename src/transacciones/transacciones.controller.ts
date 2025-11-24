@@ -23,6 +23,7 @@ export class TransaccionesController {
   // ========================================
 
   @Post('debito')
+  @UseGuards(JwtAuthGuard)
   createTransaccionDebito(
     @Body() createTransaccioneDebitoDto: CreateTransaccioneDebitoDto,
     @Request() req,
@@ -35,6 +36,7 @@ export class TransaccionesController {
   }
 
   @Post('recarga')
+  @UseGuards(JwtAuthGuard)
   createTransaccionRecarga(
     @Body() createTransaccioneRecargaDto: CreateTransaccioneRecargaDto,
     @Request() req,
