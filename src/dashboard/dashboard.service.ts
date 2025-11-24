@@ -270,14 +270,16 @@ ORDER BY porcentajeEnServicio DESC;`
       const { fechaInicio, fechaFin, filtro, idCliente } = kpiDto
       let data;
       if (fechaInicio && fechaFin) {
-        data = await this.resolverPorFecha(fechaInicio, fechaFin, idCliente, rol)
-
+        data = await this.resolverPorFecha(fechaInicio, fechaFin, idCliente, cliente, rol)
+        console.log('Entro a consulta por fechas');
+        console.log('INICIO:', fechaInicio, 'FINAL:', fechaFin);
       } else {
-        const { fechaIni, fechaFinal } = await this.resolverPorFiltro(filtro || 1)
+        const { fechaIni, fechaFinal } = await this.resolverPorFiltro(filtro || 1);
+        data = await this.resolverPorRol(fechaIni, fechaFinal, idCliente, cliente, rol)
         console.log('INI:', fechaIni, 'FINAL:', fechaFinal);
+        console.log('Entro a consulta por filtro')
       }
-
-
+      return {ingresosAlDia:data.kpi1};
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -293,21 +295,11 @@ ORDER BY porcentajeEnServicio DESC;`
     fechaInicio: string,
     fechaFin: string,
     idCliente: number,
+    cliente: number,
     rol: number
   ) {
     try {
-      switch (rol) {
-        case 1:
-
-          break;
-        case 2:
-
-          break;
-
-        default:
-          break;
-      }
-
+      return await this.resolverPorRol(fechaInicio, fechaFin, idCliente, cliente, rol)
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -391,28 +383,37 @@ ORDER BY porcentajeEnServicio DESC;`
       switch (rol) {
         case 1:
           if (idCliente === cliente) {
-            kpi1 = await this.kpiSA(fechaInicio,fechaFin,idCliente);
-            kpi2 = await this.kpi2SA(fechaInicio,fechaFin,idCliente);
+            kpi1 = await this.kpiSA(fechaInicio, fechaFin, idCliente);
+            kpi2 = await this.kpi2SA(fechaInicio, fechaFin, idCliente);
           } else {
-
-
+            kpi1 = await this.kpiDef(fechaInicio, fechaFin, idCliente);
+            kpi2 = await this.kpi2Def(fechaInicio, fechaFin, idCliente);
           }
 
           break;
         case 2:
-
+          if (idCliente === cliente) {
+            kpi1 = await this.kpiSA(fechaInicio, fechaFin, idCliente);
+            kpi2 = await this.kpi2SA(fechaInicio, fechaFin, idCliente);
+          } else {
+            kpi1 = await this.kpiDef(fechaInicio, fechaFin, idCliente);
+            kpi2 = await this.kpi2Def(fechaInicio, fechaFin, idCliente);
+          }
           break;
 
         default:
+          kpi1 = await this.kpiDef(fechaInicio, fechaFin, idCliente);
+          kpi2 = await this.kpi2Def(fechaInicio, fechaFin, idCliente);
           break;
       }
+      return { kpi1, kpi2 }
 
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
       }
       throw new InternalServerErrorException({
-        message: 'Ocurrió un error al intentar obtener datos del kpi.',
+        message: 'Ocurrió un error al intentar obtener datos por rol del kpi.',
         error: error.message,
       });
     }
@@ -425,6 +426,7 @@ ORDER BY porcentajeEnServicio DESC;`
     idCliente: number
   ) {
     const { ids, placeholders } = await this.clienteHijos(idCliente);
+    console.log(...ids)
     const query = `
 SELECT
     IFNULL(SUM(CASE WHEN td.IdTipoTransaccion = 2 THEN td.Monto ELSE 0 END), 0) AS ingresosDelDia,
@@ -439,7 +441,7 @@ SELECT
     COUNT(*) AS totalIntentos,
     ROUND(SUM(CASE WHEN td.IdTipoTransaccion = 2 THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0) * 100, 2) AS porcentajeExitosas,
     ROUND(SUM(CASE WHEN td.IdTipoTransaccion = 3 THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0) * 100, 2) AS porcentajeFallidas
-FROM TransaccionesDebito td
+FROM HistoricoTransaccionesDebito td
 INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
 INNER JOIN Clientes c ON d.IdCliente = c.Id
 WHERE td.FechaHora >= '${fechaInicio}T00:00:00Z'
@@ -516,16 +518,16 @@ LEFT JOIN Turnos t ON t.IdCliente = v.IdCliente
 LEFT JOIN Ocupacion o ON o.IdCliente = v.IdCliente AND o.idVehiculo = v.Id
 WHERE v.Estatus = 1
   AND v.IdCliente IN (${placeholders});`
-    return this.clienteRepository.query(query);
+    return this.clienteRepository.query(query, [...ids]);
   }
 
-/////////*/*/*/*/*/*//*//////////////////////////////////////////******/////*/*/*/*/*/*/*/*/*/*/*/*/*/*/*//*/*/**/***/*/****
+  /////////*/*/*/*/*/*//*//////////////////////////////////////////******/////*/*/*/*/*/*/*/*/*/*/*/*/*/*/*//*/*/**/***/*/****
   private async kpiDef(
     fechaInicio: string,
     fechaFin: string,
     idCliente: number
   ) {
-    const { ids, placeholders } = await this.clienteHijos(idCliente);
+
     const query = `
 SELECT
     IFNULL(SUM(CASE WHEN td.IdTipoTransaccion = 2 THEN td.Monto ELSE 0 END), 0) AS ingresosDelDia,
@@ -540,14 +542,14 @@ SELECT
     COUNT(*) AS totalIntentos,
     ROUND(SUM(CASE WHEN td.IdTipoTransaccion = 2 THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0) * 100, 2) AS porcentajeExitosas,
     ROUND(SUM(CASE WHEN td.IdTipoTransaccion = 3 THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0) * 100, 2) AS porcentajeFallidas
-FROM TransaccionesDebito td
+FROM HistoricoTransaccionesDebito td
 INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
 INNER JOIN Clientes c ON d.IdCliente = c.Id
 WHERE td.FechaHora >= '${fechaInicio}T00:00:00Z'
   AND td.FechaHora < '${fechaFin}T23:59:59Z'
-  AND c.Id IN (${placeholders});;`
+  AND c.Id IN (${idCliente});;`
 
-    return this.clienteRepository.query(query, [...ids]);
+    return this.clienteRepository.query(query,);
   }
 
   private async kpi2Def(
@@ -555,7 +557,6 @@ WHERE td.FechaHora >= '${fechaInicio}T00:00:00Z'
     fechaFin: string,
     idCliente: number
   ) {
-    const { ids, placeholders } = await this.clienteHijos(idCliente);
     const query = `
 WITH Ocupacion AS (
     SELECT
@@ -616,7 +617,7 @@ LEFT JOIN Turnos t ON t.IdCliente = v.IdCliente
     AND t.Inicio < '${fechaFin}T23:59:59Z'
 LEFT JOIN Ocupacion o ON o.IdCliente = v.IdCliente AND o.idVehiculo = v.Id
 WHERE v.Estatus = 1
-  AND v.IdCliente IN (${placeholders});`
+  AND v.IdCliente IN (${idCliente});`
     return this.clienteRepository.query(query);
   }
 }

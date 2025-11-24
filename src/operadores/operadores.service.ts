@@ -426,7 +426,7 @@ SELECT
   u.ApellidoPaterno AS apellidoPaternoUsuario,
   u.ApellidoMaterno AS apellidoMaternoUsuario,
   u.Telefono AS telefonoUsuario,
-  u.DispositivoId AS dispositivoId,
+  u.DeviceId AS deviceId,
   u.FotoPerfil AS fotoPerfil,
   u.FechaCreacion AS fechaCreacionUsuario,
   u.FechaActualizacion AS fechaActualizacion,
@@ -469,7 +469,7 @@ SELECT
   u.ApellidoPaterno AS apellidoPaternoUsuario,
   u.ApellidoMaterno AS apellidoMaternoUsuario,
   u.Telefono AS telefonoUsuario,
-  u.DispositivoId AS dispositivoId,
+  u.DeviceId AS deviceId,
   u.FotoPerfil AS fotoPerfil,
   u.FechaCreacion AS fechaCreacionUsuario,
   u.FechaActualizacion AS fechaActualizacion,
@@ -510,6 +510,7 @@ ORDER BY o.Id DESC;
       };
       return data;
     } catch (error) {
+      console.log(error)
       if (error instanceof HttpException) {
         throw error;
       }
@@ -552,7 +553,7 @@ SELECT
   u.ApellidoPaterno AS apellidoPaternoUsuario,
   u.ApellidoMaterno AS apellidoMaternoUsuario,
   u.Telefono AS telefonoUsuario,
-  u.DispositivoId AS dispositivoId,
+  u.DeviceId AS deviceId,
   u.FotoPerfil AS fotoPerfil,
   u.FechaCreacion AS fechaCreacionUsuario,
   u.FechaActualizacion AS fechaActualizacionUsuario,
