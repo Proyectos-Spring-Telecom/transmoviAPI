@@ -21,16 +21,4 @@ export class DashboardController {
     const rol = req.user.rol;
     return this.dashboardService.dashboardkpiPrueba(kpiDto, +rol, +cliente);
   }
-
-  @Get('kpi/:filtro')
-  findAll(
-    @Param('page', ParseIntPipe) filtro: number,
-    @Request() req) {
-    const cliente = req.user.cliente;
-    const idUser = req.user.userId;
-    const rol = req.user.rol;
-    return `this.dashboardService.dashboardkpi( +cliente);`
-  }
-
-
 }
