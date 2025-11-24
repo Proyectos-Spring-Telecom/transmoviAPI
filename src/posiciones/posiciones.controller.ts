@@ -13,11 +13,11 @@ import { PosicionesService } from './posiciones.service';
 import { CreatePosicionesDto } from './dto/create-posicione.dto';
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UpdatePosicionesDto } from './dto/update-posicione.dto';
 
+@ApiTags('Posiciones')
 @ApiBearerAuth('bearer-token')
-
 @Controller('posiciones')
 export class PosicionesController {
   constructor(private readonly posicionesService: PosicionesService) { }

@@ -14,11 +14,11 @@ import { ConteopasajerosService } from './conteopasajeros.service';
 import { CreateConteoPasajerosDto } from './dto/create-conteopasajero.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UpdateConteoPasajerosDto } from './dto/update-conteopasajero.dto';
 
+@ApiTags('Conteo pasajeros')
 @ApiBearerAuth('bearer-token')
-
 @Controller('conteopasajeros')
 export class ConteopasajerosController {
   constructor(

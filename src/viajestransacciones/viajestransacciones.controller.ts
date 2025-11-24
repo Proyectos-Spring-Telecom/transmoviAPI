@@ -13,7 +13,10 @@ import {
 import { ViajestransaccionesService } from './viajestransacciones.service';
 import { CreateViajestransaccioneDto } from './dto/create-viajestransaccione.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Viajes transacciones')
+@ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('viajestransacciones')
 export class ViajestransaccionesController {

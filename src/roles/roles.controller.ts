@@ -19,8 +19,9 @@ import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { UpdateRolEstatusDto } from './dto/update-rol.dto';
 import type { Response } from 'express';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Roles')
 @ApiBearerAuth('bearer-token')
 @Controller('roles')
 @UseGuards(JwtAuthGuard)

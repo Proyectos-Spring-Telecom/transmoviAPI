@@ -23,7 +23,7 @@ import {
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 
-@ApiTags('Mantenimiento Combustible')
+@ApiTags('Mantenimiento combustible')
 @ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('mantenimiento-combustible')

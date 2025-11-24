@@ -18,8 +18,9 @@ import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { UpdateDispositivoEstatusDto } from './dto/update-dispositivos-estatus.dto';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
 import { UpdateDispositivoEstadoDto } from './dto/update-dispositivo-estado.dto';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Dispositivos')
 @ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('dispositivos')

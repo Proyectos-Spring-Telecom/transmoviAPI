@@ -24,7 +24,7 @@ import {
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 
-@ApiTags('Catálogo Tipo Combustible')
+@ApiTags('Catálogo tipo combustible')
 @ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('cat-tipo-combustible')

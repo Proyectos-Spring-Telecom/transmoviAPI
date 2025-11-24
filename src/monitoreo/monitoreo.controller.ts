@@ -1,8 +1,9 @@
 import { Controller, Get, Param, UseGuards, Request } from '@nestjs/common';
 import { MonitoreoService } from './monitoreo.service';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Monitoreo')
 @ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('monitoreo')

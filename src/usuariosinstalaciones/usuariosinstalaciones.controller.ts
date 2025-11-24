@@ -26,7 +26,7 @@ import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { ApiCrudResponse } from 'src/common/ApiResponse';
 import { UpdateUsuariosInstalacionesEstatusDto } from './dto/update-usuariosinstalacione-estatus.dto';
 
-@ApiTags('Usuarios Instalaciones')
+@ApiTags('Usuarios instalaciones')
 @ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('usuariosinstalaciones')

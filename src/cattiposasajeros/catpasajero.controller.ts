@@ -14,8 +14,9 @@ import { CatpasajeroService } from './catpasajero.service';
 import { CreateCatpasajeroDto } from './dto/create-catpasajero.dto';
 import { UpdateCatpasajeroDto } from './dto/update-catpasajero.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Catálogo tipos pasajeros')
 @ApiBearerAuth('bearer-token')
 @Controller('catpasajero')
 export class CatpasajeroController {
