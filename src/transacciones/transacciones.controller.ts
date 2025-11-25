@@ -64,12 +64,13 @@ export class TransaccionesController {
   }
 
   @Get('RECARGA/:id')
-  
+  @UseGuards(JwtAuthGuard)
   findOneTransaccioneRecarga(@Param('id', ParseIntPipe) id: number) {
     return this.transaccionesService.findOneTransaccionRecarga(id);
   }
 
   @Get('DEBITO/:id')
+  @UseGuards(JwtAuthGuard)
   findOneTransaccioneDebito(@Param('id', ParseIntPipe) id: number) {
     return this.transaccionesService.findOneTransaccionDebito(id);
   }
