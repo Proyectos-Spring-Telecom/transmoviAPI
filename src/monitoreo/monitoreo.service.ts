@@ -19,7 +19,7 @@ export class MonitoreoService {
     private readonly derroterosRepository: Repository<Derroteros>,
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
-  ) {}
+  ) { }
 
   //funcion para obtener los clientes hijos
   private async clienteHijos(cliente: number) {
@@ -42,7 +42,6 @@ export class MonitoreoService {
   }
 
   private async consultarDerroteroListado(cliente: number) {
-    const { ids, placeholders } = await this.clienteHijos(cliente);
     const query = `
   SELECT 
     -- Datos del derrotero (datos principales)
@@ -50,7 +49,7 @@ export class MonitoreoService {
     d.Nombre AS nombreDerrotero,
     d.PuntoInicio AS puntoInicio,
     d.PuntoFin AS puntoFin,
-    d.RecorridoInterpolar AS recorridoInterpolar,
+    d.RecorridoDetallado AS recorridoDetallado,
     d.DistanciaKm AS distanciaKm,
     d.FechaCreacion AS fechaCreacionDerrotero,
     d.Estatus AS estatusDerrotero,
@@ -68,7 +67,7 @@ INNER JOIN Regiones r ON ru.IdRegion = r.Id
 LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
 
-WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+WHERE c.Id IN (${cliente})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
   AND c.Estatus = 1
   AND ru.Estatus = 1         -- Solo rutas activas
   AND r.Estatus = 1          -- Solo regiones activas
@@ -76,69 +75,31 @@ WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que qu
 
 ORDER BY d.Id DESC;
     `;
-    return this.usuariosregionesRepository.query(query, [...ids]);
+    return this.usuariosregionesRepository.query(query);
   }
 
-  async findAllList(idUser: number, cliente: number, rol: number) {
+  async monitoreoListado(idUser: number, cliente: number, rol: number) {
     try {
-      let data;
+      let derroterosList;
+      let ultimaPosicion;
       switch (rol) {
         case 1:
-          // Consulta de datos paginados Usuario SuperAdministrador
-          data = await this.usuariosregionesRepository.query(
-            `
-  SELECT 
-    -- Datos del derrotero (datos principales)
-    d.Id AS id,
-    d.Nombre AS nombreDerrotero,
-    d.PuntoInicio AS puntoInicio,
-    d.PuntoFin AS puntoFin,
-    d.RecorridoInterpolar AS recorridoInterpolar,
-    d.DistanciaKm AS distanciaKm,
-    d.Estatus AS estatusDerrotero,
-
-    -- Cliente relacionado
-    c.Id AS idCliente,
-    c.Nombre AS nombreCliente,
-    c.ApellidoPaterno AS apellidoPaternoCliente,
-    c.ApellidoMaterno AS apellidoMaternoCliente,
-    c.Estatus AS estatusCliente
-
-FROM Derroteros d
-INNER JOIN Rutas ru ON d.IdRuta = ru.Id
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
-INNER JOIN Clientes c ON r.IdCliente = c.Id
-
-WHERE ru.Estatus = 1         -- Solo rutas activas
-  AND r.Estatus = 1          -- Solo regiones activas
-  AND d.Estatus = 1
-  AND c.Estatus = 1
-
-ORDER BY d.Id DESC;
-      `,
-          );
-          break;
-
         case 2:
-          // Consulta de datos paginados Usuario Administrador
-          data = await this.consultarDerroteroListado(cliente);
-          break;
-
+        case 3:
         case 8:
-          // Consulta de datos paginados Usuario Reportes
-          data = await this.consultarDerroteroListado(cliente);
-          break;
-
+        case 9:
         case 10:
-          // Consulta de datos paginados Usuario Capturista
-          data = await this.consultarDerroteroListado(cliente);
+        case 11:
+        case 13:
+          // Consulta de datos Usuarios 
+          derroterosList = await this.consultarDerroteroListado(cliente);
+          ultimaPosicion = await this.ultimaPosicion(cliente)
           break;
 
         default:
-          // Consulta de datos paginados Usuario
+          // Consulta de datos Usuarios con permiso
           const { ids, placeholders } = await this.clienteHijos(cliente);
-          data = await this.usuariosregionesRepository.query(
+          derroterosList = await this.usuariosregionesRepository.query(
             `
       SELECT 
   -- Datos del derrotero (datos principales)
@@ -146,7 +107,7 @@ ORDER BY d.Id DESC;
   d.Nombre AS nombreDerrotero,
   d.PuntoInicio AS puntoInicio,
   d.PuntoFin AS puntoFin,
-  d.RecorridoInterpolar AS recorridoInterpolar,
+  d.RecorridoDetallado AS recorridoDetallado,
   d.DistanciaKm AS distanciaKm,
   d.Estatus AS estatusDerrotero,
 
@@ -170,30 +131,40 @@ WHERE ur.IdUsuario = ?
   AND ru.Estatus = 1
   AND d.Estatus = 1
   AND c.Estatus = 1
-   AND c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+   AND c.Id IN (${cliente})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
 
 ORDER BY d.Id DESC;
       `,
-            [idUser, ids], // parámetro seguro
+            [idUser], // parámetro seguro
           );
+          ultimaPosicion = await this.ultimaPosicion(cliente)
           break;
       }
 
-      const derroteros = data.map((item) => ({
+      const derroteros = derroterosList.map((item) => ({
         ...item,
         id: Number(item.id),
         idCliente: Number(item.idCliente),
         distanciaKm: Number(item.distanciaKm),
       }));
 
+      const posicion = ultimaPosicion.map(item => ({
+        ...item,
+        id: Number(item.id),
+        idDispositivo: Number(item.idDispositivo),
+        idBlueVox: Number(item.idBlueVox),
+        idVehiculo: Number(item.idVehiculo),
+      }));
+
       // Transformación de resultados
       const result: ApiResponseCommon = {
-        data: derroteros,
+        data: derroteros + posicion,
       };
-      return result;
-    } catch (error) {
-      if (error instanceof HttpException) throw error;
 
+      return {derroteros, posicion};
+    } catch (error) {
+      //console.log(error)
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
         message: 'Error al obtener listado derroteros',
         error: error.message,
@@ -201,11 +172,61 @@ ORDER BY d.Id DESC;
     }
   }
 
-  findAll() {
-    return `This action returns all monitoreo`;
+  private async ultimaPosicion(cliente: number) {
+    const query = `
+SELECT
+    up.Id AS id,
+    up.Exactitud AS exactitud,
+    up.Estado AS estado,
+    up.Velocidad AS velocidad,
+    up.Direccion AS direccion,
+    up.Latitud AS latitud,
+    up.Longitud AS longitud,
+    up.FechaHora AS fechaHora,
+    up.FHRegistro AS fhRegistro,
+    up.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    
+    -- Dispositivo
+  d.Id AS idDispositivo,
+  d.NumeroSerie AS numeroSerieDispositivo,
+  d.Marca AS marcaDispositivo,
+  d.Modelo AS modeloDispositivo,
+
+  -- BlueVox
+  i.IdBlueVox AS idBlueVox,
+  b.NumeroSerie AS numeroSerieBlueVox,
+  b.Marca AS marcaBlueVox,
+  b.Modelo AS modeloBlueVox,
+  
+  -- Vehículo
+  i.IdVehiculo AS idVehiculo,
+  v.Marca AS marcaVehiculo,
+  v.Modelo AS modeloVehiculo,
+  v.Placa AS placaVehiculo,
+  v.NumeroEconomico AS numeroEconomicoVehiculo,
+  v.Foto AS foto,
+
+    CONCAT(
+        c.Nombre,
+        IFNULL(CONCAT(' ', c.ApellidoPaterno), ''),
+        IFNULL(CONCAT(' ', c.ApellidoMaterno), '')
+    ) AS nombreCompletoCliente
+
+FROM UltimaPosicion up
+INNER JOIN Dispositivos d
+    ON up.NumeroSerieDispositivo = d.NumeroSerie
+INNER JOIN Clientes c
+    ON d.IdCliente = c.Id
+LEFT JOIN Instalaciones i ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+LEFT JOIN BlueVoxs b ON b.Id = i.IdBlueVox 
+LEFT JOIN Vehiculos v ON v.Id = i.IdVehiculo 
+    
+WHERE c.Id IN (${cliente})   -- 🔹 aquí colocas el/los ID(s) del cliente que quieres consultar
+
+ORDER BY up.Id DESC;
+
+    `;
+    return this.usuariosregionesRepository.query(query);
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} monitoreo`;
-  }
 }
