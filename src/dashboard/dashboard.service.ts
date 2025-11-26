@@ -45,7 +45,7 @@ export class DashboardService {
       const { grafica1 } = data
       
       //Forzamos a cambiar el id a number
-      const g1 = grafica1.map((item) => ({
+      const graficaIngresos = grafica1.map((item) => ({
         ...item,
         id: Number(item.id),
         validaciones_exitosas: Number(item.validaciones_exitosas),
@@ -62,7 +62,7 @@ export class DashboardService {
         totalUnidades: Number(data.kpi2[0].totalUnidades),
         cumplimientoTurnos: data.kpi2[0].cumplimientoTurnosPorcentaje,
         ocupacionPromedio: data.kpi2[0].ocupacionPromedio || 0,
-        g1,
+        graficaIngresos,
       };
 
     } catch (error) {
