@@ -15,7 +15,7 @@ export class KpiDto {
 
     @ApiProperty({
         description: 'Fecha y hora de inicio (UTC)',
-        example: '2025-09-12T16:00:00Z',
+        example: '2025-09-12',
         required: false,
     })
     @IsDateString({}, { message: 'El fin debe estar en formato ISO8601' })
@@ -24,7 +24,7 @@ export class KpiDto {
 
     @ApiProperty({
         description: 'Fecha y hora de fin(UTC)',
-        example: '2025-09-12T16:00:00Z',
+        example: '2025-09-12',
         required: false,
     })
     @IsDateString({}, { message: 'El fin debe estar en formato ISO8601' })
