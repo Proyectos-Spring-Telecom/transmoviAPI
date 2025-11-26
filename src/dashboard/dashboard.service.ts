@@ -31,7 +31,9 @@ export class DashboardService {
     const placeholders = ids.map(() => '?').join(', ');
     return { ids, placeholders };
   }
-  /////////////////////////////////////////////////////////Realizar logica de pruebas/////////////////////////////////////
+  // ========================================
+  // 🔹 OBTENER DASHBOARD
+  // ========================================
   async dashboardkpiPrueba(kpiDto: KpiDto, rol: number, cliente: number): Promise<any> {
     try {
       const { fechaInicio, fechaFin, filtro, idCliente } = kpiDto

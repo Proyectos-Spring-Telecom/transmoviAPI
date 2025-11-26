@@ -1,7 +1,8 @@
-import { Controller, Get, Param, UseGuards, Request, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Param, UseGuards, Request, ParseIntPipe, Post, Body } from '@nestjs/common';
 import { MonitoreoService } from './monitoreo.service';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { RecorridoMonitoreoDto } from './dto/recorrido-monitoreo.dto';
 
 @ApiTags('Monitoreo')
 @ApiBearerAuth('bearer-token')
@@ -18,5 +19,17 @@ export class MonitoreoController {
     const rol = req.user.rol;
     return this.monitoreoService.monitoreoListado(+idUser, +cliente, +rol);
   }
+
+  
+    @Post('recorrido')
+    @ApiOperation({ summary: 'Obtener el recorrido del día de un dispositivo' })
+    @ApiResponse({ status: 201, description: 'Json de las posiciones del dispositivo' })
+    @ApiResponse({ status: 401, description: 'No autorizado' })
+    findKpi(@Body() recorridoMonitoreoDto: RecorridoMonitoreoDto, @Request() req) {
+      const cliente = req.user.cliente;
+      const idUser = req.user.userId;
+      const rol = req.user.rol;
+      return this.monitoreoService.monitoreoRecorrido(recorridoMonitoreoDto, +cliente, +rol);
+    }
 
 }
