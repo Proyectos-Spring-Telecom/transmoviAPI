@@ -219,6 +219,7 @@ export class DashboardService {
     idCliente: number
   ) {
     const { ids, placeholders } = await this.clienteHijos(idCliente);
+    console.log(...ids)
     const query = `
 SELECT
     IFNULL(SUM(CASE WHEN td.IdTipoTransaccion = 2 THEN td.Monto ELSE 0 END), 0) AS ingresosDelDia,

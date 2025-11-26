@@ -1,4 +1,4 @@
-import { Controller, Get, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Param, UseGuards, Request, ParseIntPipe } from '@nestjs/common';
 import { MonitoreoService } from './monitoreo.service';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
@@ -10,21 +10,13 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 export class MonitoreoController {
   constructor(private readonly monitoreoService: MonitoreoService) {}
 
-  @Get('list')
-  findAllList(@Request() req) {
-    const cliente = req.user.cliente;
+  @Get('list/:cliente')
+  findListPosiciones(
+    @Param('cliente', ParseIntPipe) cliente: number,
+    @Request() req) {
     const idUser = req.user.userId;
     const rol = req.user.rol;
-    return this.monitoreoService.findAllList(+idUser, +cliente, +rol);
+    return this.monitoreoService.monitoreoListado(+idUser, +cliente, +rol);
   }
 
-  @Get()
-  findAll() {
-    return this.monitoreoService.findAll();
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.monitoreoService.findOne(+id);
-  }
 }
