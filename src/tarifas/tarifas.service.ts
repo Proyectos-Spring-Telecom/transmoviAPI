@@ -1131,7 +1131,7 @@ ORDER BY t.Id DESC
   }
 
   // ========================================
-  // 🔹 ELIMINADO PERMANENTE
+  // 🔹 ELIMINADO PERMANENTES
   // ========================================
   async removeTotal(id: number, idUser: number, rol: number) {
     try {
