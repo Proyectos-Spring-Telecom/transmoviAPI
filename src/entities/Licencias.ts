@@ -18,8 +18,8 @@ export class Licencias {
   @Column('date', { name: 'FechaExpedicion' })
   fechaExpedicion: string;
 
-  @Column('date', { name: 'FechaVencimineto' })
-  fechaVencimineto: string;
+  @Column('date', { name: 'FechaVencimiento' })
+  fechaVencimiento: string;
 
   @Column('bigint', { name: 'IdTipoLicencia' })
   idTipoLicencia: number;

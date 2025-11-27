@@ -68,6 +68,7 @@ export class LicenciasService {
       };
       return result;
     } catch (error) {
+      console.log(error)
       //-----Registro en la bitacora-----ERROR
       const querylogger = { createLicenciaDto };
       await this.bitacoraLogger.logToBitacora(
