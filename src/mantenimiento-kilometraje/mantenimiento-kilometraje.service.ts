@@ -11,6 +11,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { MantenimientoKilometraje } from 'src/entities/MantenimientoKilometraje';
 import { Instalaciones } from 'src/entities/Instalaciones';
 import { Clientes } from 'src/entities/Clientes';
+import { Posiciones } from 'src/entities/Posiciones';
 import { Repository, In } from 'typeorm';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import {
@@ -21,6 +22,8 @@ import {
 
 @Injectable()
 export class MantenimientoKilometrajeService {
+  private readonly EARTH_RADIUS = 6371; // Radio de la Tierra en kilómetros
+
   constructor(
     @InjectRepository(MantenimientoKilometraje)
     private readonly mantenimientoKilometrajeRepository: Repository<MantenimientoKilometraje>,
@@ -28,6 +31,8 @@ export class MantenimientoKilometrajeService {
     private readonly instalacionesRepository: Repository<Instalaciones>,
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
+    @InjectRepository(Posiciones)
+    private readonly posicionesRepository: Repository<Posiciones>,
     private readonly bitacoraLogger: BitacoraLoggerService,
   ) {}
 
@@ -629,6 +634,185 @@ AND mk.Id = ?
       }
       throw new InternalServerErrorException({
         message: 'Error al activar el mantenimiento por kilometraje.',
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Calcula la distancia entre dos puntos geográficos usando la fórmula de Haversine
+   * @param lat1 Latitud del primer punto
+   * @param lng1 Longitud del primer punto
+   * @param lat2 Latitud del segundo punto
+   * @param lng2 Longitud del segundo punto
+   * @returns Distancia en kilómetros
+   */
+  private async getDistanciaEntreDosPuntos(
+    lat1: number,
+    lng1: number,
+    lat2: number,
+    lng2: number,
+  ): Promise<number> {
+    const lat = ((lat2 - lat1) * Math.PI) / 180;
+    const lon = ((lng2 - lng1) * Math.PI) / 180;
+    const a =
+      Math.sin(lat / 2) * Math.sin(lat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(lon / 2) *
+        Math.sin(lon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = this.EARTH_RADIUS * c;
+    return distance;
+  }
+
+  /**
+   * Obtiene el reporte de kilometraje por días para una instalación
+   * @param idInstalacion ID de la instalación
+   * @returns Lista de semanas/días con el kilometraje acumulado
+   */
+  async obtenerReporteKilometrajeDias(
+    idInstalacion: number,
+  ): Promise<ApiResponseCommon> {
+    try {
+      // Obtener los registros de mantenimiento por kilometraje de la instalación
+      const lista = await this.mantenimientoKilometrajeRepository.query(
+        `
+        SELECT
+          mk.Anio AS anio,
+          mk.IdInstalacion AS idInstalacion,
+          mk.KMDeseado AS kmDeseado,
+          mk.KMinicial AS kmInicial,
+          mk.Periodo AS periodo,
+          v.Foto AS imagen
+        FROM MantenimientoKilometraje mk
+        INNER JOIN Instalaciones i ON mk.IdInstalacion = i.Id
+        LEFT JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
+        WHERE mk.IdInstalacion = ?
+        ORDER BY mk.Periodo ASC
+        `,
+        [idInstalacion],
+      );
+
+      const listaSemanas: any[] = [];
+      let totaldistancia = 0;
+
+      for (const item of lista) {
+        // Obtener las posiciones de la instalación para el mes y año especificados
+        const listaPosiciones = await this.posicionesRepository.query(
+          `
+          SELECT
+            d.NumeroSerie AS numeroSerie,
+            i.Id AS id,
+            i.Id AS idInstalacion,
+            v.Placa AS placas,
+            v.NumeroEconomico AS economico,
+            p.FechaHora AS fechaHora,
+            p.Latitud AS lat,
+            p.Longitud AS lng,
+            p.Velocidad AS velocidad,
+            p.Estado AS estado
+          FROM Posiciones p
+          INNER JOIN Dispositivos d ON p.NumeroSerieDispositivo = d.NumeroSerie
+          INNER JOIN Instalaciones i ON d.Id = i.IdDispositivo AND d.IdCliente = i.IdCliente
+          LEFT JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
+          WHERE i.Id = ?
+            AND MONTH(p.FechaHora) = ?
+            AND YEAR(p.FechaHora) = ?
+            AND i.Estatus = 1
+          ORDER BY p.FechaHora ASC
+          `,
+          [item.idInstalacion, item.periodo, item.anio],
+        );
+
+        let latini = 0;
+        let lngini = 0;
+        let latfin = 0;
+        let lngfin = 0;
+        let i = 0;
+
+        // Calcular la distancia entre cada posición
+        for (const item2 of listaPosiciones) {
+          if (i === 0) {
+            latini = Number(item2.lat);
+            lngini = Number(item2.lng);
+          }
+          latfin = Number(item2.lat);
+          lngfin = Number(item2.lng);
+
+          const distancia = await this.getDistanciaEntreDosPuntos(
+            latini,
+            lngini,
+            latfin,
+            lngfin,
+          );
+
+          item2.distancia = distancia;
+          totaldistancia = totaldistancia + distancia;
+          latini = latfin;
+          lngini = lngfin;
+          i++;
+        }
+
+        // Obtener el número de días del mes
+        const dias = new Date(item.anio, item.periodo, 0).getDate();
+        let acumuladoTotal = 0.0;
+
+        // Calcular el kilometraje por día
+        for (let dia = 1; dia <= dias; dia++) {
+          const sem: any = {
+            kilometraje: 0,
+            acumulado: 0,
+            periodo: item.periodo,
+            fechaAlta: null,
+          };
+
+          // Filtrar posiciones del día actual
+          const posicionesDelDia = listaPosiciones.filter((pos: any) => {
+            const fecha = new Date(pos.fechaHora);
+            return fecha.getDate() === dia;
+          });
+
+          // Sumar las distancias del día
+          sem.kilometraje = posicionesDelDia.reduce(
+            (sum: number, pos: any) => sum + (pos.distancia || 0),
+            0,
+          );
+
+          // Truncar a 2 decimales
+          sem.kilometraje = Math.trunc(sem.kilometraje * 100) / 100;
+
+          // Calcular acumulado
+          if (dia === 1) {
+            sem.acumulado = sem.kilometraje + Number(item.kmInicial);
+            acumuladoTotal = sem.acumulado;
+          } else {
+            sem.acumulado = acumuladoTotal + sem.kilometraje;
+            acumuladoTotal = sem.acumulado;
+          }
+
+          // Obtener la fecha del día
+          const primeraPosicionDelDia = posicionesDelDia[0];
+          if (primeraPosicionDelDia) {
+            const fecha = new Date(primeraPosicionDelDia.fechaHora);
+            sem.fechaAlta = fecha.toISOString().split('T')[0]; // Formato yyyy-MM-dd
+          }
+
+          listaSemanas.push(sem);
+        }
+      }
+
+      const result: ApiResponseCommon = {
+        data: listaSemanas,
+      };
+
+      return result;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Error al obtener el reporte de kilometraje por días.',
         error: error.message,
       });
     }
