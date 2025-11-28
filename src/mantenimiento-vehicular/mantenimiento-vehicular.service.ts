@@ -21,6 +21,7 @@ import {
   ApiResponseCommon,
   EstatusEnumBitcora,
 } from 'src/common/ApiResponse';
+import { Clientes } from 'src/entities/Clientes';
 
 @Injectable()
 export class MantenimientoVehicularService {
@@ -35,9 +36,31 @@ export class MantenimientoVehicularService {
     private readonly instalacionesRepository: Repository<Instalaciones>,
     @InjectRepository(CatReferenciaServicio)
     private readonly catReferenciaServicioRepository: Repository<CatReferenciaServicio>,
+    @InjectRepository(Clientes)
+    private readonly clienteRepository: Repository<Clientes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
     private readonly s3Service: S3Service,
   ) {}
+
+  //funcion para obtener los clientes hijos
+  private async clienteHijos(cliente: number) {
+    const clientesFiltrado = await this.clienteRepository.query(
+      `CALL spGetClientes(?);`,
+      [cliente],
+    );
+
+    const idsFiltrados = clientesFiltrado[0]; // El primer índice contiene los resultados
+    const ids = idsFiltrados
+      .map((clientesFiltrado: any) => Number(clientesFiltrado.Id))
+      .filter(Boolean);
+    if (ids.length === 0) {
+      return { ids: [], placeholders: '' }; // No hay clientes que consultar
+    }
+
+    // Construir el query dinámico con los IDs
+    const placeholders = ids.map(() => '?').join(', ');
+    return { ids, placeholders };
+  }
 
   async create(
     createMantenimientoVehicularDto: CreateMantenimientoVehicularDto,
@@ -97,7 +120,7 @@ export class MantenimientoVehicularService {
           notaServicioFile,
           'NotasServicioMantenimiento',
           idUser,
-          5, // ID del módulo de mantenimiento vehicular
+          33, // ID del módulo de mantenimiento vehicular
         );
         notaServicioUrl = uploadResult.url;
       }
@@ -122,7 +145,7 @@ export class MantenimientoVehicularService {
         'CREATE',
         querylogger,
         idUser,
-        5,
+        33,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -147,7 +170,7 @@ export class MantenimientoVehicularService {
         'CREATE',
         querylogger,
         idUser,
-        5,
+        33,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -162,42 +185,137 @@ export class MantenimientoVehicularService {
 
   async findAll(page: number, limit: number, idCliente: number, rol: number): Promise<ApiResponseCommon> {
     try {
-      const whereCondition: any = {};
-      
-      // Filtrar por idCliente si el rol no es 1 o 2
-      if (rol !== 1 && rol !== 2) {
-        // Obtener las instalaciones del cliente
-        const instalaciones = await this.instalacionesRepository.find({
-          where: { idCliente: idCliente },
-          select: ['id'],
-        });
-        const idsInstalaciones = instalaciones.map(inst => inst.id);
-        
-        // Si no hay instalaciones, retornar vacío
-        if (idsInstalaciones.length === 0) {
-          return {
-            data: [],
-            paginated: {
-              total: 0,
-              page,
-              lastPage: 0,
-            },
-          };
-        }
-        
-        whereCondition.idInstalacion = In(idsInstalaciones);
+      const offset = (page - 1) * limit;
+      let mantenimientos;
+      let totalResult;
+
+      switch (rol) {
+        case 1:
+        case 2:
+          // Consulta de datos paginados Usuario SuperAdministrador/Administrador
+          mantenimientos = await this.mantenimientoVehicularRepository.query(
+            `
+SELECT
+  mv.Id AS id,
+  mv.IdInstalacion AS idInstalacion,
+  mv.IdReferencia AS idReferencia,
+  mv.ServicioDescripcion AS servicioDescripcion,
+  mv.NotaServicio AS notaServicio,
+  mv.IdEstatus AS idEstatus,
+  mv.FechaInicio AS fechaInicio,
+  mv.FechaFinal AS fechaFinal,
+  mv.IdTaller AS idTaller,
+  mv.Costo AS costo,
+  mv.Encargado AS encargado,
+  mv.FHRegistro AS fhRegistro,
+  mv.Estatus AS estatus,
+  veh.Placa AS placaVehiculo,
+  veh.Foto AS imagenVehiculo,
+  cem.Id AS estatusMantenimientoId,
+  cem.Nombre AS estatusMantenimientoNombre,
+  t.Id AS tallerId,
+  t.Nombre AS tallerNombre,
+  crs.Id AS referenciaServicioId,
+  crs.Nombre AS referenciaServicioNombre,
+  c.Id AS idClienteData,
+  c.Nombre AS nombreClienteData,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente
+FROM MantenimientoVehicular mv
+INNER JOIN Instalaciones i ON mv.IdInstalacion = i.Id
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+LEFT JOIN Vehiculos veh ON i.IdVehiculo = veh.Id AND i.IdCliente = veh.IdCliente
+LEFT JOIN CatEstatusMantenimiento cem ON mv.IdEstatus = cem.Id
+LEFT JOIN Talleres t ON mv.IdTaller = t.Id
+LEFT JOIN CatReferenciaServicio crs ON mv.IdReferencia = crs.Id
+ORDER BY mv.FHRegistro DESC
+LIMIT ? OFFSET ?;
+            `,
+            [limit, offset],
+          );
+
+          // Query para total (sin paginación)
+          totalResult = await this.mantenimientoVehicularRepository.query(
+            `
+SELECT COUNT(*) AS total
+FROM MantenimientoVehicular mv
+INNER JOIN Instalaciones i ON mv.IdInstalacion = i.Id
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+            `,
+          );
+          break;
+
+        default:
+          const { ids, placeholders } = await this.clienteHijos(idCliente);
+          if (ids.length === 0) {
+            return {
+              data: [],
+              paginated: {
+                total: 0,
+                page,
+                lastPage: 0,
+              },
+            };
+          }
+
+          // Consulta de datos paginados resto Usuario
+          mantenimientos = await this.mantenimientoVehicularRepository.query(
+            `
+SELECT
+  mv.Id AS id,
+  mv.IdInstalacion AS idInstalacion,
+  mv.IdReferencia AS idReferencia,
+  mv.ServicioDescripcion AS servicioDescripcion,
+  mv.NotaServicio AS notaServicio,
+  mv.IdEstatus AS idEstatus,
+  mv.FechaInicio AS fechaInicio,
+  mv.FechaFinal AS fechaFinal,
+  mv.IdTaller AS idTaller,
+  mv.Costo AS costo,
+  mv.Encargado AS encargado,
+  mv.FHRegistro AS fhRegistro,
+  mv.Estatus AS estatus,
+  veh.Placa AS placaVehiculo,
+  veh.Foto AS imagenVehiculo,
+  cem.Id AS estatusMantenimientoId,
+  cem.Nombre AS estatusMantenimientoNombre,
+  t.Id AS tallerId,
+  t.Nombre AS tallerNombre,
+  crs.Id AS referenciaServicioId,
+  crs.Nombre AS referenciaServicioNombre
+FROM MantenimientoVehicular mv
+INNER JOIN Instalaciones i ON mv.IdInstalacion = i.Id
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+LEFT JOIN Vehiculos veh ON i.IdVehiculo = veh.Id AND i.IdCliente = veh.IdCliente
+LEFT JOIN CatEstatusMantenimiento cem ON mv.IdEstatus = cem.Id
+LEFT JOIN Talleres t ON mv.IdTaller = t.Id
+LEFT JOIN CatReferenciaServicio crs ON mv.IdReferencia = crs.Id
+WHERE c.Id IN (${placeholders})
+ORDER BY mv.FHRegistro DESC
+LIMIT ? OFFSET ?;
+            `,
+            [...ids, limit, offset],
+          );
+
+          // Query para total (sin paginación)
+          totalResult = await this.mantenimientoVehicularRepository.query(
+            `
+SELECT COUNT(*) AS total
+FROM MantenimientoVehicular mv
+INNER JOIN Instalaciones i ON mv.IdInstalacion = i.Id
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+WHERE c.Id IN (${placeholders})
+            `,
+            [...ids],
+          );
+          break;
       }
 
-      const [data, total] = await this.mantenimientoVehicularRepository.findAndCount({
-        where: Object.keys(whereCondition).length > 0 ? whereCondition : undefined,
-        relations: ['instalacion', 'instalacion.vehiculos', 'instalacion.idCliente2', 'idEstatusRelacion', 'taller', 'referenciaServicio'],
-        order: { fhRegistro: 'DESC' },
-        skip: (page - 1) * limit,
-        take: limit,
-      });
+      const total = Number(totalResult[0]?.total || 0);
 
-      // Forzamos ids a number
-      const mantenimientos = data.map((item) => ({
+      // Transformar los datos
+      const mantenimientosTransformados = mantenimientos.map((item: any) => ({
         id: Number(item.id),
         idInstalacion: item.idInstalacion ? Number(item.idInstalacion) : null,
         idReferencia: item.idReferencia ? Number(item.idReferencia) : null,
@@ -211,35 +329,34 @@ export class MantenimientoVehicularService {
         encargado: item.encargado,
         fhRegistro: item.fhRegistro,
         estatus: item.estatus,
-        placaVehiculo: item.instalacion?.vehiculos?.placa || null,
-        imagenVehiculo: item.instalacion?.vehiculos?.foto || null,
-        instalacion: item.instalacion ? {
-          id: Number(item.instalacion.id),
+        placaVehiculo: item.placaVehiculo || null,
+        imagenVehiculo: item.imagenVehiculo || null,
+        instalacion: item.idInstalacion ? { id: Number(item.idInstalacion) } : null,
+        estatusMantenimiento: item.estatusMantenimientoId ? {
+          id: Number(item.estatusMantenimientoId),
+          nombre: item.estatusMantenimientoNombre,
         } : null,
-        estatusMantenimiento: item.idEstatusRelacion ? {
-          id: Number(item.idEstatusRelacion.id),
-          nombre: item.idEstatusRelacion.nombre,
+        taller: item.tallerId ? {
+          id: Number(item.tallerId),
+          nombre: item.tallerNombre,
         } : null,
-        taller: item.taller ? {
-          id: Number(item.taller.id),
-          nombre: item.taller.nombre,
+        referenciaServicio: item.referenciaServicioId ? {
+          id: Number(item.referenciaServicioId),
+          nombre: item.referenciaServicioNombre,
         } : null,
-        referenciaServicio: item.referenciaServicio ? {
-          id: Number(item.referenciaServicio.id),
-          nombre: item.referenciaServicio.nombre,
-        } : null,
-        // Incluir datos del cliente cuando el rol es 1 o 2
-        cliente: (rol === 1 || rol === 2) && item.instalacion?.idCliente2 ? {
-          id: Number(item.instalacion.idCliente2.id),
-          nombre: item.instalacion.idCliente2.nombre,
-          apellidoPaterno: item.instalacion.idCliente2.apellidoPaterno,
-          apellidoMaterno: item.instalacion.idCliente2.apellidoMaterno,
-          estatus: item.instalacion.idCliente2.estatus,
-        } : null,
+        ...(rol === 1 || rol === 2) && item.idClienteData ? {
+          cliente: {
+            id: Number(item.idClienteData),
+            nombre: item.nombreClienteData,
+            apellidoPaterno: item.apellidoPaternoCliente,
+            apellidoMaterno: item.apellidoMaternoCliente,
+            estatus: item.estatusCliente,
+          },
+        } : {},
       }));
 
       const result: ApiResponseCommon = {
-        data: mantenimientos,
+        data: mantenimientosTransformados,
         paginated: {
           total: total,
           page,
@@ -259,63 +376,146 @@ export class MantenimientoVehicularService {
 
   async findOne(id: number, idCliente: number, rol: number): Promise<ApiResponseCommon> {
     try {
-      const mantenimiento = await this.mantenimientoVehicularRepository.findOne({
-        where: { id: id },
-        relations: ['instalacion', 'instalacion.vehiculos', 'instalacion.idCliente2', 'idEstatusRelacion', 'taller', 'referenciaServicio'],
-      });
+      let mantenimientos;
 
-      // Verificar que el mantenimiento pertenece al cliente si el rol no es 1 o 2
-      if (rol !== 1 && rol !== 2) {
-        if (!mantenimiento || mantenimiento.instalacion?.idCliente !== idCliente) {
-          throw new NotFoundException('Mantenimiento vehicular no encontrado');
-        }
+      switch (rol) {
+        case 1:
+        case 2:
+          // Consulta para SuperAdministrador/Administrador
+          mantenimientos = await this.mantenimientoVehicularRepository.query(
+            `
+SELECT
+  mv.Id AS id,
+  mv.IdInstalacion AS idInstalacion,
+  mv.IdReferencia AS idReferencia,
+  mv.ServicioDescripcion AS servicioDescripcion,
+  mv.NotaServicio AS notaServicio,
+  mv.IdEstatus AS idEstatus,
+  mv.FechaInicio AS fechaInicio,
+  mv.FechaFinal AS fechaFinal,
+  mv.IdTaller AS idTaller,
+  mv.Costo AS costo,
+  mv.Encargado AS encargado,
+  mv.FHRegistro AS fhRegistro,
+  mv.Estatus AS estatus,
+  veh.Placa AS placaVehiculo,
+  veh.Foto AS imagenVehiculo,
+  cem.Id AS estatusMantenimientoId,
+  cem.Nombre AS estatusMantenimientoNombre,
+  t.Id AS tallerId,
+  t.Nombre AS tallerNombre,
+  crs.Id AS referenciaServicioId,
+  crs.Nombre AS referenciaServicioNombre,
+  c.Id AS idClienteData,
+  c.Nombre AS nombreClienteData,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente
+FROM MantenimientoVehicular mv
+INNER JOIN Instalaciones i ON mv.IdInstalacion = i.Id
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+LEFT JOIN Vehiculos veh ON i.IdVehiculo = veh.Id AND i.IdCliente = veh.IdCliente
+LEFT JOIN CatEstatusMantenimiento cem ON mv.IdEstatus = cem.Id
+LEFT JOIN Talleres t ON mv.IdTaller = t.Id
+LEFT JOIN CatReferenciaServicio crs ON mv.IdReferencia = crs.Id
+WHERE mv.Id = ?
+            `,
+            [id],
+          );
+          break;
+
+        default:
+          const { ids, placeholders } = await this.clienteHijos(idCliente);
+          if (ids.length === 0) {
+            throw new NotFoundException('Mantenimiento vehicular no encontrado');
+          }
+
+          // Consulta para resto de usuarios
+          mantenimientos = await this.mantenimientoVehicularRepository.query(
+            `
+SELECT
+  mv.Id AS id,
+  mv.IdInstalacion AS idInstalacion,
+  mv.IdReferencia AS idReferencia,
+  mv.ServicioDescripcion AS servicioDescripcion,
+  mv.NotaServicio AS notaServicio,
+  mv.IdEstatus AS idEstatus,
+  mv.FechaInicio AS fechaInicio,
+  mv.FechaFinal AS fechaFinal,
+  mv.IdTaller AS idTaller,
+  mv.Costo AS costo,
+  mv.Encargado AS encargado,
+  mv.FHRegistro AS fhRegistro,
+  mv.Estatus AS estatus,
+  veh.Placa AS placaVehiculo,
+  veh.Foto AS imagenVehiculo,
+  cem.Id AS estatusMantenimientoId,
+  cem.Nombre AS estatusMantenimientoNombre,
+  t.Id AS tallerId,
+  t.Nombre AS tallerNombre,
+  crs.Id AS referenciaServicioId,
+  crs.Nombre AS referenciaServicioNombre
+FROM MantenimientoVehicular mv
+INNER JOIN Instalaciones i ON mv.IdInstalacion = i.Id
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+LEFT JOIN Vehiculos veh ON i.IdVehiculo = veh.Id AND i.IdCliente = veh.IdCliente
+LEFT JOIN CatEstatusMantenimiento cem ON mv.IdEstatus = cem.Id
+LEFT JOIN Talleres t ON mv.IdTaller = t.Id
+LEFT JOIN CatReferenciaServicio crs ON mv.IdReferencia = crs.Id
+WHERE c.Id IN (${placeholders})
+AND mv.Id = ?
+            `,
+            [...ids, id],
+          );
+          break;
       }
 
-      if (!mantenimiento) {
+      if (mantenimientos.length === 0) {
         throw new NotFoundException('Mantenimiento vehicular no encontrado');
       }
+
+      const item = mantenimientos[0];
 
       const result: ApiResponseCommon = {
         data: [
           {
-            id: Number(mantenimiento.id),
-            idInstalacion: mantenimiento.idInstalacion ? Number(mantenimiento.idInstalacion) : null,
-            idReferencia: mantenimiento.idReferencia ? Number(mantenimiento.idReferencia) : null,
-            servicioDescripcion: mantenimiento.servicioDescripcion,
-            notaServicio: mantenimiento.notaServicio,
-            idEstatus: mantenimiento.idEstatus ? Number(mantenimiento.idEstatus) : null,
-            fechaInicio: mantenimiento.fechaInicio,
-            fechaFinal: mantenimiento.fechaFinal,
-            idTaller: mantenimiento.idTaller ? Number(mantenimiento.idTaller) : null,
-            costo: mantenimiento.costo ? Number(mantenimiento.costo) : null,
-            encargado: mantenimiento.encargado,
-            fhRegistro: mantenimiento.fhRegistro,
-            estatus: mantenimiento.estatus,
-            placaVehiculo: mantenimiento.instalacion?.vehiculos?.placa || null,
-            imagenVehiculo: mantenimiento.instalacion?.vehiculos?.foto || null,
-            instalacion: mantenimiento.instalacion ? {
-              id: Number(mantenimiento.instalacion.id),
+            id: Number(item.id),
+            idInstalacion: item.idInstalacion ? Number(item.idInstalacion) : null,
+            idReferencia: item.idReferencia ? Number(item.idReferencia) : null,
+            servicioDescripcion: item.servicioDescripcion,
+            notaServicio: item.notaServicio,
+            idEstatus: item.idEstatus ? Number(item.idEstatus) : null,
+            fechaInicio: item.fechaInicio,
+            fechaFinal: item.fechaFinal,
+            idTaller: item.idTaller ? Number(item.idTaller) : null,
+            costo: item.costo ? Number(item.costo) : null,
+            encargado: item.encargado,
+            fhRegistro: item.fhRegistro,
+            estatus: item.estatus,
+            placaVehiculo: item.placaVehiculo || null,
+            imagenVehiculo: item.imagenVehiculo || null,
+            instalacion: item.idInstalacion ? { id: Number(item.idInstalacion) } : null,
+            estatusMantenimiento: item.estatusMantenimientoId ? {
+              id: Number(item.estatusMantenimientoId),
+              nombre: item.estatusMantenimientoNombre,
             } : null,
-            estatusMantenimiento: mantenimiento.idEstatusRelacion ? {
-              id: Number(mantenimiento.idEstatusRelacion.id),
-              nombre: mantenimiento.idEstatusRelacion.nombre,
+            taller: item.tallerId ? {
+              id: Number(item.tallerId),
+              nombre: item.tallerNombre,
             } : null,
-            taller: mantenimiento.taller ? {
-              id: Number(mantenimiento.taller.id),
-              nombre: mantenimiento.taller.nombre,
+            referenciaServicio: item.referenciaServicioId ? {
+              id: Number(item.referenciaServicioId),
+              nombre: item.referenciaServicioNombre,
             } : null,
-            referenciaServicio: mantenimiento.referenciaServicio ? {
-              id: Number(mantenimiento.referenciaServicio.id),
-              nombre: mantenimiento.referenciaServicio.nombre,
-            } : null,
-            // Incluir datos del cliente cuando el rol es 1 o 2
-            cliente: (rol === 1 || rol === 2) && mantenimiento.instalacion?.idCliente2 ? {
-              id: Number(mantenimiento.instalacion.idCliente2.id),
-              nombre: mantenimiento.instalacion.idCliente2.nombre,
-              apellidoPaterno: mantenimiento.instalacion.idCliente2.apellidoPaterno,
-              apellidoMaterno: mantenimiento.instalacion.idCliente2.apellidoMaterno,
-              estatus: mantenimiento.instalacion.idCliente2.estatus,
-            } : null,
+            ...(rol === 1 || rol === 2) && item.idClienteData ? {
+              cliente: {
+                id: Number(item.idClienteData),
+                nombre: item.nombreClienteData,
+                apellidoPaterno: item.apellidoPaternoCliente,
+                apellidoMaterno: item.apellidoMaternoCliente,
+                estatus: item.estatusCliente,
+              },
+            } : {},
           },
         ],
       };
@@ -404,7 +604,7 @@ export class MantenimientoVehicularService {
         'UPDATE',
         querylogger,
         idUser,
-        5,
+        33,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -427,7 +627,7 @@ export class MantenimientoVehicularService {
         'UPDATE',
         querylogger,
         idUser,
-        5,
+        33,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -460,7 +660,7 @@ export class MantenimientoVehicularService {
         'UPDATE',
         querylogger,
         Number(idUser),
-        5,
+        33,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -484,7 +684,7 @@ export class MantenimientoVehicularService {
         'UPDATE',
         querylogger,
         Number(idUser),
-        5,
+        33,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -522,7 +722,7 @@ export class MantenimientoVehicularService {
         'UPDATE',
         querylogger,
         Number(idUser),
-        5,
+        33,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -546,7 +746,7 @@ export class MantenimientoVehicularService {
         'UPDATE',
         querylogger,
         Number(idUser),
-        5,
+        33,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -555,6 +755,62 @@ export class MantenimientoVehicularService {
       }
       throw new InternalServerErrorException({
         message: 'Error al activar el mantenimiento vehicular.',
+        error: error.message,
+      });
+    }
+  }
+
+  async updateStatus(idUser: number, idMantenimiento: number, estatus: number): Promise<ApiCrudResponse> {
+    try {
+      const mantenimiento = await this.mantenimientoVehicularRepository.findOne({
+        where: { id: idMantenimiento },
+      });
+
+      if (!mantenimiento) {
+        throw new NotFoundException('Mantenimiento vehicular no encontrado');
+      }
+
+      await this.mantenimientoVehicularRepository.update(idMantenimiento, { estatus: estatus });
+
+      //-----Registro en la bitacora----- SUCCESS
+      const querylogger = { id: idMantenimiento, estatus: estatus };
+      await this.bitacoraLogger.logToBitacora(
+        'MantenimientoVehicular',
+        `Se actualizó el estatus del mantenimiento vehicular con ID: ${idMantenimiento} a ${estatus}`,
+        'UPDATE',
+        querylogger,
+        Number(idUser),
+        33, // ID del módulo de mantenimiento vehicular
+        EstatusEnumBitcora.SUCCESS,
+      );
+
+      return {
+        status: 'success',
+        message: 'Estatus del mantenimiento vehicular actualizado correctamente',
+        estatus: { estatus: estatus },
+        data: {
+          id: idMantenimiento,
+          nombre: `Mantenimiento #${idMantenimiento}`,
+        },
+      };
+    } catch (error) {
+      //-----Registro en la bitacora----- ERROR
+      const querylogger = { id: idMantenimiento, estatus: estatus };
+      await this.bitacoraLogger.logToBitacora(
+        'MantenimientoVehicular',
+        `Error al actualizar estatus del mantenimiento vehicular con ID: ${idMantenimiento}`,
+        'UPDATE',
+        querylogger,
+        Number(idUser),
+        33, // ID del módulo de mantenimiento vehicular
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Error al actualizar el estatus del mantenimiento vehicular.',
         error: error.message,
       });
     }

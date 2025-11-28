@@ -47,6 +47,9 @@ export class Verificaciones {
   @Column("int", { name: "IdTipoVerificacion", nullable: true })
   idTipoVerificacion: number | null;
 
+  @Column("json", { name: "Evaluacion", nullable: true })
+  evaluacion: object | null;
+
   @ManyToOne(() => Instalaciones, (instalaciones) => instalaciones.verificaciones, {
     onDelete: "NO ACTION",
     onUpdate: "NO ACTION",

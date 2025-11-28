@@ -31,7 +31,7 @@ export class IncidentesService {
     private readonly operadoresRepository: Repository<Operadores>,
     private readonly bitacoraLogger: BitacoraLoggerService,
     private readonly s3Service: S3Service,
-  ) {}
+  ) { }
 
   async create(
     createIncidentesDto: CreateIncidentesDto,
@@ -65,7 +65,7 @@ export class IncidentesService {
           imagenFile,
           'Incidentes',
           idUser,
-          7, // ID del módulo de incidentes (ajustar según corresponda)
+          36, // ID del módulo de incidentes (ajustar según corresponda)
         );
         imagenUrl = uploadResult.url;
       }
@@ -90,7 +90,7 @@ export class IncidentesService {
         'CREATE',
         querylogger,
         idUser,
-        7, // ID del módulo de incidentes
+        36, // ID del módulo de incidentes
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -107,7 +107,7 @@ export class IncidentesService {
       return result;
     } catch (error) {
       //-----Registro en la bitacora----- ERROR
-      console.log(error); 
+      console.log(error);
       const querylogger = { createIncidentesDto };
       await this.bitacoraLogger.logToBitacora(
         'Incidentes',
@@ -115,7 +115,7 @@ export class IncidentesService {
         'CREATE',
         querylogger,
         idUser,
-        7, // ID del módulo de incidentes
+        36, // ID del módulo de incidentes
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -131,7 +131,7 @@ export class IncidentesService {
   async findAll(page: number, limit: number, idCliente: number, rol: number): Promise<ApiResponseCommon> {
     try {
       const whereCondition: any = {};
-      
+
       // Filtrar por idCliente si el rol no es 1 o 2
       if (rol !== 1 && rol !== 2) {
         // Obtener las instalaciones del cliente
@@ -140,7 +140,7 @@ export class IncidentesService {
           select: ['id'],
         });
         const idsInstalaciones = instalaciones.map(inst => inst.id);
-        
+
         // Si no hay instalaciones, retornar vacío
         if (idsInstalaciones.length === 0) {
           return {
@@ -152,7 +152,7 @@ export class IncidentesService {
             },
           };
         }
-        
+
         whereCondition.idInstalacion = In(idsInstalaciones);
       }
 
@@ -166,7 +166,7 @@ export class IncidentesService {
 
       // Forzamos ids a number
       const incidentes = data.map((item) => {
-        const nombreOperador = item.operador?.idUsuario2 
+        const nombreOperador = item.operador?.idUsuario2
           ? `${item.operador.idUsuario2.nombre || ''} ${item.operador.idUsuario2.apellidoPaterno || ''} ${item.operador.idUsuario2.apellidoMaterno || ''}`.trim() || null
           : null;
 
@@ -226,7 +226,7 @@ export class IncidentesService {
         throw new NotFoundException('Incidente no encontrado');
       }
 
-      const nombreOperador = incidente.operador?.idUsuario2 
+      const nombreOperador = incidente.operador?.idUsuario2
         ? `${incidente.operador.idUsuario2.nombre || ''} ${incidente.operador.idUsuario2.apellidoPaterno || ''} ${incidente.operador.idUsuario2.apellidoMaterno || ''}`.trim() || null
         : null;
 
@@ -314,7 +314,7 @@ export class IncidentesService {
         'UPDATE',
         querylogger,
         idUser,
-        7, // ID del módulo de incidentes
+        36, // ID del módulo de incidentes
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -337,7 +337,7 @@ export class IncidentesService {
         'UPDATE',
         querylogger,
         idUser,
-        7, // ID del módulo de incidentes
+        36, // ID del módulo de incidentes
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -370,7 +370,7 @@ export class IncidentesService {
         'UPDATE',
         querylogger,
         Number(idUser),
-        7, // ID del módulo de incidentes
+        36, // ID del módulo de incidentes
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -394,7 +394,7 @@ export class IncidentesService {
         'UPDATE',
         querylogger,
         Number(idUser),
-        7, // ID del módulo de incidentes
+        36, // ID del módulo de incidentes
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -432,7 +432,7 @@ export class IncidentesService {
         'UPDATE',
         querylogger,
         Number(idUser),
-        7, // ID del módulo de incidentes
+        36, // ID del módulo de incidentes
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -456,7 +456,7 @@ export class IncidentesService {
         'UPDATE',
         querylogger,
         Number(idUser),
-        7, // ID del módulo de incidentes
+        36, // ID del módulo de incidentes
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -465,6 +465,62 @@ export class IncidentesService {
       }
       throw new InternalServerErrorException({
         message: 'Error al activar el incidente.',
+        error: error.message,
+      });
+    }
+  }
+
+  async updateStatus(idUser: number, idIncidente: number, estatus: number): Promise<ApiCrudResponse> {
+    try {
+      const incidente = await this.incidentesRepository.findOne({
+        where: { id: idIncidente },
+      });
+
+      if (!incidente) {
+        throw new NotFoundException('Incidente no encontrado');
+      }
+
+      await this.incidentesRepository.update(idIncidente, { estatus: estatus });
+
+      //-----Registro en la bitacora----- SUCCESS
+      const querylogger = { id: idIncidente, estatus: estatus };
+      await this.bitacoraLogger.logToBitacora(
+        'Incidentes',
+        `Se actualizó el estatus del incidente con ID: ${incidente.incidente} a ${estatus}`,
+        'UPDATE',
+        querylogger,
+        Number(idUser),
+        36, // ID del módulo de incidentes
+        EstatusEnumBitcora.SUCCESS,
+      );
+
+      return {
+        status: 'success',
+        message: 'Estatus del incidente actualizado correctamente',
+        estatus: { estatus: estatus },
+        data: {
+          id: idIncidente,
+          nombre: `Incidente #${incidente.incidente}`,
+        },
+      };
+    } catch (error) {
+      //-----Registro en la bitacora----- ERROR
+      const querylogger = { id: idIncidente, estatus: estatus };
+      await this.bitacoraLogger.logToBitacora(
+        'Incidentes',
+        `Error al actualizar estatus del incidente con ID: ${idIncidente}`,
+        'UPDATE',
+        querylogger,
+        Number(idUser),
+        36, // ID del módulo de incidentes
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Error al actualizar el estatus del incidente.',
         error: error.message,
       });
     }

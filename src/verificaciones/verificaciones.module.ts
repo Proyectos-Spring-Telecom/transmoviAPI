@@ -8,6 +8,8 @@ import { Verificaciones } from 'src/entities/Verificaciones';
 import { Instalaciones } from 'src/entities/Instalaciones';
 import { Operadores } from 'src/entities/Operadores';
 import { CatTipoVerificaciones } from 'src/entities/CatTipoVerificaciones';
+import { CatCategoriaMantenimientoMecanico } from 'src/entities/CatCategoriaMantenimientoMecanico';
+import { Clientes } from 'src/entities/Clientes';
 
 @Module({
   imports: [
@@ -16,6 +18,8 @@ import { CatTipoVerificaciones } from 'src/entities/CatTipoVerificaciones';
       Instalaciones,
       Operadores,
       CatTipoVerificaciones,
+      CatCategoriaMantenimientoMecanico,
+      Clientes,
     ]),
     BitacoraModule,
     S3Module,

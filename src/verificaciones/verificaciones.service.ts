@@ -20,6 +20,8 @@ import {
   ApiResponseCommon,
   EstatusEnumBitcora,
 } from 'src/common/ApiResponse';
+import { CatCategoriaMantenimientoMecanico } from 'src/entities/CatCategoriaMantenimientoMecanico';
+import { Clientes } from 'src/entities/Clientes';
 
 @Injectable()
 export class VerificacionesService {
@@ -34,7 +36,31 @@ export class VerificacionesService {
     private readonly catTipoVerificacionesRepository: Repository<CatTipoVerificaciones>,
     private readonly bitacoraLogger: BitacoraLoggerService,
     private readonly s3Service: S3Service,
+    @InjectRepository(CatCategoriaMantenimientoMecanico)
+    private readonly catCategoriaMantenimientoMecanicoRepository: Repository<CatCategoriaMantenimientoMecanico>,
+    @InjectRepository(Clientes)
+    private readonly clienteRepository: Repository<Clientes>,
   ) {}
+
+  //funcion para obtener los clientes hijos
+  private async clienteHijos(cliente: number) {
+    const clientesFiltrado = await this.clienteRepository.query(
+      `CALL spGetClientes(?);`,
+      [cliente],
+    );
+
+    const idsFiltrados = clientesFiltrado[0]; // El primer índice contiene los resultados
+    const ids = idsFiltrados
+      .map((clientesFiltrado: any) => Number(clientesFiltrado.Id))
+      .filter(Boolean);
+    if (ids.length === 0) {
+      return { ids: [], placeholders: '' }; // No hay clientes que consultar
+    }
+
+    // Construir el query dinámico con los IDs
+    const placeholders = ids.map(() => '?').join(', ');
+    return { ids, placeholders };
+  }
 
   async create(
     createVerificacionesDto: CreateVerificacionesDto,
@@ -146,72 +172,262 @@ export class VerificacionesService {
     }
   }
 
-  async findAll(page: number, limit: number, idCliente: number, rol: number): Promise<ApiResponseCommon> {
-    try {
-      const whereCondition: any = {};
-      
-      // Filtrar por idCliente si el rol no es 1 o 2
-      if (rol !== 1 && rol !== 2) {
-        // Obtener las instalaciones del cliente
-        const instalaciones = await this.instalacionesRepository.find({
-          where: { idCliente: idCliente },
-          select: ['id'],
+  private async transformEvaluacion(evaluacion: any): Promise<any> {
+    if (!evaluacion || typeof evaluacion !== 'object') {
+      return null;
+    }
+
+    // Si evaluacion tiene categorías, expandirlas con sus nombres y características
+    if (Array.isArray(evaluacion.categorias) || evaluacion.categoria) {
+      // Obtener todas las categorías con sus características
+      const categorias = await this.catCategoriaMantenimientoMecanicoRepository.find({
+        relations: ['caracteristicasEvaluacion'],
+      });
+
+      // Crear un mapa de categorías por ID
+      const categoriasMap = new Map();
+      categorias.forEach((cat) => {
+        categoriasMap.set(cat.id, {
+          id: Number(cat.id),
+          nombre: cat.nombre,
+          caracteristicasEvaluacion: cat.caracteristicasEvaluacion?.map((car) => ({
+            id: Number(car.id),
+            nombre: car.nombre,
+            idCatCategoriaMantenimientoMecanico: Number(car.idCatCategoriaMantenimientoMecanico),
+            validado: false,
+          })) || [],
         });
-        const idsInstalaciones = instalaciones.map(inst => inst.id);
-        
-        // Si no hay instalaciones, retornar vacío
-        if (idsInstalaciones.length === 0) {
+      });
+
+      // Si evaluacion tiene un array de categorías
+      if (Array.isArray(evaluacion.categorias)) {
+        return {
+          categorias: evaluacion.categorias.map((catEval: any) => {
+            const categoria = categoriasMap.get(catEval.id || catEval.categoria);
+            if (categoria) {
+              return {
+                ...categoria,
+                caracteristicasEvaluacion: categoria.caracteristicasEvaluacion.map((car: any) => {
+                  const carEval = catEval.caracteristicas?.find((c: any) => c.id === car.id);
+                  return {
+                    ...car,
+                    validado: carEval?.validado || false,
+                    valor: carEval?.valor || null,
+                  };
+                }),
+              };
+            }
+            return catEval;
+          }),
+        };
+      }
+
+      // Si evaluacion tiene una sola categoría
+      if (evaluacion.categoria) {
+        const categoria = categoriasMap.get(evaluacion.categoria);
+        if (categoria) {
           return {
-            data: [],
-            paginated: {
-              total: 0,
-              page,
-              lastPage: 0,
+            categoria: {
+              ...categoria,
+              caracteristicasEvaluacion: categoria.caracteristicasEvaluacion.map((car: any) => {
+                const carEval = evaluacion.caracteristicas?.find((c: any) => c.id === car.id);
+                return {
+                  ...car,
+                  validado: carEval?.validado || false,
+                  valor: carEval?.valor || null,
+                };
+              }),
             },
           };
         }
-        
-        whereCondition.idInstalacion = In(idsInstalaciones);
+      }
+    }
+
+    // Si no tiene el formato esperado, devolver el JSON original
+    return evaluacion;
+  }
+
+  async findAll(page: number, limit: number, idCliente: number, rol: number): Promise<ApiResponseCommon> {
+    try {
+      const offset = (page - 1) * limit;
+      let verificaciones;
+      let totalResult;
+
+      switch (rol) {
+        case 1:
+        case 2:
+          // Consulta de datos paginados Usuario SuperAdministrador/Administrador
+          verificaciones = await this.verificacionesRepository.query(
+            `
+SELECT
+  v.Id AS id,
+  v.VerificacionActual AS verificacionActual,
+  v.ProximaVerificacion AS proximaVerificacion,
+  v.IdInstalacion AS idInstalacion,
+  v.IdOperador AS idOperador,
+  v.Estatus AS estatus,
+  v.NotaVerificacion AS notaVerificacion,
+  v.FHRegistro AS fhRegistro,
+  v.IdTipoVerificacion AS idTipoVerificacion,
+  v.Evaluacion AS evaluacion,
+  ct.Nombre AS nombreTipoVerificacion,
+  veh.Placa AS placaVehiculo,
+  veh.Foto AS imagenVehiculo,
+  CONCAT(
+    IFNULL(u.Nombre, ''),
+    IFNULL(CONCAT(' ', u.ApellidoPaterno), ''),
+    IFNULL(CONCAT(' ', u.ApellidoMaterno), '')
+  ) AS nombreOperador,
+  CONCAT(
+    IFNULL(c.Nombre, ''),
+    IFNULL(CONCAT(' ', c.ApellidoPaterno), ''),
+    IFNULL(CONCAT(' ', c.ApellidoMaterno), '')
+  ) AS nombreCliente,
+  c.Id AS idClienteData,
+  c.Nombre AS nombreClienteData,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente
+FROM Verificaciones v
+INNER JOIN Instalaciones i ON v.IdInstalacion = i.Id
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+LEFT JOIN Vehiculos veh ON i.IdVehiculo = veh.Id AND i.IdCliente = veh.IdCliente
+LEFT JOIN Operadores o ON v.IdOperador = o.Id
+LEFT JOIN Usuarios u ON o.IdUsuario = u.Id
+LEFT JOIN CatTipoVerificaciones ct ON v.IdTipoVerificacion = ct.Id
+ORDER BY v.FHRegistro DESC
+LIMIT ? OFFSET ?;
+            `,
+            [limit, offset],
+          );
+
+          // Query para total (sin paginación)
+          totalResult = await this.verificacionesRepository.query(
+            `
+SELECT COUNT(*) AS total
+FROM Verificaciones v
+INNER JOIN Instalaciones i ON v.IdInstalacion = i.Id
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+            `,
+          );
+          break;
+
+        default:
+          const { ids, placeholders } = await this.clienteHijos(idCliente);
+          if (ids.length === 0) {
+            return {
+              data: [],
+              paginated: {
+                total: 0,
+                page,
+                lastPage: 0,
+              },
+            };
+          }
+
+          // Consulta de datos paginados resto Usuario
+          verificaciones = await this.verificacionesRepository.query(
+            `
+SELECT
+  v.Id AS id,
+  v.VerificacionActual AS verificacionActual,
+  v.ProximaVerificacion AS proximaVerificacion,
+  v.IdInstalacion AS idInstalacion,
+  v.IdOperador AS idOperador,
+  v.Estatus AS estatus,
+  v.NotaVerificacion AS notaVerificacion,
+  v.FHRegistro AS fhRegistro,
+  v.IdTipoVerificacion AS idTipoVerificacion,
+  v.Evaluacion AS evaluacion,
+  ct.Nombre AS nombreTipoVerificacion,
+  veh.Placa AS placaVehiculo,
+  veh.Foto AS imagenVehiculo,
+  CONCAT(
+    IFNULL(u.Nombre, ''),
+    IFNULL(CONCAT(' ', u.ApellidoPaterno), ''),
+    IFNULL(CONCAT(' ', u.ApellidoMaterno), '')
+  ) AS nombreOperador,
+  CONCAT(
+    IFNULL(c.Nombre, ''),
+    IFNULL(CONCAT(' ', c.ApellidoPaterno), ''),
+    IFNULL(CONCAT(' ', c.ApellidoMaterno), '')
+  ) AS nombreCliente
+FROM Verificaciones v
+INNER JOIN Instalaciones i ON v.IdInstalacion = i.Id
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+LEFT JOIN Vehiculos veh ON i.IdVehiculo = veh.Id AND i.IdCliente = veh.IdCliente
+LEFT JOIN Operadores o ON v.IdOperador = o.Id
+LEFT JOIN Usuarios u ON o.IdUsuario = u.Id
+LEFT JOIN CatTipoVerificaciones ct ON v.IdTipoVerificacion = ct.Id
+WHERE c.Id IN (${placeholders})
+ORDER BY v.FHRegistro DESC
+LIMIT ? OFFSET ?;
+            `,
+            [...ids, limit, offset],
+          );
+
+          // Query para total (sin paginación)
+          totalResult = await this.verificacionesRepository.query(
+            `
+SELECT COUNT(*) AS total
+FROM Verificaciones v
+INNER JOIN Instalaciones i ON v.IdInstalacion = i.Id
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+WHERE c.Id IN (${placeholders})
+            `,
+            [...ids],
+          );
+          break;
       }
 
-      const [data, total] = await this.verificacionesRepository.findAndCount({
-        where: Object.keys(whereCondition).length > 0 ? whereCondition : undefined,
-        relations: ['instalacion', 'instalacion.vehiculos', 'instalacion.idCliente2', 'operador', 'operador.idUsuario2', 'tipoVerificacion'],
-        order: { fhRegistro: 'DESC' },
-        skip: (page - 1) * limit,
-        take: limit,
-      });
+      const total = Number(totalResult[0]?.total || 0);
 
-      // Forzamos ids a number
-      const verificaciones = data.map((item) => {
-        const nombreOperador = item.operador?.idUsuario2 
-          ? `${item.operador.idUsuario2.nombre || ''} ${item.operador.idUsuario2.apellidoPaterno || ''} ${item.operador.idUsuario2.apellidoMaterno || ''}`.trim() || null
-          : null;
+      // Transformar evaluacion al formato de categorias-mantenimiento-mecanico
+      const verificacionesTransformadas = await Promise.all(
+        verificaciones.map(async (item: any) => {
+          let evaluacionTransformada = null;
+          if (item.evaluacion) {
+            try {
+              const evaluacionJson = typeof item.evaluacion === 'string' 
+                ? JSON.parse(item.evaluacion) 
+                : item.evaluacion;
+              evaluacionTransformada = await this.transformEvaluacion(evaluacionJson);
+            } catch {
+              evaluacionTransformada = item.evaluacion;
+            }
+          }
 
-        const nombreCliente = item.instalacion?.idCliente2
-          ? `${item.instalacion.idCliente2.nombre || ''} ${item.instalacion.idCliente2.apellidoPaterno || ''} ${item.instalacion.idCliente2.apellidoMaterno || ''}`.trim() || null
-          : null;
-
-        return {
-          id: Number(item.id),
-          verificacionActual: item.verificacionActual,
-          proximaVerificacion: item.proximaVerificacion,
-          idInstalacion: item.idInstalacion ? Number(item.idInstalacion) : null,
-          idOperador: item.idOperador ? Number(item.idOperador) : null,
-          estatus: item.estatus,
-          notaVerificacion: item.notaVerificacion,
-          fhRegistro: item.fhRegistro,
-          idTipoVerificacion: item.idTipoVerificacion ? Number(item.idTipoVerificacion) : null,
-          nombreTipoVerificacion: item.tipoVerificacion?.nombre || null,
-          placaVehiculo: item.instalacion?.vehiculos?.placa || null,
-          imagenVehiculo: item.instalacion?.vehiculos?.foto || null,
-          nombreOperador: nombreOperador,
-          nombreCliente: nombreCliente,
-        };
-      });
+          return {
+            id: Number(item.id),
+            verificacionActual: item.verificacionActual,
+            proximaVerificacion: item.proximaVerificacion,
+            idInstalacion: item.idInstalacion ? Number(item.idInstalacion) : null,
+            idOperador: item.idOperador ? Number(item.idOperador) : null,
+            estatus: item.estatus,
+            notaVerificacion: item.notaVerificacion,
+            fhRegistro: item.fhRegistro,
+            idTipoVerificacion: item.idTipoVerificacion ? Number(item.idTipoVerificacion) : null,
+            evaluacion: evaluacionTransformada,
+            nombreTipoVerificacion: item.nombreTipoVerificacion || null,
+            placaVehiculo: item.placaVehiculo || null,
+            imagenVehiculo: item.imagenVehiculo || null,
+            nombreOperador: item.nombreOperador?.trim() || null,
+            nombreCliente: item.nombreCliente?.trim() || null,
+            ...(rol === 1 || rol === 2) && item.idClienteData ? {
+              cliente: {
+                id: Number(item.idClienteData),
+                nombre: item.nombreClienteData,
+                apellidoPaterno: item.apellidoPaternoCliente,
+                apellidoMaterno: item.apellidoMaternoCliente,
+                estatus: item.estatusCliente,
+              },
+            } : {},
+          };
+        })
+      );
 
       const result: ApiResponseCommon = {
-        data: verificaciones,
+        data: verificacionesTransformadas,
         paginated: {
           total: total,
           page,
@@ -231,47 +447,150 @@ export class VerificacionesService {
 
   async findOne(id: number, idCliente: number, rol: number): Promise<ApiResponseCommon> {
     try {
-      const verificacion = await this.verificacionesRepository.findOne({
-        where: { id: id },
-        relations: ['instalacion', 'instalacion.vehiculos', 'instalacion.idCliente2', 'operador', 'operador.idUsuario2', 'tipoVerificacion'],
-      });
+      let verificaciones;
 
-      // Verificar que la verificación pertenece al cliente si el rol no es 1 o 2
-      if (rol !== 1 && rol !== 2) {
-        if (!verificacion || verificacion.instalacion?.idCliente !== idCliente) {
-          throw new NotFoundException('Verificación no encontrada');
-        }
+      switch (rol) {
+        case 1:
+        case 2:
+          // Consulta para SuperAdministrador/Administrador
+          verificaciones = await this.verificacionesRepository.query(
+            `
+SELECT
+  v.Id AS id,
+  v.VerificacionActual AS verificacionActual,
+  v.ProximaVerificacion AS proximaVerificacion,
+  v.IdInstalacion AS idInstalacion,
+  v.IdOperador AS idOperador,
+  v.Estatus AS estatus,
+  v.NotaVerificacion AS notaVerificacion,
+  v.FHRegistro AS fhRegistro,
+  v.IdTipoVerificacion AS idTipoVerificacion,
+  v.Evaluacion AS evaluacion,
+  ct.Nombre AS nombreTipoVerificacion,
+  veh.Placa AS placaVehiculo,
+  veh.Foto AS imagenVehiculo,
+  CONCAT(
+    IFNULL(u.Nombre, ''),
+    IFNULL(CONCAT(' ', u.ApellidoPaterno), ''),
+    IFNULL(CONCAT(' ', u.ApellidoMaterno), '')
+  ) AS nombreOperador,
+  CONCAT(
+    IFNULL(c.Nombre, ''),
+    IFNULL(CONCAT(' ', c.ApellidoPaterno), ''),
+    IFNULL(CONCAT(' ', c.ApellidoMaterno), '')
+  ) AS nombreCliente,
+  c.Id AS idClienteData,
+  c.Nombre AS nombreClienteData,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente
+FROM Verificaciones v
+INNER JOIN Instalaciones i ON v.IdInstalacion = i.Id
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+LEFT JOIN Vehiculos veh ON i.IdVehiculo = veh.Id AND i.IdCliente = veh.IdCliente
+LEFT JOIN Operadores o ON v.IdOperador = o.Id
+LEFT JOIN Usuarios u ON o.IdUsuario = u.Id
+LEFT JOIN CatTipoVerificaciones ct ON v.IdTipoVerificacion = ct.Id
+WHERE v.Id = ?
+            `,
+            [id],
+          );
+          break;
+
+        default:
+          const { ids, placeholders } = await this.clienteHijos(idCliente);
+          if (ids.length === 0) {
+            throw new NotFoundException('Verificación no encontrada');
+          }
+
+          // Consulta para resto de usuarios
+          verificaciones = await this.verificacionesRepository.query(
+            `
+SELECT
+  v.Id AS id,
+  v.VerificacionActual AS verificacionActual,
+  v.ProximaVerificacion AS proximaVerificacion,
+  v.IdInstalacion AS idInstalacion,
+  v.IdOperador AS idOperador,
+  v.Estatus AS estatus,
+  v.NotaVerificacion AS notaVerificacion,
+  v.FHRegistro AS fhRegistro,
+  v.IdTipoVerificacion AS idTipoVerificacion,
+  v.Evaluacion AS evaluacion,
+  ct.Nombre AS nombreTipoVerificacion,
+  veh.Placa AS placaVehiculo,
+  veh.Foto AS imagenVehiculo,
+  CONCAT(
+    IFNULL(u.Nombre, ''),
+    IFNULL(CONCAT(' ', u.ApellidoPaterno), ''),
+    IFNULL(CONCAT(' ', u.ApellidoMaterno), '')
+  ) AS nombreOperador,
+  CONCAT(
+    IFNULL(c.Nombre, ''),
+    IFNULL(CONCAT(' ', c.ApellidoPaterno), ''),
+    IFNULL(CONCAT(' ', c.ApellidoMaterno), '')
+  ) AS nombreCliente
+FROM Verificaciones v
+INNER JOIN Instalaciones i ON v.IdInstalacion = i.Id
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+LEFT JOIN Vehiculos veh ON i.IdVehiculo = veh.Id AND i.IdCliente = veh.IdCliente
+LEFT JOIN Operadores o ON v.IdOperador = o.Id
+LEFT JOIN Usuarios u ON o.IdUsuario = u.Id
+LEFT JOIN CatTipoVerificaciones ct ON v.IdTipoVerificacion = ct.Id
+WHERE c.Id IN (${placeholders})
+AND v.Id = ?
+            `,
+            [...ids, id],
+          );
+          break;
       }
 
-      if (!verificacion) {
+      if (verificaciones.length === 0) {
         throw new NotFoundException('Verificación no encontrada');
       }
 
-      const nombreOperador = verificacion.operador?.idUsuario2 
-        ? `${verificacion.operador.idUsuario2.nombre || ''} ${verificacion.operador.idUsuario2.apellidoPaterno || ''} ${verificacion.operador.idUsuario2.apellidoMaterno || ''}`.trim() || null
-        : null;
+      const item = verificaciones[0];
 
-      const nombreCliente = verificacion.instalacion?.idCliente2
-        ? `${verificacion.instalacion.idCliente2.nombre || ''} ${verificacion.instalacion.idCliente2.apellidoPaterno || ''} ${verificacion.instalacion.idCliente2.apellidoMaterno || ''}`.trim() || null
-        : null;
+      // Transformar evaluacion al formato de categorias-mantenimiento-mecanico
+      let evaluacionTransformada = null;
+      if (item.evaluacion) {
+        try {
+          const evaluacionJson = typeof item.evaluacion === 'string' 
+            ? JSON.parse(item.evaluacion) 
+            : item.evaluacion;
+          evaluacionTransformada = await this.transformEvaluacion(evaluacionJson);
+        } catch {
+          evaluacionTransformada = item.evaluacion;
+        }
+      }
 
       const result: ApiResponseCommon = {
         data: [
           {
-            id: Number(verificacion.id),
-            verificacionActual: verificacion.verificacionActual,
-            proximaVerificacion: verificacion.proximaVerificacion,
-            idInstalacion: verificacion.idInstalacion ? Number(verificacion.idInstalacion) : null,
-            idOperador: verificacion.idOperador ? Number(verificacion.idOperador) : null,
-            estatus: verificacion.estatus,
-            notaVerificacion: verificacion.notaVerificacion,
-            fhRegistro: verificacion.fhRegistro,
-            idTipoVerificacion: verificacion.idTipoVerificacion ? Number(verificacion.idTipoVerificacion) : null,
-            nombreTipoVerificacion: verificacion.tipoVerificacion?.nombre || null,
-            placaVehiculo: verificacion.instalacion?.vehiculos?.placa || null,
-            imagenVehiculo: verificacion.instalacion?.vehiculos?.foto || null,
-            nombreOperador: nombreOperador,
-            nombreCliente: nombreCliente,
+            id: Number(item.id),
+            verificacionActual: item.verificacionActual,
+            proximaVerificacion: item.proximaVerificacion,
+            idInstalacion: item.idInstalacion ? Number(item.idInstalacion) : null,
+            idOperador: item.idOperador ? Number(item.idOperador) : null,
+            estatus: item.estatus,
+            notaVerificacion: item.notaVerificacion,
+            fhRegistro: item.fhRegistro,
+            idTipoVerificacion: item.idTipoVerificacion ? Number(item.idTipoVerificacion) : null,
+            evaluacion: evaluacionTransformada,
+            nombreTipoVerificacion: item.nombreTipoVerificacion || null,
+            placaVehiculo: item.placaVehiculo || null,
+            imagenVehiculo: item.imagenVehiculo || null,
+            nombreOperador: item.nombreOperador?.trim() || null,
+            nombreCliente: item.nombreCliente?.trim() || null,
+            ...(rol === 1 || rol === 2) && item.idClienteData ? {
+              cliente: {
+                id: Number(item.idClienteData),
+                nombre: item.nombreClienteData,
+                apellidoPaterno: item.apellidoPaternoCliente,
+                apellidoMaterno: item.apellidoMaternoCliente,
+                estatus: item.estatusCliente,
+              },
+            } : {},
           },
         ],
       };
@@ -502,6 +821,35 @@ export class VerificacionesService {
         message: 'Error al activar la verificación.',
         error: error.message,
       });
+    }
+  }
+
+  async getCategoriasMantenimientoMecanico(): Promise<ApiResponseCommon> {
+    try {
+      const categorias = await this.catCategoriaMantenimientoMecanicoRepository.find({relations: ['caracteristicasEvaluacion']});
+      
+      // Transformar los datos para asegurar que los IDs sean números
+      const categoriasTransformadas = categorias.map((categoria) => ({
+        id: Number(categoria.id),
+        nombre: categoria.nombre,
+        caracteristicasEvaluacion: categoria.caracteristicasEvaluacion?.map((caracteristica) => ({
+          id: Number(caracteristica.id),
+          nombre: caracteristica.nombre,
+          idCatCategoriaMantenimientoMecanico: Number(caracteristica.idCatCategoriaMantenimientoMecanico),
+          validado:false
+        })) || [],
+      }));
+
+      return {
+        data: categoriasTransformadas,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new BadRequestException(
+        error.message || 'Error al obtener las categorías de mantenimiento mecánico',
+      );
     }
   }
 }
