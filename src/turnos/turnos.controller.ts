@@ -6,7 +6,6 @@ import {
   Patch,
   Param,
   Delete,
-  Put,
   ParseIntPipe,
   Request,
   UseGuards,
@@ -77,7 +76,7 @@ export class TurnosController {
     return await this.turnosService.updateEstatus(id, +idUser, updateTurnosEstatusDto);
   }
 
-  @Put(':id')
+  @Patch(':id')
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateTurnoDto: UpdateTurnoDto,

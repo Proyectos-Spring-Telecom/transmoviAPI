@@ -19,6 +19,6 @@ export class DashboardController {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
     const rol = req.user.rol;
-    return this.dashboardService.dashboardkpiPrueba(kpiDto, +rol, +cliente);
+    return this.dashboardService.dashboardkpi(kpiDto, +rol, +cliente);
   }
 }

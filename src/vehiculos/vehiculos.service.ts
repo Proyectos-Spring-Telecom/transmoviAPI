@@ -189,6 +189,7 @@ INNER JOIN Clientes c ON v.IdCliente = c.Id
 WHERE 
   v.IdCliente = ?
   AND v.Estatus = 1
+  AND v.EstadoActual = 1
   AND c.Estatus = 1
 
 ORDER BY v.Id DESC
