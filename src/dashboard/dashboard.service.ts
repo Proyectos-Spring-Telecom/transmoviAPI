@@ -86,7 +86,6 @@ export class DashboardService {
       };
 
     } catch (error) {
-      console.log(error)
       if (error instanceof HttpException) {
         throw error;
       }
@@ -109,7 +108,6 @@ export class DashboardService {
       fechaFin = fechaFin.split("T")[0];
       return await this.resolverPorRol(fechaInicio, fechaFin, idCliente, cliente, rol)
     } catch (error) {
-      console.log(error)
       if (error instanceof HttpException) {
         throw error;
       }
@@ -236,7 +234,6 @@ export class DashboardService {
       return { kpi1, kpi2, grafica1, grafica2, grafica3 }
 
     } catch (error) {
-      console.log(error)
       if (error instanceof HttpException) {
         throw error;
       }
