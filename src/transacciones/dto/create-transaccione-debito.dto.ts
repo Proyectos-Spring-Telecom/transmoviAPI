@@ -1,13 +1,14 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsDateString,
   IsEnum,
+  IsInt,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
 } from 'class-validator';
-import { EnumTipoTransaccion } from 'src/common/estatus.enum';
+import { EnumControlTransacciones, EnumTipoTransaccion } from 'src/common/estatus.enum';
 
 export class CreateTransaccioneDebitoDto {
   @IsEnum(EnumTipoTransaccion, {
@@ -25,13 +26,54 @@ export class CreateTransaccioneDebitoDto {
   monto: number;
 
   @ApiProperty({
+    description: 'Control de la transacción',
+    example: `${0} (pagado), ${1} (abierto)`,
+    required: false,
+  })
+  @IsInt()
+  @IsOptional()
+  controlTransaccion?: EnumControlTransacciones = EnumControlTransacciones.PAGADO;
+
+  @ApiPropertyOptional({
+    description: 'Latitud inicial del recorrido',
+    example: 19.432608,
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 7 })
+  latitudInicial?: number;
+
+  @ApiPropertyOptional({
+    description: 'Longitud inicial del recorrido',
+    example: -99.133209,
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 7 })
+  longitudInicial?: number;
+
+  @ApiPropertyOptional({
+    description: 'Fecha y hora de inicio',
+    example: '2025-01-15T14:30:00',
+  })
+  @IsOptional()
+  @IsDateString()
+  fechaHoraInicio?: string;
+
+  @ApiPropertyOptional({
+    description: 'Distancia inicial en kilómetros',
+    example: 0.5,
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  distanciaInicialKm?: number;
+
+  @ApiProperty({
     example: 19.432608,
     description: 'Latitud de la ubicación (opcional)',
     required: false,
   })
   @IsNumber({ maxDecimalPlaces: 7 })
   @IsOptional()
-  latitud?: number;
+  latitudFinal?: number;
 
   @ApiProperty({
     example: -99.133209,
@@ -40,14 +82,15 @@ export class CreateTransaccioneDebitoDto {
   })
   @IsNumber({ maxDecimalPlaces: 7 })
   @IsOptional()
-  longitud?: number;
+  longitudFinal?: number;
 
   @ApiProperty({
     example: '2025-09-10T12:30:00Z',
     description: 'Fecha y hora de la transacción en formato ISO8601',
   })
   @IsDateString()
-  fechaHora: string;
+  @IsOptional()
+  fechaHoraFinal: string;
 
   @ApiProperty({
     example: 'MON-0001',

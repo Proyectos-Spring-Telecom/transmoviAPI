@@ -36,7 +36,6 @@ export class DashboardService {
   // 🔹 OBTENER DASHBOARD
   // ========================================
   async dashboardkpi(kpiDto: KpiDto, rol: number, cliente: number) {
-    console.log('Entro dasboard')
     try {
       const { fechaInicio, fechaFin, filtro, idCliente } = kpiDto
       let data;
@@ -47,7 +46,7 @@ export class DashboardService {
         const { fechaIni, fechaFinal } = await this.resolverPorFiltro(filtro || 1);
         data = await this.resolverPorRol(fechaIni, fechaFinal, idCliente, cliente, rol)
       }
-      const { grafica1, grafica2, grafica3 } = data
+      const { grafica1, grafica2, grafica3, grafica4 } = data
 
       //Forzamos a cambiar el id a number
       const graficaIngresos = grafica1.map((item) => ({
@@ -83,6 +82,7 @@ export class DashboardService {
         graficaIngresos,
         graficaDerroteros,
         graficaAscensoBoleto,
+        grafica4,
       };
 
     } catch (error) {
@@ -190,6 +190,7 @@ export class DashboardService {
       let grafica1;
       let grafica2;
       let grafica3;
+      let grafica4;
       switch (rol) {
         case 1:
           if (idCliente === cliente) {
@@ -198,12 +199,14 @@ export class DashboardService {
             grafica1 = await this.grafica1SA(fechaInicio, fechaFin, idCliente);
             grafica2 = await this.grafica2SA(fechaInicio, fechaFin, idCliente);
             grafica3 = await this.graficaAsc3SA(fechaInicio, fechaFin, idCliente);
+            grafica4 = await this.graficaAsc4SA(fechaInicio, fechaFin, idCliente);
           } else {
             kpi1 = await this.kpiDef(fechaInicio, fechaFin, idCliente);
             kpi2 = await this.kpi2Def(fechaInicio, fechaFin, idCliente);
             grafica1 = await this.grafica1(fechaInicio, fechaFin, idCliente);
             grafica2 = await this.grafica2(fechaInicio, fechaFin, idCliente);
             grafica3 = await this.graficaAsc3(fechaInicio, fechaFin, idCliente);
+            grafica4 = await this.graficaAsc4(fechaInicio, fechaFin, idCliente);
           }
 
           break;
@@ -214,12 +217,14 @@ export class DashboardService {
             grafica1 = await this.grafica1SA(fechaInicio, fechaFin, idCliente);
             grafica2 = await this.grafica2SA(fechaInicio, fechaFin, idCliente);
             grafica3 = await this.graficaAsc3SA(fechaInicio, fechaFin, idCliente);
+            grafica4 = await this.graficaAsc4SA(fechaInicio, fechaFin, idCliente);
           } else {
             kpi1 = await this.kpiDef(fechaInicio, fechaFin, idCliente);
             kpi2 = await this.kpi2Def(fechaInicio, fechaFin, idCliente);
             grafica1 = await this.grafica1(fechaInicio, fechaFin, idCliente);
             grafica2 = await this.grafica2(fechaInicio, fechaFin, idCliente);
             grafica3 = await this.graficaAsc3(fechaInicio, fechaFin, idCliente);
+            grafica4 = await this.graficaAsc4(fechaInicio, fechaFin, idCliente);
           }
           break;
 
@@ -229,9 +234,10 @@ export class DashboardService {
           grafica1 = await this.grafica1(fechaInicio, fechaFin, idCliente);
           grafica2 = await this.grafica2(fechaInicio, fechaFin, idCliente);
           grafica3 = await this.graficaAsc3(fechaInicio, fechaFin, idCliente);
+          grafica4 = await this.graficaAsc4(fechaInicio, fechaFin, idCliente);
           break;
       }
-      return { kpi1, kpi2, grafica1, grafica2, grafica3 }
+      return { kpi1, kpi2, grafica1, grafica2, grafica3, grafica4 }
 
     } catch (error) {
       if (error instanceof HttpException) {
@@ -268,8 +274,8 @@ SELECT
 FROM HistoricoTransaccionesDebito td
 INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
 INNER JOIN Clientes c ON d.IdCliente = c.Id
-WHERE td.FechaHora >= '${fechaInicio}T00:00:00Z'
-  AND td.FechaHora < '${fechaFin}T23:59:59Z'
+WHERE td.FechaHoraFinal >= '${fechaInicio}T00:00:00Z'
+  AND td.FechaHoraFinal < '${fechaFin}T23:59:59Z'
   AND c.Id IN (${placeholders});`
 
     return this.clienteRepository.query(query, [...ids]);
@@ -369,8 +375,8 @@ SELECT
 FROM HistoricoTransaccionesDebito td
 INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
 INNER JOIN Clientes c ON d.IdCliente = c.Id
-WHERE td.FechaHora >= '${fechaInicio}T00:00:00Z'
-  AND td.FechaHora < '${fechaFin}T23:59:59Z'
+WHERE td.FechaHoraFinal >= '${fechaInicio}T00:00:00Z'
+  AND td.FechaHoraFinal < '${fechaFin}T23:59:59Z'
   AND c.Id IN (${idCliente});`
 
     return this.clienteRepository.query(query,);
@@ -460,11 +466,11 @@ datos AS (
     SELECT 
         /* PERIODO DINÁMICO */
         CASE 
-            WHEN dias = 0 THEN DATE_FORMAT(td.FechaHora, '%Y-%m-%d %H:00')     -- Por hora
-            WHEN dias <= 15 THEN DATE(td.FechaHora)                            -- Por día
-            WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(td.FechaHora, '%Y-%m'),
-                                        ' Semana ', WEEK(td.FechaHora, 1))     -- Por semana
-            ELSE DATE_FORMAT(td.FechaHora, '%Y-%m')                            -- Por mes
+            WHEN dias = 0 THEN DATE_FORMAT(td.FechaHoraFinal, '%Y-%m-%d %H:00')     -- Por hora
+            WHEN dias <= 15 THEN DATE(td.FechaHoraFinal)                            -- Por día
+            WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(td.FechaHoraFinal, '%Y-%m'),
+                                        ' Semana ', WEEK(td.FechaHoraFinal, 1))     -- Por semana
+            ELSE DATE_FORMAT(td.FechaHoraFinal, '%Y-%m')                            -- Por mes
         END AS periodo,
 
         SUM(CASE WHEN td.IdTipoTransaccion = 2 THEN td.Monto ELSE 0 END) AS ingresos,
@@ -492,16 +498,16 @@ datos AS (
     INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
     INNER JOIN Clientes c ON d.IdCliente = c.Id
     CROSS JOIN rango
-    WHERE td.FechaHora BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
+    WHERE td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
       AND c.Id IN (${idCliente})
 
     GROUP BY 
         CASE 
-            WHEN dias = 0 THEN DATE_FORMAT(td.FechaHora, '%Y-%m-%d %H:00')
-            WHEN dias <= 15 THEN DATE(td.FechaHora)
-            WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(td.FechaHora, '%Y-%m'),
-                                        ' Semana ', WEEK(td.FechaHora, 1))
-            ELSE DATE_FORMAT(td.FechaHora, '%Y-%m')
+            WHEN dias = 0 THEN DATE_FORMAT(td.FechaHoraFinal, '%Y-%m-%d %H:00')
+            WHEN dias <= 15 THEN DATE(td.FechaHoraFinal)
+            WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(td.FechaHoraFinal, '%Y-%m'),
+                                        ' Semana ', WEEK(td.FechaHoraFinal, 1))
+            ELSE DATE_FORMAT(td.FechaHoraFinal, '%Y-%m')
         END
 )
 SELECT 
@@ -534,11 +540,11 @@ datos AS (
     SELECT 
         /* PERIODO DINÁMICO */
         CASE 
-            WHEN dias = 0 THEN DATE_FORMAT(td.FechaHora, '%Y-%m-%d %H:00')     -- Por hora
-            WHEN dias <= 15 THEN DATE(td.FechaHora)                            -- Por día
-            WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(td.FechaHora, '%Y-%m'),
-                                        ' Semana ', WEEK(td.FechaHora, 1))     -- Por semana
-            ELSE DATE_FORMAT(td.FechaHora, '%Y-%m')                            -- Por mes
+            WHEN dias = 0 THEN DATE_FORMAT(td.FechaHoraFinal, '%Y-%m-%d %H:00')     -- Por hora
+            WHEN dias <= 15 THEN DATE(td.FechaHoraFinal)                            -- Por día
+            WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(td.FechaHoraFinal, '%Y-%m'),
+                                        ' Semana ', WEEK(td.FechaHoraFinal, 1))     -- Por semana
+            ELSE DATE_FORMAT(td.FechaHoraFinal, '%Y-%m')                            -- Por mes
         END AS periodo,
 
         SUM(CASE WHEN td.IdTipoTransaccion = 2 THEN td.Monto ELSE 0 END) AS ingresos,
@@ -566,16 +572,16 @@ datos AS (
     INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
     INNER JOIN Clientes c ON d.IdCliente = c.Id
     CROSS JOIN rango
-    WHERE td.FechaHora BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
+    WHERE td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
       AND c.Id IN (${placeholders})
 
     GROUP BY 
         CASE 
-            WHEN dias = 0 THEN DATE_FORMAT(td.FechaHora, '%Y-%m-%d %H:00')
-            WHEN dias <= 15 THEN DATE(td.FechaHora)
-            WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(td.FechaHora, '%Y-%m'),
-                                        ' Semana ', WEEK(td.FechaHora, 1))
-            ELSE DATE_FORMAT(td.FechaHora, '%Y-%m')
+            WHEN dias = 0 THEN DATE_FORMAT(td.FechaHoraFinal, '%Y-%m-%d %H:00')
+            WHEN dias <= 15 THEN DATE(td.FechaHoraFinal)
+            WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(td.FechaHoraFinal, '%Y-%m'),
+                                        ' Semana ', WEEK(td.FechaHoraFinal, 1))
+            ELSE DATE_FORMAT(td.FechaHoraFinal, '%Y-%m')
         END
 )
 SELECT 
@@ -738,11 +744,11 @@ periodos AS (
         
         UNION
         
-        SELECT td.FechaHora AS fecha
+        SELECT td.FechaHoraFinal AS fecha
         FROM HistoricoTransaccionesDebito td
         INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
         WHERE d.IdCliente IN (${idCliente})
-          AND td.FechaHora BETWEEN '${fechaInicio}T00:00:00Z' 
+          AND td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' 
                                AND '${fechaFin}T23:59:59Z'
     ) AS fechas
     CROSS JOIN rango
@@ -777,11 +783,11 @@ ascensos AS (
 boletos AS (
     SELECT
         CASE 
-            WHEN dias = 0 THEN DATE_FORMAT(td.FechaHora, '%Y-%m-%d %H:00')
-            WHEN dias <= 15 THEN DATE(td.FechaHora)
-            WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(td.FechaHora, '%Y-%m'),
-                                        ' Semana ', WEEK(td.FechaHora, 1))
-            ELSE DATE_FORMAT(td.FechaHora, '%Y-%m')
+            WHEN dias = 0 THEN DATE_FORMAT(td.FechaHoraFinal, '%Y-%m-%d %H:00')
+            WHEN dias <= 15 THEN DATE(td.FechaHoraFinal)
+            WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(td.FechaHoraFinal, '%Y-%m'),
+                                        ' Semana ', WEEK(td.FechaHoraFinal, 1))
+            ELSE DATE_FORMAT(td.FechaHoraFinal, '%Y-%m')
         END AS periodo,
 
         COUNT(CASE WHEN td.IdTipoTransaccion = 2 THEN 1 END) AS boletos
@@ -789,7 +795,7 @@ boletos AS (
     INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
     CROSS JOIN rango
     WHERE d.IdCliente IN (${idCliente})
-      AND td.FechaHora BETWEEN '${fechaInicio}T00:00:00Z' 
+      AND td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' 
                            AND '${fechaFin}T23:59:59Z'
     GROUP BY periodo
 )
@@ -844,11 +850,11 @@ periodos AS (
         
         UNION
         
-        SELECT td.FechaHora AS fecha
+        SELECT td.FechaHoraFinal AS fecha
         FROM HistoricoTransaccionesDebito td
         INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
         WHERE d.IdCliente IN (${placeholders})
-          AND td.FechaHora BETWEEN '${fechaInicio}T00:00:00Z' 
+          AND td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' 
                                AND '${fechaFin}T23:59:59Z'
     ) AS fechas
     CROSS JOIN rango
@@ -883,11 +889,11 @@ ascensos AS (
 boletos AS (
     SELECT
         CASE 
-            WHEN dias = 0 THEN DATE_FORMAT(td.FechaHora, '%Y-%m-%d %H:00')
-            WHEN dias <= 15 THEN DATE(td.FechaHora)
-            WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(td.FechaHora, '%Y-%m'),
-                                        ' Semana ', WEEK(td.FechaHora, 1))
-            ELSE DATE_FORMAT(td.FechaHora, '%Y-%m')
+            WHEN dias = 0 THEN DATE_FORMAT(td.FechaHoraFinal, '%Y-%m-%d %H:00')
+            WHEN dias <= 15 THEN DATE(td.FechaHoraFinal)
+            WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(td.FechaHoraFinal, '%Y-%m'),
+                                        ' Semana ', WEEK(td.FechaHoraFinal, 1))
+            ELSE DATE_FORMAT(td.FechaHoraFinal, '%Y-%m')
         END AS periodo,
 
         COUNT(CASE WHEN td.IdTipoTransaccion = 2 THEN 1 END) AS boletos
@@ -895,7 +901,7 @@ boletos AS (
     INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
     CROSS JOIN rango
     WHERE d.IdCliente IN (${placeholders})
-      AND td.FechaHora BETWEEN '${fechaInicio}T00:00:00Z' 
+      AND td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' 
                            AND '${fechaFin}T23:59:59Z'
     GROUP BY periodo
 )
@@ -914,5 +920,176 @@ ORDER BY p.periodo;
 
 `
     return this.clienteRepository.query(query, [...ids, ...ids, ...ids, ...ids]);
+  }
+
+  /////////*/*/*/*/*/*//*//////////////////////////////////////////******/////*/*/*/*/*/*/*/*/*/*/*/*/*/*/*//*/*/**/***/*/****
+
+  private async graficaAsc4(
+    fechaInicio: string,
+    fechaFin: string,
+    idCliente: number
+  ) {
+    const query = `
+
+WITH rango AS (
+    SELECT 
+        DATEDIFF('${fechaFin}T23:59:59Z', '${fechaInicio}T00:00:00Z') AS dias
+),
+
+transacciones AS (
+    SELECT 
+        V.Id AS IdViaje,
+        H.Monto,
+        
+        CASE 
+            WHEN dias = 0 THEN DATE_FORMAT(H.FechaHoraFinal, '%Y-%m-%d %H:00')     -- Por hora
+            WHEN dias <= 15 THEN DATE(H.FechaHoraFinal)                            -- Por día
+            WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(H.FechaHoraFinal, '%Y-%m'),
+                                        ' Semana ', WEEK(H.FechaHoraFinal, 1))     -- Por semana
+            ELSE DATE_FORMAT(H.FechaHoraFinal, '%Y-%m')                            -- Por mes
+        END AS periodo
+
+    FROM HistoricoTransaccionesDebito H
+    INNER JOIN ViajesTransacciones VT ON VT.IdTransaccionDebito = H.Id
+    INNER JOIN Viajes V ON V.Id = VT.IdViaje
+    CROSS JOIN rango
+    WHERE H.IdTipoTransaccion = 2
+      AND H.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
+),
+
+rutas AS (
+    SELECT 
+        V.Id AS IdViaje,
+        R.Id AS IdRuta,
+        R.Nombre AS Ruta,
+
+        CASE 
+            WHEN dias = 0 THEN DATE_FORMAT(V.Inicio, '%Y-%m-%d %H:00')
+            WHEN dias <= 15 THEN DATE(V.Inicio)
+            WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(V.Inicio, '%Y-%m'),
+                                        ' Semana ', WEEK(V.Inicio, 1))
+            ELSE DATE_FORMAT(V.Inicio, '%Y-%m')
+        END AS periodo
+    FROM Viajes V
+    INNER JOIN Derroteros D ON D.Id = V.IdDerrotero
+    INNER JOIN Rutas R ON R.Id = D.IdRuta
+    CROSS JOIN rango
+    WHERE V.Inicio BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
+      AND V.IdCliente IN (${idCliente})
+),
+
+ingresos_por_ruta_periodo AS (
+    SELECT 
+        R.periodo,
+        R.Ruta,
+        SUM(T.Monto) AS ingresos
+    FROM rutas R
+    LEFT JOIN transacciones T 
+           ON T.IdViaje = R.IdViaje AND T.periodo = R.periodo
+    GROUP BY R.periodo, R.Ruta
+),
+
+ranked AS (
+    SELECT 
+        *,
+        ROW_NUMBER() OVER (PARTITION BY periodo ORDER BY ingresos DESC) AS rn
+    FROM ingresos_por_ruta_periodo
+)
+
+SELECT 
+    periodo,
+    Ruta,
+    ROUND(ingresos, 2) AS ingresosTotales
+FROM ranked
+WHERE rn <= 5
+ORDER BY periodo, ingresosTotales DESC;
+
+`
+    return this.clienteRepository.query(query);
+  }
+
+  private async graficaAsc4SA(
+    fechaInicio: string,
+    fechaFin: string,
+    idCliente: number
+  ) {
+    const { ids, placeholders } = await this.clienteHijos(idCliente);
+    const query = `
+
+WITH rango AS (
+    SELECT 
+        DATEDIFF('${fechaFin}T23:59:59Z', '${fechaInicio}T00:00:00Z') AS dias
+),
+
+transacciones AS (
+    SELECT 
+        V.Id AS IdViaje,
+        H.Monto,
+        
+        CASE 
+            WHEN dias = 0 THEN DATE_FORMAT(H.FechaHoraFinal, '%Y-%m-%d %H:00')     -- Por hora
+            WHEN dias <= 15 THEN DATE(H.FechaHoraFinal)                            -- Por día
+            WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(H.FechaHoraFinal, '%Y-%m'),
+                                        ' Semana ', WEEK(H.FechaHoraFinal, 1))     -- Por semana
+            ELSE DATE_FORMAT(H.FechaHoraFinal, '%Y-%m')                            -- Por mes
+        END AS periodo
+
+    FROM HistoricoTransaccionesDebito H
+    INNER JOIN ViajesTransacciones VT ON VT.IdTransaccionDebito = H.Id
+    INNER JOIN Viajes V ON V.Id = VT.IdViaje
+    CROSS JOIN rango
+    WHERE H.IdTipoTransaccion = 2
+      AND H.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
+),
+
+rutas AS (
+    SELECT 
+        V.Id AS IdViaje,
+        R.Id AS IdRuta,
+        R.Nombre AS Ruta,
+
+        CASE 
+            WHEN dias = 0 THEN DATE_FORMAT(V.Inicio, '%Y-%m-%d %H:00')
+            WHEN dias <= 15 THEN DATE(V.Inicio)
+            WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(V.Inicio, '%Y-%m'),
+                                        ' Semana ', WEEK(V.Inicio, 1))
+            ELSE DATE_FORMAT(V.Inicio, '%Y-%m')
+        END AS periodo
+    FROM Viajes V
+    INNER JOIN Derroteros D ON D.Id = V.IdDerrotero
+    INNER JOIN Rutas R ON R.Id = D.IdRuta
+    CROSS JOIN rango
+    WHERE V.Inicio BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
+      AND V.IdCliente IN (${placeholders})
+),
+
+ingresos_por_ruta_periodo AS (
+    SELECT 
+        R.periodo,
+        R.Ruta,
+        SUM(T.Monto) AS ingresos
+    FROM rutas R
+    LEFT JOIN transacciones T 
+           ON T.IdViaje = R.IdViaje AND T.periodo = R.periodo
+    GROUP BY R.periodo, R.Ruta
+),
+
+ranked AS (
+    SELECT 
+        *,
+        ROW_NUMBER() OVER (PARTITION BY periodo ORDER BY ingresos DESC) AS rn
+    FROM ingresos_por_ruta_periodo
+)
+
+SELECT 
+    periodo,
+    Ruta,
+    ROUND(ingresos, 2) AS ingresosTotales
+FROM ranked
+WHERE rn <= 5
+ORDER BY periodo, ingresosTotales DESC;
+
+`
+    return this.clienteRepository.query(query, [...ids]);
   }
 }

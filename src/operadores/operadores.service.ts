@@ -49,7 +49,7 @@ export class OperadoresService {
           `El operador con licencia número: ${createOperadoreDto.numeroLicencia} ya se encuentra registrado.`,
         );
       }
-
+      console.log(createOperadoreDto)
       const usuarioOperador = await this.operadoresRepository.findOne({
         where: { idUsuario: createOperadoreDto.idUsuario },
       });
@@ -80,7 +80,7 @@ export class OperadoresService {
         licencia: createOperadoreDto.licencia,
         numeroLicencia: createOperadoreDto.numeroLicencia,
         fechaExpedicion: createOperadoreDto.fechaExpedicion,
-        FechaVencimiento: createOperadoreDto.fechaVencimiento,
+        fechaVencimiento: createOperadoreDto.fechaVencimiento,
         idTipoLicencia: createOperadoreDto.idTipoLicencia,
         idCategoriaLicencia: createOperadoreDto.idCategoriaLicencia,
         idOperador: operador.id,
@@ -89,6 +89,8 @@ export class OperadoresService {
       //Guardamos la licencia
       const licenciaCreate =
         await this.licenciasRepository.create(bodyLicencia);
+
+      console.log(licenciaCreate);
       const licencia = await this.licenciasRepository.save(licenciaCreate);
 
       //-----Registro en la bitacora-----SUCCESS
@@ -114,6 +116,7 @@ export class OperadoresService {
       };
       return result;
     } catch (error) {
+      console.log(error)
       //-----Registro en la bitacora-----SUCCESS
       const querylogger = { createOperadoreDto };
       await this.bitacoraLogger.logToBitacora(

@@ -7,6 +7,7 @@ import {
   UseGuards,
   ParseIntPipe,
   Request,
+  Patch,
 } from '@nestjs/common';
 import { TransaccionesService } from './transacciones.service';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
@@ -14,12 +15,13 @@ import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { CreateTransaccioneDebitoDto } from './dto/create-transaccione-debito.dto';
 import { CreateTransaccioneRecargaDto } from './dto/create-transaccione-recarga.dto';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { UpdateTransaccioneDebitoDto } from './dto/update-transaccione-debito.dto';
 
 @ApiTags('Transacciones')
 @Controller('transacciones')
 @ApiBearerAuth('bearer-token')
 export class TransaccionesController {
-  constructor(private readonly transaccionesService: TransaccionesService) {}
+  constructor(private readonly transaccionesService: TransaccionesService) { }
 
   // ========================================
   // 🔹 POST ROUTES - Rutas específicas primero
@@ -47,6 +49,19 @@ export class TransaccionesController {
     const idUser = req.user.userId;
     return this.transaccionesService.createTransaccionRecarga(
       createTransaccioneRecargaDto,
+      idUser,
+    );
+  }
+
+  @Patch('debito')
+  @UseGuards(JwtAuthGuard)
+  updateTransaccionDebito(
+    @Body() updateTransaccioneDebitoDto: UpdateTransaccioneDebitoDto,
+    @Request() req,
+  ): Promise<ApiCrudResponse> {
+    const idUser = req.user.userId;
+    return this.transaccionesService.updateTransaccionDebito(
+      updateTransaccioneDebitoDto,
       idUser,
     );
   }
@@ -86,13 +101,13 @@ export class TransaccionesController {
     const email = req.user.email;
     const cliente = req.user.cliente;
     const rol = req.user.rol;
-    
+
     return await this.transaccionesService.findAllTransacciones(
-      +idUser, 
-      email, 
-      +cliente, 
-      +rol, 
-      page, 
+      +idUser,
+      email,
+      +cliente,
+      +rol,
+      page,
       limit
     );
   }
