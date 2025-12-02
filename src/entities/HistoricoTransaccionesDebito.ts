@@ -18,30 +18,42 @@ export class HistoricoTransaccionesDebito {
   @Column('bigint', { name: 'IdTipoTransaccion' })
   idTipoTransaccion: number;
 
-  @Column('varchar', { name: 'ControlTransaccion', nullable: true, length: 30 })
-  controlTransaccion: string | null;
+  @Column('tinyint', { name: 'ControlTransaccion', nullable: true, unsigned: true })
+  controlTransaccion: number | null;
 
   @Column('decimal', { name: 'Monto', precision: 10, scale: 2 })
   monto: number;
 
+  @Column('decimal', { name: 'LatitudInicial', precision: 10, scale: 7, nullable: true })
+  latitudInicial: number | null;
+
+  @Column('decimal', { name: 'LongitudInicial', precision: 10, scale: 7, nullable: true })
+  longitudInicial: number | null;
+
+  @Column('datetime', { name: 'FechaHoraInicio', nullable: true })
+  fechaHoraInicio: Date | null;
+
+  @Column('decimal', { name: 'DistanciaInicialKm', precision: 10, scale: 2, nullable: true })
+  distanciaInicialKm: number | null;
+
   @Column('decimal', {
-    name: 'Latitud',
+    name: 'LatitudFinal',
     precision: 10,
     scale: 7,
     nullable: true,
   })
-  latitud: number | null;
+  latitudFinal: number | null;
 
   @Column('decimal', {
-    name: 'Longitud',
+    name: 'LongitudFinal',
     precision: 10,
     scale: 7,
     nullable: true,
   })
-  longitud: number | null;
+  longitudFinal: number | null;
 
-  @Column('datetime', { name: 'FechaHora' })
-  fechaHora: Date;
+  @Column('datetime', { name: 'FechaHoraFinal' })
+  fechaHoraFinal: Date;
 
   @Column('datetime', {
     name: 'FHRegistro',

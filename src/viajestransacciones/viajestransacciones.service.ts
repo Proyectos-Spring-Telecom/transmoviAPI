@@ -14,6 +14,7 @@ import {
   EstatusEnumBitcora,
 } from 'src/common/ApiResponse';
 import { Clientes } from 'src/entities/Clientes';
+import { EnumModulos } from 'src/common/estatus.enum';
 
 @Injectable()
 export class ViajestransaccionesService {
@@ -41,11 +42,11 @@ export class ViajestransaccionesService {
       const querylogger = { createViajestransaccioneDto };
       await this.bitacoraLogger.logToBitacora(
         'ViajesTransacciones',
-        `Se creó el viajestransacciones con viaje ID: ${createViajestransaccioneDto.idViaje} y transaccion ID: ${createViajestransaccioneDto.idTransaccion}`,
+        `Se creó el viajestransacciones con viaje ID: ${createViajestransaccioneDto.idViaje} y transaccion ID: ${createViajestransaccioneDto.idTransaccionDebito}, ${createViajestransaccioneDto.idTransaccionRecarga}`,
         'CREATE',
         querylogger,
         idUser,
-        26,
+        EnumModulos.VIAJESTRANSACCIONES,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -54,19 +55,20 @@ export class ViajestransaccionesService {
         status: 'success',
         message: 'El viajestransaccion ha sido creado exitosamente.',
         data: {
-          id: Number(viajestransaccionesSave.idTransaccion),
+          id: Number(viajestransaccionesSave.idViaje),
           nombre:
-            `Viaje ID: ${viajestransaccionesSave.idTransaccion} Transaccion ID: ${viajestransaccionesSave.idViaje} ` ||
+            `Viaje ID: ${viajestransaccionesSave.idViaje} Transaccion ID: ${viajestransaccionesSave.idTransaccionDebito},  ${viajestransaccionesSave.idTransaccionRecarga} ` ||
             '',
         },
       };
       return result;
     } catch (error) {
+      console.log(error)
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { createViajestransaccioneDto };
       await this.bitacoraLogger.logToBitacora(
         'ViajesTransacciones',
-        `Se creó el viajestransacciones con viaje ID: ${createViajestransaccioneDto.idViaje} y transaccion ID: ${createViajestransaccioneDto.idTransaccion}`,
+        `Se creó el viajestransacciones con viaje ID: ${createViajestransaccioneDto.idViaje} y transaccion ID: ${createViajestransaccioneDto.idTransaccionDebito}, ${createViajestransaccioneDto.idTransaccionRecarga}`,
         'CREATE',
         querylogger,
         idUser,
@@ -139,9 +141,9 @@ SELECT
             'idTransaccionDebito', td.Id,
             'controlTransaccionDebito', td.ControlTransaccion,
             'montoDebito', td.Monto,
-            'fechaHoraDebito', td.FechaHora,
-            'latitudDebito', td.Latitud,
-            'longitudDebito', td.Longitud
+            'fechaHoraDebito', td.FechaHoraFinal,
+            'latitudDebito', td.LatitudFinal,
+            'longitudDebito', td.LongitudFinal
         )
     ) AS transaccionesDebito,
 
@@ -167,8 +169,8 @@ INNER JOIN Regiones reg ON r.IdRegion = reg.Id
 
 -- Transacciones relacionadas al viaje (usamos LEFT JOIN para permitir que los viajes sin transacciones también aparezcan)
 LEFT JOIN ViajesTransacciones vt ON vt.IdViaje = v.Id
-LEFT JOIN TransaccionesDebito td ON vt.IdTransaccionDebito = td.Id
-LEFT JOIN TransaccionesRecarga tr ON vt.IdTransaccionRecarga = tr.Id
+LEFT JOIN HistoricoTransaccionesDebito td ON vt.IdTransaccionDebito = td.Id
+LEFT JOIN HistoricoTransaccionesRecarga tr ON vt.IdTransaccionRecarga = tr.Id
 
 WHERE c.Id IN (${placeholders})
 
@@ -230,9 +232,9 @@ ORDER BY v.Id DESC;
             'idTransaccionDebito', td.Id,
             'controlTransaccionDebito', td.ControlTransaccion,
             'montoDebito', td.Monto,
-            'fechaHoraDebito', td.FechaHora,
-            'latitudDebito', td.Latitud,
-            'longitudDebito', td.Longitud
+            'fechaHoraDebito', td.FechaHoraFinal,
+            'latitudDebito', td.LatitudFinal,
+            'longitudDebito', td.LongitudFinal
         )
     ) AS transaccionesDebito,
 
@@ -258,8 +260,8 @@ INNER JOIN Regiones reg ON r.IdRegion = reg.Id
 
 -- Transacciones relacionadas al viaje (usamos LEFT JOIN para permitir que los viajes sin transacciones también aparezcan)
 LEFT JOIN ViajesTransacciones vt ON vt.IdViaje = v.Id
-LEFT JOIN TransaccionesDebito td ON vt.IdTransaccionDebito = td.Id
-LEFT JOIN TransaccionesRecarga tr ON vt.IdTransaccionRecarga = tr.Id
+LEFT JOIN HistoricoTransaccionesDebito td ON vt.IdTransaccionDebito = td.Id
+LEFT JOIN HistoricoTransaccionesRecarga tr ON vt.IdTransaccionRecarga = tr.Id
 
 WHERE c.Id = ?
 
@@ -325,9 +327,9 @@ SELECT
             'idTransaccionDebito', td.Id,
             'controlTransaccionDebito', td.ControlTransaccion,
             'montoDebito', td.Monto,
-            'fechaHoraDebito', td.FechaHora,
-            'latitudDebito', td.Latitud,
-            'longitudDebito', td.Longitud
+            'fechaHoraDebito', td.FechaHoraFinal,
+            'latitudDebito', td.LatitudFinal,
+            'longitudDebito', td.LongitudFinal
         )
     ) AS transaccionesDebito,
 
@@ -353,8 +355,8 @@ INNER JOIN Regiones reg ON r.IdRegion = reg.Id
 
 -- Transacciones relacionadas al viaje (usamos LEFT JOIN para permitir que los viajes sin transacciones también aparezcan)
 LEFT JOIN ViajesTransacciones vt ON vt.IdViaje = v.Id
-LEFT JOIN TransaccionesDebito td ON vt.IdTransaccionDebito = td.Id
-LEFT JOIN TransaccionesRecarga tr ON vt.IdTransaccionRecarga = tr.Id
+LEFT JOIN HistoricoTransaccionesDebito td ON vt.IdTransaccionDebito = td.Id
+LEFT JOIN HistoricoTransaccionesRecarga tr ON vt.IdTransaccionRecarga = tr.Id
 
 WHERE v.Estatus = 1  -- Filtra los viajes activos
 
@@ -409,6 +411,7 @@ ORDER BY v.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error)
       if (error instanceof HttpException) {
         throw error;
       }
@@ -457,9 +460,9 @@ SELECT
             'idTransaccionDebito', td.Id,
             'controlTransaccionDebito', td.ControlTransaccion,
             'montoDebito', td.Monto,
-            'fechaHoraDebito', td.FechaHora,
-            'latitudDebito', td.Latitud,
-            'longitudDebito', td.Longitud
+            'fechaHoraDebito', td.FechaHoraFinal,
+            'latitudDebito', td.LatitudFinal,
+            'longitudDebito', td.LongitudFinal
         )
     ) AS transaccionesDebito,
 
@@ -485,8 +488,8 @@ INNER JOIN Regiones reg ON r.IdRegion = reg.Id
 
 -- Transacciones relacionadas al viaje (usamos LEFT JOIN para permitir que los viajes sin transacciones también aparezcan)
 LEFT JOIN ViajesTransacciones vt ON vt.IdViaje = v.Id
-LEFT JOIN TransaccionesDebito td ON vt.IdTransaccionDebito = td.Id
-LEFT JOIN TransaccionesRecarga tr ON vt.IdTransaccionRecarga = tr.Id
+LEFT JOIN HistoricoTransaccionesDebito td ON vt.IdTransaccionDebito = td.Id
+LEFT JOIN HistoricoTransaccionesRecarga tr ON vt.IdTransaccionRecarga = tr.Id
 
 WHERE c.Id IN (${placeholders})
 
@@ -534,8 +537,8 @@ INNER JOIN Regiones reg ON r.IdRegion = reg.Id
 
 -- Transacciones relacionadas al viaje (usamos LEFT JOIN para permitir que los viajes sin transacciones también aparezcan)
 LEFT JOIN ViajesTransacciones vt ON vt.IdViaje = v.Id
-LEFT JOIN TransaccionesDebito td ON vt.IdTransaccionDebito = td.Id
-LEFT JOIN TransaccionesRecarga tr ON vt.IdTransaccionRecarga = tr.Id
+LEFT JOIN HistoricoTransaccionesDebito td ON vt.IdTransaccionDebito = td.Id
+LEFT JOIN HistoricoTransaccionesRecarga tr ON vt.IdTransaccionRecarga = tr.Id
 
 WHERE c.Id IN (${placeholders})
 `;
@@ -578,9 +581,9 @@ SELECT
             'idTransaccionDebito', td.Id,
             'controlTransaccionDebito', td.ControlTransaccion,
             'montoDebito', td.Monto,
-            'fechaHoraDebito', td.FechaHora,
-            'latitudDebito', td.Latitud,
-            'longitudDebito', td.Longitud
+            'fechaHoraDebito', td.FechaHoraFinal,
+            'latitudDebito', td.LatitudFinal,
+            'longitudDebito', td.LongitudFinal
         )
     ) AS transaccionesDebito,
 
@@ -606,8 +609,8 @@ INNER JOIN Regiones reg ON r.IdRegion = reg.Id
 
 -- Transacciones relacionadas al viaje (usamos LEFT JOIN para permitir que los viajes sin transacciones también aparezcan)
 LEFT JOIN ViajesTransacciones vt ON vt.IdViaje = v.Id
-LEFT JOIN TransaccionesDebito td ON vt.IdTransaccionDebito = td.Id
-LEFT JOIN TransaccionesRecarga tr ON vt.IdTransaccionRecarga = tr.Id
+LEFT JOIN HistoricoTransaccionesDebito td ON vt.IdTransaccionDebito = td.Id
+LEFT JOIN HistoricoTransaccionesRecarga tr ON vt.IdTransaccionRecarga = tr.Id
 
 WHERE c.Id = ?
 
@@ -654,8 +657,8 @@ INNER JOIN Regiones reg ON r.IdRegion = reg.Id
 
 -- Transacciones relacionadas al viaje (usamos LEFT JOIN para permitir que los viajes sin transacciones también aparezcan)
 LEFT JOIN ViajesTransacciones vt ON vt.IdViaje = v.Id
-LEFT JOIN TransaccionesDebito td ON vt.IdTransaccionDebito = td.Id
-LEFT JOIN TransaccionesRecarga tr ON vt.IdTransaccionRecarga = tr.Id
+LEFT JOIN HistoricoTransaccionesDebito td ON vt.IdTransaccionDebito = td.Id
+LEFT JOIN HistoricoTransaccionesRecarga tr ON vt.IdTransaccionRecarga = tr.Id
 
 WHERE c.Id = ?
 `;
@@ -707,9 +710,9 @@ SELECT
             'idTransaccionDebito', td.Id,
             'controlTransaccionDebito', td.ControlTransaccion,
             'montoDebito', td.Monto,
-            'fechaHoraDebito', td.FechaHora,
-            'latitudDebito', td.Latitud,
-            'longitudDebito', td.Longitud
+            'fechaHoraDebito', td.FechaHoraFinal,
+            'latitudDebito', td.LatitudFinal,
+            'longitudDebito', td.LongitudFinal
         )
     ) AS transaccionesDebito,
 
@@ -735,8 +738,8 @@ INNER JOIN Regiones reg ON r.IdRegion = reg.Id
 
 -- Transacciones relacionadas al viaje (usamos LEFT JOIN para permitir que los viajes sin transacciones también aparezcan)
 LEFT JOIN ViajesTransacciones vt ON vt.IdViaje = v.Id
-LEFT JOIN TransaccionesDebito td ON vt.IdTransaccionDebito = td.Id
-LEFT JOIN TransaccionesRecarga tr ON vt.IdTransaccionRecarga = tr.Id
+LEFT JOIN HistoricoTransaccionesDebito td ON vt.IdTransaccionDebito = td.Id
+LEFT JOIN HistoricoTransaccionesRecarga tr ON vt.IdTransaccionRecarga = tr.Id
 
 
 
@@ -779,8 +782,8 @@ INNER JOIN Regiones reg ON r.IdRegion = reg.Id
 
 -- Transacciones relacionadas al viaje (usamos LEFT JOIN para permitir que los viajes sin transacciones también aparezcan)
 LEFT JOIN ViajesTransacciones vt ON vt.IdViaje = v.Id
-LEFT JOIN TransaccionesDebito td ON vt.IdTransaccionDebito = td.Id
-LEFT JOIN TransaccionesRecarga tr ON vt.IdTransaccionRecarga = tr.Id
+LEFT JOIN HistoricoTransaccionesDebito td ON vt.IdTransaccionDebito = td.Id
+LEFT JOIN HistoricoTransaccionesRecarga tr ON vt.IdTransaccionRecarga = tr.Id
 
 
   `,
@@ -868,9 +871,9 @@ SELECT
             'idTransaccionDebito', td.Id,
             'controlTransaccionDebito', td.ControlTransaccion,
             'montoDebito', td.Monto,
-            'fechaHoraDebito', td.FechaHora,
-            'latitudDebito', td.Latitud,
-            'longitudDebito', td.Longitud
+            'fechaHoraDebito', td.FechaHoraFinal,
+            'latitudDebito', td.LatitudFinal,
+            'longitudDebito', td.LongitudFinal
         )
     ) AS transaccionesDebito,
 
@@ -896,8 +899,8 @@ INNER JOIN Regiones reg ON r.IdRegion = reg.Id
 
 -- Transacciones relacionadas al viaje (usamos LEFT JOIN para permitir que los viajes sin transacciones también aparezcan)
 LEFT JOIN ViajesTransacciones vt ON vt.IdViaje = v.Id
-LEFT JOIN TransaccionesDebito td ON vt.IdTransaccionDebito = td.Id
-LEFT JOIN TransaccionesRecarga tr ON vt.IdTransaccionRecarga = tr.Id
+LEFT JOIN HistoricoTransaccionesDebito td ON vt.IdTransaccionDebito = td.Id
+LEFT JOIN HistoricoTransaccionesRecarga tr ON vt.IdTransaccionRecarga = tr.Id
 
 WHERE v.Id = ?
 

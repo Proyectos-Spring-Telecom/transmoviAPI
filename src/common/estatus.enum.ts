@@ -102,3 +102,8 @@ export enum EnumFiltros {
   SEMANA = 2,
   MES = 3,
 }
+
+export enum EnumControlTransacciones {
+  PAGADO = 0,
+  ABIERTA = 1,
+}
