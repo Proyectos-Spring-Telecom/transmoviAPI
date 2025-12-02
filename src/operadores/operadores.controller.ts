@@ -35,17 +35,6 @@ export class OperadoresController {
     return this.operadoresService.createOperador(createOperadoreDto, +idUser);
   }
 
-  @Get(':page/:limit')
-  findAllOperador(
-    @Param('page', ParseIntPipe) page: number,
-    @Param('limit', ParseIntPipe) limit: number,
-    @Request() req,
-  ): Promise<ApiResponseCommon> {
-    const cliente = req.user.cliente;
-    const rol = req.user.rol;
-    return this.operadoresService.findAllOperadores(+cliente, +rol, page, limit);
-  }
-
   @Get('list')
   findAllListOperador(@Request() req,): Promise<ApiResponseCommon> {
     const cliente = req.user.cliente;
@@ -83,6 +72,17 @@ export class OperadoresController {
     const idUser = req.user.userId;
     const rol = req.user.rol;
     return await this.operadoresService.findByCliente(+idCliente, +idUser, +rol);
+  }
+
+  @Get(':page/:limit')
+  findAllOperador(
+    @Param('page', ParseIntPipe) page: number,
+    @Param('limit', ParseIntPipe) limit: number,
+    @Request() req,
+  ): Promise<ApiResponseCommon> {
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+    return this.operadoresService.findAllOperadores(+cliente, +rol, page, limit);
   }
 
   @Get(':id')

@@ -5,10 +5,11 @@ import { BitacoraModule } from 'src/bitacora/bitacora.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MantenimientoKilometraje } from 'src/entities/MantenimientoKilometraje';
 import { Instalaciones } from 'src/entities/Instalaciones';
+import { Clientes } from 'src/entities/Clientes';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([MantenimientoKilometraje, Instalaciones]),
+    TypeOrmModule.forFeature([MantenimientoKilometraje, Instalaciones, Clientes]),
     BitacoraModule,
   ],
   controllers: [MantenimientoKilometrajeController],

@@ -47,7 +47,18 @@ export class DispositivosController {
     return this.dispositivosService.findAllList(+cliente, +rol);
   }
 
-  @Get('/clientes/:id')
+  @Get('by-cliente/:idCliente')
+  async findByCliente(
+    @Param('idCliente', ParseIntPipe) idCliente: number,
+    @Request() req,
+  ): Promise<ApiResponseCommon> {
+    const idUser = req.user.userId;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+    return await this.dispositivosService.findAllListDispositivosClientes(idCliente, +cliente);
+  }
+
+  @Get('clientes/:id')
   async findAllDispositivosClientes(
     @Param('id', ParseIntPipe) id: number,
     @Request() req,

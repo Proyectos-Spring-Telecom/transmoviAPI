@@ -265,4 +265,46 @@ export class IncidentesController {
     const idUser = req.user.userId;
     return await this.incidentesService.activar(id, idUser);
   }
+
+  @Patch(':id/estatus/:estatus')
+  @ApiOperation({
+    summary: 'Actualizar el estatus de un incidente',
+    description: 'Actualiza el estatus de un incidente.',
+  })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'ID del incidente a actualizar',
+    example: 1,
+  })
+  @ApiParam({
+    name: 'estatus',
+    type: Number,
+    description: 'Estatus del incidente a actualizar',
+    example: 1,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Estatus del incidente actualizado exitosamente',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Error de validación',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Incidente no encontrado',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'No autorizado',
+  })
+  async updateStatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('estatus', ParseIntPipe) estatus: number,
+    @Request() req,
+  ): Promise<ApiCrudResponse> {
+    const idUser = req.user.userId;
+    return await this.incidentesService.updateStatus(idUser, id, estatus);
+  }
 }

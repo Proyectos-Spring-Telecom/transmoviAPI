@@ -3,6 +3,7 @@ import {
   IsOptional,
   IsInt,
   IsDateString,
+  IsObject,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 
@@ -17,6 +18,24 @@ const toNumber = ({ value }: { value: any }): number | undefined => {
   if (typeof value === 'string') {
     const num = parseInt(value, 10);
     return isNaN(num) ? undefined : num;
+  }
+  return undefined;
+};
+
+// Helper function para transformar valores de FormData a JSON
+const toJson = ({ value }: { value: any }): object | undefined => {
+  if (value === null || value === undefined || value === '') {
+    return undefined;
+  }
+  if (typeof value === 'object') {
+    return value;
+  }
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return undefined;
+    }
   }
   return undefined;
 };
@@ -84,5 +103,15 @@ export class CreateVerificacionesDto {
   @IsInt({ message: 'El ID de tipo de verificación debe ser un número entero.' })
   @IsOptional()
   idTipoVerificacion?: number;
+
+  @ApiProperty({
+    example: { categoria: 1, caracteristicas: [{ id: 1, valor: 'Bueno' }] },
+    description: 'Evaluación en formato JSON',
+    required: false,
+  })
+  @Transform(toJson)
+  @IsObject({ message: 'La evaluación debe ser un objeto JSON válido.' })
+  @IsOptional()
+  evaluacion?: object;
 }
 

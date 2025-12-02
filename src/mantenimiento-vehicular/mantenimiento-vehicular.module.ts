@@ -9,6 +9,7 @@ import { CatEstatusMantenimiento } from 'src/entities/CatEstatusMantenimiento';
 import { Talleres } from 'src/entities/Talleres';
 import { Instalaciones } from 'src/entities/Instalaciones';
 import { CatReferenciaServicio } from 'src/entities/CatReferenciaServicio';
+import { Clientes } from 'src/entities/Clientes';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { CatReferenciaServicio } from 'src/entities/CatReferenciaServicio';
       Talleres,
       Instalaciones,
       CatReferenciaServicio,
+      Clientes,
     ]),
     BitacoraModule,
     S3Module,

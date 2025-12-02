@@ -261,4 +261,46 @@ export class MantenimientoVehicularController {
     const idUser = req.user.userId;
     return await this.mantenimientoVehicularService.activar(id, idUser);
   }
+
+  @Patch(':id/estatus/:estatus')
+  @ApiOperation({
+    summary: 'Actualizar el estatus de un mantenimiento vehicular',
+    description: 'Actualiza el estatus de un mantenimiento vehicular.',
+  })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'ID del mantenimiento vehicular a actualizar',
+    example: 1,
+  })
+  @ApiParam({
+    name: 'estatus',
+    type: Number,
+    description: 'Estatus del mantenimiento vehicular a actualizar',
+    example: 1,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Estatus del mantenimiento vehicular actualizado exitosamente',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Error de validación',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Mantenimiento vehicular no encontrado',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'No autorizado',
+  })
+  async updateStatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('estatus', ParseIntPipe) estatus: number,
+    @Request() req,
+  ): Promise<ApiCrudResponse> {
+    const idUser = req.user.userId;
+    return await this.mantenimientoVehicularService.updateStatus(idUser, id, estatus);
+  }
 }

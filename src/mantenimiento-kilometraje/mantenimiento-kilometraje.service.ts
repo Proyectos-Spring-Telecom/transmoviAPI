@@ -10,6 +10,7 @@ import { UpdateMantenimientoKilometrajeDto } from './dto/update-mantenimiento-ki
 import { InjectRepository } from '@nestjs/typeorm';
 import { MantenimientoKilometraje } from 'src/entities/MantenimientoKilometraje';
 import { Instalaciones } from 'src/entities/Instalaciones';
+import { Clientes } from 'src/entities/Clientes';
 import { Repository, In } from 'typeorm';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import {
@@ -25,8 +26,30 @@ export class MantenimientoKilometrajeService {
     private readonly mantenimientoKilometrajeRepository: Repository<MantenimientoKilometraje>,
     @InjectRepository(Instalaciones)
     private readonly instalacionesRepository: Repository<Instalaciones>,
+    @InjectRepository(Clientes)
+    private readonly clienteRepository: Repository<Clientes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
   ) {}
+
+  //funcion para obtener los clientes hijos
+  private async clienteHijos(cliente: number) {
+    const clientesFiltrado = await this.clienteRepository.query(
+      `CALL spGetClientes(?);`,
+      [cliente],
+    );
+
+    const idsFiltrados = clientesFiltrado[0]; // El primer índice contiene los resultados
+    const ids = idsFiltrados
+      .map((clientesFiltrado: any) => Number(clientesFiltrado.Id))
+      .filter(Boolean);
+    if (ids.length === 0) {
+      return { ids: [], placeholders: '' }; // No hay clientes que consultar
+    }
+
+    // Construir el query dinámico con los IDs
+    const placeholders = ids.map(() => '?').join(', ');
+    return { ids, placeholders };
+  }
 
   async create(
     createMantenimientoKilometrajeDto: CreateMantenimientoKilometrajeDto,
@@ -85,42 +108,135 @@ export class MantenimientoKilometrajeService {
 
   async findAll(page: number, limit: number, idCliente: number, rol: number): Promise<ApiResponseCommon> {
     try {
-      const whereCondition: any = {};
-      
-      // Filtrar por idCliente si el rol no es 1 o 2
-      if (rol !== 1 && rol !== 2) {
-        // Obtener las instalaciones del cliente
-        const instalaciones = await this.instalacionesRepository.find({
-          where: { idCliente: idCliente },
-          select: ['id'],
-        });
-        const idsInstalaciones = instalaciones.map(inst => inst.id);
-        
-        // Si no hay instalaciones, retornar vacío
-        if (idsInstalaciones.length === 0) {
-          return {
-            data: [],
-            paginated: {
-              total: 0,
-              page,
-              lastPage: 0,
-            },
-          };
-        }
-        
-        whereCondition.idInstalacion = In(idsInstalaciones);
+      const offset = (page - 1) * limit;
+      let mantenimientos;
+      let totalResult;
+
+      switch (rol) {
+        case 1:
+        case 2:
+          // Consulta de datos paginados Usuario SuperAdministrador/Administrador
+          mantenimientos = await this.mantenimientoKilometrajeRepository.query(
+            `
+SELECT
+  mk.Id AS id,
+  mk.IdInstalacion AS idInstalacion,
+  mk.KMinicial AS kmInicial,
+  mk.KMDeseado AS kmDeseado,
+  mk.Periodo AS periodo,
+  mk.Anio AS anio,
+  mk.FHRegistro AS fhRegistro,
+  mk.Estatus AS estatus,
+  veh.Placa AS placaVehiculo,
+  veh.Foto AS imagenVehiculo,
+  d.Id AS instalacionDispositivoId,
+  d.NumeroSerie AS instalacionDispositivoNumeroSerie,
+  d.Marca AS instalacionDispositivoMarca,
+  d.Modelo AS instalacionDispositivoModelo,
+  bv.Id AS instalacionBlueVoxId,
+  bv.NumeroSerie AS instalacionBlueVoxNumeroSerie,
+  bv.Marca AS instalacionBlueVoxMarca,
+  bv.Modelo AS instalacionBlueVoxModelo,
+  veh.Id AS instalacionVehiculoId,
+  veh.Marca AS instalacionVehiculoMarca,
+  veh.Modelo AS instalacionVehiculoModelo,
+  c.Id AS idClienteData,
+  c.Nombre AS nombreClienteData,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente
+FROM MantenimientoKilometraje mk
+INNER JOIN Instalaciones i ON mk.IdInstalacion = i.Id
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+LEFT JOIN Vehiculos veh ON i.IdVehiculo = veh.Id AND i.IdCliente = veh.IdCliente
+LEFT JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+LEFT JOIN BlueVoxs bv ON i.IdBlueVox = bv.Id AND i.IdCliente = bv.IdCliente
+ORDER BY mk.FHRegistro DESC
+LIMIT ? OFFSET ?;
+            `,
+            [limit, offset],
+          );
+
+          // Query para total (sin paginación)
+          totalResult = await this.mantenimientoKilometrajeRepository.query(
+            `
+SELECT COUNT(*) AS total
+FROM MantenimientoKilometraje mk
+INNER JOIN Instalaciones i ON mk.IdInstalacion = i.Id
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+            `,
+          );
+          break;
+
+        default:
+          const { ids, placeholders } = await this.clienteHijos(idCliente);
+          if (ids.length === 0) {
+            return {
+              data: [],
+              paginated: {
+                total: 0,
+                page,
+                lastPage: 0,
+              },
+            };
+          }
+
+          // Consulta de datos paginados resto Usuario
+          mantenimientos = await this.mantenimientoKilometrajeRepository.query(
+            `
+SELECT
+  mk.Id AS id,
+  mk.IdInstalacion AS idInstalacion,
+  mk.KMinicial AS kmInicial,
+  mk.KMDeseado AS kmDeseado,
+  mk.Periodo AS periodo,
+  mk.Anio AS anio,
+  mk.FHRegistro AS fhRegistro,
+  mk.Estatus AS estatus,
+  veh.Placa AS placaVehiculo,
+  veh.Foto AS imagenVehiculo,
+  d.Id AS instalacionDispositivoId,
+  d.NumeroSerie AS instalacionDispositivoNumeroSerie,
+  d.Marca AS instalacionDispositivoMarca,
+  d.Modelo AS instalacionDispositivoModelo,
+  bv.Id AS instalacionBlueVoxId,
+  bv.NumeroSerie AS instalacionBlueVoxNumeroSerie,
+  bv.Marca AS instalacionBlueVoxMarca,
+  bv.Modelo AS instalacionBlueVoxModelo,
+  veh.Id AS instalacionVehiculoId,
+  veh.Marca AS instalacionVehiculoMarca,
+  veh.Modelo AS instalacionVehiculoModelo
+FROM MantenimientoKilometraje mk
+INNER JOIN Instalaciones i ON mk.IdInstalacion = i.Id
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+LEFT JOIN Vehiculos veh ON i.IdVehiculo = veh.Id AND i.IdCliente = veh.IdCliente
+LEFT JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+LEFT JOIN BlueVoxs bv ON i.IdBlueVox = bv.Id AND i.IdCliente = bv.IdCliente
+WHERE c.Id IN (${placeholders})
+ORDER BY mk.FHRegistro DESC
+LIMIT ? OFFSET ?;
+            `,
+            [...ids, limit, offset],
+          );
+
+          // Query para total (sin paginación)
+          totalResult = await this.mantenimientoKilometrajeRepository.query(
+            `
+SELECT COUNT(*) AS total
+FROM MantenimientoKilometraje mk
+INNER JOIN Instalaciones i ON mk.IdInstalacion = i.Id
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+WHERE c.Id IN (${placeholders})
+            `,
+            [...ids],
+          );
+          break;
       }
 
-      const [data, total] = await this.mantenimientoKilometrajeRepository.findAndCount({
-        where: Object.keys(whereCondition).length > 0 ? whereCondition : undefined,
-        relations: ['instalacion', 'instalacion.dispositivos', 'instalacion.blueVoxs', 'instalacion.vehiculos', 'instalacion.idCliente2'],
-        order: { fhRegistro: 'DESC' },
-        skip: (page - 1) * limit,
-        take: limit,
-      });
+      const total = Number(totalResult[0]?.total || 0);
 
-      // Forzamos ids a number
-      const mantenimientos = data.map((item) => ({
+      // Transformar los datos
+      const mantenimientosTransformados = mantenimientos.map((item: any) => ({
         id: Number(item.id),
         idInstalacion: item.idInstalacion ? Number(item.idInstalacion) : null,
         kmInicial: item.kmInicial ? Number(item.kmInicial) : null,
@@ -129,40 +245,39 @@ export class MantenimientoKilometrajeService {
         anio: item.anio,
         fhRegistro: item.fhRegistro,
         estatus: item.estatus,
-        placaVehiculo: item.instalacion?.vehiculos?.placa || null,
-        imagenVehiculo: item.instalacion?.vehiculos?.foto || null,
-        instalacion: item.instalacion ? {
-          id: Number(item.instalacion.id),
+        placaVehiculo: item.placaVehiculo || null,
+        imagenVehiculo: item.imagenVehiculo || null,
+        instalacion: item.idInstalacion ? { id: Number(item.idInstalacion) } : null,
+        instalacionDispositivo: item.instalacionDispositivoId ? {
+          id: Number(item.instalacionDispositivoId),
+          numeroSerie: item.instalacionDispositivoNumeroSerie,
+          marca: item.instalacionDispositivoMarca,
+          modelo: item.instalacionDispositivoModelo,
         } : null,
-        instalacionDispositivo: item.instalacion?.dispositivos ? {
-          id: Number(item.instalacion.dispositivos.id),
-          numeroSerie: item.instalacion.dispositivos.numeroSerie,
-          marca: item.instalacion.dispositivos.marca,
-          modelo: item.instalacion.dispositivos.modelo,
+        instalacionBlueVox: item.instalacionBlueVoxId ? {
+          id: Number(item.instalacionBlueVoxId),
+          numeroSerie: item.instalacionBlueVoxNumeroSerie,
+          marca: item.instalacionBlueVoxMarca,
+          modelo: item.instalacionBlueVoxModelo,
         } : null,
-        instalacionBlueVox: item.instalacion?.blueVoxs ? {
-          id: Number(item.instalacion.blueVoxs.id),
-          numeroSerie: item.instalacion.blueVoxs.numeroSerie,
-          marca: item.instalacion.blueVoxs.marca,
-          modelo: item.instalacion.blueVoxs.modelo,
+        instalacionVehiculo: item.instalacionVehiculoId ? {
+          id: Number(item.instalacionVehiculoId),
+          marca: item.instalacionVehiculoMarca,
+          modelo: item.instalacionVehiculoModelo,
         } : null,
-        instalacionVehiculo: item.instalacion?.vehiculos ? {
-          id: Number(item.instalacion.vehiculos.id),
-          marca: item.instalacion.vehiculos.marca,
-          modelo: item.instalacion.vehiculos.modelo,
-        } : null,
-            // Incluir datos del cliente cuando el rol es 1 o 2
-            instalacionCliente: (rol === 1 || rol === 2) && item.instalacion?.idCliente2 ? {
-              id: Number(item.instalacion.idCliente2.id),
-              nombre: item.instalacion.idCliente2.nombre,
-              apellidoPaterno: item.instalacion.idCliente2.apellidoPaterno,
-              apellidoMaterno: item.instalacion.idCliente2.apellidoMaterno,
-              estatus: item.instalacion.idCliente2.estatus,
-            } : null,
+        ...(rol === 1 || rol === 2) && item.idClienteData ? {
+          instalacionCliente: {
+            id: Number(item.idClienteData),
+            nombre: item.nombreClienteData,
+            apellidoPaterno: item.apellidoPaternoCliente,
+            apellidoMaterno: item.apellidoMaternoCliente,
+            estatus: item.estatusCliente,
+          },
+        } : {},
       }));
 
       const result: ApiResponseCommon = {
-        data: mantenimientos,
+        data: mantenimientosTransformados,
         paginated: {
           total: total,
           page,
@@ -182,63 +297,144 @@ export class MantenimientoKilometrajeService {
 
   async findOne(id: number, idCliente: number, rol: number): Promise<ApiResponseCommon> {
     try {
-      const mantenimiento = await this.mantenimientoKilometrajeRepository.findOne({
-        where: { id: id },
-        relations: ['instalacion', 'instalacion.dispositivos', 'instalacion.blueVoxs', 'instalacion.vehiculos', 'instalacion.idCliente2'],
-      });
+      let mantenimientos;
 
-      if (!mantenimiento) {
+      switch (rol) {
+        case 1:
+        case 2:
+          // Consulta para SuperAdministrador/Administrador
+          mantenimientos = await this.mantenimientoKilometrajeRepository.query(
+            `
+SELECT
+  mk.Id AS id,
+  mk.IdInstalacion AS idInstalacion,
+  mk.KMinicial AS kmInicial,
+  mk.KMDeseado AS kmDeseado,
+  mk.Periodo AS periodo,
+  mk.Anio AS anio,
+  mk.FHRegistro AS fhRegistro,
+  mk.Estatus AS estatus,
+  veh.Placa AS placaVehiculo,
+  veh.Foto AS imagenVehiculo,
+  d.Id AS instalacionDispositivoId,
+  d.NumeroSerie AS instalacionDispositivoNumeroSerie,
+  d.Marca AS instalacionDispositivoMarca,
+  d.Modelo AS instalacionDispositivoModelo,
+  bv.Id AS instalacionBlueVoxId,
+  bv.NumeroSerie AS instalacionBlueVoxNumeroSerie,
+  bv.Marca AS instalacionBlueVoxMarca,
+  bv.Modelo AS instalacionBlueVoxModelo,
+  veh.Id AS instalacionVehiculoId,
+  veh.Marca AS instalacionVehiculoMarca,
+  veh.Modelo AS instalacionVehiculoModelo,
+  c.Id AS idClienteData,
+  c.Nombre AS nombreClienteData,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente
+FROM MantenimientoKilometraje mk
+INNER JOIN Instalaciones i ON mk.IdInstalacion = i.Id
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+LEFT JOIN Vehiculos veh ON i.IdVehiculo = veh.Id AND i.IdCliente = veh.IdCliente
+LEFT JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+LEFT JOIN BlueVoxs bv ON i.IdBlueVox = bv.Id AND i.IdCliente = bv.IdCliente
+WHERE mk.Id = ?
+            `,
+            [id],
+          );
+          break;
+
+        default:
+          const { ids, placeholders } = await this.clienteHijos(idCliente);
+          if (ids.length === 0) {
+            throw new NotFoundException('Mantenimiento por kilometraje no encontrado');
+          }
+
+          // Consulta para resto de usuarios
+          mantenimientos = await this.mantenimientoKilometrajeRepository.query(
+            `
+SELECT
+  mk.Id AS id,
+  mk.IdInstalacion AS idInstalacion,
+  mk.KMinicial AS kmInicial,
+  mk.KMDeseado AS kmDeseado,
+  mk.Periodo AS periodo,
+  mk.Anio AS anio,
+  mk.FHRegistro AS fhRegistro,
+  mk.Estatus AS estatus,
+  veh.Placa AS placaVehiculo,
+  veh.Foto AS imagenVehiculo,
+  d.Id AS instalacionDispositivoId,
+  d.NumeroSerie AS instalacionDispositivoNumeroSerie,
+  d.Marca AS instalacionDispositivoMarca,
+  d.Modelo AS instalacionDispositivoModelo,
+  bv.Id AS instalacionBlueVoxId,
+  bv.NumeroSerie AS instalacionBlueVoxNumeroSerie,
+  bv.Marca AS instalacionBlueVoxMarca,
+  bv.Modelo AS instalacionBlueVoxModelo,
+  veh.Id AS instalacionVehiculoId,
+  veh.Marca AS instalacionVehiculoMarca,
+  veh.Modelo AS instalacionVehiculoModelo
+FROM MantenimientoKilometraje mk
+INNER JOIN Instalaciones i ON mk.IdInstalacion = i.Id
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+LEFT JOIN Vehiculos veh ON i.IdVehiculo = veh.Id AND i.IdCliente = veh.IdCliente
+LEFT JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+LEFT JOIN BlueVoxs bv ON i.IdBlueVox = bv.Id AND i.IdCliente = bv.IdCliente
+WHERE c.Id IN (${placeholders})
+AND mk.Id = ?
+            `,
+            [...ids, id],
+          );
+          break;
+      }
+
+      if (mantenimientos.length === 0) {
         throw new NotFoundException('Mantenimiento por kilometraje no encontrado');
       }
 
-      // Verificar que el mantenimiento pertenece al cliente si el rol no es 1 o 2
-      if (rol !== 1 && rol !== 2) {
-        if (mantenimiento.instalacion?.idCliente !== idCliente) {
-          throw new NotFoundException('Mantenimiento por kilometraje no encontrado');
-        }
-      }
+      const item = mantenimientos[0];
 
       const result: ApiResponseCommon = {
         data: [
           {
-            id: Number(mantenimiento.id),
-            idInstalacion: mantenimiento.idInstalacion ? Number(mantenimiento.idInstalacion) : null,
-            kmInicial: mantenimiento.kmInicial ? Number(mantenimiento.kmInicial) : null,
-            kmDeseado: mantenimiento.kmDeseado ? Number(mantenimiento.kmDeseado) : null,
-            periodo: mantenimiento.periodo,
-            anio: mantenimiento.anio,
-            fhRegistro: mantenimiento.fhRegistro,
-            estatus: mantenimiento.estatus,
-            placaVehiculo: mantenimiento.instalacion?.vehiculos?.placa || null,
-            imagenVehiculo: mantenimiento.instalacion?.vehiculos?.foto || null,
-            instalacion: mantenimiento.instalacion ? {
-              id: Number(mantenimiento.instalacion.id),
+            id: Number(item.id),
+            idInstalacion: item.idInstalacion ? Number(item.idInstalacion) : null,
+            kmInicial: item.kmInicial ? Number(item.kmInicial) : null,
+            kmDeseado: item.kmDeseado ? Number(item.kmDeseado) : null,
+            periodo: item.periodo,
+            anio: item.anio,
+            fhRegistro: item.fhRegistro,
+            estatus: item.estatus,
+            placaVehiculo: item.placaVehiculo || null,
+            imagenVehiculo: item.imagenVehiculo || null,
+            instalacion: item.idInstalacion ? { id: Number(item.idInstalacion) } : null,
+            instalacionDispositivo: item.instalacionDispositivoId ? {
+              id: Number(item.instalacionDispositivoId),
+              numeroSerie: item.instalacionDispositivoNumeroSerie,
+              marca: item.instalacionDispositivoMarca,
+              modelo: item.instalacionDispositivoModelo,
             } : null,
-            instalacionDispositivo: mantenimiento.instalacion?.dispositivos ? {
-              id: Number(mantenimiento.instalacion.dispositivos.id),
-              numeroSerie: mantenimiento.instalacion.dispositivos.numeroSerie,
-              marca: mantenimiento.instalacion.dispositivos.marca,
-              modelo: mantenimiento.instalacion.dispositivos.modelo,
+            instalacionBlueVox: item.instalacionBlueVoxId ? {
+              id: Number(item.instalacionBlueVoxId),
+              numeroSerie: item.instalacionBlueVoxNumeroSerie,
+              marca: item.instalacionBlueVoxMarca,
+              modelo: item.instalacionBlueVoxModelo,
             } : null,
-            instalacionBlueVox: mantenimiento.instalacion?.blueVoxs ? {
-              id: Number(mantenimiento.instalacion.blueVoxs.id),
-              numeroSerie: mantenimiento.instalacion.blueVoxs.numeroSerie,
-              marca: mantenimiento.instalacion.blueVoxs.marca,
-              modelo: mantenimiento.instalacion.blueVoxs.modelo,
+            instalacionVehiculo: item.instalacionVehiculoId ? {
+              id: Number(item.instalacionVehiculoId),
+              marca: item.instalacionVehiculoMarca,
+              modelo: item.instalacionVehiculoModelo,
             } : null,
-            instalacionVehiculo: mantenimiento.instalacion?.vehiculos ? {
-              id: Number(mantenimiento.instalacion.vehiculos.id),
-              marca: mantenimiento.instalacion.vehiculos.marca,
-              modelo: mantenimiento.instalacion.vehiculos.modelo,
-            } : null,
-            // Incluir datos del cliente cuando el rol es 1 o 2
-            instalacionCliente: (rol === 1 || rol === 2) && mantenimiento.instalacion?.idCliente2 ? {
-              id: Number(mantenimiento.instalacion.idCliente2.id),
-              nombre: mantenimiento.instalacion.idCliente2.nombre,
-              apellidoPaterno: mantenimiento.instalacion.idCliente2.apellidoPaterno,
-              apellidoMaterno: mantenimiento.instalacion.idCliente2.apellidoMaterno,
-              estatus: mantenimiento.instalacion.idCliente2.estatus,
-            } : null,
+            ...(rol === 1 || rol === 2) && item.idClienteData ? {
+              instalacionCliente: {
+                id: Number(item.idClienteData),
+                nombre: item.nombreClienteData,
+                apellidoPaterno: item.apellidoPaternoCliente,
+                apellidoMaterno: item.apellidoMaternoCliente,
+                estatus: item.estatusCliente,
+              },
+            } : {},
           },
         ],
       };

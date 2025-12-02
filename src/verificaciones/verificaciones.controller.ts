@@ -127,6 +127,23 @@ export class VerificacionesController {
     return this.verificacionesService.findAll(page, limit, Number(idCliente), Number(rol));
   }
 
+  @Get('categorias-mantenimiento-mecanico')
+  @ApiOperation({
+    summary: 'Obtener categorías de mantenimiento mecánico',
+    description: 'Obtiene las categorías de mantenimiento mecánico con sus características de evaluación.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Categorías de mantenimiento mecánico obtenidas exitosamente',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'No autorizado',
+  })
+  getCategoriasMantenimientoMecanico(): Promise<ApiResponseCommon> {
+    return this.verificacionesService.getCategoriasMantenimientoMecanico();
+  }
+
   @Get(':id')
   @ApiOperation({
     summary: 'Obtener una verificación por ID',
