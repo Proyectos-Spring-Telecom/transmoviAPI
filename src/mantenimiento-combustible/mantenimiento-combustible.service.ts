@@ -9,7 +9,9 @@ import { CreateMantenimientoCombustibleDto } from './dto/create-mantenimiento-co
 import { UpdateMantenimientoCombustibleDto } from './dto/update-mantenimiento-combustible.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { MantenimientoCombustible } from 'src/entities/MantenimientoCombustible';
-import { Repository } from 'typeorm';
+import { Instalaciones } from 'src/entities/Instalaciones';
+import { Clientes } from 'src/entities/Clientes';
+import { Repository, In } from 'typeorm';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import {
   ApiCrudResponse,
@@ -22,8 +24,32 @@ export class MantenimientoCombustibleService {
   constructor(
     @InjectRepository(MantenimientoCombustible)
     private readonly mantenimientoCombustibleRepository: Repository<MantenimientoCombustible>,
+    @InjectRepository(Instalaciones)
+    private readonly instalacionesRepository: Repository<Instalaciones>,
+    @InjectRepository(Clientes)
+    private readonly clienteRepository: Repository<Clientes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
-  ) {}
+  ) { }
+
+  //funcion para obtener los clientes hijos
+  private async clienteHijos(cliente: number) {
+    const clientesFiltrado = await this.clienteRepository.query(
+      `CALL spGetClientes(?);`,
+      [cliente],
+    );
+
+    const idsFiltrados = clientesFiltrado[0]; // El primer índice contiene los resultados
+    const ids = idsFiltrados
+      .map((clientesFiltrado: any) => Number(clientesFiltrado.Id))
+      .filter(Boolean);
+    if (ids.length === 0) {
+      return { ids: [], placeholders: '' }; // No hay clientes que consultar
+    }
+
+    // Construir el query dinámico con los IDs
+    const placeholders = ids.map(() => '?').join(', ');
+    return { ids, placeholders };
+  }
 
   async create(
     createMantenimientoCombustibleDto: CreateMantenimientoCombustibleDto,
@@ -80,17 +106,135 @@ export class MantenimientoCombustibleService {
     }
   }
 
-  async findAll(page: number, limit: number): Promise<ApiResponseCommon> {
+  async findAll(page: number, limit: number, idCliente: number, rol: number): Promise<ApiResponseCommon> {
     try {
-      const [data, total] = await this.mantenimientoCombustibleRepository.findAndCount({
-        relations: ['tipoCombustible', 'instalacion', 'operador'],
-        order: { fhRegistro: 'DESC' },
-        skip: (page - 1) * limit,
-        take: limit,
-      });
+      const offset = (page - 1) * limit;
+      let mantenimientos;
+      let totalResult;
 
-      // Forzamos ids a number
-      const mantenimientos = data.map((item) => ({
+      switch (rol) {
+        case 1:
+        case 2:
+          // Consulta de datos paginados Usuario SuperAdministrador/Administrador
+          mantenimientos = await this.mantenimientoCombustibleRepository.query(
+            `
+SELECT
+  mc.Id AS id,
+  mc.IdTipoCombustible AS idTipoCombustible,
+  mc.CantidadCombustible AS cantidadCombustible,
+  mc.PrecioCombustible AS precioCombustible,
+  mc.IdInstalacion AS idInstalacion,
+  mc.Estatus AS estatus,
+  mc.FechaHora AS fechaHora,
+  mc.FHRegistro AS fhRegistro,
+  mc.Kilometraje AS kilometraje,
+  mc.IdOperador AS idOperador,
+  veh.Placa AS placaVehiculo,
+  veh.Foto AS imagenVehiculo,
+  CONCAT(
+    IFNULL(u.Nombre, ''),
+    IFNULL(CONCAT(' ', u.ApellidoPaterno), ''),
+    IFNULL(CONCAT(' ', u.ApellidoMaterno), '')
+  ) AS nombreOperador,
+  ctc.Id AS tipoCombustibleId,
+  ctc.Nombre AS tipoCombustibleNombre,
+  c.Id AS idClienteData,
+  c.Nombre AS nombreClienteData,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente
+FROM MantenimientoCombustible mc
+INNER JOIN Instalaciones i ON mc.IdInstalacion = i.Id
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+LEFT JOIN Vehiculos veh ON i.IdVehiculo = veh.Id AND i.IdCliente = veh.IdCliente
+LEFT JOIN Operadores o ON mc.IdOperador = o.Id
+LEFT JOIN Usuarios u ON o.IdUsuario = u.Id
+LEFT JOIN CatTipoCombustible ctc ON mc.IdTipoCombustible = ctc.Id
+ORDER BY mc.FHRegistro DESC
+LIMIT ? OFFSET ?;
+            `,
+            [limit, offset],
+          );
+
+          // Query para total (sin paginación)
+          totalResult = await this.mantenimientoCombustibleRepository.query(
+            `
+SELECT COUNT(*) AS total
+FROM MantenimientoCombustible mc
+INNER JOIN Instalaciones i ON mc.IdInstalacion = i.Id
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+            `,
+          );
+          break;
+
+        default:
+          const { ids, placeholders } = await this.clienteHijos(idCliente);
+          if (ids.length === 0) {
+            return {
+              data: [],
+              paginated: {
+                total: 0,
+                page,
+                lastPage: 0,
+              },
+            };
+          }
+
+          // Consulta de datos paginados resto Usuario
+          mantenimientos = await this.mantenimientoCombustibleRepository.query(
+            `
+SELECT
+  mc.Id AS id,
+  mc.IdTipoCombustible AS idTipoCombustible,
+  mc.CantidadCombustible AS cantidadCombustible,
+  mc.PrecioCombustible AS precioCombustible,
+  mc.IdInstalacion AS idInstalacion,
+  mc.Estatus AS estatus,
+  mc.FechaHora AS fechaHora,
+  mc.FHRegistro AS fhRegistro,
+  mc.Kilometraje AS kilometraje,
+  mc.IdOperador AS idOperador,
+  veh.Placa AS placaVehiculo,
+  veh.Foto AS imagenVehiculo,
+  CONCAT(
+    IFNULL(u.Nombre, ''),
+    IFNULL(CONCAT(' ', u.ApellidoPaterno), ''),
+    IFNULL(CONCAT(' ', u.ApellidoMaterno), '')
+  ) AS nombreOperador,
+  ctc.Id AS tipoCombustibleId,
+  ctc.Nombre AS tipoCombustibleNombre
+FROM MantenimientoCombustible mc
+INNER JOIN Instalaciones i ON mc.IdInstalacion = i.Id
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+LEFT JOIN Vehiculos veh ON i.IdVehiculo = veh.Id AND i.IdCliente = veh.IdCliente
+LEFT JOIN Operadores o ON mc.IdOperador = o.Id
+LEFT JOIN Usuarios u ON o.IdUsuario = u.Id
+LEFT JOIN CatTipoCombustible ctc ON mc.IdTipoCombustible = ctc.Id
+WHERE c.Id IN (${placeholders})
+ORDER BY mc.FHRegistro DESC
+LIMIT ? OFFSET ?;
+            `,
+            [...ids, limit, offset],
+          );
+
+          // Query para total (sin paginación)
+          totalResult = await this.mantenimientoCombustibleRepository.query(
+            `
+SELECT COUNT(*) AS total
+FROM MantenimientoCombustible mc
+INNER JOIN Instalaciones i ON mc.IdInstalacion = i.Id
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+WHERE c.Id IN (${placeholders})
+            `,
+            [...ids],
+          );
+          break;
+      }
+
+      const total = Number(totalResult[0]?.total || 0);
+
+      // Transformar los datos
+      const mantenimientosTransformados = mantenimientos.map((item: any) => ({
         id: Number(item.id),
         idTipoCombustible: item.idTipoCombustible ? Number(item.idTipoCombustible) : null,
         cantidadCombustible: item.cantidadCombustible ? Number(item.cantidadCombustible) : null,
@@ -101,20 +245,28 @@ export class MantenimientoCombustibleService {
         fhRegistro: item.fhRegistro,
         kilometraje: item.kilometraje ? Number(item.kilometraje) : null,
         idOperador: item.idOperador ? Number(item.idOperador) : null,
-        tipoCombustible: item.tipoCombustible ? {
-          id: Number(item.tipoCombustible.id),
-          nombre: item.tipoCombustible.nombre,
+        placaVehiculo: item.placaVehiculo || null,
+        imagenVehiculo: item.imagenVehiculo || null,
+        nombreOperador: item.nombreOperador?.trim() || null,
+        tipoCombustible: item.tipoCombustibleId ? {
+          id: Number(item.tipoCombustibleId),
+          nombre: item.tipoCombustibleNombre,
         } : null,
-        instalacion: item.instalacion ? {
-          id: Number(item.instalacion.id),
-        } : null,
-        operador: item.operador ? {
-          id: Number(item.operador.id),
-        } : null,
+        instalacion: item.idInstalacion ? { id: Number(item.idInstalacion) } : null,
+        operador: item.idOperador ? { id: Number(item.idOperador) } : null,
+        ...(rol === 1 || rol === 2) && item.idClienteData ? {
+          cliente: {
+            id: Number(item.idClienteData),
+            nombre: item.nombreClienteData,
+            apellidoPaterno: item.apellidoPaternoCliente,
+            apellidoMaterno: item.apellidoMaternoCliente,
+            estatus: item.estatusCliente,
+          },
+        } : {},
       }));
 
       const result: ApiResponseCommon = {
-        data: mantenimientos,
+        data: mantenimientosTransformados,
         paginated: {
           total: total,
           page,
@@ -132,39 +284,135 @@ export class MantenimientoCombustibleService {
     }
   }
 
-  async findOne(id: number): Promise<ApiResponseCommon> {
+  async findOne(id: number, idCliente: number, rol: number): Promise<ApiResponseCommon> {
     try {
-      const mantenimiento = await this.mantenimientoCombustibleRepository.findOne({
-        where: { id: id },
-        relations: ['tipoCombustible', 'instalacion', 'operador'],
-      });
-      if (!mantenimiento) {
+      let mantenimientos;
+
+      switch (rol) {
+        case 1:
+        case 2:
+          // Consulta para SuperAdministrador/Administrador
+          mantenimientos = await this.mantenimientoCombustibleRepository.query(
+            `
+SELECT
+  mc.Id AS id,
+  mc.IdTipoCombustible AS idTipoCombustible,
+  mc.CantidadCombustible AS cantidadCombustible,
+  mc.PrecioCombustible AS precioCombustible,
+  mc.IdInstalacion AS idInstalacion,
+  mc.Estatus AS estatus,
+  mc.FechaHora AS fechaHora,
+  mc.FHRegistro AS fhRegistro,
+  mc.Kilometraje AS kilometraje,
+  mc.IdOperador AS idOperador,
+  veh.Placa AS placaVehiculo,
+  veh.Foto AS imagenVehiculo,
+  CONCAT(
+    IFNULL(u.Nombre, ''),
+    IFNULL(CONCAT(' ', u.ApellidoPaterno), ''),
+    IFNULL(CONCAT(' ', u.ApellidoMaterno), '')
+  ) AS nombreOperador,
+  ctc.Id AS tipoCombustibleId,
+  ctc.Nombre AS tipoCombustibleNombre,
+  c.Id AS idClienteData,
+  c.Nombre AS nombreClienteData,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente
+FROM MantenimientoCombustible mc
+INNER JOIN Instalaciones i ON mc.IdInstalacion = i.Id
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+LEFT JOIN Vehiculos veh ON i.IdVehiculo = veh.Id AND i.IdCliente = veh.IdCliente
+LEFT JOIN Operadores o ON mc.IdOperador = o.Id
+LEFT JOIN Usuarios u ON o.IdUsuario = u.Id
+LEFT JOIN CatTipoCombustible ctc ON mc.IdTipoCombustible = ctc.Id
+WHERE mc.Id = ?
+            `,
+            [id],
+          );
+          break;
+
+        default:
+          const { ids, placeholders } = await this.clienteHijos(idCliente);
+          if (ids.length === 0) {
+            throw new NotFoundException('Mantenimiento de combustible no encontrado');
+          }
+
+          // Consulta para resto de usuarios
+          mantenimientos = await this.mantenimientoCombustibleRepository.query(
+            `
+SELECT
+  mc.Id AS id,
+  mc.IdTipoCombustible AS idTipoCombustible,
+  mc.CantidadCombustible AS cantidadCombustible,
+  mc.PrecioCombustible AS precioCombustible,
+  mc.IdInstalacion AS idInstalacion,
+  mc.Estatus AS estatus,
+  mc.FechaHora AS fechaHora,
+  mc.FHRegistro AS fhRegistro,
+  mc.Kilometraje AS kilometraje,
+  mc.IdOperador AS idOperador,
+  veh.Placa AS placaVehiculo,
+  veh.Foto AS imagenVehiculo,
+  CONCAT(
+    IFNULL(u.Nombre, ''),
+    IFNULL(CONCAT(' ', u.ApellidoPaterno), ''),
+    IFNULL(CONCAT(' ', u.ApellidoMaterno), '')
+  ) AS nombreOperador,
+  ctc.Id AS tipoCombustibleId,
+  ctc.Nombre AS tipoCombustibleNombre
+FROM MantenimientoCombustible mc
+INNER JOIN Instalaciones i ON mc.IdInstalacion = i.Id
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+LEFT JOIN Vehiculos veh ON i.IdVehiculo = veh.Id AND i.IdCliente = veh.IdCliente
+LEFT JOIN Operadores o ON mc.IdOperador = o.Id
+LEFT JOIN Usuarios u ON o.IdUsuario = u.Id
+LEFT JOIN CatTipoCombustible ctc ON mc.IdTipoCombustible = ctc.Id
+WHERE c.Id IN (${placeholders})
+AND mc.Id = ?
+            `,
+            [...ids, id],
+          );
+          break;
+      }
+
+      if (mantenimientos.length === 0) {
         throw new NotFoundException('Mantenimiento de combustible no encontrado');
       }
+
+      const item = mantenimientos[0];
 
       const result: ApiResponseCommon = {
         data: [
           {
-            id: Number(mantenimiento.id),
-            idTipoCombustible: mantenimiento.idTipoCombustible ? Number(mantenimiento.idTipoCombustible) : null,
-            cantidadCombustible: mantenimiento.cantidadCombustible ? Number(mantenimiento.cantidadCombustible) : null,
-            precioCombustible: mantenimiento.precioCombustible ? Number(mantenimiento.precioCombustible) : null,
-            idInstalacion: mantenimiento.idInstalacion ? Number(mantenimiento.idInstalacion) : null,
-            estatus: mantenimiento.estatus,
-            fechaHora: mantenimiento.fechaHora,
-            fhRegistro: mantenimiento.fhRegistro,
-            kilometraje: mantenimiento.kilometraje ? Number(mantenimiento.kilometraje) : null,
-            idOperador: mantenimiento.idOperador ? Number(mantenimiento.idOperador) : null,
-            tipoCombustible: mantenimiento.tipoCombustible ? {
-              id: Number(mantenimiento.tipoCombustible.id),
-              nombre: mantenimiento.tipoCombustible.nombre,
+            id: Number(item.id),
+            idTipoCombustible: item.idTipoCombustible ? Number(item.idTipoCombustible) : null,
+            cantidadCombustible: item.cantidadCombustible ? Number(item.cantidadCombustible) : null,
+            precioCombustible: item.precioCombustible ? Number(item.precioCombustible) : null,
+            idInstalacion: item.idInstalacion ? Number(item.idInstalacion) : null,
+            estatus: item.estatus,
+            fechaHora: item.fechaHora,
+            fhRegistro: item.fhRegistro,
+            kilometraje: item.kilometraje ? Number(item.kilometraje) : null,
+            idOperador: item.idOperador ? Number(item.idOperador) : null,
+            placaVehiculo: item.placaVehiculo || null,
+            imagenVehiculo: item.imagenVehiculo || null,
+            nombreOperador: item.nombreOperador?.trim() || null,
+            tipoCombustible: item.tipoCombustibleId ? {
+              id: Number(item.tipoCombustibleId),
+              nombre: item.tipoCombustibleNombre,
             } : null,
-            instalacion: mantenimiento.instalacion ? {
-              id: Number(mantenimiento.instalacion.id),
-            } : null,
-            operador: mantenimiento.operador ? {
-              id: Number(mantenimiento.operador.id),
-            } : null,
+            instalacion: item.idInstalacion ? { id: Number(item.idInstalacion) } : null,
+            operador: item.idOperador ? { id: Number(item.idOperador) } : null,
+            ...(rol === 1 || rol === 2) && item.idClienteData ? {
+              cliente: {
+                id: Number(item.idClienteData),
+                nombre: item.nombreClienteData,
+                apellidoPaterno: item.apellidoPaternoCliente,
+                apellidoMaterno: item.apellidoMaternoCliente,
+                estatus: item.estatusCliente,
+              },
+            } : {},
           },
         ],
       };

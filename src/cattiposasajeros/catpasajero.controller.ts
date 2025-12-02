@@ -9,13 +9,15 @@ import {
   UseGuards,
   Request,
   Put,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { CatpasajeroService } from './catpasajero.service';
 import { CreateCatpasajeroDto } from './dto/create-catpasajero.dto';
 import { UpdateCatpasajeroDto } from './dto/update-catpasajero.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Catálogo tipos pasajeros')
 @ApiBearerAuth('bearer-token')
 @Controller('catpasajero')
 export class CatpasajeroController {
@@ -41,8 +43,8 @@ export class CatpasajeroController {
 
   @UseGuards(JwtAuthGuard)
   @Get('clientes/:id')
-  findAllListClientes(@Param('id') id: string) {
-    return this.catpasajeroService.findAllListClientes(+id);
+  findAllListClientes(@Param('id', ParseIntPipe) id: number) {
+    return this.catpasajeroService.findAllListClientes(id);
   }
 
   @Get()

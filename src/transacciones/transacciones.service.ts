@@ -22,6 +22,7 @@ import { PasajerosService } from 'src/pasajeros/pasajeros.service';
 import { Clientes } from 'src/entities/Clientes';
 import { CreateTransaccioneDebitoDto } from './dto/create-transaccione-debito.dto';
 import {
+  EnumControlTransacciones,
   EnumModulos,
   EnumTipoDescuento,
   EnumTipoTransaccion,
@@ -33,8 +34,12 @@ import {
 } from '../utils/transaccion.util';
 import { Monederos } from 'src/entities/Monederos';
 import { CatTiposPasajeros } from 'src/entities/CatTiposPasajeros';
+
 import { TransbordosPermitidos } from 'src/entities/TransbordosPermitidos';
 import { DetalleTransbordos } from 'src/entities/DetalleTransbordos';
+import { HistoricoTransaccionesDebito } from 'src/entities/HistoricoTransaccionesDebito';
+
+import { UpdateTransaccioneDebitoDto } from './dto/update-transaccione-debito.dto';
 
 @Injectable()
 export class TransaccionesService {
@@ -43,8 +48,13 @@ export class TransaccionesService {
     private readonly transaccionesrecargaRepository: Repository<TransaccionesRecarga>,
     @InjectRepository(TransaccionesDebito)
     private readonly transaccionesdebitoRepository: Repository<TransaccionesDebito>,
+
     @InjectRepository(Validadores)
     private readonly validadorRepository: Repository<Validadores>,
+
+    @InjectRepository(HistoricoTransaccionesDebito)
+    private readonly historicoTransaccionesDebitoRepository: Repository<HistoricoTransaccionesDebito>,
+   
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
     @InjectRepository(CatTiposPasajeros)
@@ -93,6 +103,7 @@ export class TransaccionesService {
       const newTransaccion = await this.transaccionesrecargaRepository.create(
         createTransaccioneRecargaDto,
       );
+      newTransaccion.idTipoTransaccion = EnumTipoTransaccion.RECARGA
       const transaccionSave =
         await this.transaccionesrecargaRepository.save(newTransaccion);
 
@@ -121,7 +132,6 @@ export class TransaccionesService {
       };
       return result;
     } catch (error) {
-      console.log(error);
       // --- Registro en la bitácora --- ERROR
       const querylogger = { createTransaccioneRecargaDto };
       await this.bitacoraLogger.logToBitacora(
@@ -178,7 +188,9 @@ export class TransaccionesService {
       // Solo aplicamos la lógica de transbordos si existe configuración para el cliente
       if (transbordoPermitido && transbordoPermitido.tiempo && transbordoPermitido.numeroTransbordos) {
         // Calculamos la fecha límite hacia atrás (tiempo en minutos)
-        const fechaHoraTransaccion = new Date(createTransaccioneDebitoDto.fechaHora);
+        const fechaHoraTransaccion = new Date(
+          createTransaccioneDebitoDto.fechaHoraInicio || createTransaccioneDebitoDto.fechaHoraFinal
+        );
         const tiempoEnMs = transbordoPermitido.tiempo * 60 * 1000; // Convertir minutos a milisegundos
         const fechaLimite = new Date(fechaHoraTransaccion.getTime() - tiempoEnMs);
 
@@ -202,7 +214,9 @@ export class TransaccionesService {
           
           if (primerTransbordo) {
             // Calculamos si el tiempo desde el primer transbordo ya pasó
-            const fechaPrimerTransbordo = new Date(primerTransbordo.fechaHora);
+            const fechaPrimerTransbordo = new Date(
+              createTransaccioneDebitoDto.fechaHoraInicio || createTransaccioneDebitoDto.fechaHoraFinal
+            );
             const fechaExpiracionPrimerTransbordo = new Date(
               fechaPrimerTransbordo.getTime() + tiempoEnMs,
             );
@@ -292,6 +306,8 @@ export class TransaccionesService {
           createTransaccioneDebitoDto,
         );
         await this.transaccionesdebitoRepository.save(newTransaccion);
+        //se guarda en el historico
+        await this.historicoTransaccionesDebitoRepository.save(newTransaccion);
 
         // Registrar en bitácora
         await this.bitacoraLogger.logToBitacora(
@@ -309,12 +325,22 @@ export class TransaccionesService {
       }
 
       // 5️⃣ Si saldo OK, actualizamos el monedero y estado
-      estado = transicionarEstado(estado, EventoTransaccion.SALDO_OK);
-      await this.monederosService.updateMonederoSaldo(
-        createTransaccioneDebitoDto.numeroSerieMonedero,
-        idUser,
-        montoFinal,
-      );
+      switch (createTransaccioneDebitoDto.controlTransaccion) {
+        case EnumControlTransacciones.ABIERTA:
+          estado = transicionarEstado(estado, EventoTransaccion.SALDO_OK);
+          createTransaccioneDebitoDto.monto = 0
+          break;
+
+        default:
+          estado = transicionarEstado(estado, EventoTransaccion.SALDO_OK);
+          await this.monederosService.updateMonederoSaldo(
+            createTransaccioneDebitoDto.numeroSerieMonedero,
+            idUser,
+            montoFinal,
+          );
+          createTransaccioneDebitoDto.monto = montoConDescuento
+          break;
+      }
 
       // 6️⃣ Guardamos transacción aprobada
       const newTransaccion = this.transaccionesdebitoRepository.create({
@@ -323,6 +349,35 @@ export class TransaccionesService {
       });
       const transaccionSave =
         await this.transaccionesdebitoRepository.save(newTransaccion);
+      let transaccionSaveHis;
+
+      //Se guardara la transaccion en el historico de transacciones solamente cuando controltransaccion sea pagado
+      if (createTransaccioneDebitoDto.controlTransaccion === EnumControlTransacciones.PAGADO) {
+        transaccionSaveHis =
+          await this.historicoTransaccionesDebitoRepository.save(newTransaccion);
+        // 7️⃣ Bitácora de éxito //controltransaccion pagado----
+        await this.bitacoraLogger.logToBitacora(
+          'Transacciones',
+          `Transacción de débito APROBADA`,
+          'CREATE',
+          { createTransaccioneDebitoDto },
+          idUser,
+          EnumModulos.TRANSACCIONES,
+          EstatusEnumBitcora.SUCCESS,
+        );
+
+        // 8️⃣ Finalizamos la transacción //controltransaccion pagado----
+        estado = transicionarEstado(estado, EventoTransaccion.FINALIZAR);
+
+        return {
+          status: 'success',
+          message: 'Transacción creada correctamente',
+          data: {
+            id: Number(transaccionSaveHis.id) || Number(transaccionSave.id),
+            nombre: `${monedero.numeroSerie}`,
+          },
+        };
+      }
 
       // 7️⃣ Bitácora de éxito
       await this.bitacoraLogger.logToBitacora(
@@ -374,90 +429,142 @@ export class TransaccionesService {
   }
 
   //Funcion para transaccion Debito
-  async createTransaccionDebito(
-    createTransaccioneDebitoDto: CreateTransaccioneDebitoDto,
+  async updateTransaccionDebito(
+    updateTransaccioneDebitoDto: UpdateTransaccioneDebitoDto,
     idUser: number,
   ): Promise<ApiCrudResponse> {
     try {
       //Buscamos el monedero
-      const monedero = await this.monederosService.findOneMonederoBySerie(
-        createTransaccioneDebitoDto.numeroSerieMonedero,
-      );
+      const monedero = await this.monederoRepository.findOne({
+        where: {
+          numeroSerie: updateTransaccioneDebitoDto.numeroSerieMonedero,
+          estatus: 1,
+        },
+      });
+      if (!monedero) {
+        throw new BadRequestException('Monedero no encontrado');
+      }
 
-      //Declaramos transaccion y creamos la variable montoFinal
-      let transaccion = createTransaccioneDebitoDto.idTipoTransaccion;
-      let montoFinal: number = 0;
+      // 3️⃣ Calculamos monto final (aquí se pueden aplicar descuentos si existen)
+      let montoConDescuento = Number(updateTransaccioneDebitoDto.monto);
 
-      //Checamos el tipo transaccion
-      montoFinal =
-        Number(monedero.data.saldo) - Number(createTransaccioneDebitoDto.monto);
-      console.log(
-        'Saldo Inicial: ',
-        monedero.data.saldo,
-        ' Tipo Transaccion: ',
-        transaccion,
-        ' Monto: ',
-        createTransaccioneDebitoDto.monto,
-        ' Monto Final: ',
-        montoFinal,
-      );
+      if (monedero.idTipoPasajero) {
+        const tipoPasajero = await this.CatTiposPasajerosRepository.findOne({
+          where: { id: monedero.idTipoPasajero },
+          relations: ['CatTipoDescuento'], // si tienes FK hacia CatTipoDescuento
+        });
 
-      //Pasamos un filtro que no haya valores negativos
+        if (tipoPasajero && tipoPasajero.idCatTipoDescuento) {
+          const tipoDescuento = Number(tipoPasajero.idCatTipoDescuento);
+          const cantidad = tipoPasajero.cantidad || 0;
+
+          switch (tipoDescuento) {
+            case Number(EnumTipoDescuento.PORCENTAJE):
+              console.log('Entro a porcentaje');
+              montoConDescuento =
+                montoConDescuento - (montoConDescuento * cantidad) / 100;
+              break;
+            case EnumTipoDescuento.MONETARIO:
+              console.log('Monetario');
+              montoConDescuento = montoConDescuento - cantidad;
+              break;
+            case EnumTipoDescuento.NULO:
+            default:
+              break;
+          }
+        }
+      }
+
+      let montoFinal = Number(monedero.saldo) - montoConDescuento;
+
+      // 4️⃣ Validación de saldo
       if (montoFinal < 0) {
-        //Creamos la transaccion en la BD
-        const newTransaccion = await this.transaccionesdebitoRepository.create(
-          createTransaccioneDebitoDto,
-        );
-        createTransaccioneDebitoDto.idTipoTransaccion =
+        updateTransaccioneDebitoDto.idTipoTransaccion =
           EnumTipoTransaccion.RECHAZO;
-        await this.transaccionesdebitoRepository.save(newTransaccion);
+
+        // Guardar transacción rechazada
+        const updateTransaccion = this.transaccionesdebitoRepository.create({
+          idTipoTransaccion: EnumTipoTransaccion.RECHAZO,
+          monto: montoFinal,
+          controlTransaccion: EnumControlTransacciones.PAGADO,
+          latitudFinal: updateTransaccioneDebitoDto.latitudFinal,
+          longitudFinal: updateTransaccioneDebitoDto.longitudFinal,
+          fechaHoraFinal: updateTransaccioneDebitoDto.fechaHoraFinal,
+          numeroSerieMonedero: updateTransaccioneDebitoDto.numeroSerieMonedero,
+          numeroSerieValidador: updateTransaccioneDebitoDto.numeroSerieValidador,
+        }
+        );
+        await this.transaccionesdebitoRepository.save(updateTransaccion);
+        //se guarda en el historico
+        await this.historicoTransaccionesDebitoRepository.save(updateTransaccion);
+
+        // Registrar en bitácora
+        await this.bitacoraLogger.logToBitacora(
+          'Transacciones',
+          `Transacción de débito RECHAZADA por saldo insuficiente`,
+          'CREATE',
+          { updateTransaccioneDebitoDto },
+          idUser,
+          EnumModulos.TRANSACCIONES,
+          EstatusEnumBitcora.ERROR,
+          'Saldo insuficiente',
+        );
+
         throw new BadRequestException('Saldo insuficiente');
       }
 
-      //actualizamos el saldo del monedero
+      // 5️⃣ Si saldo OK, actualizamos el monedero y estado
       await this.monederosService.updateMonederoSaldo(
-        createTransaccioneDebitoDto.numeroSerieMonedero,
+        updateTransaccioneDebitoDto.numeroSerieMonedero,
         idUser,
         montoFinal,
       );
 
-      //Creamos la transaccion en la BD
-      const newTransaccion = await this.transaccionesdebitoRepository.create(
-        createTransaccioneDebitoDto,
+      // 6️⃣ Guardamos transacción aprobada
+      await this.transaccionesdebitoRepository.update(
+        updateTransaccioneDebitoDto.idTransaccionDebito,
+        {
+          idTipoTransaccion: EnumTipoTransaccion.DEBITO,
+          monto: montoConDescuento,
+          controlTransaccion: EnumControlTransacciones.PAGADO,
+          latitudFinal: updateTransaccioneDebitoDto.latitudFinal,
+          longitudFinal: updateTransaccioneDebitoDto.longitudFinal,
+          fechaHoraFinal: updateTransaccioneDebitoDto.fechaHoraFinal,
+          numeroSerieMonedero: updateTransaccioneDebitoDto.numeroSerieMonedero,
+          numeroSerieValidador: updateTransaccioneDebitoDto.numeroSerieValidador,
+        }
       );
       const transaccionSave =
-        await this.transaccionesdebitoRepository.save(newTransaccion);
+        await this.transaccionesdebitoRepository.findOne({
+          where: {
+            id: updateTransaccioneDebitoDto.idTransaccionDebito
+          }
+        });
 
-      // --- Registro en la bitácora --- SUCCESS
-      const querylogger = { createTransaccioneDebitoDto };
-      await this.bitacoraLogger.logToBitacora(
-        'Transacciones',
-        `Se realizo una transaccion de tipo ${transaccion}`,
-        'CREATE',
-        querylogger,
-        idUser,
-        EnumModulos.TRANSACCIONES,
-        EstatusEnumBitcora.SUCCESS,
-      );
+      if (!transaccionSave) {
+        throw new NotFoundException('La transacción no existe');
+      }
 
-      //API response
-      const result: ApiCrudResponse = {
+      const { id: _, ...transaccionBody } = transaccionSave
+
+      const transaccionSaveHis =
+        await this.historicoTransaccionesDebitoRepository.save(transaccionBody);
+
+
+      return {
         status: 'success',
-        message: 'Transaccion creado correctamente',
+        message: 'Transacción creada correctamente',
         data: {
-          id: Number(transaccionSave.id),
-          nombre:
-            `${createTransaccioneDebitoDto.numeroSerieMonedero} ${montoFinal} ` ||
-            '',
+          id: Number(transaccionSaveHis.id),
+          nombre: `${monedero.numeroSerie}`,
         },
       };
-      return result;
     } catch (error) {
       // --- Registro en la bitácora --- ERROR
-      const querylogger = { createTransaccioneDebitoDto };
+      const querylogger = { updateTransaccioneDebitoDto };
       await this.bitacoraLogger.logToBitacora(
         'Transacciones',
-        `Se realizo una transaccion de tipo ${createTransaccioneDebitoDto.idTipoTransaccion}`,
+        `Se realizo una transaccion de tipo ${updateTransaccioneDebitoDto.idTipoTransaccion}`,
         'CREATE',
         querylogger,
         idUser,
@@ -470,7 +577,7 @@ export class TransaccionesService {
         throw error;
       }
       throw new InternalServerErrorException(
-        `Error generar la transaccion de tipo ${createTransaccioneDebitoDto.idTipoTransaccion}`,
+        `Error generar la transaccion de tipo ${updateTransaccioneDebitoDto.idTipoTransaccion}`,
       );
     }
   }
@@ -638,6 +745,128 @@ FROM (
           );
           break;
 
+        case 3:
+        default:
+          //Usuarios Operador
+          transacciones = await this.transaccionesrecargaRepository.query(
+            `
+(
+  SELECT 
+      'DEBITO' AS origenTabla,
+      td.Id AS id,
+      ctt.Nombre AS tipoTransaccion,
+      td.Monto AS monto,
+      td.Latitud AS latitud,
+      td.Longitud AS longitud,
+      td.FechaHora AS fechaHora,
+      td.FHRegistro AS fhRegistro,
+      td.NumeroSerieMonedero AS numeroSerieMonedero,
+      td.NumeroSerieDispositivo AS numeroSerieDispositivo,
+      td.ControlTransaccion AS controlTransaccion,
+
+      -- Datos del cliente
+    c.Id AS idCliente,
+    c.Nombre AS nombreCliente,
+    c.ApellidoPaterno AS apellidoPaternoCliente,
+    c.ApellidoMaterno AS apellidoMaternoCliente,
+    
+
+      d.Marca AS marcaDispositivo,
+      d.Modelo AS modeloDispositivo,
+
+      p.Id AS idPasajero,
+      p.Nombre AS nombrePasajero,
+      p.ApellidoPaterno AS apellidoPaternoPasajero,
+      p.ApellidoMaterno AS apellidoMaternoPasajero
+
+  FROM TransaccionesDebito td
+  INNER JOIN CatTiposTransacciones ctt 
+      ON td.IdTipoTransaccion = ctt.Id
+  LEFT JOIN Dispositivos d 
+      ON td.NumeroSerieDispositivo = d.NumeroSerie
+  INNER JOIN Monederos m 
+      ON td.NumeroSerieMonedero = m.NumeroSerie
+  LEFT JOIN Pasajeros p 
+      ON m.IdPasajero = p.Id
+  INNER JOIN Clientes c
+	ON m.IdCliente = c.Id
+
+  WHERE m.IdCliente = ?   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+
+  UNION ALL
+
+  SELECT 
+      'RECARGA' AS origenTabla,
+      tr.Id AS id,
+      ctt.Nombre AS tipoTransaccion,
+      tr.Monto AS monto,
+      tr.Latitud AS latitud,
+      tr.Longitud AS longitud,
+      tr.FechaHora AS fechaHora,
+      tr.FHRegistro AS fhRegistro,
+      tr.NumeroSerieMonedero AS numeroSerieMonedero,
+      tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+      tr.ControlTransaccion AS controlTransaccion,
+
+      -- Datos del cliente
+    c.Id AS idCliente,
+    c.Nombre AS nombreCliente,
+    c.ApellidoPaterno AS apellidoPaternoCliente,
+    c.ApellidoMaterno AS apellidoMaternoCliente,
+    
+
+      d.Marca AS marcaDispositivo,
+      d.Modelo AS modeloDispositivo,
+
+      p.Id AS idPasajero,
+      p.Nombre AS nombrePasajero,
+      p.ApellidoPaterno AS apellidoPaternoPasajero,
+      p.ApellidoMaterno AS apellidoMaternoPasajero
+
+  FROM TransaccionesRecarga tr
+  INNER JOIN CatTiposTransacciones ctt 
+      ON tr.IdTipoTransaccion = ctt.Id
+  LEFT JOIN Dispositivos d 
+      ON tr.NumeroSerieDispositivo = d.NumeroSerie
+  INNER JOIN Monederos m 
+      ON tr.NumeroSerieMonedero = m.NumeroSerie
+  LEFT JOIN Pasajeros p 
+      ON m.IdPasajero = p.Id
+  INNER JOIN Clientes c
+	ON m.IdCliente = c.Id
+
+  WHERE m.IdCliente = ?   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+)
+ORDER BY FHRegistro DESC
+LIMIT ? OFFSET ?;
+
+        `,
+            [cliente, cliente, limit, offset],
+          );
+
+          // Query para total (sin paginación)
+          totalResult = await this.transaccionesrecargaRepository.query(
+            `
+SELECT COUNT(*) AS total
+FROM (
+  SELECT td.Id
+  FROM TransaccionesDebito td
+  INNER JOIN Monederos m ON td.NumeroSerieMonedero = m.NumeroSerie
+  WHERE m.IdCliente = ?   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+
+  UNION ALL
+
+  SELECT tr.Id
+  FROM TransaccionesRecarga tr
+  INNER JOIN Monederos m ON tr.NumeroSerieMonedero = m.NumeroSerie
+  WHERE m.IdCliente = ?   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+) AS todas;
+
+  `,
+            [cliente, cliente],
+          );
+          break;
+
         case 9:
           //Datos por usuario
           const pasajero =
@@ -742,7 +971,9 @@ FROM (
 
           break;
 
-        default:
+        case 2:
+        case 8:
+        case 10:
           //resto usuarios
           const { ids, placeholders } = await this.clienteHijos(cliente);
           transacciones = await this.transaccionesrecargaRepository.query(
@@ -890,7 +1121,6 @@ FROM (
       };
       return result;
     } catch (error) {
-      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -981,7 +1211,9 @@ ORDER BY FHRegistro DESC
           );
           break;
 
-        default:
+        case 2: // Administrador
+        case 8: // Reportes
+        case 10: // Capturista
           const { ids, placeholders } = await this.clienteHijos(cliente);
           transacciones = await this.transaccionesrecargaRepository.query(
             `
@@ -1056,6 +1288,84 @@ ORDER BY FHRegistro DESC
 
         `,
             [...ids, ...ids],
+          );
+          break;
+
+        case 3:
+        default:
+          transacciones = await this.transaccionesrecargaRepository.query(
+            `
+(
+  SELECT 
+      'DEBITO' AS origenTabla,
+      td.Id AS id,
+      ctt.Nombre AS tipoTransaccion,
+      td.Monto AS monto,
+      td.Latitud AS latitud,
+      td.Longitud AS longitud,
+      td.FechaHora AS fechaHora,
+      td.FHRegistro AS fhRegistro,
+      td.NumeroSerieMonedero AS numeroSerieMonedero,
+      td.NumeroSerieDispositivo AS numeroSerieDispositivo,
+      td.ControlTransaccion AS controlTransaccion,
+
+      d.Marca AS marcaDispositivo,
+      d.Modelo AS modeloDispositivo,
+
+      p.Id AS idPasajero,
+      p.Nombre AS nombrePasajero,
+      p.ApellidoPaterno AS apellidoPaternoPasajero,
+      p.ApellidoMaterno AS apellidoMaternoPasajero
+
+  FROM TransaccionesDebito td
+  INNER JOIN CatTiposTransacciones ctt 
+      ON td.IdTipoTransaccion = ctt.Id
+  LEFT JOIN Dispositivos d 
+      ON td.NumeroSerieDispositivo = d.NumeroSerie
+  INNER JOIN Monederos m 
+      ON td.NumeroSerieMonedero = m.NumeroSerie
+  LEFT JOIN Pasajeros p 
+      ON m.IdPasajero = p.Id
+  WHERE m.IdCliente = ?   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+
+  UNION ALL
+
+  SELECT 
+      'RECARGA' AS origenTabla,
+      tr.Id AS id,
+      ctt.Nombre AS tipoTransaccion,
+      tr.Monto AS monto,
+      tr.Latitud AS latitud,
+      tr.Longitud AS longitud,
+      tr.FechaHora AS fechaHora,
+      tr.FHRegistro AS fhRegistro,
+      tr.NumeroSerieMonedero AS numeroSerieMonedero,
+      tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+      tr.ControlTransaccion AS controlTransaccion,
+
+      d.Marca AS marcaDispositivo,
+      d.Modelo AS modeloDispositivo,
+
+      p.Id AS idPasajero,
+      p.Nombre AS nombrePasajero,
+      p.ApellidoPaterno AS apellidoPaternoPasajero,
+      p.ApellidoMaterno AS apellidoMaternoPasajero
+
+  FROM TransaccionesRecarga tr
+  INNER JOIN CatTiposTransacciones ctt 
+      ON tr.IdTipoTransaccion = ctt.Id
+  LEFT JOIN Dispositivos d 
+      ON tr.NumeroSerieDispositivo = d.NumeroSerie
+  INNER JOIN Monederos m 
+      ON tr.NumeroSerieMonedero = m.NumeroSerie
+  LEFT JOIN Pasajeros p 
+      ON m.IdPasajero = p.Id
+  WHERE m.IdCliente = ?   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+)
+ORDER BY FHRegistro DESC
+
+        `,
+            [cliente, cliente],
           );
           break;
       }

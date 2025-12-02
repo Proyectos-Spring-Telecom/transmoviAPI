@@ -23,7 +23,7 @@ import {
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 
-@ApiTags('Mantenimiento Kilometraje')
+@ApiTags('Mantenimiento kilometraje')
 @ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('mantenimiento-kilometraje')
@@ -92,8 +92,11 @@ export class MantenimientoKilometrajeController {
   findAll(
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,
+    @Request() req,
   ): Promise<ApiResponseCommon> {
-    return this.mantenimientoKilometrajeService.findAll(page, limit);
+    const idCliente = req.user.cliente;
+    const rol = req.user.rol;
+    return this.mantenimientoKilometrajeService.findAll(page, limit, Number(idCliente), Number(rol));
   }
 
   @Get(':id')
@@ -119,8 +122,10 @@ export class MantenimientoKilometrajeController {
     status: 401,
     description: 'No autorizado',
   })
-  findOne(@Param('id', ParseIntPipe) id: number): Promise<ApiResponseCommon> {
-    return this.mantenimientoKilometrajeService.findOne(id);
+  findOne(@Param('id', ParseIntPipe) id: number, @Request() req): Promise<ApiResponseCommon> {
+    const idCliente = req.user.cliente;
+    const rol = req.user.rol;
+    return this.mantenimientoKilometrajeService.findOne(id, Number(idCliente), Number(rol));
   }
 
   @Patch(':id')

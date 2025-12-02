@@ -6,7 +6,6 @@ import {
   Patch,
   Param,
   Delete,
-  Put,
   ParseIntPipe,
   Request,
   UseGuards,
@@ -17,8 +16,9 @@ import { UpdateTurnoDto } from './dto/update-turno.dto';
 import { UpdateTurnosEstatusDto } from './dto/update-turno-estatus.dto';
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Turnos')
 @ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('turnos')
@@ -76,7 +76,7 @@ export class TurnosController {
     return await this.turnosService.updateEstatus(id, +idUser, updateTurnosEstatusDto);
   }
 
-  @Put(':id')
+  @Patch(':id')
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateTurnoDto: UpdateTurnoDto,

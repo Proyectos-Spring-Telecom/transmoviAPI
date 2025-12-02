@@ -26,7 +26,9 @@ import { UpdateUsuarioContrasena } from './dto/update-usuario-contrasena.dto';
 import { MailService } from 'src/mail/mail.service';
 import { JwtService } from '@nestjs/jwt';
 import { Clientes } from 'src/entities/Clientes';
-import { EstatusEnum } from 'src/common/estatus.enum';
+import { EnumModulos, EstatusEnum } from 'src/common/estatus.enum';
+import { UpdateUsuarioDispositivoDto } from './dto/update-usuario-dispositivo.dto';
+import { Validadores } from 'src/entities/Validadores';
 
 @Injectable()
 export class UsuariosService {
@@ -37,11 +39,13 @@ export class UsuariosService {
     private readonly clientesService: ClientesService,
     @InjectRepository(UsuariosPermisos)
     private usuariosPermisosRepository: Repository<UsuariosPermisos>,
+    @InjectRepository(Validadores)
+    private validadoresRepository: Repository<Validadores>,
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
     private readonly emailService: MailService,
     private readonly jwtService: JwtService,
-  ) { }
+  ) {}
 
   //funcion para obtener los clientes hijos
   private async clienteHijos(cliente: number) {
@@ -128,7 +132,7 @@ LIMIT ? OFFSET ?;
           break;
 
         default:
-          const { ids, placeholders } = await this.clienteHijos(cliente)
+          const { ids, placeholders } = await this.clienteHijos(cliente);
           // Consulta de datos paginados resto Usuario
           usuarios = await this.usuarioRepository.query(
             `
@@ -260,7 +264,7 @@ ORDER BY u.Id DESC;
 
         default:
           // Consulta de datos listado resto Usuario
-          const { ids, placeholders } = await this.clienteHijos(cliente)
+          const { ids, placeholders } = await this.clienteHijos(cliente);
           usuarios = await this.usuarioRepository.query(
             `
 SELECT
@@ -344,7 +348,7 @@ AND u.Estatus = 1
   )
 ORDER BY u.Id DESC;
         `,
-        [id]
+        [id],
       );
 
       const data = usuarios.map((item) => ({
@@ -360,7 +364,7 @@ ORDER BY u.Id DESC;
         throw error;
       }
       throw new InternalServerErrorException({
-        message: "Ocurrió un error al obtener los usuarios por roles.",
+        message: 'Ocurrió un error al obtener los usuarios por roles.',
         error: error.message,
       });
     }
@@ -444,7 +448,7 @@ ORDER BY u.Id DESC
 
         default:
           // Consulta de datos paginados resto Usuario
-          const { ids, placeholders } = await this.clienteHijos(cliente)
+          const { ids, placeholders } = await this.clienteHijos(cliente);
           usuarioData = await this.usuarioRepository.query(
             `
 SELECT
@@ -527,18 +531,13 @@ ORDER BY u.Id DESC
     try {
       //Buscamos al usuario
       const usuario = await this.usuarioRepository.findOne({
-        where: { userName: userName, id: idUser },
+        where: { userName: updateUsuarioOperadorDto.userName },
       });
       if (!usuario) {
         throw new NotFoundException(
           `Usuario con nombre de usuario: ${updateUsuarioOperadorDto.userName} no encontrado.`,
         );
       }
-
-      if (updateUsuarioOperadorDto.userName !== usuario.userName)
-        throw new BadRequestException(
-          'El usuario está intentando ingresar con datos pertenecientes a otro usuario.',
-        );
 
       //encriptamos la contraseña
       const pinPassword = await bcrypt.hash(
@@ -557,12 +556,16 @@ ORDER BY u.Id DESC
       const fechaDesfasada = new Date(ahora.getTime() + desfaseMs);
 
       const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())} ${pad(fechaDesfasada.getHours())}:${pad(fechaDesfasada.getMinutes())}:${pad(fechaDesfasada.getSeconds())}`;
-      updateUsuarioOperadorDto.actualizacionCodigo = fechaActual;
+      const bodyOperador = {
+        userName: updateUsuarioOperadorDto.userName,
+        pinHash: pinPassword,
+        actualizacionPin: fechaActual,
+      };
 
       //Agregamos el pin al updateUsuarioOperadorDto
       const newPin = await this.usuarioRepository.update(
         usuario.id,
-        updateUsuarioOperadorDto,
+        bodyOperador,
       );
 
       //-----Registro en la bitacora----- SUCCESS
@@ -573,7 +576,7 @@ ORDER BY u.Id DESC
         'UPDATE',
         querylogger,
         idUser,
-        2,
+        EnumModulos.USUARIOS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -596,7 +599,88 @@ ORDER BY u.Id DESC
         'UPDATE',
         querylogger,
         idUser,
-        2,
+        EnumModulos.USUARIOS,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Error al crear el PIN del usuario.',
+        error: error.message,
+      });
+    }
+  }
+
+  //Creacion de pin operador
+  async updateDispositivo(
+    userName: string,
+    idUser: number,
+    updateUsuarioDispositivoDto: UpdateUsuarioDispositivoDto,
+  ): Promise<ApiCrudResponse> {
+    try {
+      //Buscamos al usuario
+      const usuario = await this.usuarioRepository.findOne({
+        where: { userName: updateUsuarioDispositivoDto.userName },
+      });
+      if (!usuario) {
+        throw new NotFoundException(
+          `Usuario con nombre de usuario: ${updateUsuarioDispositivoDto.userName} no encontrado.`,
+        );
+      }
+
+      const dispositivo = await this.validadoresRepository.findOne({
+        where: { numeroSerie: updateUsuarioDispositivoDto.validadorId },
+      });
+      if (!dispositivo) {
+        throw new NotFoundException(
+          `Validador numero de serie: ${updateUsuarioDispositivoDto.validadorId} no fue encontrado.`,
+        );
+      }
+
+      const bodyOperador = {
+        validadorId: updateUsuarioDispositivoDto.validadorId,
+      };
+
+      //Agregamos el dispositivo al usuario
+      const newPin = await this.usuarioRepository.update(
+        usuario.id,
+        bodyOperador,
+      );
+
+      //-----Registro en la bitacora----- SUCCESS
+      const querylogger = { updateUsuarioDispositivoDto };
+      await this.bitacoraLogger.logToBitacora(
+        'Usuarios',
+        `El deviceId ha sido actualizado para el usuario con ID: ${usuario.id}.`,
+        'UPDATE',
+        querylogger,
+        idUser,
+        EnumModulos.USUARIOS,
+        EstatusEnumBitcora.SUCCESS,
+      );
+
+      //Api response
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'El dispositivo ha sido actualizado correctamente.',
+        data: {
+          id: Number(usuario.id),
+          nombre: `${usuario.nombre} ${usuario.apellidoPaterno} ` || '',
+        },
+      };
+      return result;
+    } catch (error) {
+      //-----Registro en la bitacora----- SUCCESS
+      const querylogger = { updateUsuarioDispositivoDto };
+      await this.bitacoraLogger.logToBitacora(
+        'Usuarios',
+        `El deviceId ha sido actualizado para el usuario con ID: ${idUser}.`,
+        'UPDATE',
+        querylogger,
+        idUser,
+        EnumModulos.USUARIOS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -633,8 +717,8 @@ ORDER BY u.Id DESC
       const newUser = await this.usuarioRepository.create(createUsuarioDto);
 
       //Activamos su ingreso
-      newUser.emailConfirmado = 1
-      newUser.estatus = 1
+      newUser.emailConfirmado = 1;
+      newUser.estatus = 1;
 
       const userSave = await this.usuarioRepository.save(newUser); //creamos el usuario
 
@@ -674,7 +758,7 @@ ORDER BY u.Id DESC
         'CREATE',
         querylogger,
         Number(idUser),
-        2,
+        EnumModulos.USUARIOS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -701,7 +785,7 @@ ORDER BY u.Id DESC
         'CREATE',
         querylogger,
         Number(idUser),
-        2,
+        EnumModulos.USUARIOS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -779,7 +863,7 @@ ORDER BY u.Id DESC
         'UPDATE',
         querylogger,
         Number(idUser),
-        2,
+        EnumModulos.USUARIOS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -802,7 +886,7 @@ ORDER BY u.Id DESC
         'UPDATE',
         querylogger,
         Number(idUser),
-        2,
+        EnumModulos.USUARIOS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -839,7 +923,7 @@ ORDER BY u.Id DESC
             'No se encontró el cliente especificado.',
           );
       }
-      updateUsuarioDto.emailConfirmado = EstatusEnum.ACTIVO
+      updateUsuarioDto.emailConfirmado = EstatusEnum.ACTIVO;
 
       const { permisosIds, ...usuarioUpdate } = updateUsuarioDto;
       // ----- ACTUALIZACIÓN DE USUARIO -----
@@ -857,7 +941,7 @@ ORDER BY u.Id DESC
         updateUsuarioDto.permisosIds &&
         Array.isArray(updateUsuarioDto.permisosIds)
       ) {
-        const nuevaLista: number[] = updateUsuarioDto.permisosIds.map(Number); // lista nueva de permisos (ej. [1,2,3])
+        const nuevaLista: number[] = updateUsuarioDto.permisosIds.map(Number); // lista nueva de permisos (ej. [1,EnumModulos.USUARIOS,3])
 
         // Permisos actuales en BD
         const creadaLista = await this.usuariosPermisosRepository.find({
@@ -925,7 +1009,7 @@ ORDER BY u.Id DESC
         'UPDATE',
         querylogger,
         Number(idUser),
-        2,
+        EnumModulos.USUARIOS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -950,7 +1034,7 @@ ORDER BY u.Id DESC
         'UPDATE',
         querylogger,
         Number(idUser),
-        2,
+        EnumModulos.USUARIOS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -995,7 +1079,7 @@ ORDER BY u.Id DESC
         'UPDATE',
         querylogger,
         idUser,
-        2,
+        EnumModulos.USUARIOS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -1022,7 +1106,7 @@ ORDER BY u.Id DESC
         'UPDATE',
         querylogger,
         idUser,
-        2,
+        EnumModulos.USUARIOS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -1063,7 +1147,7 @@ ORDER BY u.Id DESC
         'UPDATE',
         querylogger,
         Number(idUser),
-        2,
+        EnumModulos.USUARIOS,
         EstatusEnumBitcora.SUCCESS,
       );
       //Api response
@@ -1085,7 +1169,7 @@ ORDER BY u.Id DESC
         'UPDATE',
         querylogger,
         Number(idUser),
-        2,
+        EnumModulos.USUARIOS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );

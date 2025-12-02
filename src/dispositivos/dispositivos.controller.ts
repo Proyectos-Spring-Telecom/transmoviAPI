@@ -14,13 +14,14 @@ import {
 
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ValidadoresService } from 'src/validadores/validadores.service';
 import { CreateValidadorDto } from 'src/validadores/dto/create-validador.dto';
 import { UpdateValidadorEstatusDto } from 'src/validadores/dto/update-validador-estatus.dto';
 import { UpdateValidadorDto } from 'src/validadores/dto/update-validador.dto';
 import { UpdateValidadorEstadoDto } from 'src/validadores/dto/update-validador-estado.dto';
 
+@ApiTags('Validadores')
 @ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('dispositivos')
@@ -47,7 +48,18 @@ export class DispositivosController {
     return this.dispositivosService.findAllList(+cliente, +rol);
   }
 
-  @Get('/clientes/:id')
+  @Get('by-cliente/:idCliente')
+  async findByCliente(
+    @Param('idCliente', ParseIntPipe) idCliente: number,
+    @Request() req,
+  ): Promise<ApiResponseCommon> {
+    const idUser = req.user.userId;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+    return await this.dispositivosService.findAllListDispositivosClientes(idCliente, +cliente);
+  }
+
+  @Get('clientes/:id')
   async findAllDispositivosClientes(
     @Param('id', ParseIntPipe) id: number,
     @Request() req,

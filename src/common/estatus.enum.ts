@@ -96,3 +96,14 @@ export enum EnumTipoLicencia {
   E = 5,
   F = 6,
 }
+
+export enum EnumFiltros {
+  ALDIA = 1,
+  SEMANA = 2,
+  MES = 3,
+}
+
+export enum EnumControlTransacciones {
+  PAGADO = 0,
+  ABIERTA = 1,
+}

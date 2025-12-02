@@ -27,7 +27,7 @@ export class LicenciasService {
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
-  ) {}
+  ) { }
 
   // ========================================
   // 🔹 CREAR UNA LICENCIA

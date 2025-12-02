@@ -24,7 +24,7 @@ import {
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 
-@ApiTags('Catálogo Referencia Servicio')
+@ApiTags('Catálogo referencia servicio')
 @ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('cat-referencia-servicio')

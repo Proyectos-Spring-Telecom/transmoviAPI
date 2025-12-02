@@ -38,7 +38,7 @@ export class CreateLicenciaDto {
     example: '2026-01-15',
   })
   @IsDateString()
-  fechaVencimineto: string;
+  fechaVencimiento: string;
 
   @ApiProperty({
     enum: EnumTipoLicencia,

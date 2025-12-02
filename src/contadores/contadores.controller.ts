@@ -18,8 +18,9 @@ import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { UpdateContadoresEstatusDto } from './dto/update-contadores-estatus.dto';
 import { UpdateContadoresEstadoDto } from './dto/update-contadores.estado.dto';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Contadores')
 @ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('contadores')

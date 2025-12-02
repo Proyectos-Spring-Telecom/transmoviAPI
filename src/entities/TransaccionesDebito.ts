@@ -20,20 +20,32 @@ export class TransaccionesDebito {
   @Column('bigint', { name: 'IdTipoTransaccion' })
   idTipoTransaccion: number;
 
-  @Column('tinyint', { name: 'ControlTransaccion' })
-  controlTransaccion: number;
-
   @Column('decimal', { name: 'Monto', precision: 10, scale: 2 })
   monto: number;
 
-  @Column('decimal', { name: 'Latitud', precision: 10, scale: 7, nullable: true })
-  latitud: number | null;
+  @Column('tinyint', { name: 'ControlTransaccion', unsigned: true })
+  controlTransaccion: number;
 
-  @Column('decimal', { name: 'Longitud', precision: 10, scale: 7, nullable: true })
-  longitud: number | null;
+  @Column('decimal', { name: 'LatitudInicial', precision: 10, scale: 7, nullable: true })
+  latitudInicial: number | null;
 
-  @Column('datetime', { name: 'FechaHora' })
-  fechaHora: Date;
+  @Column('decimal', { name: 'LongitudInicial', precision: 10, scale: 7, nullable: true })
+  longitudInicial: number | null;
+
+  @Column('datetime', { name: 'FechaHoraInicio', nullable: true })
+  fechaHoraInicio: Date | null;
+
+  @Column('decimal', { name: 'DistanciaInicialKm', precision: 10, scale: 2, nullable: true })
+  distanciaInicialKm: number | null;
+
+  @Column('decimal', { name: 'LatitudFinal', precision: 10, scale: 7, nullable: true })
+  latitudFinal: number | null;
+
+  @Column('decimal', { name: 'LongitudFinal', precision: 10, scale: 7, nullable: true })
+  longitudFinal: number | null;
+
+  @Column('datetime', { name: 'FechaHoraFinal' })
+  fechaHoraFinal: Date;
 
   @Column('datetime', {
     name: 'FHRegistro',

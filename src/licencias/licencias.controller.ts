@@ -15,8 +15,9 @@ import { LicenciasService } from './licencias.service';
 import { CreateLicenciaDto } from './dto/create-licencia.dto';
 import { UpdateLicenciaDto } from './dto/update-licencia.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Licencias')
 @ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('licencias')

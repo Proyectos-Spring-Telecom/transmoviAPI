@@ -24,7 +24,7 @@ import {
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 
-@ApiTags('Catálogo Estatus Mantenimiento')
+@ApiTags('Catálogo estatus mantenimiento')
 @ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('cat-estatus-mantenimiento')

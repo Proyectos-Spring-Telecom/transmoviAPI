@@ -7,23 +7,28 @@ import {
   UseGuards,
   ParseIntPipe,
   Request,
+  Patch,
 } from '@nestjs/common';
 import { TransaccionesService } from './transacciones.service';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { CreateTransaccioneDebitoDto } from './dto/create-transaccione-debito.dto';
 import { CreateTransaccioneRecargaDto } from './dto/create-transaccione-recarga.dto';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { UpdateTransaccioneDebitoDto } from './dto/update-transaccione-debito.dto';
 
-@UseGuards(JwtAuthGuard)
+@ApiTags('Transacciones')
 @Controller('transacciones')
+@ApiBearerAuth('bearer-token')
 export class TransaccionesController {
-  constructor(private readonly transaccionesService: TransaccionesService) {}
+  constructor(private readonly transaccionesService: TransaccionesService) { }
 
   // ========================================
   // 🔹 POST ROUTES - Rutas específicas primero
   // ========================================
 
   @Post('debito')
+  @UseGuards(JwtAuthGuard)
   createTransaccionDebito(
     @Body() createTransaccioneDebitoDto: CreateTransaccioneDebitoDto,
     @Request() req,
@@ -37,6 +42,7 @@ export class TransaccionesController {
   }
 
   @Post('recarga')
+  @UseGuards(JwtAuthGuard)
   createTransaccionRecarga(
     @Body() createTransaccioneRecargaDto: CreateTransaccioneRecargaDto,
     @Request() req,
@@ -48,11 +54,25 @@ export class TransaccionesController {
     );
   }
 
+  @Patch('debito')
+  @UseGuards(JwtAuthGuard)
+  updateTransaccionDebito(
+    @Body() updateTransaccioneDebitoDto: UpdateTransaccioneDebitoDto,
+    @Request() req,
+  ): Promise<ApiCrudResponse> {
+    const idUser = req.user.userId;
+    return this.transaccionesService.updateTransaccionDebito(
+      updateTransaccioneDebitoDto,
+      idUser,
+    );
+  }
+
   // ========================================
   // 🔹 GET ROUTES - Rutas específicas primero
   // ========================================
 
   @Get('list')
+  @UseGuards(JwtAuthGuard)
   async findAllListTransacciones(@Request() req): Promise<ApiResponseCommon> {
     const cliente = req.user.cliente;
     const rol = req.user.rol;
@@ -60,16 +80,19 @@ export class TransaccionesController {
   }
 
   @Get('RECARGA/:id')
+  @UseGuards(JwtAuthGuard)
   findOneTransaccioneRecarga(@Param('id', ParseIntPipe) id: number) {
     return this.transaccionesService.findOneTransaccionRecarga(id);
   }
 
   @Get('DEBITO/:id')
+  @UseGuards(JwtAuthGuard)
   findOneTransaccioneDebito(@Param('id', ParseIntPipe) id: number) {
     return this.transaccionesService.findOneTransaccionDebito(id);
   }
 
   @Get(':page/:limit')
+  @UseGuards(JwtAuthGuard)
   async findAllTransacciones(
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,
@@ -79,13 +102,13 @@ export class TransaccionesController {
     const email = req.user.email;
     const cliente = req.user.cliente;
     const rol = req.user.rol;
-    
+
     return await this.transaccionesService.findAllTransacciones(
-      +idUser, 
-      email, 
-      +cliente, 
-      +rol, 
-      page, 
+      +idUser,
+      email,
+      +cliente,
+      +rol,
+      page,
       limit
     );
   }

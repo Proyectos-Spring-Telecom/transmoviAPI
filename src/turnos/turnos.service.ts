@@ -155,7 +155,7 @@ SELECT
 
   -- Operador
   o.Id AS idOperador,
-  o.NumeroLicencia AS numeroLicencia,
+ 
   o.FechaNacimiento AS fechaNacimientoOperador,
   u.Nombre AS nombreOperador,
   u.ApellidoPaterno AS apellidoPaternoOperador,
@@ -256,7 +256,7 @@ SELECT
 
   -- Operador
   o.Id AS idOperador,
-  o.NumeroLicencia AS numeroLicencia,
+ 
   o.FechaNacimiento AS fechaNacimientoOperador,
   u.Nombre AS nombreOperador,
   u.ApellidoPaterno AS apellidoPaternoOperador,
@@ -362,7 +362,7 @@ SELECT
 
   -- Operador
   o.Id AS idOperador,
-  o.NumeroLicencia AS numeroLicencia,
+ 
   o.FechaNacimiento AS fechaNacimientoOperador,
   u.Nombre AS nombreOperador,
   u.ApellidoPaterno AS apellidoPaternoOperador,
@@ -493,7 +493,7 @@ SELECT
 
   -- Operador
   o.Id AS idOperador,
-  o.NumeroLicencia AS numeroLicencia,
+ 
   o.FechaNacimiento AS fechaNacimientoOperador,
   u.Nombre AS nombreOperador,
   u.ApellidoPaterno AS apellidoPaternoOperador,
@@ -568,7 +568,7 @@ SELECT
 
   -- Operador
   o.Id AS idOperador,
-  o.NumeroLicencia AS numeroLicencia,
+ 
   o.FechaNacimiento AS fechaNacimientoOperador,
   u.Nombre AS nombreOperador,
   u.ApellidoPaterno AS apellidoPaternoOperador,
@@ -649,7 +649,7 @@ SELECT
 
   -- Operador
   o.Id AS idOperador,
-  o.NumeroLicencia AS numeroLicencia,
+ 
   o.FechaNacimiento AS fechaNacimientoOperador,
   u.Nombre AS nombreOperador,
   u.ApellidoPaterno AS apellidoPaternoOperador,
@@ -749,7 +749,7 @@ SELECT
 
   -- Operador
   o.Id AS idOperador,
-  o.NumeroLicencia AS numeroLicencia,
+ 
   o.FechaNacimiento AS fechaNacimientoOperador,
   u.Nombre AS nombreOperador,
   u.ApellidoPaterno AS apellidoPaternoOperador,
@@ -823,7 +823,7 @@ SELECT
 
   -- Operador
   o.Id AS idOperador,
-  o.NumeroLicencia AS numeroLicencia,
+ 
   o.FechaNacimiento AS fechaNacimientoOperador,
   u.Nombre AS nombreOperador,
   u.ApellidoPaterno AS apellidoPaternoOperador,
@@ -904,7 +904,7 @@ SELECT
 
   -- Operador
   o.Id AS idOperador,
-  o.NumeroLicencia AS numeroLicencia,
+ 
   o.FechaNacimiento AS fechaNacimientoOperador,
   u.Nombre AS nombreOperador,
   u.ApellidoPaterno AS apellidoPaternoOperador,

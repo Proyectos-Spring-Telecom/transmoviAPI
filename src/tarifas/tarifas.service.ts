@@ -20,6 +20,7 @@ import {
 } from 'src/common/ApiResponse';
 import { UpdateTarifasEstatusDto } from './dto/update-tarifa-estatus.dto';
 import { Clientes } from 'src/entities/Clientes';
+import { EnumModulos } from 'src/common/estatus.enum';
 
 @Injectable()
 export class TarifasService {
@@ -33,7 +34,11 @@ export class TarifasService {
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
-  ) {}
+  ) { }
+
+  // ========================================
+  // 🔹 CREAR UN TARIFA
+  // ========================================
   async create(
     idUser: number,
     cliente: number,
@@ -59,7 +64,7 @@ export class TarifasService {
         'CREATE',
         querylogger,
         idUser,
-        19,
+        EnumModulos.TARIFAS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -82,7 +87,7 @@ export class TarifasService {
         'CREATE',
         querylogger,
         idUser,
-        19,
+        EnumModulos.TARIFAS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -945,6 +950,9 @@ ORDER BY t.Id DESC
     }
   }
 
+  // ========================================
+  // 🔹 ACTUALIZAR ESTATUS DE LA TARIFA
+  // ========================================
   async updateEstatus(
     id: number,
     idUser: number,
@@ -968,7 +976,7 @@ ORDER BY t.Id DESC
         'UPDATE',
         querylogger,
         idUser,
-        19,
+        EnumModulos.TARIFAS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -992,7 +1000,7 @@ ORDER BY t.Id DESC
         'UPDATE',
         querylogger,
         idUser,
-        19,
+        EnumModulos.TARIFAS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -1006,6 +1014,9 @@ ORDER BY t.Id DESC
     }
   }
 
+  // ========================================
+  // 🔹 ACTUALIZAR TARIFA
+  // ========================================
   async update(id: number, idUser: number, updateTarifaDto: UpdateTarifaDto) {
     try {
       const tarifa = await this.tarifasRepository.findOne({
@@ -1024,7 +1035,7 @@ ORDER BY t.Id DESC
         'UPDATE',
         querylogger,
         idUser,
-        19,
+        EnumModulos.TARIFAS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -1047,7 +1058,7 @@ ORDER BY t.Id DESC
         'UPDATE',
         querylogger,
         idUser,
-        19,
+        EnumModulos.TARIFAS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -1061,6 +1072,9 @@ ORDER BY t.Id DESC
     }
   }
 
+  // ========================================
+  // 🔹 ELIMINADO LOGICO
+  // ========================================
   async remove(id: number, idUser: number) {
     try {
       const tarifa = await this.tarifasRepository.findOne({
@@ -1079,7 +1093,7 @@ ORDER BY t.Id DESC
         'UPDATE',
         querylogger,
         idUser,
-        19,
+        EnumModulos.TARIFAS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -1102,7 +1116,7 @@ ORDER BY t.Id DESC
         'UPDATE',
         querylogger,
         idUser,
-        19,
+        EnumModulos.TARIFAS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -1116,6 +1130,9 @@ ORDER BY t.Id DESC
     }
   }
 
+  // ========================================
+  // 🔹 ELIMINADO PERMANENTES
+  // ========================================
   async removeTotal(id: number, idUser: number, rol: number) {
     try {
       let tarifa;
@@ -1144,7 +1161,7 @@ ORDER BY t.Id DESC
         'DELETE',
         querylogger,
         idUser,
-        19,
+        EnumModulos.TARIFAS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -1167,7 +1184,7 @@ ORDER BY t.Id DESC
         'DELETE',
         querylogger,
         idUser,
-        19,
+        EnumModulos.TARIFAS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );

@@ -19,8 +19,9 @@ import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
 import { UpdateMonederoCatPasajeroDto } from './dto/update-monedero-catpasajero.dto';
 import { UpdateMonederoExtravioDto } from './dto/update-monedero-extravio.dto';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Monederos')
 @ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('monederos')

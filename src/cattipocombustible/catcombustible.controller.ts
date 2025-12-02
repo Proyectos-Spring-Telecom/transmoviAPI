@@ -1,8 +1,9 @@
 import { Controller, Get, UseGuards, Request } from '@nestjs/common';
 import { CatcombustibleService } from './catcombustible.service';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Catálogo combustible')
 @ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('catcombustible')

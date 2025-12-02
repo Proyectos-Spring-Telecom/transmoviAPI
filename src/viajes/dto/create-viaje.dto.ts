@@ -26,6 +26,10 @@ export class CreateViajeDto {
   @IsDateString({}, { message: 'El fin debe ser una fecha en formato ISO' })
   fin?: Date | null;
 
+  @ApiProperty({
+    description: 'Confirmar estatus en valor de 0 ó 1',
+    example: 1,
+  })
   @IsNotEmpty({ message: 'Confirmar estatus en valor de 0 ó 1' })
   @IsInt({ message: 'estatus debe ser un número entero' })
   @IsIn([0, 1], { message: 'Solo puede ser 0 ó 1' })

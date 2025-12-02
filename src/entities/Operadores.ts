@@ -12,6 +12,7 @@ import { Turnos } from "./Turnos";
 import { Viajes } from "./Viajes";
 import { Verificaciones } from "./Verificaciones";
 import { MantenimientoCombustible } from "./MantenimientoCombustible";
+import { Incidentes } from "./Incidentes";
 import { applySchema } from "src/common/apply-schema.decorator";
 
 @applySchema
@@ -87,4 +88,7 @@ export class Operadores {
 
   @OneToMany(() => MantenimientoCombustible, (mantenimientoCombustible) => mantenimientoCombustible.operador)
   mantenimientosCombustible: MantenimientoCombustible[];
+
+  @OneToMany(() => Incidentes, (incidentes) => incidentes.operador)
+  incidentes: Incidentes[];
 }

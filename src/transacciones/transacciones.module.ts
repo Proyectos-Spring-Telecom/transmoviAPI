@@ -13,10 +13,12 @@ import { Monederos } from 'src/entities/Monederos';
 import { CatTiposPasajeros } from 'src/entities/CatTiposPasajeros';
 import { TransbordosPermitidos } from 'src/entities/TransbordosPermitidos';
 import { DetalleTransbordos } from 'src/entities/DetalleTransbordos';
+import { HistoricoTransaccionesDebito } from 'src/entities/HistoricoTransaccionesDebito';
+
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([TransaccionesRecarga, TransaccionesDebito, Validadores, Clientes, Monederos, CatTiposPasajeros, TransbordosPermitidos, DetalleTransbordos]),
+    TypeOrmModule.forFeature([TransaccionesRecarga, TransaccionesDebito, HistoricoTransaccionesDebito, Validadores, Clientes, Monederos, CatTiposPasajeros]),
     MonederosModule,
     BitacoraModule,
     PasajerosModule,
@@ -25,4 +27,4 @@ import { DetalleTransbordos } from 'src/entities/DetalleTransbordos';
   providers: [TransaccionesService],
   exports: [TransaccionesService],
 })
-export class TransaccionesModule {}
+export class TransaccionesModule { }

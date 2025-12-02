@@ -17,20 +17,21 @@ import { UpdateClienteDto } from './dto/update-cliente.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { UpdateClienteEstatusDto } from './dto/update-clientes-estatus.dto';
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Clientes')
 @ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('clientes')
 export class ClientesController {
-  constructor(private readonly clientesService: ClientesService) {}
+  constructor(private readonly clientesService: ClientesService) { }
   //Crear cliente
   @Post()
   async createCliente(@Body() createClienteDto: CreateClienteDto, @Request() req): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
     return await this.clientesService.createCliente(createClienteDto, idUser);
   }
-    //Obtener todos los clientes
+  //Obtener todos los clientes
   @Get('list')
   async getAllListClientes(@Request() req,): Promise<ApiResponseCommon> {
     const cliente = req.user.cliente;
@@ -38,6 +39,17 @@ export class ClientesController {
     const rol = req.user.rol;
     return this.clientesService.getAllListClientes(+idUser, +cliente, +rol);
   }
+
+  //Obtener todos los clientes
+  @Get('list/:cliente')
+  async getAllListClientesId(
+    @Param('cliente', ParseIntPipe) cliente: number,
+    @Request() req,): Promise<ApiResponseCommon> {
+    const idUser = req.user.userId;
+    const rol = req.user.rol;
+    return this.clientesService.getAllListClientesId(+idUser, +cliente, +rol);
+  }
+
   //Obtener todos los clientes con paginado
   @Get(':page/:limit')
   getAllClientes(
@@ -50,7 +62,7 @@ export class ClientesController {
     const rol = req.user.rol;
     return this.clientesService.getAllClientes(+idUser, +cliente, +rol, page, limit);
   }
-  
+
   //Obtener solo un cliente
   @Get(':id')
   getOneCliente(@Param('id') id: string, @Request() req,) {
@@ -60,7 +72,7 @@ export class ClientesController {
     return this.clientesService.getOneCliente(+id);
   }
 
-    //Actualizar el estatus del cliente
+  //Actualizar el estatus del cliente
   @Patch('estatus/:id')
   updateEstatusClientes(
     @Param('id') id: string,

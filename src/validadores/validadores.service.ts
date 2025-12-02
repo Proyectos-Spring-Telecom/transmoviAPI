@@ -199,6 +199,39 @@ ORDER BY d.Id DESC;
         `);
           break;
 
+        case 3:
+          Validador = await this.validadoresRepository.query(
+            `
+        SELECT
+  -- Dispositivo
+  d.Id AS id,
+  d.NumeroSerie AS numeroSerie,
+  d.Marca AS marca,
+  d.Modelo AS modelo,
+  d.FechaCreacion AS fechaCreacion,
+  d.FechaActualizacion AS fechaActualizacion,
+  d.EstadoActual as estadoActual,
+  d.Estatus AS estatus,
+
+  -- Cliente
+  c.Id AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente
+
+FROM Dispositivos d
+INNER JOIN Clientes c ON d.IdCliente = c.Id
+
+WHERE d.IdCliente IN (${cliente})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+  AND d.Estatus = 1
+  AND c.Estatus = 1
+
+ORDER BY d.Id DESC;
+        `,
+          );
+          break;
+
         default:
           // Consulta de datos listado resto Usuario
           const { ids, placeholders } = await this.clienteHijos(cliente);

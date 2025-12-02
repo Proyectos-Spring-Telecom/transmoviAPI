@@ -16,8 +16,9 @@ import { CreateVarianteDto } from './dto/create-variante.dto';
 import { UpdateVarianteDto } from './dto/update-variante.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { UpdateVariantesEstatusDto } from './dto/update-variante-estatus.dto';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Variantes')
 @ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('variantes')
@@ -38,6 +39,38 @@ export class VariantesController {
     const idUser = req.user.userId;
     const rol = req.user.rol;
     return this.variantesService.findAllList(+idUser, +cliente, +rol);
+  }
+
+  @Get('by-ruta/:idRuta')
+  @ApiOperation({
+    summary: 'Listar derroteros por ID de ruta',
+    description: 'Obtiene todos los derroteros activos pertenecientes únicamente a la ruta especificada.',
+  })
+  @ApiParam({
+    name: 'idRuta',
+    type: Number,
+    description: 'ID de la ruta de la cual se desean obtener los derroteros',
+    example: 1,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Derroteros obtenidos exitosamente',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'No autorizado',
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Error interno del servidor',
+  })
+  async findByRuta(
+    @Param('idRuta', ParseIntPipe) idRuta: number,
+    @Request() req,
+  ) {
+    const idUser = req.user.userId;
+    const rol = req.user.rol;
+    return await this.variantesService.findByRuta(+idRuta, +idUser, +rol);
   }
 
   @Get(':page/:limit')

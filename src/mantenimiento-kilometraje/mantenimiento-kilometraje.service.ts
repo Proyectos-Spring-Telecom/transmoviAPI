@@ -9,7 +9,10 @@ import { CreateMantenimientoKilometrajeDto } from './dto/create-mantenimiento-ki
 import { UpdateMantenimientoKilometrajeDto } from './dto/update-mantenimiento-kilometraje.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { MantenimientoKilometraje } from 'src/entities/MantenimientoKilometraje';
-import { Repository } from 'typeorm';
+import { Instalaciones } from 'src/entities/Instalaciones';
+import { Clientes } from 'src/entities/Clientes';
+import { Posiciones } from 'src/entities/Posiciones';
+import { Repository, In } from 'typeorm';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import {
   ApiCrudResponse,
@@ -19,11 +22,39 @@ import {
 
 @Injectable()
 export class MantenimientoKilometrajeService {
+  private readonly EARTH_RADIUS = 6371; // Radio de la Tierra en kilómetros
+
   constructor(
     @InjectRepository(MantenimientoKilometraje)
     private readonly mantenimientoKilometrajeRepository: Repository<MantenimientoKilometraje>,
+    @InjectRepository(Instalaciones)
+    private readonly instalacionesRepository: Repository<Instalaciones>,
+    @InjectRepository(Clientes)
+    private readonly clienteRepository: Repository<Clientes>,
+    @InjectRepository(Posiciones)
+    private readonly posicionesRepository: Repository<Posiciones>,
     private readonly bitacoraLogger: BitacoraLoggerService,
   ) {}
+
+  //funcion para obtener los clientes hijos
+  private async clienteHijos(cliente: number) {
+    const clientesFiltrado = await this.clienteRepository.query(
+      `CALL spGetClientes(?);`,
+      [cliente],
+    );
+
+    const idsFiltrados = clientesFiltrado[0]; // El primer índice contiene los resultados
+    const ids = idsFiltrados
+      .map((clientesFiltrado: any) => Number(clientesFiltrado.Id))
+      .filter(Boolean);
+    if (ids.length === 0) {
+      return { ids: [], placeholders: '' }; // No hay clientes que consultar
+    }
+
+    // Construir el query dinámico con los IDs
+    const placeholders = ids.map(() => '?').join(', ');
+    return { ids, placeholders };
+  }
 
   async create(
     createMantenimientoKilometrajeDto: CreateMantenimientoKilometrajeDto,
@@ -80,17 +111,137 @@ export class MantenimientoKilometrajeService {
     }
   }
 
-  async findAll(page: number, limit: number): Promise<ApiResponseCommon> {
+  async findAll(page: number, limit: number, idCliente: number, rol: number): Promise<ApiResponseCommon> {
     try {
-      const [data, total] = await this.mantenimientoKilometrajeRepository.findAndCount({
-        relations: ['instalacion', 'instalacion.validadores', 'instalacion.contadores', 'instalacion.vehiculos', 'instalacion.idCliente2'],
-        order: { fhRegistro: 'DESC' },
-        skip: (page - 1) * limit,
-        take: limit,
-      });
+      let data: any[];
+      let totalResult: any[];
+      const offset = (page - 1) * limit;
 
-      // Forzamos ids a number
-      const mantenimientos = data.map((item) => ({
+      switch (rol) {
+        case 1:
+        case 2:
+          // Consulta de datos paginados Usuario SuperAdministrador/Administrador
+          data = await this.mantenimientoKilometrajeRepository.query(
+            `
+SELECT
+  mk.Id AS id,
+  mk.IdInstalacion AS idInstalacion,
+  mk.KMinicial AS kmInicial,
+  mk.KMDeseado AS kmDeseado,
+  mk.Periodo AS periodo,
+  mk.Anio AS anio,
+  mk.FHRegistro AS fhRegistro,
+  mk.Estatus AS estatus,
+  veh.Placa AS placaVehiculo,
+  veh.Foto AS imagenVehiculo,
+  d.Id AS instalacionDispositivoId,
+  d.NumeroSerie AS instalacionDispositivoNumeroSerie,
+  d.Marca AS instalacionDispositivoMarca,
+  d.Modelo AS instalacionDispositivoModelo,
+  bv.Id AS instalacionBlueVoxId,
+  bv.NumeroSerie AS instalacionBlueVoxNumeroSerie,
+  bv.Marca AS instalacionBlueVoxMarca,
+  bv.Modelo AS instalacionBlueVoxModelo,
+  veh.Id AS instalacionVehiculoId,
+  veh.Marca AS instalacionVehiculoMarca,
+  veh.Modelo AS instalacionVehiculoModelo,
+  c.Id AS idClienteData,
+  c.Nombre AS nombreClienteData,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente
+FROM MantenimientoKilometraje mk
+INNER JOIN Instalaciones i ON mk.IdInstalacion = i.Id
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+LEFT JOIN Vehiculos veh ON i.IdVehiculo = veh.Id AND i.IdCliente = veh.IdCliente
+LEFT JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+LEFT JOIN BlueVoxs bv ON i.IdBlueVox = bv.Id AND i.IdCliente = bv.IdCliente
+ORDER BY mk.FHRegistro DESC
+LIMIT ? OFFSET ?;
+            `,
+            [limit, offset],
+          );
+
+          // Query para total (sin paginación)
+          totalResult = await this.mantenimientoKilometrajeRepository.query(
+            `
+SELECT COUNT(*) AS total
+FROM MantenimientoKilometraje mk
+INNER JOIN Instalaciones i ON mk.IdInstalacion = i.Id
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+            `,
+          );
+          break;
+
+        default:
+          const { ids, placeholders } = await this.clienteHijos(idCliente);
+          if (ids.length === 0) {
+            return {
+              data: [],
+              paginated: {
+                total: 0,
+                page,
+                lastPage: 0,
+              },
+            };
+          }
+
+          // Consulta de datos paginados resto Usuario
+          data = await this.mantenimientoKilometrajeRepository.query(
+            `
+SELECT
+  mk.Id AS id,
+  mk.IdInstalacion AS idInstalacion,
+  mk.KMinicial AS kmInicial,
+  mk.KMDeseado AS kmDeseado,
+  mk.Periodo AS periodo,
+  mk.Anio AS anio,
+  mk.FHRegistro AS fhRegistro,
+  mk.Estatus AS estatus,
+  veh.Placa AS placaVehiculo,
+  veh.Foto AS imagenVehiculo,
+  d.Id AS instalacionDispositivoId,
+  d.NumeroSerie AS instalacionDispositivoNumeroSerie,
+  d.Marca AS instalacionDispositivoMarca,
+  d.Modelo AS instalacionDispositivoModelo,
+  bv.Id AS instalacionBlueVoxId,
+  bv.NumeroSerie AS instalacionBlueVoxNumeroSerie,
+  bv.Marca AS instalacionBlueVoxMarca,
+  bv.Modelo AS instalacionBlueVoxModelo,
+  veh.Id AS instalacionVehiculoId,
+  veh.Marca AS instalacionVehiculoMarca,
+  veh.Modelo AS instalacionVehiculoModelo
+FROM MantenimientoKilometraje mk
+INNER JOIN Instalaciones i ON mk.IdInstalacion = i.Id
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+LEFT JOIN Vehiculos veh ON i.IdVehiculo = veh.Id AND i.IdCliente = veh.IdCliente
+LEFT JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+LEFT JOIN BlueVoxs bv ON i.IdBlueVox = bv.Id AND i.IdCliente = bv.IdCliente
+WHERE c.Id IN (${placeholders})
+ORDER BY mk.FHRegistro DESC
+LIMIT ? OFFSET ?;
+            `,
+            [...ids, limit, offset],
+          );
+
+          // Query para total (sin paginación)
+          totalResult = await this.mantenimientoKilometrajeRepository.query(
+            `
+SELECT COUNT(*) AS total
+FROM MantenimientoKilometraje mk
+INNER JOIN Instalaciones i ON mk.IdInstalacion = i.Id
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+WHERE c.Id IN (${placeholders})
+            `,
+            [...ids],
+          );
+          break;
+      }
+
+      const total = Number(totalResult[0]?.total || 0);
+
+      // Transformar los datos
+      const mantenimientosTransformados = data.map((item: any) => ({
         id: Number(item.id),
         idInstalacion: item.idInstalacion ? Number(item.idInstalacion) : null,
         kmInicial: item.kmInicial ? Number(item.kmInicial) : null,
@@ -99,8 +250,14 @@ export class MantenimientoKilometrajeService {
         anio: item.anio,
         fhRegistro: item.fhRegistro,
         estatus: item.estatus,
-        instalacion: item.instalacion ? {
-          id: Number(item.instalacion.id),
+        placaVehiculo: item.placaVehiculo || null,
+        imagenVehiculo: item.imagenVehiculo || null,
+        instalacion: item.idInstalacion ? { id: Number(item.idInstalacion) } : null,
+        instalacionDispositivo: item.instalacionDispositivoId ? {
+          id: Number(item.instalacionDispositivoId),
+          numeroSerie: item.instalacionDispositivoNumeroSerie,
+          marca: item.instalacionDispositivoMarca,
+          modelo: item.instalacionDispositivoModelo,
         } : null,
         instalacionValidador: item.instalacion?.validadores ? {
           id: Number(item.instalacion.validadores.id),
@@ -126,10 +283,19 @@ export class MantenimientoKilometrajeService {
           apellidoMaterno: item.instalacion.idCliente2.apellidoMaterno,
           estatus: item.instalacion.idCliente2.estatus,
         } : null,
+        ...(rol === 1 || rol === 2) && item.idClienteData ? {
+          instalacionCliente: {
+            id: Number(item.idClienteData),
+            nombre: item.nombreClienteData,
+            apellidoPaterno: item.apellidoPaternoCliente,
+            apellidoMaterno: item.apellidoMaternoCliente,
+            estatus: item.estatusCliente,
+          },
+        } : {},
       }));
 
       const result: ApiResponseCommon = {
-        data: mantenimientos,
+        data: mantenimientosTransformados,
         paginated: {
           total: total,
           page,
@@ -147,7 +313,7 @@ export class MantenimientoKilometrajeService {
     }
   }
 
-  async findOne(id: number): Promise<ApiResponseCommon> {
+  async findOne(id: number, idCliente: number, rol: number): Promise<ApiResponseCommon> {
     try {
       const mantenimiento = await this.mantenimientoKilometrajeRepository.findOne({
         where: { id: id },
@@ -157,20 +323,23 @@ export class MantenimientoKilometrajeService {
         throw new NotFoundException('Mantenimiento por kilometraje no encontrado');
       }
 
+      const item = mantenimiento;
+
       const result: ApiResponseCommon = {
         data: [
           {
-            id: Number(mantenimiento.id),
-            idInstalacion: mantenimiento.idInstalacion ? Number(mantenimiento.idInstalacion) : null,
-            kmInicial: mantenimiento.kmInicial ? Number(mantenimiento.kmInicial) : null,
-            kmDeseado: mantenimiento.kmDeseado ? Number(mantenimiento.kmDeseado) : null,
-            periodo: mantenimiento.periodo,
-            anio: mantenimiento.anio,
-            fhRegistro: mantenimiento.fhRegistro,
-            estatus: mantenimiento.estatus,
-            instalacion: mantenimiento.instalacion ? {
-              id: Number(mantenimiento.instalacion.id),
-            } : null,
+            id: Number(item.id),
+            idInstalacion: item.idInstalacion ? Number(item.idInstalacion) : null,
+            kmInicial: item.kmInicial ? Number(item.kmInicial) : null,
+            kmDeseado: item.kmDeseado ? Number(item.kmDeseado) : null,
+            periodo: item.periodo,
+            anio: item.anio,
+            fhRegistro: item.fhRegistro,
+            estatus: item.estatus,
+            placaVehiculo: mantenimiento.instalacion?.vehiculos?.placa || null,
+            imagenVehiculo: mantenimiento.instalacion?.vehiculos?.foto || null,
+            instalacion: item.idInstalacion ? { id: Number(item.idInstalacion) } : null,
+        
             instalacionValidador: mantenimiento.instalacion?.validadores ? {
               id: Number(mantenimiento.instalacion.validadores.id),
               numeroSerie: mantenimiento.instalacion.validadores.numeroSerie,
@@ -195,6 +364,15 @@ export class MantenimientoKilometrajeService {
               apellidoMaterno: mantenimiento.instalacion.idCliente2.apellidoMaterno,
               estatus: mantenimiento.instalacion.idCliente2.estatus,
             } : null,
+            ...(rol === 1 || rol === 2) && mantenimiento.instalacion?.idCliente2 ? {
+              instalacionCliente: {
+                id: Number(mantenimiento.instalacion.idCliente2.id),
+                nombre: mantenimiento.instalacion.idCliente2.nombre,
+                apellidoPaterno: mantenimiento.instalacion.idCliente2.apellidoPaterno,
+                apellidoMaterno: mantenimiento.instalacion.idCliente2.apellidoMaterno,
+                estatus: mantenimiento.instalacion.idCliente2.estatus,
+              },
+            } : {},
           },
         ],
       };
@@ -389,6 +567,185 @@ export class MantenimientoKilometrajeService {
       }
       throw new InternalServerErrorException({
         message: 'Error al activar el mantenimiento por kilometraje.',
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Calcula la distancia entre dos puntos geográficos usando la fórmula de Haversine
+   * @param lat1 Latitud del primer punto
+   * @param lng1 Longitud del primer punto
+   * @param lat2 Latitud del segundo punto
+   * @param lng2 Longitud del segundo punto
+   * @returns Distancia en kilómetros
+   */
+  private async getDistanciaEntreDosPuntos(
+    lat1: number,
+    lng1: number,
+    lat2: number,
+    lng2: number,
+  ): Promise<number> {
+    const lat = ((lat2 - lat1) * Math.PI) / 180;
+    const lon = ((lng2 - lng1) * Math.PI) / 180;
+    const a =
+      Math.sin(lat / 2) * Math.sin(lat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(lon / 2) *
+        Math.sin(lon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = this.EARTH_RADIUS * c;
+    return distance;
+  }
+
+  /**
+   * Obtiene el reporte de kilometraje por días para una instalación
+   * @param idInstalacion ID de la instalación
+   * @returns Lista de semanas/días con el kilometraje acumulado
+   */
+  async obtenerReporteKilometrajeDias(
+    idInstalacion: number,
+  ): Promise<ApiResponseCommon> {
+    try {
+      // Obtener los registros de mantenimiento por kilometraje de la instalación
+      const lista = await this.mantenimientoKilometrajeRepository.query(
+        `
+        SELECT
+          mk.Anio AS anio,
+          mk.IdInstalacion AS idInstalacion,
+          mk.KMDeseado AS kmDeseado,
+          mk.KMinicial AS kmInicial,
+          mk.Periodo AS periodo,
+          v.Foto AS imagen
+        FROM MantenimientoKilometraje mk
+        INNER JOIN Instalaciones i ON mk.IdInstalacion = i.Id
+        LEFT JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
+        WHERE mk.IdInstalacion = ?
+        ORDER BY mk.Periodo ASC
+        `,
+        [idInstalacion],
+      );
+
+      const listaSemanas: any[] = [];
+      let totaldistancia = 0;
+
+      for (const item of lista) {
+        // Obtener las posiciones de la instalación para el mes y año especificados
+        const listaPosiciones = await this.posicionesRepository.query(
+          `
+          SELECT
+            d.NumeroSerie AS numeroSerie,
+            i.Id AS id,
+            i.Id AS idInstalacion,
+            v.Placa AS placas,
+            v.NumeroEconomico AS economico,
+            p.FechaHora AS fechaHora,
+            p.Latitud AS lat,
+            p.Longitud AS lng,
+            p.Velocidad AS velocidad,
+            p.Estado AS estado
+          FROM Posiciones p
+          INNER JOIN Dispositivos d ON p.NumeroSerieDispositivo = d.NumeroSerie
+          INNER JOIN Instalaciones i ON d.Id = i.IdDispositivo AND d.IdCliente = i.IdCliente
+          LEFT JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
+          WHERE i.Id = ?
+            AND MONTH(p.FechaHora) = ?
+            AND YEAR(p.FechaHora) = ?
+            AND i.Estatus = 1
+          ORDER BY p.FechaHora ASC
+          `,
+          [item.idInstalacion, item.periodo, item.anio],
+        );
+
+        let latini = 0;
+        let lngini = 0;
+        let latfin = 0;
+        let lngfin = 0;
+        let i = 0;
+
+        // Calcular la distancia entre cada posición
+        for (const item2 of listaPosiciones) {
+          if (i === 0) {
+            latini = Number(item2.lat);
+            lngini = Number(item2.lng);
+          }
+          latfin = Number(item2.lat);
+          lngfin = Number(item2.lng);
+
+          const distancia = await this.getDistanciaEntreDosPuntos(
+            latini,
+            lngini,
+            latfin,
+            lngfin,
+          );
+
+          item2.distancia = distancia;
+          totaldistancia = totaldistancia + distancia;
+          latini = latfin;
+          lngini = lngfin;
+          i++;
+        }
+
+        // Obtener el número de días del mes
+        const dias = new Date(item.anio, item.periodo, 0).getDate();
+        let acumuladoTotal = 0.0;
+
+        // Calcular el kilometraje por día
+        for (let dia = 1; dia <= dias; dia++) {
+          const sem: any = {
+            kilometraje: 0,
+            acumulado: 0,
+            periodo: item.periodo,
+            fechaAlta: null,
+          };
+
+          // Filtrar posiciones del día actual
+          const posicionesDelDia = listaPosiciones.filter((pos: any) => {
+            const fecha = new Date(pos.fechaHora);
+            return fecha.getDate() === dia;
+          });
+
+          // Sumar las distancias del día
+          sem.kilometraje = posicionesDelDia.reduce(
+            (sum: number, pos: any) => sum + (pos.distancia || 0),
+            0,
+          );
+
+          // Truncar a 2 decimales
+          sem.kilometraje = Math.trunc(sem.kilometraje * 100) / 100;
+
+          // Calcular acumulado
+          if (dia === 1) {
+            sem.acumulado = sem.kilometraje + Number(item.kmInicial);
+            acumuladoTotal = sem.acumulado;
+          } else {
+            sem.acumulado = acumuladoTotal + sem.kilometraje;
+            acumuladoTotal = sem.acumulado;
+          }
+
+          // Obtener la fecha del día
+          const primeraPosicionDelDia = posicionesDelDia[0];
+          if (primeraPosicionDelDia) {
+            const fecha = new Date(primeraPosicionDelDia.fechaHora);
+            sem.fechaAlta = fecha.toISOString().split('T')[0]; // Formato yyyy-MM-dd
+          }
+
+          listaSemanas.push(sem);
+        }
+      }
+
+      const result: ApiResponseCommon = {
+        data: listaSemanas,
+      };
+
+      return result;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Error al obtener el reporte de kilometraje por días.',
         error: error.message,
       });
     }

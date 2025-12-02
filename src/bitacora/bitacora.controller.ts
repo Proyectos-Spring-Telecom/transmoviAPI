@@ -11,8 +11,9 @@ import {
 import { BitacoraLoggerService } from './bitacora.service';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Bitácora')
 @ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('bitacora')

@@ -17,6 +17,7 @@ import { Verificaciones } from "./Verificaciones";
 import { MantenimientoVehicular } from "./MantenimientoVehicular";
 import { MantenimientoKilometraje } from "./MantenimientoKilometraje";
 import { MantenimientoCombustible } from "./MantenimientoCombustible";
+import { Incidentes } from "./Incidentes";
 import { applySchema } from "src/common/apply-schema.decorator";
 
 @applySchema
@@ -117,4 +118,7 @@ export class Instalaciones {
 
   @OneToMany(() => MantenimientoCombustible, (mantenimientoCombustible) => mantenimientoCombustible.instalacion)
   mantenimientosCombustible: MantenimientoCombustible[];
+
+  @OneToMany(() => Incidentes, (incidentes) => incidentes.instalacion)
+  incidentes: Incidentes[];
 }

@@ -49,7 +49,7 @@ export class OperadoresService {
           `El operador con licencia número: ${createOperadoreDto.numeroLicencia} ya se encuentra registrado.`,
         );
       }
-
+      console.log(createOperadoreDto)
       const usuarioOperador = await this.operadoresRepository.findOne({
         where: { idUsuario: createOperadoreDto.idUsuario },
       });
@@ -80,7 +80,7 @@ export class OperadoresService {
         licencia: createOperadoreDto.licencia,
         numeroLicencia: createOperadoreDto.numeroLicencia,
         fechaExpedicion: createOperadoreDto.fechaExpedicion,
-        fechaVencimineto: createOperadoreDto.fechaVencimiento,
+        fechaVencimiento: createOperadoreDto.fechaVencimiento,
         idTipoLicencia: createOperadoreDto.idTipoLicencia,
         idCategoriaLicencia: createOperadoreDto.idCategoriaLicencia,
         idOperador: operador.id,
@@ -89,6 +89,8 @@ export class OperadoresService {
       //Guardamos la licencia
       const licenciaCreate =
         await this.licenciasRepository.create(bodyLicencia);
+
+      console.log(licenciaCreate);
       const licencia = await this.licenciasRepository.save(licenciaCreate);
 
       //-----Registro en la bitacora-----SUCCESS
@@ -114,6 +116,7 @@ export class OperadoresService {
       };
       return result;
     } catch (error) {
+      console.log(error)
       //-----Registro en la bitacora-----SUCCESS
       const querylogger = { createOperadoreDto };
       await this.bitacoraLogger.logToBitacora(
@@ -210,7 +213,7 @@ SELECT
       'licencia', l.Licencia,
       'numeroLicencia', l.NumeroLicencia,
       'fechaExpedicion', l.FechaExpedicion,
-      'fechaVencimiento', l.FechaVencimineto,
+      'fechaVencimiento', l.FechaVencimiento,
       'idTipoLicencia', l.IdTipoLicencia,
       'nombreTipoLicencia', ctl.Nombre,
       'idCategoriaLicencia', l.IdCategoriaLicencia,
@@ -305,7 +308,7 @@ SELECT
       'licencia', l.Licencia,
       'numeroLicencia', l.NumeroLicencia,
       'fechaExpedicion', l.FechaExpedicion,
-      'fechaVencimiento', l.FechaVencimineto,
+      'fechaVencimiento', l.FechaVencimiento,
       'idTipoLicencia', l.IdTipoLicencia,
       'nombreTipoLicencia', ctl.Nombre,
       'idCategoriaLicencia', l.IdCategoriaLicencia,
@@ -384,6 +387,7 @@ AND u.Estatus = 1
       };
       return result;
     } catch (error) {
+      console.log(error)
       if (error instanceof HttpException) {
         throw error;
       }
@@ -510,11 +514,98 @@ ORDER BY o.Id DESC;
       };
       return data;
     } catch (error) {
+      console.log(error)
       if (error instanceof HttpException) {
         throw error;
       }
       throw new InternalServerErrorException({
         message: 'Error al obtener el listado de los operadores.',
+        error: error.message,
+      });
+    }
+  }
+
+  // ========================================
+  // 🔹 OBTENER OPERADORES POR ID DE CLIENTE
+  // ========================================
+  async findByCliente(
+    idCliente: number,
+    idUser: number,
+    rol: number,
+  ): Promise<ApiResponseCommon> {
+    try {
+      // Consulta directa de operadores por cliente (solo el cliente especificado)
+      const operadores = await this.operadoresRepository.query(
+        `
+SELECT
+  -- Datos del Operador
+  o.Id AS id,
+  o.FechaNacimiento AS fechaNacimiento,
+  o.Identificacion AS identificacion,
+  o.Foto AS foto,
+  o.ComprobanteDomicilio AS comprobanteDomicilio,
+  o.CertificadoMedico AS certificadoMedico,
+  o.AntecedentesNoPenales AS antecedentesNoPenales,
+  o.FechaCreacion AS fechaCreacion,
+  o.FechaActualizacion AS fechaActualizacion,
+  o.Estatus AS estatus,
+
+  -- Datos del Usuario
+  u.Id AS idUsuario,
+  u.UserName AS userNameUsuario,
+  u.Nombre AS nombreUsuario,
+  u.ApellidoPaterno AS apellidoPaternoUsuario,
+  u.ApellidoMaterno AS apellidoMaternoUsuario,
+  u.Telefono AS telefonoUsuario,
+  u.DeviceId AS deviceId,
+  u.FotoPerfil AS fotoPerfil,
+  u.FechaCreacion AS fechaCreacionUsuario,
+  u.FechaActualizacion AS fechaActualizacionUsuario,
+  u.Estatus AS estatusUsuario,
+  u.IdRol AS idRol,
+
+  -- Datos del Cliente
+  u.IdCliente AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', IFNULL(c.ApellidoMaterno, '')) AS nombreCompletoCliente
+
+FROM Operadores o
+INNER JOIN Usuarios u ON o.IdUsuario = u.Id
+INNER JOIN Clientes c ON u.IdCliente = c.Id
+
+WHERE 
+  u.IdCliente = ?
+  AND o.Estatus = 1
+  AND u.Estatus = 1
+  AND c.Estatus = 1
+
+ORDER BY o.Id DESC
+        `,
+        [idCliente],
+      );
+
+      // Forzamos a cambiar el id a number
+      const data = operadores.map((item) => ({
+        ...item,
+        id: Number(item.id),
+        idUsuario: Number(item.idUsuario),
+        idRol: Number(item.idRol),
+        idCliente: Number(item.idCliente),
+      }));
+
+      const result: ApiResponseCommon = {
+        data: data,
+      };
+
+      return result;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Error al obtener operadores por cliente',
         error: error.message,
       });
     }
@@ -562,7 +653,7 @@ SELECT
       'licencia', l.Licencia,
       'numeroLicencia', l.NumeroLicencia,
       'fechaExpedicion', l.FechaExpedicion,
-      'fechaVencimiento', l.FechaVencimineto,
+      'fechaVencimiento', l.FechaVencimiento,
       'idTipoLicencia', l.IdTipoLicencia,
       'nombreTipoLicencia', ctl.Nombre,
       'idCategoriaLicencia', l.IdCategoriaLicencia,
@@ -640,7 +731,7 @@ SELECT
       'licencia', l.Licencia,
       'numeroLicencia', l.NumeroLicencia,
       'fechaExpedicion', l.FechaExpedicion,
-      'fechaVencimiento', l.FechaVencimineto,
+      'fechaVencimiento', l.FechaVencimiento,
       'idTipoLicencia', l.IdTipoLicencia,
       'nombreTipoLicencia', ctl.Nombre,
       'idCategoriaLicencia', l.IdCategoriaLicencia,
