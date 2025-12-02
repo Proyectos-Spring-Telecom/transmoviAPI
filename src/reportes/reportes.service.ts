@@ -58,12 +58,12 @@ export class ReportesService {
       // Filtro de fecha - SOLO EN TRANSACCIONES
       if (filtros.fechaInicio) {
         const fechaInicio = filtros.fechaInicio.split('T')[0];
-        condiciones.push(`DATE(td.FechaHora) >= ?`);
+        condiciones.push(`DATE(td.FHRegistro) >= ?`);
         parametros.push(fechaInicio);
       }
       if (filtros.fechaFin) {
         const fechaFin = filtros.fechaFin.split('T')[0];
-        condiciones.push(`DATE(td.FechaHora) <= ?`);
+        condiciones.push(`DATE(td.FHRegistro) <= ?`);
         parametros.push(fechaFin);
       }
 
@@ -89,7 +89,7 @@ export class ReportesService {
 
       const query = `
 SELECT
-    DATE(td.FechaHora) AS fecha,
+    DATE(td.FHRegistro) AS fecha,
     reg.Id AS idRegion,
     reg.Nombre AS nombreRegion,
     r.Id AS idRuta,
@@ -127,9 +127,9 @@ LEFT JOIN Regiones reg ON r.IdRegion = reg.Id
 LEFT JOIN ViajesConteos vc_rel ON vc_rel.IdViaje = v.Id
 LEFT JOIN ConteoPasajeros vc ON vc_rel.IdConteo = vc.Id
 ${whereClause}
-GROUP BY DATE(td.FechaHora), reg.Id, reg.Nombre, r.Id, r.Nombre, d.Id, d.Nombre
+GROUP BY DATE(td.FHRegistro), reg.Id, reg.Nombre, r.Id, r.Nombre, d.Id, d.Nombre
 HAVING COUNT(DISTINCT td.Id) > 0
-ORDER BY DATE(td.FechaHora) DESC, reg.Nombre, r.Nombre, d.Nombre;
+ORDER BY DATE(td.FHRegistro) DESC, reg.Nombre, r.Nombre, d.Nombre;
       `;
 
       console.log('=== DEBUG REPORTE RECAUDACIÓN DIARIA POR RUTA ===');
@@ -245,8 +245,8 @@ FROM (
     LEFT JOIN ViajesConteos vc_rel ON vc_rel.IdViaje = v.Id
     LEFT JOIN ConteoPasajeros vc ON vc_rel.IdConteo = vc.Id
     WHERE c.Id IN (${placeholders})
-    ${fechaInicio ? `AND DATE(td.FechaHora) >= ?` : ''}
-    ${fechaFin ? `AND DATE(td.FechaHora) <= ?` : ''}
+    ${fechaInicio ? `AND DATE(td.FHRegistro) >= ?` : ''}
+    ${fechaFin ? `AND DATE(td.FHRegistro) <= ?` : ''}
     ${filtros.idOperador ? 'AND (o.Id = ? OR o.Id IS NULL)' : ''}
     GROUP BY COALESCE(o.Id, 0), u.Nombre, u.ApellidoPaterno, u.ApellidoMaterno
 ) AS datos
@@ -388,8 +388,8 @@ FROM (
     LEFT JOIN Derroteros d ON v.IdDerrotero = d.Id
     LEFT JOIN Rutas r ON d.IdRuta = r.Id
     WHERE c.Id IN (${placeholders})
-    ${fechaInicio ? `AND DATE(td.FechaHora) >= ?` : ''}
-    ${fechaFin ? `AND DATE(td.FechaHora) <= ?` : ''}
+    ${fechaInicio ? `AND DATE(td.FHRegistro) >= ?` : ''}
+    ${fechaFin ? `AND DATE(td.FHRegistro) <= ?` : ''}
     ${filtros.idVehiculo ? 'AND veh.Id = ?' : ''}
     ${filtros.idRuta ? 'AND r.Id = ?' : ''}
     GROUP BY veh.Id, veh.NumeroEconomico, veh.Placa, veh.Marca, veh.Modelo, veh.Ano
@@ -543,8 +543,8 @@ FROM (
     LEFT JOIN BlueVoxs bv ON ins.IdBlueVox = bv.Id
     LEFT JOIN Vehiculos veh ON ins.IdVehiculo = veh.Id
     WHERE c.Id IN (${placeholders})
-    ${fechaInicio ? `AND DATE(td.FechaHora) >= ?` : ''}
-    ${fechaFin ? `AND DATE(td.FechaHora) <= ?` : ''}
+    ${fechaInicio ? `AND DATE(td.FHRegistro) >= ?` : ''}
+    ${fechaFin ? `AND DATE(td.FHRegistro) <= ?` : ''}
     ${filtros.idDispositivo ? 'AND disp.Id = ?' : ''}
     ${filtros.idInstalacion ? 'AND ins.Id = ?' : ''}
     GROUP BY ins.Id, disp.NumeroSerie, bv.NumeroSerie, veh.NumeroEconomico, veh.Placa, disp.EstadoActual
