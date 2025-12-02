@@ -47,6 +47,11 @@ export class CatpasajeroController {
     return this.catpasajeroService.findAllListClientes(id);
   }
 
+  @Get()
+  findAll() {
+    return this.catpasajeroService.findAll();
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get(':id')
   findOne(@Param('id') id: string) {
