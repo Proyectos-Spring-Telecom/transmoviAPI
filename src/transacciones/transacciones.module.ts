@@ -18,7 +18,7 @@ import { HistoricoTransaccionesDebito } from 'src/entities/HistoricoTransaccione
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([TransaccionesRecarga, TransaccionesDebito, HistoricoTransaccionesDebito, Validadores, Clientes, Monederos, CatTiposPasajeros]),
+    TypeOrmModule.forFeature([TransaccionesRecarga, TransaccionesDebito, HistoricoTransaccionesDebito, Validadores, Clientes, Monederos, CatTiposPasajeros,TransbordosPermitidos,DetalleTransbordos]),
     MonederosModule,
     BitacoraModule,
     PasajerosModule,

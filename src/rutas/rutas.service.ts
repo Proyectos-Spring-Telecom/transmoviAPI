@@ -679,8 +679,8 @@ SELECT
   CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
 FROM Rutas ru
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Zonas r ON ru.IdZona = r.Id
+LEFT JOIN Zonas rf ON ru.IdZonaFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
 
 WHERE 

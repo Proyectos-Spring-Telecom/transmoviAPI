@@ -41,7 +41,7 @@ export enum EnumModulos {
   VIAJES = 15,
   ZONAS = 16,
   RUTAS = 17,
-  DERROTEROS = 18,
+  VARIANTES = 18,
   TARIFAS = 19,
   MONEDEROS = 20,
   PASAJEROS = 21,

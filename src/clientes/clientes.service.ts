@@ -378,7 +378,7 @@ ORDER BY Id ASC;
   ): Promise<ApiResponseCommon> {
     try {
       let clientes;
-      // Usuarios normales - solo sus regiones asignadas
+      // Usuarios normales - solo sus Zonas asignadas
           const { ids, placeholders } = await this.clienteHijos(cliente);
           clientes = await this.clienteRepository.query(
             `

@@ -19,7 +19,7 @@ export class RecorridoMonitoreoDto {
         required: true,
     })
     @IsString({message: 'Debe ser formato string'})
-    @IsNotEmpty({ message: 'El numero de serie del dispositivo es obligatorio' })
-    NumeroSerieDispositivo: string;
+    @IsNotEmpty({ message: 'El numero de serie del validador es obligatorio' })
+    NumeroSerieValidador: string;
 
 }

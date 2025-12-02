@@ -260,7 +260,7 @@ INNER JOIN Clientes c ON r.IdCliente = c.Id
           break;
 
         case 3:
-          // Usuario operador - obtiene todas las regiones de su cliente
+          // Usuario operador - obtiene todas las zonas de su cliente
           zonas = await this.consultarZonasPagina(cliente, limit, offset);
 
           // Query para total (sin paginación)
@@ -408,7 +408,7 @@ ORDER BY r.Id DESC
   async findByCliente(idCliente: number, idUser: number, rol: number) {
     try {
       // Consulta directa sin incluir clientes hijos
-      const regiones = await this.regionesRepository.query(
+      const zonas = await this.zonasRepository.query(
         `
 SELECT
   -- Región
@@ -427,7 +427,7 @@ SELECT
   c.ApellidoMaterno AS apellidoMaternoCliente,
   c.Estatus AS estatusCliente
 
-FROM Regiones r
+FROM Zonas r
 INNER JOIN Clientes c ON r.IdCliente = c.Id
 
 WHERE 
@@ -441,7 +441,7 @@ ORDER BY r.Id DESC
       );
 
       // 🔥 Forzamos ids a number
-      const data = regiones.map((item) => ({
+      const data = zonas.map((item) => ({
         ...item,
         id: Number(item.id),
         idCliente: Number(item.idCliente),
@@ -457,7 +457,7 @@ ORDER BY r.Id DESC
         throw error;
       }
       throw new InternalServerErrorException({
-        message: 'Error al obtener regiones por cliente',
+        message: 'Error al obtener zonas por cliente',
         error: error.message,
       });
     }
@@ -508,7 +508,7 @@ ORDER BY r.Id DESC;
           zonas = await this.consultarZonasListado(cliente);
           break;
         case 3:
-          // Usuario Operador - obtiene todas las regiones de su cliente
+          // Usuario Operador - obtiene todas las zonas de su cliente
           zonas = await this.consultarZonasListado(cliente);
           break;
         case 8:
@@ -663,7 +663,7 @@ ORDER BY r.Id DESC;
           zonas = await this.consultarZonasOne(cliente, id)
           break;
         case 3:
-          // Usuario operador - obtiene todas las regiones de su cliente
+          // Usuario operador - obtiene todas las zonas de su cliente
           zonas = await this.consultarZonasOne(cliente, id)
           break;
         case 8:

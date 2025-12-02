@@ -56,7 +56,7 @@ export class DashboardService {
         validaciones_fallidas: Number(item.validaciones_fallidas),
       }));
 
-      const graficaDerroteros = grafica2.map((item) => ({
+      const graficaVariantes = grafica2.map((item) => ({
         ...item,
         idRuta: Number(item.idRuta),
         periodo: Number(item.periodo),
@@ -80,7 +80,7 @@ export class DashboardService {
         cumplimientoTurnos: data.kpi2[0].cumplimientoTurnosPorcentaje,
         ocupacionPromedio: data.kpi2[0].ocupacionPromedioTotal || 0,
         graficaIngresos,
-        graficaDerroteros,
+        graficaVariantes,
         graficaAscensoBoleto,
         grafica4,
       };
@@ -272,7 +272,7 @@ SELECT
     ROUND(SUM(CASE WHEN td.IdTipoTransaccion = 2 THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0) * 100, 2) AS porcentajeExitosas,
     ROUND(SUM(CASE WHEN td.IdTipoTransaccion = 3 THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0) * 100, 2) AS porcentajeFallidas
 FROM HistoricoTransaccionesDebito td
-INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
+INNER JOIN Validadores d ON td.NumeroSerieValidador = d.NumeroSerie
 INNER JOIN Clientes c ON d.IdCliente = c.Id
 WHERE td.FechaHoraFinal >= '${fechaInicio}T00:00:00Z'
   AND td.FechaHoraFinal < '${fechaFin}T23:59:59Z'
@@ -338,8 +338,8 @@ SELECT
 
 FROM Vehiculos v
 LEFT JOIN Instalaciones i ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente AND i.Estatus = 1
-LEFT JOIN Dispositivos d ON d.Id = i.IdDispositivo
-LEFT JOIN Posiciones up ON up.NumeroSerieDispositivo = d.NumeroSerie
+LEFT JOIN Validadores d ON d.Id = i.IdDispositivo
+LEFT JOIN Posiciones up ON up.NumeroSerieValidador = d.NumeroSerie
     AND up.FechaHora >= NOW() - INTERVAL 30 MINUTE
 LEFT JOIN Turnos t ON t.IdCliente = v.IdCliente
     AND t.Estatus = 1
@@ -373,7 +373,7 @@ SELECT
     ROUND(SUM(CASE WHEN td.IdTipoTransaccion = 2 THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0) * 100, 2) AS porcentajeExitosas,
     ROUND(SUM(CASE WHEN td.IdTipoTransaccion = 3 THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0) * 100, 2) AS porcentajeFallidas
 FROM HistoricoTransaccionesDebito td
-INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
+INNER JOIN Validadores d ON td.NumeroSerieValidador = d.NumeroSerie
 INNER JOIN Clientes c ON d.IdCliente = c.Id
 WHERE td.FechaHoraFinal >= '${fechaInicio}T00:00:00Z'
   AND td.FechaHoraFinal < '${fechaFin}T23:59:59Z'
@@ -438,8 +438,8 @@ SELECT
 
 FROM Vehiculos v
 LEFT JOIN Instalaciones i ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente AND i.Estatus = 1
-LEFT JOIN Dispositivos d ON d.Id = i.IdDispositivo
-LEFT JOIN Posiciones up ON up.NumeroSerieDispositivo = d.NumeroSerie
+LEFT JOIN Validadores d ON d.Id = i.IdDispositivo
+LEFT JOIN Posiciones up ON up.NumeroSerieValidador = d.NumeroSerie
     AND up.FechaHora >= NOW() - INTERVAL 30 MINUTE
 LEFT JOIN Turnos t ON t.IdCliente = v.IdCliente
     AND t.Estatus = 1
@@ -495,7 +495,7 @@ datos AS (
         ) AS porcentaje_fallidas
 
     FROM HistoricoTransaccionesDebito td
-    INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
+    INNER JOIN Validadores d ON td.NumeroSerieValidador = d.NumeroSerie
     INNER JOIN Clientes c ON d.IdCliente = c.Id
     CROSS JOIN rango
     WHERE td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
@@ -569,7 +569,7 @@ datos AS (
         ) AS porcentaje_fallidas
 
     FROM HistoricoTransaccionesDebito td
-    INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
+    INNER JOIN Validadores d ON td. = d.NumeroSerie
     INNER JOIN Clientes c ON d.IdCliente = c.Id
     CROSS JOIN rango
     WHERE td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
@@ -627,12 +627,12 @@ Pasajeros AS (
         SUM(cp.Entradas - cp.Salidas) AS pasajeros
     FROM ConteoPasajeros cp
     INNER JOIN rango ON 1=1
-    INNER JOIN BlueVoxs bv ON cp.NumeroSerieBlueVox = bv.NumeroSerie
-    INNER JOIN Instalaciones i ON bv.Id = i.IdBlueVox
+    INNER JOIN Contadores c ON cp.NumeroSerieContador = c.NumeroSerie
+    INNER JOIN Instalaciones i ON c.Id = i.IdContador
     INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id
     INNER JOIN Turnos t ON i.Id = t.IdInstalacion AND t.Estatus = 1
     INNER JOIN Viajes vi ON t.Id = vi.IdTurno AND vi.Estatus = 1
-    INNER JOIN Derroteros d ON vi.IdDerrotero = d.Id AND d.Estatus = 1
+    INNER JOIN Variantes d ON vi.IdVariante = d.Id AND d.Estatus = 1
     INNER JOIN Rutas r ON d.IdRuta = r.Id AND r.Estatus = 1
     INNER JOIN Clientes c ON v.IdCliente = c.Id AND c.Estatus = 1
     WHERE cp.FechaHora BETWEEN '${fechaInicio}T00:00:00' AND '${fechaFin}T23:59:59'
@@ -681,12 +681,12 @@ Pasajeros AS (
         SUM(cp.Entradas - cp.Salidas) AS pasajeros
     FROM ConteoPasajeros cp
     INNER JOIN rango ON 1=1
-    INNER JOIN BlueVoxs bv ON cp.NumeroSerieBlueVox = bv.NumeroSerie
-    INNER JOIN Instalaciones i ON bv.Id = i.IdBlueVox
+    INNER JOIN Contadores c ON cp.NumeroSerieContador = c.NumeroSerie
+    INNER JOIN Instalaciones i ON c.Id = i.IdContador
     INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id
     INNER JOIN Turnos t ON i.Id = t.IdInstalacion AND t.Estatus = 1
     INNER JOIN Viajes vi ON t.Id = vi.IdTurno AND vi.Estatus = 1
-    INNER JOIN Derroteros d ON vi.IdDerrotero = d.Id AND d.Estatus = 1
+    INNER JOIN Variantes d ON vi.IdVariante = d.Id AND d.Estatus = 1
     INNER JOIN Rutas r ON d.IdRuta = r.Id AND r.Estatus = 1
     INNER JOIN Clientes c ON v.IdCliente = c.Id AND c.Estatus = 1
     WHERE cp.FechaHora BETWEEN '${fechaInicio}T00:00:00' AND '${fechaFin}T23:59:59'
@@ -737,7 +737,7 @@ periodos AS (
     FROM (
         SELECT cp.FechaHora AS fecha
         FROM ConteoPasajeros cp
-        INNER JOIN BlueVoxs bv ON cp.NumeroSerieBlueVox = bv.NumeroSerie
+        INNER JOIN Contadores c ON cp.NumeroSerieContador = c.NumeroSerie
         WHERE bv.IdCliente IN (${idCliente})
           AND cp.FechaHora BETWEEN '${fechaInicio}T00:00:00Z' 
                                AND '${fechaFin}T23:59:59Z'
@@ -746,7 +746,7 @@ periodos AS (
         
         SELECT td.FechaHoraFinal AS fecha
         FROM HistoricoTransaccionesDebito td
-        INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
+        INNER JOIN Validadores d ON td.NumeroSerieValidador = d.NumeroSerie
         WHERE d.IdCliente IN (${idCliente})
           AND td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' 
                                AND '${fechaFin}T23:59:59Z'
@@ -769,7 +769,7 @@ ascensos AS (
 
         SUM(cp.Entradas - cp.Salidas) AS ascensos
     FROM ConteoPasajeros cp
-    INNER JOIN BlueVoxs bv ON cp.NumeroSerieBlueVox = bv.NumeroSerie
+    INNER JOIN Contadores c ON cp.NumeroSerieContador = c.NumeroSerie
     CROSS JOIN rango
     WHERE bv.IdCliente IN (${idCliente})
       AND cp.FechaHora BETWEEN '${fechaInicio}T00:00:00Z' 
@@ -792,7 +792,7 @@ boletos AS (
 
         COUNT(CASE WHEN td.IdTipoTransaccion = 2 THEN 1 END) AS boletos
     FROM HistoricoTransaccionesDebito td
-    INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
+    INNER JOIN Validadores d ON td.NumeroSerieValidador = d.NumeroSerie
     CROSS JOIN rango
     WHERE d.IdCliente IN (${idCliente})
       AND td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' 
@@ -843,7 +843,7 @@ periodos AS (
     FROM (
         SELECT cp.FechaHora AS fecha
         FROM ConteoPasajeros cp
-        INNER JOIN BlueVoxs bv ON cp.NumeroSerieBlueVox = bv.NumeroSerie
+        INNER JOIN Contadores c ON cp.NumeroSerieContador = c.NumeroSerie
         WHERE bv.IdCliente IN (${placeholders})
           AND cp.FechaHora BETWEEN '${fechaInicio}T00:00:00Z' 
                                AND '${fechaFin}T23:59:59Z'
@@ -852,8 +852,8 @@ periodos AS (
         
         SELECT td.FechaHoraFinal AS fecha
         FROM HistoricoTransaccionesDebito td
-        INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
-        WHERE d.IdCliente IN (${placeholders})
+        INNER JOIN Validadores d ON td.NumeroSerieValidador = d.NumeroSerie
+        WHERE d.IdCliente IN (${placeholders})  
           AND td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' 
                                AND '${fechaFin}T23:59:59Z'
     ) AS fechas
@@ -875,7 +875,7 @@ ascensos AS (
 
         SUM(cp.Entradas - cp.Salidas) AS ascensos
     FROM ConteoPasajeros cp
-    INNER JOIN BlueVoxs bv ON cp.NumeroSerieBlueVox = bv.NumeroSerie
+    INNER JOIN Contadores c ON cp.NumeroSerieContador = c.NumeroSerie
     CROSS JOIN rango
     WHERE bv.IdCliente IN (${placeholders})
       AND cp.FechaHora BETWEEN '${fechaInicio}T00:00:00Z' 
@@ -898,7 +898,7 @@ boletos AS (
 
         COUNT(CASE WHEN td.IdTipoTransaccion = 2 THEN 1 END) AS boletos
     FROM HistoricoTransaccionesDebito td
-    INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
+    INNER JOIN Validadores d ON td.NumeroSerieValidador = d.NumeroSerie
     CROSS JOIN rango
     WHERE d.IdCliente IN (${placeholders})
       AND td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' 
@@ -971,7 +971,7 @@ rutas AS (
             ELSE DATE_FORMAT(V.Inicio, '%Y-%m')
         END AS periodo
     FROM Viajes V
-    INNER JOIN Derroteros D ON D.Id = V.IdDerrotero
+    INNER JOIN Variantes D ON D.Id = V.IdVariante
     INNER JOIN Rutas R ON R.Id = D.IdRuta
     CROSS JOIN rango
     WHERE V.Inicio BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
@@ -1056,8 +1056,8 @@ rutas AS (
             ELSE DATE_FORMAT(V.Inicio, '%Y-%m')
         END AS periodo
     FROM Viajes V
-    INNER JOIN Derroteros D ON D.Id = V.IdDerrotero
-    INNER JOIN Rutas R ON R.Id = D.IdRuta
+    INNER JOIN Variantes D ON D.Id = V.IdVariante
+    INNER JOIN Rutas R ON R.Id = V.IdVariante
     CROSS JOIN rango
     WHERE V.Inicio BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
       AND V.IdCliente IN (${placeholders})

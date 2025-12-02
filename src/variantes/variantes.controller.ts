@@ -43,18 +43,18 @@ export class VariantesController {
 
   @Get('by-ruta/:idRuta')
   @ApiOperation({
-    summary: 'Listar derroteros por ID de ruta',
-    description: 'Obtiene todos los derroteros activos pertenecientes únicamente a la ruta especificada.',
+    summary: 'Listar variantes por ID de ruta',
+    description: 'Obtiene todos los variantes activos pertenecientes únicamente a la ruta especificada.',
   })
   @ApiParam({
     name: 'idRuta',
     type: Number,
-    description: 'ID de la ruta de la cual se desean obtener los derroteros',
+    description: 'ID de la ruta de la cual se desean obtener los variantes',
     example: 1,
   })
   @ApiResponse({
     status: 200,
-    description: 'Derroteros obtenidos exitosamente',
+    description: 'Variantes obtenidos exitosamente',
   })
   @ApiResponse({
     status: 401,

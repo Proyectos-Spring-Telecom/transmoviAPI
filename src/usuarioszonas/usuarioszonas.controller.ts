@@ -19,7 +19,7 @@ import { UpdateUsuariosZonasEstatusDto } from './dto/update-usuarioszona-estatus
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
-@ApiTags('Usuarios regiones')
+@ApiTags('Usuarios Zonas')
 @ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('usuarioszonas')

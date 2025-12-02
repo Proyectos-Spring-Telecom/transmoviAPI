@@ -138,10 +138,10 @@ SELECT
   d.NumeroSerie AS instalacionDispositivoNumeroSerie,
   d.Marca AS instalacionDispositivoMarca,
   d.Modelo AS instalacionDispositivoModelo,
-  bv.Id AS instalacionBlueVoxId,
-  bv.NumeroSerie AS instalacionBlueVoxNumeroSerie,
-  bv.Marca AS instalacionBlueVoxMarca,
-  bv.Modelo AS instalacionBlueVoxModelo,
+  c.Id AS instalacionContadorId,
+  c.NumeroSerie AS instalacionContadorNumeroSerie,
+  c.Marca AS instalacionContadorMarca,
+  c.Modelo AS instalacionContadorModelo,
   veh.Id AS instalacionVehiculoId,
   veh.Marca AS instalacionVehiculoMarca,
   veh.Modelo AS instalacionVehiculoModelo,
@@ -154,8 +154,8 @@ FROM MantenimientoKilometraje mk
 INNER JOIN Instalaciones i ON mk.IdInstalacion = i.Id
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 LEFT JOIN Vehiculos veh ON i.IdVehiculo = veh.Id AND i.IdCliente = veh.IdCliente
-LEFT JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-LEFT JOIN BlueVoxs bv ON i.IdBlueVox = bv.Id AND i.IdCliente = bv.IdCliente
+LEFT JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
+LEFT JOIN Contadores c ON i.IdContador = c.Id AND i.IdCliente = c.IdCliente
 ORDER BY mk.FHRegistro DESC
 LIMIT ? OFFSET ?;
             `,
@@ -204,10 +204,10 @@ SELECT
   d.NumeroSerie AS instalacionDispositivoNumeroSerie,
   d.Marca AS instalacionDispositivoMarca,
   d.Modelo AS instalacionDispositivoModelo,
-  bv.Id AS instalacionBlueVoxId,
-  bv.NumeroSerie AS instalacionBlueVoxNumeroSerie,
-  bv.Marca AS instalacionBlueVoxMarca,
-  bv.Modelo AS instalacionBlueVoxModelo,
+  c.Id AS instalacionContadorId,
+  c.NumeroSerie AS instalacionContadorNumeroSerie,
+  c.Marca AS instalacionContadorMarca,
+  c.Modelo AS instalacionContadorModelo,
   veh.Id AS instalacionVehiculoId,
   veh.Marca AS instalacionVehiculoMarca,
   veh.Modelo AS instalacionVehiculoModelo
@@ -215,8 +215,8 @@ FROM MantenimientoKilometraje mk
 INNER JOIN Instalaciones i ON mk.IdInstalacion = i.Id
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 LEFT JOIN Vehiculos veh ON i.IdVehiculo = veh.Id AND i.IdCliente = veh.IdCliente
-LEFT JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-LEFT JOIN BlueVoxs bv ON i.IdBlueVox = bv.Id AND i.IdCliente = bv.IdCliente
+LEFT JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
+LEFT JOIN Contadores c ON i.IdContador = c.Id AND i.IdCliente = c.IdCliente
 WHERE c.Id IN (${placeholders})
 ORDER BY mk.FHRegistro DESC
 LIMIT ? OFFSET ?;
@@ -646,7 +646,7 @@ WHERE c.Id IN (${placeholders})
             p.Velocidad AS velocidad,
             p.Estado AS estado
           FROM Posiciones p
-          INNER JOIN Dispositivos d ON p.NumeroSerieDispositivo = d.NumeroSerie
+          INNER JOIN Validadores d ON p.NumeroSerieValidador = d.NumeroSerie
           INNER JOIN Instalaciones i ON d.Id = i.IdDispositivo AND d.IdCliente = i.IdCliente
           LEFT JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
           WHERE i.Id = ?

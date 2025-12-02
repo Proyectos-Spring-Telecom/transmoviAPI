@@ -4,12 +4,13 @@ import { PosicionesController } from './posiciones.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Posiciones } from 'src/entities/Posiciones';
 import { BitacoraModule } from 'src/bitacora/bitacora.module';
-import { Dispositivos } from 'src/entities/Dispositivos';
 import { Usuarios } from 'src/entities/Usuarios';
 import { Clientes } from 'src/entities/Clientes';
+import { Validadores } from 'src/entities/Validadores';
+import { UsuariosZonas } from 'src/entities/UsuariosZonas';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Posiciones, Dispositivos, Usuarios, Clientes]), BitacoraModule],
+  imports: [TypeOrmModule.forFeature([Posiciones, Validadores, Usuarios, Clientes, UsuariosZonas]), BitacoraModule],
   controllers: [PosicionesController],
   providers: [PosicionesService],
 })

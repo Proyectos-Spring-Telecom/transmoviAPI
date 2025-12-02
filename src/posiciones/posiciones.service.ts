@@ -35,7 +35,7 @@ export class PosicionesService {
   // ========================================
   async create(
     createPosicionesDto: CreatePosicionesDto,
-    idUser: number,
+    
   ): Promise<ApiCrudResponse> {
     try {
       //Creamos la posicion
@@ -49,7 +49,7 @@ export class PosicionesService {
         `Se creó una Posicion con Numero de serie Validador: ${posicionSave.numeroSerieValidador}`,
         'CREATE',
         querylogger,
-        idUser,
+        1,
         24,
         EstatusEnumBitcora.SUCCESS,
       );
@@ -72,7 +72,7 @@ export class PosicionesService {
         `Se creó una Posicion con Numero de serie Validador: ${createPosicionesDto.numeroSerieValidador}`,
         'CREATE',
         querylogger,
-        idUser,
+        1,
         24,
         EstatusEnumBitcora.ERROR,
         error.message,
@@ -187,10 +187,10 @@ SELECT
     p.Longitud AS longitud,
     p.FechaHora AS fechaHora,
     p.FHRegistro AS fhRegistro,
-    p.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    p.NumeroSerieValidador AS numeroSerieValidador,
     
-    d.Marca AS marcaDispositivo,
-    d.Modelo AS modeloDispositivo,
+    d.Marca AS marcaValidador,
+    d.Modelo AS modeloValidador,
     d.IdCliente AS idCliente,
 
     CONCAT(
@@ -200,8 +200,8 @@ SELECT
     ) AS NombreCompletoCliente
 
 FROM Posiciones p
-INNER JOIN Dispositivos d
-    ON p.NumeroSerieDispositivo = d.NumeroSerie
+INNER JOIN Validadores d
+    ON p.NumeroSerieValidador = d.NumeroSerie
 INNER JOIN Clientes c
     ON d.IdCliente = c.Id
     
@@ -222,8 +222,8 @@ LIMIT ? OFFSET ?;
     const query = `  
     SELECT COUNT(*) AS total
 FROM Posiciones p
-INNER JOIN Dispositivos d
-    ON p.NumeroSerieDispositivo = d.NumeroSerie
+INNER JOIN Validadores d
+    ON p.NumeroSerieValidador = d.NumeroSerie
 INNER JOIN Clientes c
     ON d.IdCliente = c.Id
 
@@ -249,10 +249,10 @@ SELECT
     p.Longitud AS longitud,
     p.FechaHora AS fechaHora,
     p.FHRegistro AS fhRegistro,
-    p.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    p.NumeroSerieValidador AS numeroSerieValidador,
     
-    d.Marca AS marcaDispositivo,
-    d.Modelo AS modeloDispositivo,
+    d.Marca AS marcaValidador,
+    d.Modelo AS modeloValidador,
     d.IdCliente AS idCliente,
 
     CONCAT(
@@ -262,8 +262,8 @@ SELECT
     ) AS NombreCompletoCliente
 
 FROM Posiciones p
-INNER JOIN Dispositivos d
-    ON p.NumeroSerieDispositivo = d.NumeroSerie
+INNER JOIN Validadores d
+    ON p.NumeroSerieValidador = d.NumeroSerie
 INNER JOIN Clientes c
     ON d.IdCliente = c.Id
 
@@ -283,8 +283,8 @@ LIMIT ? OFFSET ?;
     const query = `  
     SELECT COUNT(*) AS total
 FROM Posiciones p
-INNER JOIN Dispositivos d
-    ON p.NumeroSerieDispositivo = d.NumeroSerie
+INNER JOIN Validadores d
+    ON p.NumeroSerieValidador = d.NumeroSerie
 INNER JOIN Clientes c
     ON d.IdCliente = c.Id
 
@@ -322,10 +322,10 @@ SELECT
     p.Longitud AS longitud,
     p.FechaHora AS fechaHora,
     p.FHRegistro AS fhRegistro,
-    p.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    p.NumeroSerieValidador AS numeroSerieValidador,
     
-    d.Marca AS marcaDispositivo,
-    d.Modelo AS modeloDispositivo,
+    d.Marca AS marcaValidador,
+    d.Modelo AS modeloValidador,
     d.IdCliente AS idCliente,
 
     CONCAT(
@@ -335,8 +335,8 @@ SELECT
     ) AS NombreCompletoCliente
 
 FROM Posiciones p
-INNER JOIN Dispositivos d
-    ON p.NumeroSerieDispositivo = d.NumeroSerie
+INNER JOIN Validadores d
+    ON p.NumeroSerieValidador = d.NumeroSerie
 INNER JOIN Clientes c
     ON d.IdCliente = c.Id
 
@@ -351,8 +351,8 @@ LIMIT ? OFFSET ?;
             `
   SELECT COUNT(*) AS total
 FROM Posiciones p
-INNER JOIN Dispositivos d
-    ON p.NumeroSerieDispositivo = d.NumeroSerie
+INNER JOIN Validadores d
+    ON p.NumeroSerieValidador = d.NumeroSerie
 INNER JOIN Clientes c
     ON d.IdCliente = c.Id
 
@@ -442,9 +442,9 @@ INNER JOIN Clientes c
         p.Longitud AS longitud,
         p.FechaHora AS fechaHora,
         p.FHRegistro AS fhRegistro,
-        p.NumeroSerieDispositivo AS numeroSerieDispositivo,
-        d.Marca AS marcaDispositivo,
-        d.Modelo AS modeloDispositivo,
+        p.NumeroSerieValidador AS numeroSerieValidador,
+        d.Marca AS marcaValidador,
+        d.Modelo AS modeloValidador,
         d.IdCliente AS idCliente,
         CONCAT(
           c.Nombre,
@@ -452,8 +452,8 @@ INNER JOIN Clientes c
           IFNULL(CONCAT(' ', c.ApellidoMaterno), '')
         ) AS NombreCompletoCliente
       FROM Posiciones p
-      INNER JOIN Dispositivos d
-        ON p.NumeroSerieDispositivo = d.NumeroSerie
+      INNER JOIN Validadores d
+        ON p.NumeroSerieValidador = d.NumeroSerie
       INNER JOIN Clientes c
         ON d.IdCliente = c.Id
       WHERE c.Id IN (${placeholders})
@@ -476,8 +476,8 @@ INNER JOIN Clientes c
         p.Longitud AS longitud,
         p.FechaHora AS fechaHora,
         p.FHRegistro AS fhRegistro,
-        p.NumeroSerieDispositivo AS numeroSerieDispositivo,
-        d.Marca AS marcaDispositivo,
+        p.NumeroSerieValidador AS numeroSerieValidador,
+        d.Marca AS marcaValidador,
         d.Modelo AS modeloDispositivo,
         d.IdCliente AS idCliente,
         CONCAT(
@@ -486,8 +486,8 @@ INNER JOIN Clientes c
           IFNULL(CONCAT(' ', c.ApellidoMaterno), '')
         ) AS NombreCompletoCliente
       FROM Posiciones p
-      INNER JOIN Dispositivos d
-        ON p.NumeroSerieDispositivo = d.NumeroSerie
+      INNER JOIN Validadores d
+        ON p.NumeroSerieValidador = d.NumeroSerie
       INNER JOIN Clientes c
         ON d.IdCliente = c.Id
       WHERE c.Id = ? 
@@ -518,10 +518,10 @@ SELECT
     p.Longitud AS longitud,
     p.FechaHora AS fechaHora,
     p.FHRegistro AS fhRegistro,
-    p.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    p.NumeroSerieValidador AS numeroSerieValidador,
     
-    d.Marca AS marcaDispositivo,
-    d.Modelo AS modeloDispositivo,
+    d.Marca AS marcaValidador,
+    d.Modelo AS modeloValidador,
     d.IdCliente AS idCliente,
 
     CONCAT(
@@ -531,8 +531,8 @@ SELECT
     ) AS NombreCompletoCliente
 
 FROM Posiciones p
-INNER JOIN Dispositivos d
-    ON p.NumeroSerieDispositivo = d.NumeroSerie
+INNER JOIN Validadores d
+    ON p.NumeroSerieValidador = d.NumeroSerie
 INNER JOIN Clientes c
     ON d.IdCliente = c.Id
 
@@ -586,10 +586,10 @@ ORDER BY p.Id DESC
         p.Longitud AS longitud,
         p.FechaHora AS fechaHora,
         p.FHRegistro AS fhRegistro,
-        p.NumeroSerieDispositivo AS numeroSerieDispositivo,
+        p.NumeroSerieValidador AS numeroSerieValidador,
         
-        d.Marca AS marcaDispositivo,
-        d.Modelo AS modeloDispositivo,
+        d.Marca AS marcaValidador,
+        d.Modelo AS modeloValidador,
         d.IdCliente AS idCliente,
 
         CONCAT(
@@ -599,8 +599,8 @@ ORDER BY p.Id DESC
         ) AS NombreCompletoCliente
 
       FROM Posiciones p
-      INNER JOIN Dispositivos d
-        ON p.NumeroSerieDispositivo = d.NumeroSerie
+      INNER JOIN Validadores d
+        ON p.NumeroSerieValidador = d.NumeroSerie
       INNER JOIN Clientes c
         ON d.IdCliente = c.Id
       WHERE p.Id = ?;

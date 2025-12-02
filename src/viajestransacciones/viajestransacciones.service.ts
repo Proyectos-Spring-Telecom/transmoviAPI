@@ -163,9 +163,9 @@ FROM Viajes v
 INNER JOIN Clientes c ON v.IdCliente = c.Id
 INNER JOIN Operadores o ON v.IdOperador = o.Id
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
-INNER JOIN Derroteros d ON v.IdDerrotero = d.Id
+INNER JOIN Variantes d ON v.IdVariante = d.Id
 INNER JOIN Rutas r ON d.IdRuta = r.Id
-INNER JOIN Regiones reg ON r.IdRegion = reg.Id
+INNER JOIN Zonas reg ON r.IdZona = reg.Id
 
 -- Transacciones relacionadas al viaje (usamos LEFT JOIN para permitir que los viajes sin transacciones también aparezcan)
 LEFT JOIN ViajesTransacciones vt ON vt.IdViaje = v.Id
@@ -254,9 +254,9 @@ FROM Viajes v
 INNER JOIN Clientes c ON v.IdCliente = c.Id
 INNER JOIN Operadores o ON v.IdOperador = o.Id
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
-INNER JOIN Derroteros d ON v.IdDerrotero = d.Id
+INNER JOIN Variantes d ON v.IdVariante = d.Id
 INNER JOIN Rutas r ON d.IdRuta = r.Id
-INNER JOIN Regiones reg ON r.IdRegion = reg.Id
+INNER JOIN Zonas reg ON r.IdZona = reg.Id
 
 -- Transacciones relacionadas al viaje (usamos LEFT JOIN para permitir que los viajes sin transacciones también aparezcan)
 LEFT JOIN ViajesTransacciones vt ON vt.IdViaje = v.Id
@@ -349,9 +349,9 @@ FROM Viajes v
 INNER JOIN Clientes c ON v.IdCliente = c.Id
 INNER JOIN Operadores o ON v.IdOperador = o.Id
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
-INNER JOIN Derroteros d ON v.IdDerrotero = d.Id
+INNER JOIN Variantes d ON v.IdVariante = d.Id
 INNER JOIN Rutas r ON d.IdRuta = r.Id
-INNER JOIN Regiones reg ON r.IdRegion = reg.Id
+INNER JOIN Zonas reg ON r.IdZona = reg.Id
 
 -- Transacciones relacionadas al viaje (usamos LEFT JOIN para permitir que los viajes sin transacciones también aparezcan)
 LEFT JOIN ViajesTransacciones vt ON vt.IdViaje = v.Id
@@ -482,9 +482,9 @@ FROM Viajes v
 INNER JOIN Clientes c ON v.IdCliente = c.Id
 INNER JOIN Operadores o ON v.IdOperador = o.Id
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
-INNER JOIN Derroteros d ON v.IdDerrotero = d.Id
+INNER JOIN Variantes d ON v.IdVariante = d.Id
 INNER JOIN Rutas r ON d.IdRuta = r.Id
-INNER JOIN Regiones reg ON r.IdRegion = reg.Id
+INNER JOIN Zonas reg ON r.IdZona = reg.Id
 
 -- Transacciones relacionadas al viaje (usamos LEFT JOIN para permitir que los viajes sin transacciones también aparezcan)
 LEFT JOIN ViajesTransacciones vt ON vt.IdViaje = v.Id
@@ -531,9 +531,9 @@ FROM Viajes v
 INNER JOIN Clientes c ON v.IdCliente = c.Id
 INNER JOIN Operadores o ON v.IdOperador = o.Id
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
-INNER JOIN Derroteros d ON v.IdDerrotero = d.Id
+INNER JOIN Variantes d ON v.IdVariante = d.Id
 INNER JOIN Rutas r ON d.IdRuta = r.Id
-INNER JOIN Regiones reg ON r.IdRegion = reg.Id
+INNER JOIN Zonas reg ON r.IdRegion = reg.Id
 
 -- Transacciones relacionadas al viaje (usamos LEFT JOIN para permitir que los viajes sin transacciones también aparezcan)
 LEFT JOIN ViajesTransacciones vt ON vt.IdViaje = v.Id
@@ -603,9 +603,9 @@ FROM Viajes v
 INNER JOIN Clientes c ON v.IdCliente = c.Id
 INNER JOIN Operadores o ON v.IdOperador = o.Id
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
-INNER JOIN Derroteros d ON v.IdDerrotero = d.Id
+INNER JOIN Variantes d ON v.IdVariante = d.Id
 INNER JOIN Rutas r ON d.IdRuta = r.Id
-INNER JOIN Regiones reg ON r.IdRegion = reg.Id
+INNER JOIN Zonas reg ON r.IdZona = reg.Id
 
 -- Transacciones relacionadas al viaje (usamos LEFT JOIN para permitir que los viajes sin transacciones también aparezcan)
 LEFT JOIN ViajesTransacciones vt ON vt.IdViaje = v.Id
@@ -651,9 +651,9 @@ FROM Viajes v
 INNER JOIN Clientes c ON v.IdCliente = c.Id
 INNER JOIN Operadores o ON v.IdOperador = o.Id
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
-INNER JOIN Derroteros d ON v.IdDerrotero = d.Id
+INNER JOIN Variantes d ON v.IdVariante = d.Id
 INNER JOIN Rutas r ON d.IdRuta = r.Id
-INNER JOIN Regiones reg ON r.IdRegion = reg.Id
+INNER JOIN Zonas reg ON r.IdZona = reg.Id
 
 -- Transacciones relacionadas al viaje (usamos LEFT JOIN para permitir que los viajes sin transacciones también aparezcan)
 LEFT JOIN ViajesTransacciones vt ON vt.IdViaje = v.Id
@@ -732,9 +732,9 @@ FROM Viajes v
 INNER JOIN Clientes c ON v.IdCliente = c.Id
 INNER JOIN Operadores o ON v.IdOperador = o.Id
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
-INNER JOIN Derroteros d ON v.IdDerrotero = d.Id
+INNER JOIN Variantes d ON v.IdVariante = d.Id
 INNER JOIN Rutas r ON d.IdRuta = r.Id
-INNER JOIN Regiones reg ON r.IdRegion = reg.Id
+INNER JOIN Zonas reg ON r.IdZona = reg.Id
 
 -- Transacciones relacionadas al viaje (usamos LEFT JOIN para permitir que los viajes sin transacciones también aparezcan)
 LEFT JOIN ViajesTransacciones vt ON vt.IdViaje = v.Id
@@ -776,9 +776,9 @@ FROM Viajes v
 INNER JOIN Clientes c ON v.IdCliente = c.Id
 INNER JOIN Operadores o ON v.IdOperador = o.Id
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
-INNER JOIN Derroteros d ON v.IdDerrotero = d.Id
+INNER JOIN Variantes d ON v.IdVariante = d.Id
 INNER JOIN Rutas r ON d.IdRuta = r.Id
-INNER JOIN Regiones reg ON r.IdRegion = reg.Id
+INNER JOIN Zonas reg ON r.IdZona = reg.Id
 
 -- Transacciones relacionadas al viaje (usamos LEFT JOIN para permitir que los viajes sin transacciones también aparezcan)
 LEFT JOIN ViajesTransacciones vt ON vt.IdViaje = v.Id
@@ -893,9 +893,9 @@ FROM Viajes v
 INNER JOIN Clientes c ON v.IdCliente = c.Id
 INNER JOIN Operadores o ON v.IdOperador = o.Id
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
-INNER JOIN Derroteros d ON v.IdDerrotero = d.Id
+INNER JOIN Variantes d ON v.IdVariante = d.Id
 INNER JOIN Rutas r ON d.IdRuta = r.Id
-INNER JOIN Regiones reg ON r.IdRegion = reg.Id
+INNER JOIN Zonas reg ON r.IdZona = reg.Id
 
 -- Transacciones relacionadas al viaje (usamos LEFT JOIN para permitir que los viajes sin transacciones también aparezcan)
 LEFT JOIN ViajesTransacciones vt ON vt.IdViaje = v.Id

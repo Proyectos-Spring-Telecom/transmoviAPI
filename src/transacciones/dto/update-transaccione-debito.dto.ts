@@ -81,5 +81,5 @@ export class UpdateTransaccioneDebitoDto {
     })
     @IsString()
     @IsNotEmpty()
-    numeroSerieDispositivo: string;
+    numeroSerieValidador: string;
 }

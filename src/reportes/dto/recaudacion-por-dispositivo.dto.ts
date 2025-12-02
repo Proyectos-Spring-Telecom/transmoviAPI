@@ -31,12 +31,12 @@ export class RecaudacionPorDispositivoDto {
 
   @ApiProperty({
     example: 1,
-    description: 'ID del dispositivo para filtrar. Si no se proporciona, se mostrarán todos los dispositivos del cliente',
+    description: 'ID del validador para filtrar. Si no se proporciona, se mostrarán todos los validadores del cliente',
     required: false,
   })
   @IsOptional()
   @IsInt()
-  idDispositivo?: number;
+  idValidador?: number;
 
   @ApiProperty({
     example: 1,

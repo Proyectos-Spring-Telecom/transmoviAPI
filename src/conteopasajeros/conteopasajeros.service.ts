@@ -132,9 +132,9 @@ SELECT
     cp.Diferencia AS diferencia,
     cp.FechaHora AS fechaHora,
     cp.FHRegistro AS fhRegistro,
-    cp.NumeroSerieBlueVox AS numeroSerieBlueVox,
-    bv.Marca AS marcaBlueVox,
-    bv.Modelo AS modeloBlueVox,
+    cp.NumeroSerieContador AS NumeroSerieContador,
+    bv.Marca AS marcaContador,
+    bv.Modelo AS modeloContador,
     c.Id AS idCliente,
     CONCAT(
         c.Nombre,
@@ -143,7 +143,7 @@ SELECT
     ) AS NombreCompletoCliente
 FROM ConteoPasajeros cp
 INNER JOIN Contadores bv
-    ON cp.NumeroSerieBlueVox = bv.NumeroSerie
+    ON cp.NumeroSerieContador = bv.NumeroSerie
 INNER JOIN Clientes c
     ON bv.IdCliente = c.Id
 
@@ -165,7 +165,7 @@ LIMIT ? OFFSET ?;
     SELECT COUNT(*) AS total
 FROM ConteoPasajeros cp
 INNER JOIN Contadores bv
-    ON cp.NumeroSerieBlueVox = bv.NumeroSerie
+    ON cp.NumeroSerieContador = bv.NumeroSerie
 INNER JOIN Clientes c
     ON bv.IdCliente = c.Id
 
@@ -187,9 +187,9 @@ SELECT
     cp.Diferencia AS diferencia,
     cp.FechaHora AS fechaHora,
     cp.FHRegistro AS fhRegistro,
-    cp.NumeroSerieBlueVox AS numeroSerieBlueVox,
-    bv.Marca AS marcaBlueVox,
-    bv.Modelo AS modeloBlueVox,
+    cp.NumeroSerieContador AS NumeroSerieContador,
+    bv.Marca AS marcaContador,
+    bv.Modelo AS modeloContador,
     c.Id AS idCliente,
     CONCAT(
         c.Nombre,
@@ -198,7 +198,7 @@ SELECT
     ) AS NombreCompletoCliente
 FROM ConteoPasajeros cp
 INNER JOIN Contadores bv
-    ON cp.NumeroSerieBlueVox = bv.NumeroSerie
+    ON cp.NumeroSerieContador = bv.NumeroSerie
 INNER JOIN Clientes c
     ON bv.IdCliente = c.Id
 
@@ -219,7 +219,7 @@ LIMIT ? OFFSET ?;
     SELECT COUNT(*) AS total
 FROM ConteoPasajeros cp
 INNER JOIN Contadores bv
-    ON cp.NumeroSerieBlueVox = bv.NumeroSerie
+    ON cp.NumeroSerieContador = bv.NumeroSerie
 INNER JOIN Clientes c
     ON bv.IdCliente = c.Id
 
@@ -250,9 +250,9 @@ SELECT
     cp.Diferencia AS diferencia,
     cp.FechaHora AS fechaHora,
     cp.FHRegistro AS fhRegistro,
-    cp.NumeroSerieBlueVox AS numeroSerieBlueVox,
-    bv.Marca AS marcaBlueVox,
-    bv.Modelo AS modeloBlueVox,
+    cp.NumeroSerieContador AS NumeroSerieContador,
+    bv.Marca AS marcaContador,
+    bv.Modelo AS modeloContador,
     c.Id AS idCliente,
     CONCAT(
         c.Nombre,
@@ -261,7 +261,7 @@ SELECT
     ) AS NombreCompletoCliente
 FROM ConteoPasajeros cp
 INNER JOIN Contadores bv
-    ON cp.NumeroSerieBlueVox = bv.NumeroSerie
+    ON cp.NumeroSerieContador = bv.NumeroSerie
 INNER JOIN Clientes c
     ON bv.IdCliente = c.Id
 
@@ -277,7 +277,7 @@ LIMIT ? OFFSET ?;
   SELECT COUNT(*) AS total
 FROM ConteoPasajeros cp
 INNER JOIN Contadores bv
-    ON cp.NumeroSerieBlueVox = bv.NumeroSerie
+    ON cp.NumeroSerieContador = bv.NumeroSerie
 INNER JOIN Clientes c
     ON bv.IdCliente = c.Id
 
@@ -376,9 +376,9 @@ SELECT
     cp.Diferencia AS diferencia,
     cp.FechaHora AS fechaHora,
     cp.FHRegistro AS fhRegistro,
-    cp.NumeroSerieBlueVox AS numeroSerieBlueVox,
-    bv.Marca AS marcaBlueVox,
-    bv.Modelo AS modeloBlueVox,
+    cp.NumeroSerieContador AS NumeroSerieContador,
+    bv.Marca AS marcaContador,
+    bv.Modelo AS modeloContador,
     c.Id AS idCliente,
     CONCAT(
         c.Nombre,
@@ -387,7 +387,7 @@ SELECT
     ) AS NombreCompletoCliente
 FROM ConteoPasajeros cp
 INNER JOIN Contadores bv
-    ON cp.NumeroSerieBlueVox = bv.NumeroSerie
+    ON cp.NumeroSerieContador = bv.NumeroSerie
 INNER JOIN Clientes c
     ON bv.IdCliente = c.Id
 WHERE cp.FechaHora BETWEEN '${fechaInicio}T00:00:00' AND '${fechaFin}T23:59:00'
@@ -413,7 +413,7 @@ LIMIT ? OFFSET ?;
     SELECT COUNT(*) AS total
 FROM ConteoPasajeros cp
 INNER JOIN Contadores bv
-    ON cp.NumeroSerieBlueVox = bv.NumeroSerie
+    ON cp.NumeroSerieContador = bv.NumeroSerie
 INNER JOIN Clientes c
     ON bv.IdCliente = c.Id
 WHERE cp.FechaHora BETWEEN '${fechaInicio}T00:00:00' AND '${fechaFin}T23:59:00'
@@ -443,9 +443,9 @@ SELECT
     cp.Diferencia AS diferencia,
     cp.FechaHora AS fechaHora,
     cp.FHRegistro AS fhRegistro,
-    cp.NumeroSerieBlueVox AS numeroSerieBlueVox,
-    bv.Marca AS marcaBlueVox,
-    bv.Modelo AS modeloBlueVox,
+    cp.NumeroSerieContador AS NumeroSerieContador,
+    bv.Marca AS marcaContador,
+    bv.Modelo AS modeloContador,
     c.Id AS idCliente,
     CONCAT(
         c.Nombre,
@@ -454,7 +454,7 @@ SELECT
     ) AS NombreCompletoCliente
 FROM ConteoPasajeros cp
 INNER JOIN Contadores bv
-    ON cp.NumeroSerieBlueVox = bv.NumeroSerie
+    ON cp.NumeroSerieContador = bv.NumeroSerie
 INNER JOIN Clientes c
     ON bv.IdCliente = c.Id
 WHERE cp.FechaHora BETWEEN '${fechaInicio}T00:00:00' AND '${fechaFin}T23:59:00'
@@ -478,7 +478,7 @@ LIMIT ? OFFSET ?;
     SELECT COUNT(*) AS total
 FROM ConteoPasajeros cp
 INNER JOIN Contadores bv
-    ON cp.NumeroSerieBlueVox = bv.NumeroSerie
+    ON cp.NumeroSerieContador = bv.NumeroSerie
 INNER JOIN Clientes c
     ON bv.IdCliente = c.Id
 WHERE cp.FechaHora BETWEEN '${fechaInicio}T00:00:00' AND '${fechaFin}T23:59:00'
@@ -607,9 +607,9 @@ SELECT
     cp.Diferencia AS diferencia,
     cp.FechaHora AS fechaHora,
     cp.FHRegistro AS fhRegistro,
-    cp.NumeroSerieBlueVox AS numeroSerieBlueVox,
-    bv.Marca AS marcaBlueVox,
-    bv.Modelo AS modeloBlueVox,
+    cp.NumeroSerieContador AS NumeroSerieContador,
+    bv.Marca AS marcaContador,
+    bv.Modelo AS modeloContador,
     c.Id AS idCliente,
     CONCAT(
         c.Nombre,
@@ -618,7 +618,7 @@ SELECT
     ) AS NombreCompletoCliente
 FROM ConteoPasajeros cp
 INNER JOIN Contadores bv
-    ON cp.NumeroSerieBlueVox = bv.NumeroSerie
+    ON cp.NumeroSerieContador = bv.NumeroSerie
 INNER JOIN Clientes c
     ON bv.IdCliente = c.Id
 WHERE cp.FechaHora BETWEEN '${fechaInicio}T00:00:00' AND '${fechaFin}T23:59:00'
@@ -635,7 +635,7 @@ LIMIT ? OFFSET ?;
   SELECT COUNT(*) AS total
 FROM ConteoPasajeros cp
 INNER JOIN Contadores bv
-    ON cp.NumeroSerieBlueVox = bv.NumeroSerie
+    ON cp.NumeroSerieContador = bv.NumeroSerie
 INNER JOIN Clientes c
     ON bv.IdCliente = c.Id
 WHERE cp.FechaHora BETWEEN '${fechaInicio}TT00:00:00' AND '${fechaFin}T23:59:00'
@@ -926,9 +926,9 @@ WHERE cp.FechaHora BETWEEN '${fechaInicio}TT00:00:00' AND '${fechaFin}T23:59:00'
       //Actualizamos los datos de conteopasajeros
       await this.conteopasajeroRepository.update(id, updateConteoPasajerosDto);
 
-      const bluevox = await this.contadoresRepository.findOne({ where: { numeroSerie: conteoPasajero.numeroSerieContador } });
-      if (bluevox) {
-        const usuario = await this.usuariosRepository.findOne({ where: { idCliente: bluevox.idCliente, idRol: 2 } })
+      const contador = await this.contadoresRepository.findOne({ where: { numeroSerie: conteoPasajero.numeroSerieContador } });
+      if (contador) {
+        const usuario = await this.usuariosRepository.findOne({ where: { idCliente: contador.idCliente, idRol: 2 } })
         // Registro en la bitácora SUCCESS
         const querylogger = { updateConteoPasajerosDto };
         await this.bitacoraLogger.logToBitacora(

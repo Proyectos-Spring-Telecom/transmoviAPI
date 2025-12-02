@@ -20,7 +20,7 @@ import { applySchema } from "src/common/apply-schema.decorator";
 @Index('IX_Viajes_IdTurno_Inicio', ['inicio', 'idTurno'], {})
 @Index('IX_Viajes_IdOperador_Inicio', ['inicio', 'idOperador'], {})
 @Index('IX_Viajes_IdCliente_Inicio', ['inicio', 'idCliente'], {})
-@Index('FK_Viajes_Derroteros', ['idVariante'], {})
+@Index('FK_Viajes_Variantes', ['idVariante'], {})
 @Index('FK_Viajes_Clientes', ['idCliente'], {})
 @Entity('Viajes')
 export class Viajes {

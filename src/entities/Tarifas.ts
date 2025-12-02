@@ -10,7 +10,7 @@ import { Variantes } from "./Variantes";
 import { applySchema } from "src/common/apply-schema.decorator";
 
 @applySchema
-@Index("FK_Tarifas_Derroteros", ["idVariante"], {})
+@Index("FK_Tarifas_Variantes", ["idVariante"], {})
 @Entity("Tarifas")
 export class Tarifas {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })

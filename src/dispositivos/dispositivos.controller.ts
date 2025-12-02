@@ -24,9 +24,9 @@ import { UpdateValidadorEstadoDto } from 'src/validadores/dto/update-validador-e
 @ApiTags('Validadores')
 @ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
-@Controller('dispositivos')
-export class DispositivosController {
-  constructor(private readonly dispositivosService: ValidadoresService) {}
+@Controller('validadores')
+export class ValidadoresController {
+  constructor(private readonly validadoresService: ValidadoresService) {}
 
   @Post()
   createDispositivo(
@@ -34,18 +34,18 @@ export class DispositivosController {
     @Request() req,
   ) {
     const idUser = req.user.userId;
-    return this.dispositivosService.createValidador(
+    return this.validadoresService.createValidador(
       createDispositivoDto,
       +idUser,
     );
   }
 
   @Get('list')
-  findAllListDispositivos(@Request() req): Promise<ApiResponseCommon> {
+  findAllListValidadores(@Request() req): Promise<ApiResponseCommon> {
     const idUser = req.user.userId;
     const cliente = req.user.cliente;
     const rol = req.user.rol;
-    return this.dispositivosService.findAllList(+cliente, +rol);
+    return this.validadoresService.findAllList(+cliente, +rol);
   }
 
   @Get('by-cliente/:idCliente')
@@ -56,22 +56,22 @@ export class DispositivosController {
     const idUser = req.user.userId;
     const cliente = req.user.cliente;
     const rol = req.user.rol;
-    return await this.dispositivosService.findAllListDispositivosClientes(idCliente, +cliente);
+    return await this.validadoresService.findAllListValidadoresClientes(idCliente, +cliente);
   }
 
   @Get('clientes/:id')
-  async findAllDispositivosClientes(
+  async findAllValidadoresClientes(
     @Param('id', ParseIntPipe) id: number,
     @Request() req,
   ): Promise<ApiResponseCommon> {
     const idUser = req.user.userId;
     const cliente = req.user.cliente;
     const rol = req.user.rol;
-    return await this.dispositivosService.findAllListValidadoresClientes(+id, +cliente);
+    return await this.validadoresService.findAllListValidadoresClientes(+id, +cliente);
   }
 
   @Get(':page/:limit')
-  async findAllDispositivos(
+  async findAllValidadores(
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,
     @Request() req,
@@ -79,7 +79,7 @@ export class DispositivosController {
     const idUser = req.user.userId;
     const cliente = req.user.cliente;
     const rol = req.user.rol;
-    return this.dispositivosService.findAll(+cliente, +rol, page, limit);
+    return this.validadoresService.findAll(+cliente, +rol, page, limit);
   }
 
   @Get(':id')
@@ -87,7 +87,7 @@ export class DispositivosController {
     const idUser = req.user.userId;
     const cliente = req.user.cliente;
     const rol = req.user.rol;
-    return this.dispositivosService.findOneValidador(+id, +cliente, +rol);
+    return this.validadoresService.findOneValidador(+id, +cliente, +rol);
   }
 
     @Patch('actualizar/estado/:id')
@@ -97,7 +97,7 @@ export class DispositivosController {
     @Body() updateDispositivoEstadoDto: UpdateValidadorEstadoDto,
   ) {
     const idUser = req.user.userId;
-    return this.dispositivosService.updateValidadorEstado(
+    return this.validadoresService.updateValidadorEstado(
       +id,
       +idUser,
       updateDispositivoEstadoDto,
@@ -111,7 +111,7 @@ export class DispositivosController {
     @Body() updateDispositivoEstatusDto: UpdateValidadorEstatusDto,
   ) {
     const idUser = req.user.userId;
-    return this.dispositivosService.updateValidadorEstatus(
+    return this.validadoresService.updateValidadorEstatus(
       +id,
       +idUser,
       updateDispositivoEstatusDto,
@@ -125,7 +125,7 @@ export class DispositivosController {
     @Body() updateDispositivoDto: UpdateValidadorDto,
   ) {
     const idUser = req.user.userId;
-    return this.dispositivosService.updateValidador(
+    return this.validadoresService.updateValidador(
       +id,
       +idUser,
       updateDispositivoDto,
@@ -135,6 +135,6 @@ export class DispositivosController {
   @Delete(':id')
   removeDispositivo(@Param('id') id: string, @Request() req) {
     const idUser = req.user.userId;
-    return this.dispositivosService.removeValidador(+id, +idUser);
+    return this.validadoresService.removeValidador(+id, +idUser);
   }
 }

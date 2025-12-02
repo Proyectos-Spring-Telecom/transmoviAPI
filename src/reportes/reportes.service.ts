@@ -121,9 +121,9 @@ INNER JOIN Monederos m ON td.NumeroSerieMonedero = m.NumeroSerie
 INNER JOIN Clientes c ON m.IdCliente = c.Id
 LEFT JOIN ViajesTransacciones vt ON vt.IdTransaccionDebito = td.Id
 LEFT JOIN Viajes v ON vt.IdViaje = v.Id
-LEFT JOIN Derroteros d ON v.IdDerrotero = d.Id
+LEFT JOIN Variantes d ON v.IdVariante = d.Id
 LEFT JOIN Rutas r ON d.IdRuta = r.Id
-LEFT JOIN Regiones reg ON r.IdRegion = reg.Id
+LEFT JOIN Zonas reg ON r.IdZona = reg.Id
 LEFT JOIN ViajesConteos vc_rel ON vc_rel.IdViaje = v.Id
 LEFT JOIN ConteoPasajeros vc ON vc_rel.IdConteo = vc.Id
 ${whereClause}
@@ -385,7 +385,7 @@ FROM (
     LEFT JOIN Turnos t ON v.IdTurno = t.Id
     LEFT JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
     LEFT JOIN Vehiculos veh ON ins.IdVehiculo = veh.Id
-    LEFT JOIN Derroteros d ON v.IdDerrotero = d.Id
+    LEFT JOIN Variantes d ON v.IdVariante = d.Id
     LEFT JOIN Rutas r ON d.IdRuta = r.Id
     WHERE c.Id IN (${placeholders})
     ${fechaInicio ? `AND DATE(td.FHRegistro) >= ?` : ''}
@@ -511,7 +511,7 @@ ORDER BY datos.ingresos DESC, datos.numeroEconomico ASC;
 SELECT
     datos.idInstalacion,
     datos.serieDispositivo,
-    datos.serieBlueVox,
+    datos.serieContador,
     datos.numeroEconomico,
     datos.placa,
     datos.vehiculo,
@@ -525,7 +525,7 @@ FROM (
     SELECT
         ins.Id AS idInstalacion,
         disp.NumeroSerie AS serieDispositivo,
-        bv.NumeroSerie AS serieBlueVox,
+        c.NumeroSerie AS serieContador,
         veh.NumeroEconomico AS numeroEconomico,
         veh.Placa AS placa,
         CONCAT(veh.NumeroEconomico, ' - ', veh.Placa) AS vehiculo,
@@ -539,32 +539,32 @@ FROM (
     LEFT JOIN Viajes v ON vt.IdViaje = v.Id
     LEFT JOIN Turnos t ON v.IdTurno = t.Id
     LEFT JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
-    LEFT JOIN Dispositivos disp ON ins.IdDispositivo = disp.Id
-    LEFT JOIN BlueVoxs bv ON ins.IdBlueVox = bv.Id
+    LEFT JOIN Validadores disp ON ins.IdValidador = disp.Id
+    LEFT JOIN Contadores c ON ins.IdContador = c.Id
     LEFT JOIN Vehiculos veh ON ins.IdVehiculo = veh.Id
     WHERE c.Id IN (${placeholders})
     ${fechaInicio ? `AND DATE(td.FHRegistro) >= ?` : ''}
     ${fechaFin ? `AND DATE(td.FHRegistro) <= ?` : ''}
-    ${filtros.idDispositivo ? 'AND disp.Id = ?' : ''}
+    ${filtros.idValidador ? 'AND disp.Id = ?' : ''}
     ${filtros.idInstalacion ? 'AND ins.Id = ?' : ''}
-    GROUP BY ins.Id, disp.NumeroSerie, bv.NumeroSerie, veh.NumeroEconomico, veh.Placa, disp.EstadoActual
+    GROUP BY ins.Id, disp.NumeroSerie, c.NumeroSerie, veh.NumeroEconomico, veh.Placa, disp.EstadoActual
 ) AS datos
 LEFT JOIN (
     SELECT 
-        p1.NumeroSerieDispositivo,
+        p1.NumeroSerieValidador,
         p1.Latitud,
         p1.Longitud,
         p1.FechaHora
     FROM Posiciones p1
     INNER JOIN (
         SELECT 
-            NumeroSerieDispositivo,
+            NumeroSerieValidador,
             MAX(FechaHora) AS MaxFechaHora
         FROM Posiciones
-        GROUP BY NumeroSerieDispositivo
-    ) p2 ON p1.NumeroSerieDispositivo = p2.NumeroSerieDispositivo 
+        GROUP BY NumeroSerieValidador
+    ) p2 ON p1.NumeroSerieValidador = p2.NumeroSerieValidador 
         AND p1.FechaHora = p2.MaxFechaHora
-) AS pos ON pos.NumeroSerieDispositivo = datos.serieDispositivo
+) AS pos ON pos.NumeroSerieValidador = datos.serieDispositivo
 ORDER BY datos.ingresos DESC, datos.serieDispositivo ASC;
       `;
 
@@ -581,8 +581,8 @@ ORDER BY datos.ingresos DESC, datos.serieDispositivo ASC;
       }
       
       // Parámetro de dispositivo si existe
-      if (filtros.idDispositivo) {
-        parametrosCompletos.push(filtros.idDispositivo);
+      if (filtros.idValidador) {
+        parametrosCompletos.push(filtros.idValidador);
       }
       
       // Parámetro de instalación si existe
@@ -604,7 +604,7 @@ ORDER BY datos.ingresos DESC, datos.serieDispositivo ASC;
       const data = resultados.map((row: any) => ({
         idInstalacion: row.idInstalacion ? Number(row.idInstalacion) : null,
         serieDispositivo: row.serieDispositivo || null,
-        serieBlueVox: row.serieBlueVox || null,
+        serieContador: row.serieContador || null,
         numeroEconomico: row.numeroEconomico || null,
         placa: row.placa || null,
         vehiculo: row.vehiculo || null,

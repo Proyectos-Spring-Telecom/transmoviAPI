@@ -1215,18 +1215,18 @@ ORDER BY i.Id DESC;
         });
       }
 
-      //verificamos que exista el bluevoxs a actualizar
+      //verificamos que exista el contadores a actualizar
       if (updateInstalacioneDto.estatusContadoresAnterior) {
-        //Actualizamos el estado del bluevoxs anterior
+        //Actualizamos el estado del contadores anterior
         await this.contadoresRepository.update(instalacion.idContador, {
           estadoActual: updateInstalacioneDto.estatusContadoresAnterior,
         });
-        //Actualizamos el estado del bluevoxs nuevo a asignado
+        //Actualizamos el estado del contadores nuevo a asignado
         await this.contadoresRepository.update(
           Number(updateInstalacioneDto.idContador),
           { estadoActual: EstadoComponente.ASIGNADO },
         );
-        //Actualizamos el bluevoxs en la instalacion
+        //Actualizamos el contadores en la instalacion
         await this.instalacionesRepository.update(id, {
           idContador: updateInstalacioneDto.idContador,
         });

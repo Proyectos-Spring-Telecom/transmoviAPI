@@ -192,7 +192,7 @@ ORDER BY d.Id DESC;
         ...item,
         id: Number(item.id),
         idDispositivo: Number(item.idDispositivo),
-        idBlueVox: Number(item.idBlueVox),
+        idContador: Number(item.idContador),
         idVehiculo: Number(item.idVehiculo),
       }));
 
@@ -224,19 +224,19 @@ SELECT
     up.Longitud AS longitud,
     up.FechaHora AS fechaHora,
     up.FHRegistro AS fhRegistro,
-    up.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    up.NumeroSerieValidador AS numeroSerieValidador,
     
-    -- Dispositivo
+    -- Validador
   d.Id AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
+  d.NumeroSerie AS numeroSerieValidador,
+  d.Marca AS marcaValidador,
+  d.Modelo AS modeloValidador,
 
-  -- BlueVox
-  i.IdBlueVox AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  -- Contador
+  i.IdContador AS idContador,
+  c.NumeroSerie AS numeroSerieContador,
+  c.Marca AS marcaContador,
+  c.Modelo AS modeloContador,
   
   -- Vehículo
   i.IdVehiculo AS idVehiculo,
@@ -253,11 +253,11 @@ SELECT
     ) AS nombreCompletoCliente
 
 FROM Instalaciones i
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
+INNER JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN Contadores c ON i.IdContador = c.Id AND i.IdCliente = c.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
-INNER JOIN UltimaPosicion up ON d.NumeroSerie = up.NumeroSerieDispositivo
+INNER JOIN UltimaPosicion up ON d.NumeroSerie = up.NumeroSerieValidador
     
 WHERE c.Id IN (${cliente})   -- 🔹 aquí colocas el/los ID(s) del cliente que quieres consultar
 AND i.Estatus = 1  -- Solo instalaciones activas
@@ -284,7 +284,7 @@ ORDER BY up.Id DESC;
       // Solo la fecha del momento
       const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())}`;
       let recorridoMonitoreo;
-      const { idCliente, NumeroSerieDispositivo } = recorridoMonitoreoDto
+      const { idCliente, NumeroSerieValidador } = recorridoMonitoreoDto
       recorridoMonitoreo = await this.usuarioszonasRepository.query(
         `
 SELECT
@@ -297,19 +297,19 @@ SELECT
     up.Longitud AS longitud,
     up.FechaHora AS fechaHora,
     up.FHRegistro AS fhRegistro,
-    up.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    up.NumeroSerieValidador AS numeroSerieValidador,
     
     -- Dispositivo
   d.Id AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
+  d.NumeroSerie AS numeroSerieValidador,
   d.Marca AS marcaDispositivo,
   d.Modelo AS modeloDispositivo,
 
-  -- BlueVox
-  i.IdBlueVox AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  -- Contador
+  i.IdContador AS idContador,
+  c.NumeroSerie AS numeroSerieContador,
+  c.Marca AS marcaContador,
+  c.Modelo AS modeloContador,
   
   -- Vehículo
   i.IdVehiculo AS idVehiculo,
@@ -326,16 +326,16 @@ SELECT
     ) AS nombreCompletoCliente
 
 FROM Instalaciones i
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
+INNER JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN Contadores c ON i.IdContador = c.Id AND i.IdCliente = c.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
-INNER JOIN Posiciones up ON d.NumeroSerie = up.NumeroSerieDispositivo
+INNER JOIN Posiciones up ON d.NumeroSerie = up.NumeroSerieValidador
 
 WHERE c.Id IN (${idCliente})   -- 🔹 aquí colocas el/los ID(s) del cliente que quieres consultar
 AND up.FechaHora >= '${fechaActual}T00:00:00Z'
 AND up.FechaHora < '${fechaActual}T23:59:59Z'
-AND up.NumeroSerieDispositivo = '${NumeroSerieDispositivo}'
+AND up.NumeroSerieValidador = '${NumeroSerieValidador}'
   
 
 ORDER BY i.Id DESC
@@ -346,7 +346,7 @@ ORDER BY i.Id DESC
         ...item,
         id: Number(item.id),
         idDispositivo: Number(item.idDispositivo),
-        idBlueVox: Number(item.idBlueVox),
+        idContador: Number(item.idContador),
         idVehiculo: Number(item.idVehiculo),
       }));
 
@@ -362,7 +362,7 @@ ORDER BY i.Id DESC
       console.log(error)
       if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
-        message: 'Error al obtener listado derroteros',
+        message: 'Error al obtener listado variantes',
         error: error.message,
       });
     }

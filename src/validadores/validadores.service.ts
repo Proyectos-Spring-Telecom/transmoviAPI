@@ -220,7 +220,7 @@ ORDER BY d.Id DESC;
   c.ApellidoMaterno AS apellidoMaternoCliente,
   c.Estatus AS estatusCliente
 
-FROM Dispositivos d
+FROM Validadores d
 INNER JOIN Clientes c ON d.IdCliente = c.Id
 
 WHERE d.IdCliente IN (${cliente})   -- 🔹 aquí colocas el ID del cliente que quieres consultar

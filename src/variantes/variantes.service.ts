@@ -697,17 +697,17 @@ ORDER BY d.Id DESC;
   }
 
   // ========================================
-  // 🔹 OBTENER DERROTEROS POR RUTA
+  // 🔹 OBTENER VARIANTES POR RUTA
   // ========================================
   async findByRuta(idRuta: number, idUser: number, rol: number) {
     try {
-      // Consulta directa de derroteros por ruta (solo la ruta especificada)
-      const derroteros = await this.variantesRepository.query(
+      // Consulta directa de variantes por ruta (solo la ruta especificada)
+      const variantes = await this.variantesRepository.query(
         `
 SELECT 
-  -- Datos del derrotero (datos principales)
+  -- Datos del variante (datos principales)
   d.Id AS id,
-  d.Nombre AS nombreDerrotero,
+  d.Nombre AS nombreVariante,
   d.PuntoInicio AS puntoInicio,
   d.PuntoFin AS puntoFin,
   d.RecorridoDetallado AS recorridoDetallado,
@@ -747,10 +747,10 @@ SELECT
   c.Estatus AS estatusCliente,
   CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
 
-FROM Derroteros d
+FROM Variantes d
 INNER JOIN Rutas ru ON d.IdRuta = ru.Id
-INNER JOIN Regiones r ON ru.IdRegion = r.Id
-LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Zonas r ON ru.IdZona = r.Id
+LEFT JOIN Zonas rf ON ru.IdZonaFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
 
 WHERE 
@@ -766,7 +766,7 @@ ORDER BY d.Id DESC
       );
 
       // Mapeo de resultados con conversión de tipos
-      const data = derroteros.map((item) => ({
+      const data = variantes.map((item) => ({
         ...item,
         id: Number(item.id),
         idRuta: Number(item.idRuta),
@@ -787,13 +787,13 @@ ORDER BY d.Id DESC
         throw error;
       }
       throw new InternalServerErrorException({
-        message: 'Error al obtener derroteros por ruta',
+        message: 'Error al obtener variantes por ruta',
         error: error.message,
       });
     }
   }
 
-  private async consultarDerroteroOne(cliente: number, id: number) {
+  private async consultarVarianteByRuta(cliente: number, id: number) {
     const { ids, placeholders } = await this.clienteHijos(cliente);
     const query = `
   SELECT 

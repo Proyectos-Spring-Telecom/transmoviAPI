@@ -132,7 +132,7 @@ SELECT
             'diferencia', cp.Diferencia,
             'fechaHora', cp.FechaHora,
             'fhRegistro', cp.FHRegistro,
-            'numeroSerieBlueVox', cp.NumeroSerieBlueVox
+            'numeroSerieContador', cp.NumeroSerieContador
         )
     ) AS conteos
 
@@ -140,9 +140,9 @@ FROM Viajes v
 INNER JOIN Clientes c ON v.IdCliente = c.Id
 INNER JOIN Operadores o ON v.IdOperador = o.Id
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
-INNER JOIN Derroteros d ON v.IdDerrotero = d.Id
+INNER JOIN Derrote  ros d ON v.IdDerrotero = d.Id
 INNER JOIN Rutas r ON d.IdRuta = r.Id
-INNER JOIN Regiones reg ON r.IdRegion = reg.Id
+INNER JOIN Zonas reg ON r.IdZona = reg.Id
 
 -- Conteos relacionados al viaje
 LEFT JOIN ViajesConteos vc ON vc.IdViaje = v.Id
@@ -213,7 +213,7 @@ SELECT
             'diferencia', cp.Diferencia,
             'fechaHora', cp.FechaHora,
             'fhRegistro', cp.FHRegistro,
-            'numeroSerieBlueVox', cp.NumeroSerieBlueVox
+            'numeroSerieContador', cp.NumeroSerieContador
         )
     ) AS conteos
 
@@ -221,9 +221,9 @@ FROM Viajes v
 INNER JOIN Clientes c ON v.IdCliente = c.Id
 INNER JOIN Operadores o ON v.IdOperador = o.Id
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
-INNER JOIN Derroteros d ON v.IdDerrotero = d.Id
+INNER JOIN Variantes d ON v.IdVariante = d.Id
 INNER JOIN Rutas r ON d.IdRuta = r.Id
-INNER JOIN Regiones reg ON r.IdRegion = reg.Id
+INNER JOIN Zonas reg ON r.IdZona = reg.Id
 
 -- Conteos relacionados al viaje
 LEFT JOIN ViajesConteos vc ON vc.IdViaje = v.Id
@@ -304,7 +304,7 @@ SELECT
             'diferencia', cp.Diferencia,
             'fechaHora', cp.FechaHora,
             'fhRegistro', cp.FHRegistro,
-            'numeroSerieBlueVox', cp.NumeroSerieBlueVox
+            'numeroSerieContador', cp.NumeroSerieContador
         )
     ) AS conteos
 
@@ -312,9 +312,9 @@ FROM Viajes v
 INNER JOIN Clientes c ON v.IdCliente = c.Id
 INNER JOIN Operadores o ON v.IdOperador = o.Id
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
-INNER JOIN Derroteros d ON v.IdDerrotero = d.Id
+INNER JOIN Variantes d ON v.IdVariante = d.Id
 INNER JOIN Rutas r ON d.IdRuta = r.Id
-INNER JOIN Regiones reg ON r.IdRegion = reg.Id
+INNER JOIN Zonas reg ON r.IdZona = reg.Id
 
 -- Conteos relacionados al viaje
 LEFT JOIN ViajesConteos vc ON vc.IdViaje = v.Id
@@ -426,7 +426,7 @@ SELECT
             'diferencia', cp.Diferencia,
             'fechaHora', cp.FechaHora,
             'fhRegistro', cp.FHRegistro,
-            'numeroSerieBlueVox', cp.NumeroSerieBlueVox
+            'numeroSerieContador', cp.NumeroSerieContador
         )
     ) AS conteos
 
@@ -434,9 +434,9 @@ FROM Viajes v
 INNER JOIN Clientes c ON v.IdCliente = c.Id
 INNER JOIN Operadores o ON v.IdOperador = o.Id
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
-INNER JOIN Derroteros d ON v.IdDerrotero = d.Id
+INNER JOIN Variantes d ON v.IdVariante = d.Id
 INNER JOIN Rutas r ON d.IdRuta = r.Id
-INNER JOIN Regiones reg ON r.IdRegion = reg.Id
+INNER JOIN Zonas reg ON r.IdZona = reg.Id
 
 -- Conteos relacionados al viaje
 LEFT JOIN ViajesConteos vc ON vc.IdViaje = v.Id
@@ -482,9 +482,9 @@ FROM Viajes v
 INNER JOIN Clientes c ON v.IdCliente = c.Id
 INNER JOIN Operadores o ON v.IdOperador = o.Id
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
-INNER JOIN Derroteros d ON v.IdDerrotero = d.Id
+INNER JOIN Variantes d ON v.IdVariante = d.Id
 INNER JOIN Rutas r ON d.IdRuta = r.Id
-INNER JOIN Regiones reg ON r.IdRegion = reg.Id
+INNER JOIN Zonas reg ON r.IdZona = reg.Id
 
 -- Conteos relacionados al viaje
 LEFT JOIN ViajesConteos vc ON vc.IdViaje = v.Id
@@ -534,7 +534,7 @@ SELECT
             'diferencia', cp.Diferencia,
             'fechaHora', cp.FechaHora,
             'fhRegistro', cp.FHRegistro,
-            'numeroSerieBlueVox', cp.NumeroSerieBlueVox
+            'numeroSerieContador', cp.NumeroSerieContador
         )
     ) AS conteos
 
@@ -542,9 +542,9 @@ FROM Viajes v
 INNER JOIN Clientes c ON v.IdCliente = c.Id
 INNER JOIN Operadores o ON v.IdOperador = o.Id
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
-INNER JOIN Derroteros d ON v.IdDerrotero = d.Id
+INNER JOIN Variantes d ON v.IdVariante = d.Id
 INNER JOIN Rutas r ON d.IdRuta = r.Id
-INNER JOIN Regiones reg ON r.IdRegion = reg.Id
+INNER JOIN Zonas reg ON r.IdZona = reg.Id
 
 -- Conteos relacionados al viaje
 LEFT JOIN ViajesConteos vc ON vc.IdViaje = v.Id
@@ -589,9 +589,9 @@ FROM Viajes v
 INNER JOIN Clientes c ON v.IdCliente = c.Id
 INNER JOIN Operadores o ON v.IdOperador = o.Id
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
-INNER JOIN Derroteros d ON v.IdDerrotero = d.Id
+INNER JOIN Variantes d ON v.IdVariante = d.Id
 INNER JOIN Rutas r ON d.IdRuta = r.Id
-INNER JOIN Regiones reg ON r.IdRegion = reg.Id
+INNER JOIN Zonas reg ON r.IdZona = reg.Id
 
 -- Conteos relacionados al viaje
 LEFT JOIN ViajesConteos vc ON vc.IdViaje = v.Id
@@ -649,17 +649,17 @@ SELECT
             'diferencia', cp.Diferencia,
             'fechaHora', cp.FechaHora,
             'fhRegistro', cp.FHRegistro,
-            'numeroSerieBlueVox', cp.NumeroSerieBlueVox
-        )
+            'numeroSerieContador', cp.NumeroSerieContador
+        ) 
     ) AS conteos
 
 FROM Viajes v
 INNER JOIN Clientes c ON v.IdCliente = c.Id
 INNER JOIN Operadores o ON v.IdOperador = o.Id
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
-INNER JOIN Derroteros d ON v.IdDerrotero = d.Id
+INNER JOIN Variantes d ON v.IdVariante = d.Id
 INNER JOIN Rutas r ON d.IdRuta = r.Id
-INNER JOIN Regiones reg ON r.IdRegion = reg.Id
+INNER JOIN Zonas reg ON r.IdZona = reg.Id
 
 -- Conteos relacionados al viaje
 LEFT JOIN ViajesConteos vc ON vc.IdViaje = v.Id
@@ -699,9 +699,9 @@ FROM Viajes v
 INNER JOIN Clientes c ON v.IdCliente = c.Id
 INNER JOIN Operadores o ON v.IdOperador = o.Id
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
-INNER JOIN Derroteros d ON v.IdDerrotero = d.Id
+INNER JOIN Variantes d ON v.IdVariante = d.Id
 INNER JOIN Rutas r ON d.IdRuta = r.Id
-INNER JOIN Regiones reg ON r.IdRegion = reg.Id
+INNER JOIN Zonas reg ON r.IdZona = reg.Id
 
 -- Conteos relacionados al viaje
 LEFT JOIN ViajesConteos vc ON vc.IdViaje = v.Id
@@ -794,7 +794,7 @@ SELECT
             'diferencia', cp.Diferencia,
             'fechaHora', cp.FechaHora,
             'fhRegistro', cp.FHRegistro,
-            'numeroSerieBlueVox', cp.NumeroSerieBlueVox
+            'numeroSerieContador', cp.NumeroSerieContador
         )
     ) AS conteos
 
@@ -802,9 +802,9 @@ FROM Viajes v
 INNER JOIN Clientes c ON v.IdCliente = c.Id
 INNER JOIN Operadores o ON v.IdOperador = o.Id
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
-INNER JOIN Derroteros d ON v.IdDerrotero = d.Id
+INNER JOIN Variantes d ON v.IdVariante = d.Id
 INNER JOIN Rutas r ON d.IdRuta = r.Id
-INNER JOIN Regiones reg ON r.IdRegion = reg.Id
+INNER JOIN Zonas reg ON r.IdZona = reg.Id
 
 -- Conteos relacionados al viaje
 LEFT JOIN ViajesConteos vc ON vc.IdViaje = v.Id

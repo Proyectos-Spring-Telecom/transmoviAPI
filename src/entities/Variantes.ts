@@ -13,7 +13,7 @@ import { Viajes } from "./Viajes";
 import { applySchema } from "src/common/apply-schema.decorator";
 
 @applySchema
-@Index("FK_Derroteros_Rutas", ["idRuta"], {})
+@Index("FK_Variantes_Rutas", ["idRuta"], {})
 @Entity("Variantes")
 export class Variantes {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })

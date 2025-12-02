@@ -761,7 +761,7 @@ FROM (
       td.FechaHora AS fechaHora,
       td.FHRegistro AS fhRegistro,
       td.NumeroSerieMonedero AS numeroSerieMonedero,
-      td.NumeroSerieDispositivo AS numeroSerieDispositivo,
+      td.NumeroSerieValidador AS numeroSerieValidador,
       td.ControlTransaccion AS controlTransaccion,
 
       -- Datos del cliente
@@ -782,8 +782,8 @@ FROM (
   FROM TransaccionesDebito td
   INNER JOIN CatTiposTransacciones ctt 
       ON td.IdTipoTransaccion = ctt.Id
-  LEFT JOIN Dispositivos d 
-      ON td.NumeroSerieDispositivo = d.NumeroSerie
+  LEFT JOIN Validadores d 
+      ON td.NumeroSerieValidador = d.NumeroSerie
   INNER JOIN Monederos m 
       ON td.NumeroSerieMonedero = m.NumeroSerie
   LEFT JOIN Pasajeros p 
@@ -805,7 +805,7 @@ FROM (
       tr.FechaHora AS fechaHora,
       tr.FHRegistro AS fhRegistro,
       tr.NumeroSerieMonedero AS numeroSerieMonedero,
-      tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+      tr.NumeroSerieValidador AS numeroSerieValidador,
       tr.ControlTransaccion AS controlTransaccion,
 
       -- Datos del cliente
@@ -826,8 +826,8 @@ FROM (
   FROM TransaccionesRecarga tr
   INNER JOIN CatTiposTransacciones ctt 
       ON tr.IdTipoTransaccion = ctt.Id
-  LEFT JOIN Dispositivos d 
-      ON tr.NumeroSerieDispositivo = d.NumeroSerie
+  LEFT JOIN Validadores d 
+      ON tr.NumeroSerieValidador = d.NumeroSerie
   INNER JOIN Monederos m 
       ON tr.NumeroSerieMonedero = m.NumeroSerie
   LEFT JOIN Pasajeros p 
@@ -1306,7 +1306,7 @@ ORDER BY FHRegistro DESC
       td.FechaHora AS fechaHora,
       td.FHRegistro AS fhRegistro,
       td.NumeroSerieMonedero AS numeroSerieMonedero,
-      td.NumeroSerieDispositivo AS numeroSerieDispositivo,
+      td.NumeroSerieValidador AS numeroSerieValidador,
       td.ControlTransaccion AS controlTransaccion,
 
       d.Marca AS marcaDispositivo,
@@ -1320,8 +1320,8 @@ ORDER BY FHRegistro DESC
   FROM TransaccionesDebito td
   INNER JOIN CatTiposTransacciones ctt 
       ON td.IdTipoTransaccion = ctt.Id
-  LEFT JOIN Dispositivos d 
-      ON td.NumeroSerieDispositivo = d.NumeroSerie
+  LEFT JOIN Validadores d 
+      ON td.NumeroSerieValidador = d.NumeroSerie
   INNER JOIN Monederos m 
       ON td.NumeroSerieMonedero = m.NumeroSerie
   LEFT JOIN Pasajeros p 
@@ -1340,7 +1340,7 @@ ORDER BY FHRegistro DESC
       tr.FechaHora AS fechaHora,
       tr.FHRegistro AS fhRegistro,
       tr.NumeroSerieMonedero AS numeroSerieMonedero,
-      tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+      tr.NumeroSerieValidador AS numeroSerieValidador,
       tr.ControlTransaccion AS controlTransaccion,
 
       d.Marca AS marcaDispositivo,
@@ -1354,8 +1354,8 @@ ORDER BY FHRegistro DESC
   FROM TransaccionesRecarga tr
   INNER JOIN CatTiposTransacciones ctt 
       ON tr.IdTipoTransaccion = ctt.Id
-  LEFT JOIN Dispositivos d 
-      ON tr.NumeroSerieDispositivo = d.NumeroSerie
+  LEFT JOIN Validadores d 
+      ON tr.NumeroSerieValidador = d.NumeroSerie
   INNER JOIN Monederos m 
       ON tr.NumeroSerieMonedero = m.NumeroSerie
   LEFT JOIN Pasajeros p 

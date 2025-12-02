@@ -8,7 +8,7 @@ import { applySchema } from 'src/common/apply-schema.decorator';
 
 @applySchema
 @Index('FK_HistTransRec_NumeroSerieMonedero_idx', ['numeroSerieMonedero'], {})
-@Index('FK_HistTransRec_NumeroSerieDispositivo_idx', ['numeroSerieDispositivo'], {})
+@Index('FK_HistTransRec_NumeroSerieValidador_idx', ['numeroSerieValidador'], {})
 @Index('FK_HistTransRec_CatTiposTransacciones_idx', ['idTipoTransaccion'], {})
 @Entity('HistoricoTransaccionesRecarga')
 export class HistoricoTransaccionesRecarga {
@@ -53,11 +53,11 @@ export class HistoricoTransaccionesRecarga {
   numeroSerieMonedero: string;
 
   @Column('varchar', {
-    name: 'NumeroSerieDispositivo',
+    name: 'NumeroSerieValidador',
     length: 100,
     nullable: true,
   })
-  numeroSerieDispositivo: string | null;
+  numeroSerieValidador: string | null;
 
   // -------- RELACIONES --------
 

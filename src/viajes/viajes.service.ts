@@ -288,10 +288,10 @@ SELECT
   -- Instalación
   ins.IdDispositivo AS idDispositivo,
   -- Dispositivo
-  d.NumeroSerie AS numeroSerieDispositivo,
-  ins.IdBlueVox AS idBlueVox,
-  -- BlueVox
-  bv.NumeroSerie AS numeroSerieBlueVox,
+  d.NumeroSerie AS numeroSerieValidador,
+  ins.IdContador AS idContador,
+  -- Contador
+  c.NumeroSerie AS numeroSerieContador,
   ins.IdVehiculo AS idVehiculo,
   -- Vehículo
   vhl.Placa AS placaVehiculo,
@@ -316,25 +316,25 @@ SELECT
   r.Id AS idRuta,
   r.Nombre AS nombreRuta,
   r.IdRegion AS idRegion,
-  -- Regiones (Inicio y Fin)
-  regInicio.Nombre AS nombreRegionInicio,
-  r.IdRegionFin AS idRegionFin,
-  -- Regiones (Inicio y Fin)
-  regFin.Nombre AS nombreRegionFin
+  -- Zonas (Inicio y Fin)
+  regInicio.Nombre AS nombreZonaInicio,
+  r.IdZonaFin AS idZonaFin,
+  -- Zonas (Inicio y Fin)
+  regFin.Nombre AS nombreZonaFin
 
 FROM Viajes v
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
-JOIN BlueVoxs bv ON ins.IdCliente = bv.IdCliente AND ins.IdBlueVox = bv.Id
+JOIN Validadores d ON ins.IdCliente = d.IdCliente AND ins.IdValidador = d.Id
+JOIN Contadores c ON ins.IdCliente = c.IdCliente AND ins.IdContador = c.Id
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
-JOIN Derroteros der ON v.IdDerrotero = der.Id
+JOIN Variantes der ON v.IdVariante = der.Id
 JOIN Rutas r ON der.IdRuta = r.Id
-LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
-LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
+LEFT JOIN Zonas regInicio ON r.IdZona = regInicio.Id
+LEFT JOIN Zonas regFin ON r.IdZonaFin = regFin.Id
 
         WHERE v.Estatus = 1
         AND c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
@@ -524,10 +524,10 @@ SELECT
   -- Instalación
   ins.IdDispositivo AS idDispositivo,
   -- Dispositivo
-  d.NumeroSerie AS numeroSerieDispositivo,
-  ins.IdBlueVox AS idBlueVox,
-  -- BlueVox
-  bv.NumeroSerie AS numeroSerieBlueVox,
+  d.NumeroSerie AS numeroSerieValidador,
+  ins.IdContador AS idContador,
+  -- Contador
+  c.NumeroSerie AS numeroSerieContador,
   ins.IdVehiculo AS idVehiculo,
   -- Vehículo
   vhl.Placa AS placaVehiculo,
@@ -552,25 +552,25 @@ SELECT
   r.Id AS idRuta,
   r.Nombre AS nombreRuta,
   r.IdRegion AS idRegion,
-  -- Regiones (Inicio y Fin)
+  -- Zonas (Inicio y Fin)
   regInicio.Nombre AS nombreRegionInicio,
   r.IdRegionFin AS idRegionFin,
-  -- Regiones (Inicio y Fin)
+  -- Zonas (Inicio y Fin)
   regFin.Nombre AS nombreRegionFin
 
 FROM Viajes v
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
-JOIN BlueVoxs bv ON ins.IdCliente = bv.IdCliente AND ins.IdBlueVox = bv.Id
+JOIN Validadores d ON ins.IdCliente = d.IdCliente AND ins.IdValidador = d.Id
+JOIN Contadores c ON ins.IdCliente = c.IdCliente AND ins.IdContador = c.Id
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
-JOIN Derroteros der ON v.IdDerrotero = der.Id
+JOIN Variantes der ON v.IdVariante = der.Id
 JOIN Rutas r ON der.IdRuta = r.Id
-LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
-LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
+LEFT JOIN Zonas regInicio ON r.IdRegion = regInicio.Id
+LEFT JOIN Zonas regFin ON r.IdZonaFin = regFin.Id
 
        
         AND c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
@@ -591,15 +591,15 @@ FROM Viajes v
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
-JOIN BlueVoxs bv ON ins.IdCliente = bv.IdCliente AND ins.IdBlueVox = bv.Id
+JOIN Validadores d ON ins.IdCliente = d.IdCliente AND ins.IdValidador = d.Id
+JOIN Contadores c ON ins.IdCliente = c.IdCliente AND ins.IdContador = c.Id
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
-JOIN Derroteros der ON v.IdDerrotero = der.Id
+JOIN Variantes der ON v.IdVariante = der.Id
 JOIN Rutas r ON der.IdRuta = r.Id
-LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
-LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
+LEFT JOIN Zonas regInicio ON r.IdZona = regInicio.Id
+LEFT JOIN Zonas regFin ON r.IdZonaFin = regFin.Id
 
        
         AND c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar

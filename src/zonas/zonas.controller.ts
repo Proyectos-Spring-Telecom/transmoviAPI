@@ -18,7 +18,7 @@ import { UpdateZonasEstatusDto } from './dto/update-zona-estatus.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 
-@ApiTags('Regiones')
+@ApiTags('Zonas')
 @ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('zonas')
@@ -48,18 +48,18 @@ export class ZonasController {
 
   @Get('by-cliente/:idCliente')
   @ApiOperation({
-    summary: 'Listar regiones por ID de cliente',
-    description: 'Obtiene todas las regiones activas pertenecientes únicamente al cliente especificado (sin incluir clientes hijos).',
+    summary: 'Listar zonas por ID de cliente',
+    description: 'Obtiene todas las zonas activas pertenecientes únicamente al cliente especificado (sin incluir clientes hijos).',
   })
   @ApiParam({
     name: 'idCliente',
     type: Number,
-    description: 'ID del cliente del cual se desean obtener las regiones',
+    description: 'ID del cliente del cual se desean obtener las zonas',
     example: 1,
   })
   @ApiResponse({
     status: 200,
-    description: 'Regiones obtenidas exitosamente',
+    description: 'Zonas obtenidas exitosamente',
   })
   @ApiResponse({
     status: 401,
@@ -75,7 +75,7 @@ export class ZonasController {
   ) {
     const idUser = req.user.userId;
     const rol = req.user.rol;
-    return await this.regionesService.findByCliente(+idCliente, +idUser, +rol);
+    return await this.zonasService.findByCliente(+idCliente, +idUser, +rol);
   }
 
   @Get(':page/:limit')
