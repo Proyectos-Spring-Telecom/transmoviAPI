@@ -59,7 +59,6 @@ export class DashboardService {
       const graficaDerroteros = grafica2.map((item) => ({
         ...item,
         idRuta: Number(item.idRuta),
-        periodo: Number(item.periodo),
         pasajeros: Number(item.pasajeros),
       }));
 
@@ -68,7 +67,6 @@ export class DashboardService {
         ascensos: Number(item.ascensos),
         boletos: Number(item.boletos),
       }));
-
       return {
         ingresosAlDia: data.kpi1[0].ingresosDelDia,
         pasajerosValidados: Number(data.kpi1[0].pasajerosValidados) || 0,
