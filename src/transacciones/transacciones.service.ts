@@ -525,9 +525,13 @@ export class TransaccionesService {
     rol: number,
     getTransaccioneDto: GetTransaccioneDto
   ) {
-    let { fechaInicio, fechaFin } = getTransaccioneDto
+    try {
+      let { fechaInicio, fechaFin } = getTransaccioneDto
+      const { page, limit } = getTransaccioneDto
+      let entidadRecarga;
+      let entidadDebito;
+      let transacciones;
 
-    if (!fechaInicio && !fechaFin) {
       function pad(n: number) {
         return n < 10 ? '0' + n : n;
       }
@@ -537,22 +541,53 @@ export class TransaccionesService {
       // Solo la fecha del momento
       const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())}`;
 
-      fechaInicio = fechaActual
-      fechaFin = fechaFin
+      if (!fechaInicio && !fechaFin) {
+        fechaInicio = fechaActual
+        fechaFin = fechaActual
+        entidadRecarga = 'TransaccionesRecarga';
+        entidadDebito = 'TransaccionesDebito';
+        transacciones = await this.resolverPorRolDefault(fechaInicio, fechaFin, email, cliente, rol, page, limit, entidadDebito, entidadRecarga);
+      } else {
+        //asigna fechaActual solo si el valor de la izquierda es null o undefined
+        fechaInicio = fechaInicio?.split("T")[0] ?? fechaActual;
+        fechaFin = fechaFin?.split("T")[0] ?? fechaActual;
+        entidadRecarga = 'HistoricoTransaccionesRecarga';
+        entidadDebito = 'HistoricoTransaccionesDebito';
+        transacciones = await this.resolverPorRolDefault(fechaInicio, fechaFin, email, cliente, rol, page, limit, entidadDebito, entidadRecarga);
+      }
+
+      const { data, total } = transacciones
+
+      //API Response
+      const result: ApiResponseCommon = {
+        data: data,
+        paginated: {
+          total: total,
+          page,
+          lastPage: Math.ceil(total / limit),
+        },
+      };
+      return result;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new BadRequestException({
+        message: 'Error al obtener transacciones paginado.',
+      });
     }
-    //let fechaIni = fechaInicio.split("T")[0];
-    //let fechaFinal = fechaFin.split("T")[0];
   }
 
   async resolverPorRolDefault(
     fechaInicio: string,
     fechaFin: string,
     email: string,
-    idCliente: number,
     cliente: number,
     rol: number,
     page: number,
     limit: number,
+    entidadDebito: string,
+    entidadRecarga: string
   ) {
     try {
       let totalResult;
@@ -567,13 +602,12 @@ SELECT
     td.Id AS id,
     ctt.Nombre AS tipoTransaccion,  -- 👈 tipo según el catálogo (RECARGA, DEBITO o RECHAZADO)
     td.Monto AS monto,
-    td.Latitud AS latitud,
-    td.Longitud AS longitud,
-    td.FechaHora AS fechaHora,
+    td.LatitudFinal AS latitudFinal,
+    td.LongitudFinal AS longitudFinal,
+    td.FechaHoraFinal AS fechaHoraFinal,
     td.FHRegistro AS fhRegistro,
     td.NumeroSerieMonedero AS numeroSerieMonedero,
     td.NumeroSerieDispositivo AS numeroSerieDispositivo,
-    td.ControlTransaccion AS controlTransaccion,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -592,7 +626,7 @@ SELECT
     p.ApellidoPaterno AS apellidoPaternoPasajero,
     p.ApellidoMaterno AS apellidoMaternoPasajero
 
-FROM TransaccionesDebito td
+FROM ${entidadDebito} td
 INNER JOIN CatTiposTransacciones ctt 
     ON td.IdTipoTransaccion = ctt.Id
 LEFT JOIN Dispositivos d 
@@ -603,6 +637,10 @@ LEFT JOIN Pasajeros p
     ON m.IdPasajero = p.Id
 INNER JOIN Clientes c
 	ON m.IdCliente = c.Id
+    
+-- condiciones
+WHERE td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
+
 
 UNION ALL
 
@@ -611,13 +649,12 @@ SELECT
     tr.Id AS id,
     ctt.Nombre AS tipoTransaccion,  -- 👈 valor real del tipo
     tr.Monto AS monto,
-    tr.Latitud AS latitud,
-    tr.Longitud AS longitud,
-    tr.FechaHora AS fechaHora,
+    tr.LatitudFinal AS latitudFinal,
+    tr.LongitudFinal AS longitudFinal,
+    tr.FechaHoraFinal AS fechaHoraFinal,
     tr.FHRegistro AS fhRegistro,
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
     tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
-    tr.ControlTransaccion AS controlTransaccion,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -634,7 +671,7 @@ SELECT
     p.ApellidoPaterno AS apellidoPaternoPasajero,
     p.ApellidoMaterno AS apellidoMaternoPasajero
 
-FROM TransaccionesRecarga tr
+FROM ${entidadRecarga} tr
 INNER JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
 LEFT JOIN Dispositivos d 
@@ -645,8 +682,11 @@ LEFT JOIN Pasajeros p
     ON m.IdPasajero = p.Id
 INNER JOIN Clientes c
 	ON m.IdCliente = c.Id
+    
+-- condiciones
+WHERE tr.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
 
-ORDER BY FHRegistro DESC
+ORDER BY FechaHoraFinal DESC
   LIMIT ? OFFSET ?;
         `,
             [limit, offset],
@@ -659,27 +699,37 @@ SELECT COUNT(*) AS total
 FROM (
     SELECT td.Id
     FROM TransaccionesDebito td
-    INNER JOIN CatTiposTransacciones ctt 
-        ON td.IdTipoTransaccion = ctt.Id
-    LEFT JOIN Dispositivos d 
-        ON td.NumeroSerieDispositivo = d.NumeroSerie
-    INNER JOIN Monederos m 
-        ON td.NumeroSerieMonedero = m.NumeroSerie
-    LEFT JOIN Pasajeros p 
-        ON m.IdPasajero = p.Id
+INNER JOIN CatTiposTransacciones ctt 
+    ON td.IdTipoTransaccion = ctt.Id
+LEFT JOIN Dispositivos d 
+    ON td.NumeroSerieDispositivo = d.NumeroSerie
+INNER JOIN Monederos m 
+    ON td.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Pasajeros p 
+    ON m.IdPasajero = p.Id
+INNER JOIN Clientes c
+	ON m.IdCliente = c.Id
+    
+-- condiciones
+WHERE td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
 
     UNION ALL
 
     SELECT tr.Id
     FROM TransaccionesRecarga tr
-    INNER JOIN CatTiposTransacciones ctt 
-        ON tr.IdTipoTransaccion = ctt.Id
-    LEFT JOIN Dispositivos d 
-        ON tr.NumeroSerieDispositivo = d.NumeroSerie
-    INNER JOIN Monederos m 
-        ON tr.NumeroSerieMonedero = m.NumeroSerie
-    LEFT JOIN Pasajeros p 
-        ON m.IdPasajero = p.Id
+INNER JOIN CatTiposTransacciones ctt 
+    ON tr.IdTipoTransaccion = ctt.Id
+LEFT JOIN Dispositivos d 
+    ON tr.NumeroSerieDispositivo = d.NumeroSerie
+INNER JOIN Monederos m 
+    ON tr.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Pasajeros p 
+    ON m.IdPasajero = p.Id
+INNER JOIN Clientes c
+	ON m.IdCliente = c.Id
+    
+-- condiciones
+WHERE tr.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
 ) AS todas;
 		
   `,
@@ -1044,8 +1094,9 @@ FROM (
         ...item,
         id: Number(item.id),
         monto: Number(item.monto),
-        latitud: Number(item.latitud),
-        longitud: Number(item.longitud),
+        latitudFinal: Number(item.latitudFinal),
+        longitudFinal: Number(item.longitudFinal),
+        idCliente: Number(item.idCliente),
         idPasajero: Number(item.idPasajero),
       }));
 
@@ -1058,13 +1109,13 @@ FROM (
           lastPage: Math.ceil(total / limit),
         },
       };
-      return result;
+      return { data, total };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
       }
       throw new BadRequestException({
-        message: 'Error al obtener transacciones',
+        message: 'Error al obtener transacciones paginadas por rol',
       });
     }
 

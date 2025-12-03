@@ -111,7 +111,7 @@ export class TransaccionesController {
     return this.transaccionesService.findOneTransaccionDebito(id);
   }
 
-  @Get(':page/:limit')
+/*   @Get(':page/:limit')
   @UseGuards(JwtAuthGuard)
   async findAllTransacciones(
     @Param('page', ParseIntPipe) page: number,
@@ -131,5 +131,5 @@ export class TransaccionesController {
       page,
       limit
     );
-  }
+  } */
 }
