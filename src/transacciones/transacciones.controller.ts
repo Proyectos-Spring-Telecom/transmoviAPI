@@ -16,6 +16,7 @@ import { CreateTransaccioneDebitoDto } from './dto/create-transaccione-debito.dt
 import { CreateTransaccioneRecargaDto } from './dto/create-transaccione-recarga.dto';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UpdateTransaccioneDebitoDto } from './dto/update-transaccione-debito.dto';
+import { GetTransaccioneDto } from './dto/get-transacciones.dto';
 
 @ApiTags('Transacciones')
 @Controller('transacciones')
@@ -63,6 +64,26 @@ export class TransaccionesController {
     return this.transaccionesService.updateTransaccionDebito(
       updateTransaccioneDebitoDto,
       idUser,
+    );
+  }
+
+  @Post('paginado')
+  @UseGuards(JwtAuthGuard)
+  async paginadoTransaccion(
+    @Body() getTransaccioneDto: GetTransaccioneDto,
+    @Request() req,
+  ) {
+    const idUser = req.user.userId;
+    const email = req.user.email;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+
+    return await this.transaccionesService.paginado(
+      +idUser,
+      email,
+      +cliente,
+      +rol,
+      getTransaccioneDto
     );
   }
 
