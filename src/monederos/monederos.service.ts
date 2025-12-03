@@ -95,7 +95,7 @@ export class MonederosService {
       const newTransaccion = await this.transaccionesrecargaRepository.create({
         idTipoTransaccion: EnumTipoTransaccion.RECARGA,
         monto: createMonederoDto.saldo,
-        fechaHora: fechaActual,
+        fechaHoraFinal: fechaActual,
         numeroSerieMonedero: monederoSave.numeroSerie,
         numeroSerieDispositivo: null,
       });

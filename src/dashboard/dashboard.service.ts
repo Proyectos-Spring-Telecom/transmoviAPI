@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Clientes } from 'src/entities/Clientes';
 import { Repository } from 'typeorm';
 import { EnumFiltros } from 'src/common/estatus.enum';
+import { error } from 'console';
 
 
 @Injectable()
@@ -67,6 +68,7 @@ export class DashboardService {
         ascensos: Number(item.ascensos),
         boletos: Number(item.boletos),
       }));
+      //console.log(data)
       return {
         ingresosAlDia: data.kpi1[0].ingresosDelDia,
         pasajerosValidados: Number(data.kpi1[0].pasajerosValidados) || 0,

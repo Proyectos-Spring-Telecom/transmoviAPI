@@ -26,14 +26,14 @@ export class TransaccionesRecarga {
   @Column('decimal', { name: 'Monto', precision: 10, scale: 2 })
   monto: number;
 
-  @Column('decimal', { name: 'Latitud', precision: 10, scale: 7, nullable: true })
-  latitud: number | null;
+  @Column('decimal', { name: 'LatitudFinal', precision: 10, scale: 7, nullable: true })
+  latitudFinal: number | null;
 
-  @Column('decimal', { name: 'Longitud', precision: 10, scale: 7, nullable: true })
-  longitud: number | null;
+  @Column('decimal', { name: 'LongitudFinal', precision: 10, scale: 7, nullable: true })
+  longitudFinal: number | null;
 
-  @Column('datetime', { name: 'FechaHora' })
-  fechaHora: Date;
+  @Column('datetime', { name: 'FechaHoraFinal' })
+  fechaHoraFinal: Date;
 
   @Column('datetime', {
     name: 'FHRegistro',

@@ -25,23 +25,23 @@ export class HistoricoTransaccionesRecarga {
   monto: number;
 
   @Column('decimal', {
-    name: 'Latitud',
+    name: 'LatitudFinal',
     precision: 10,
     scale: 7,
     nullable: true,
   })
-  latitud: number | null;
+  latitudFinal: number | null;
 
   @Column('decimal', {
-    name: 'Longitud',
+    name: 'LongitudFinal',
     precision: 10,
     scale: 7,
     nullable: true,
   })
-  longitud: number | null;
+  longitudFinal: number | null;
 
-  @Column('datetime', { name: 'FechaHora' })
-  fechaHora: Date;
+  @Column('datetime', { name: 'FechaHoraFinal' })
+  fechaHoraFinal: Date;
 
   @Column('datetime', {
     name: 'FHRegistro',
