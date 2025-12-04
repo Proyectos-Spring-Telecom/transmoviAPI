@@ -674,18 +674,18 @@ SELECT
         INNER JOIN Monederos m2 ON tr.NumeroSerieMonedero = m2.NumeroSerie
         WHERE m2.IdPasajero = p.Id
           AND m2.Estatus = 1
-        ORDER BY tr.FechaHora DESC
+        ORDER BY tr.FechaHoraFinal DESC
         LIMIT 1
     ) AS UltimaRecarga,
 
     -- Fecha de la última recarga
     (
-        SELECT tr.FechaHora
+        SELECT tr.FechaHoraFinal
         FROM TransaccionesRecarga tr
         INNER JOIN Monederos m2 ON tr.NumeroSerieMonedero = m2.NumeroSerie
         WHERE m2.IdPasajero = p.Id
           AND m2.Estatus = 1
-        ORDER BY tr.FechaHora DESC
+        ORDER BY tr.FechaHoraFinal DESC
         LIMIT 1
     ) AS FechaUltimaRecarga,
 
@@ -696,7 +696,7 @@ SELECT
         INNER JOIN Monederos m3 ON td.NumeroSerieMonedero = m3.NumeroSerie
         WHERE m3.IdPasajero = p.Id
           AND m3.Estatus = 1
-          AND td.FechaHora >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
+          AND td.FechaHoraFinal >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
     ) AS TotalDebitosUltimoMes,
 
     -- Último débito (monto)
@@ -706,18 +706,18 @@ SELECT
         INNER JOIN Monederos m4 ON td2.NumeroSerieMonedero = m4.NumeroSerie
         WHERE m4.IdPasajero = p.Id
           AND m4.Estatus = 1
-        ORDER BY td2.FechaHora DESC
+        ORDER BY td2.FechaHoraFinal DESC
         LIMIT 1
     ) AS UltimoDebito,
 
     -- Fecha del último débito
     (
-        SELECT td3.FechaHora
+        SELECT td3.FechaHoraFinal
         FROM TransaccionesDebito td3
         INNER JOIN Monederos m5 ON td3.NumeroSerieMonedero = m5.NumeroSerie
         WHERE m5.IdPasajero = p.Id
           AND m5.Estatus = 1
-        ORDER BY td3.FechaHora DESC
+        ORDER BY td3.FechaHoraFinal DESC
         LIMIT 1
     ) AS FechaUltimoDebito
 
