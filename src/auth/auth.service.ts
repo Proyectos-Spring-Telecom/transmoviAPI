@@ -321,7 +321,7 @@ LicenciasJSON AS (
                 'Licencia', l.Licencia,
                 'NumeroLicencia', l.NumeroLicencia,
                 'FechaExpedicion', l.FechaExpedicion,
-                'FechaVencimiento', l.FechaVencimineto,
+                'FechaVencimiento', l.FechaVencimiento,
                 'IdTipoLicencia', l.IdTipoLicencia,
                 'IdCategoriaLicencia', l.IdCategoriaLicencia
             )
@@ -477,7 +477,7 @@ LicenciasJSON AS (
                 'Licencia', l.Licencia,
                 'NumeroLicencia', l.NumeroLicencia,
                 'FechaExpedicion', l.FechaExpedicion,
-                'FechaVencimiento', l.FechaVencimineto,
+                'FechaVencimiento', l.FechaVencimiento,
                 'IdTipoLicencia', l.IdTipoLicencia,
                 'IdCategoriaLicencia', l.IdCategoriaLicencia
             )
