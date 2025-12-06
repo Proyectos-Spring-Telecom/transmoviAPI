@@ -720,8 +720,8 @@ SELECT
 FROM ${entidadDebito} td
 INNER JOIN CatTiposTransacciones ctt 
     ON td.IdTipoTransaccion = ctt.Id
-LEFT JOIN Dispositivos d 
-    ON td.NumeroSerieDispositivo = d.NumeroSerie
+LEFT JOIN Validadores d 
+    ON td.NumeroSerieValidador = d.NumeroSerie
 INNER JOIN Monederos m 
     ON td.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
@@ -765,8 +765,8 @@ SELECT
 FROM ${entidadRecarga} tr
 INNER JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
-LEFT JOIN Dispositivos d 
-    ON tr.NumeroSerieDispositivo = d.NumeroSerie
+LEFT JOIN Validadores  d 
+    ON tr.NumeroSerieValidador = d.NumeroSerie
 INNER JOIN Monederos m 
     ON tr.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
@@ -792,8 +792,8 @@ FROM (
     FROM TransaccionesDebito td
 INNER JOIN CatTiposTransacciones ctt 
     ON td.IdTipoTransaccion = ctt.Id
-LEFT JOIN Dispositivos d 
-    ON td.NumeroSerieDispositivo = d.NumeroSerie
+LEFT JOIN Validadores d 
+    ON td.NumeroSerieValidador = d.NumeroSerie
 INNER JOIN Monederos m 
     ON td.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
@@ -810,8 +810,8 @@ WHERE td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:5
     FROM TransaccionesRecarga tr
 INNER JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
-LEFT JOIN Dispositivos d 
-    ON tr.NumeroSerieDispositivo = d.NumeroSerie
+LEFT JOIN Validadores d 
+    ON tr.NumeroSerieValidador = d.NumeroSerie
 INNER JOIN Monederos m 
     ON tr.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
@@ -864,8 +864,8 @@ SELECT
 FROM ${entidadDebito} td
 INNER JOIN CatTiposTransacciones ctt 
     ON td.IdTipoTransaccion = ctt.Id
-LEFT JOIN Dispositivos d 
-    ON td.NumeroSerieDispositivo = d.NumeroSerie
+LEFT JOIN Validadores d 
+    ON td.NumeroSerieValidador = d.NumeroSerie
 INNER JOIN Monederos m 
     ON td.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
@@ -910,8 +910,8 @@ SELECT
 FROM ${entidadRecarga} tr
 INNER JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
-LEFT JOIN Dispositivos d 
-    ON tr.NumeroSerieDispositivo = d.NumeroSerie
+LEFT JOIN Validadores d 
+    ON tr.NumeroSerieValidador = d.NumeroSerie
 INNER JOIN Monederos m 
     ON tr.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
@@ -939,8 +939,8 @@ FROM (
     FROM TransaccionesDebito td
 INNER JOIN CatTiposTransacciones ctt 
     ON td.IdTipoTransaccion = ctt.Id
-LEFT JOIN Dispositivos d 
-    ON td.NumeroSerieDispositivo = d.NumeroSerie
+LEFT JOIN Validadores d 
+    ON td.NumeroSerieValidador = d.NumeroSerie
 INNER JOIN Monederos m 
     ON td.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
@@ -958,8 +958,8 @@ AND m.IdCliente = ?
     FROM TransaccionesRecarga tr
 INNER JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
-LEFT JOIN Dispositivos d 
-    ON tr.NumeroSerieDispositivo = d.NumeroSerie
+LEFT JOIN Validadores d 
+    ON tr.NumeroSerieValidador = d.NumeroSerie
 INNER JOIN Monederos m 
     ON tr.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
@@ -1017,8 +1017,8 @@ SELECT
 FROM ${entidadDebito} td
 INNER JOIN CatTiposTransacciones ctt 
     ON td.IdTipoTransaccion = ctt.Id
-LEFT JOIN Dispositivos d 
-    ON td.NumeroSerieDispositivo = d.NumeroSerie
+LEFT JOIN Validadores d 
+    ON td.NumeroSerieValidador = d.NumeroSerie
 INNER JOIN Monederos m 
     ON td.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
@@ -1064,8 +1064,8 @@ SELECT
 FROM ${entidadRecarga} tr
 INNER JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
-LEFT JOIN Dispositivos d 
-    ON tr.NumeroSerieDispositivo = d.NumeroSerie
+LEFT JOIN Validadores d 
+    ON tr.NumeroSerieValidador = d.NumeroSerie
 INNER JOIN Monederos m 
     ON tr.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
@@ -1094,8 +1094,8 @@ FROM (
     FROM TransaccionesDebito td
 INNER JOIN CatTiposTransacciones ctt 
     ON td.IdTipoTransaccion = ctt.Id
-LEFT JOIN Dispositivos d 
-    ON td.NumeroSerieDispositivo = d.NumeroSerie
+LEFT JOIN Validadores d 
+    ON td.NumeroSerieValidador = d.NumeroSerie
 INNER JOIN Monederos m 
     ON td.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
@@ -1114,8 +1114,8 @@ AND p.Id = ?
     FROM TransaccionesRecarga tr
 INNER JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
-LEFT JOIN Dispositivos d 
-    ON tr.NumeroSerieDispositivo = d.NumeroSerie
+LEFT JOIN Validadores d 
+    ON tr.NumeroSerieValidador = d.NumeroSerie
 INNER JOIN Monederos m 
     ON tr.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
@@ -1175,8 +1175,8 @@ SELECT
 FROM ${entidadDebito} td
 INNER JOIN CatTiposTransacciones ctt 
     ON td.IdTipoTransaccion = ctt.Id
-LEFT JOIN Dispositivos d 
-    ON td.NumeroSerieDispositivo = d.NumeroSerie
+LEFT JOIN Validadores d 
+    ON td.NumeroSerieValidador = d.NumeroSerie
 INNER JOIN Monederos m 
     ON td.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
@@ -1221,8 +1221,8 @@ SELECT
 FROM ${entidadRecarga} tr
 INNER JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
-LEFT JOIN Dispositivos d 
-    ON tr.NumeroSerieDispositivo = d.NumeroSerie
+LEFT JOIN Validadores d 
+    ON tr.NumeroSerieValidador = d.NumeroSerie
 INNER JOIN Monederos m 
     ON tr.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
@@ -1250,8 +1250,8 @@ FROM (
     FROM TransaccionesDebito td
 INNER JOIN CatTiposTransacciones ctt 
     ON td.IdTipoTransaccion = ctt.Id
-LEFT JOIN Dispositivos d 
-    ON td.NumeroSerieDispositivo = d.NumeroSerie
+LEFT JOIN Validadores d 
+    ON td.NumeroSerieValidador = d.NumeroSerie
 INNER JOIN Monederos m 
     ON td.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
@@ -1269,8 +1269,8 @@ AND m.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente q
     FROM TransaccionesRecarga tr
 INNER JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
-LEFT JOIN Dispositivos d 
-    ON tr.NumeroSerieDispositivo = d.NumeroSerie
+LEFT JOIN Validadores d 
+    ON tr.NumeroSerieValidador = d.NumeroSerie
 INNER JOIN Monederos m 
     ON tr.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
@@ -2013,8 +2013,8 @@ ORDER BY FechaHoraFinal DESC
 FROM ${entidadDebito} td
 INNER JOIN CatTiposTransacciones ctt 
     ON td.IdTipoTransaccion = ctt.Id
-LEFT JOIN Dispositivos d 
-    ON td.NumeroSerieDispositivo = d.NumeroSerie
+LEFT JOIN Validadores d 
+    ON td.NumeroSerieValidador = d.NumeroSerie
 INNER JOIN Monederos m 
     ON td.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
@@ -2059,7 +2059,7 @@ SELECT
 FROM ${entidadRecarga} tr
 INNER JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
-LEFT JOIN Dispositivos d 
+LEFT JOIN Validadores d 
     ON tr.NumeroSerieDispositivo = d.NumeroSerie
 INNER JOIN Monederos m 
     ON tr.NumeroSerieMonedero = m.NumeroSerie
