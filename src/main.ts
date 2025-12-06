@@ -20,8 +20,8 @@ async function bootstrap() {
     .setDescription('Documentación de la API de Transmovi') 
     .setVersion('2.0') 
     .addServer('http://localhost:3000', 'Servidor Local')
-    .addServer('https://transmovi.mx/apidev/', 'Servidor de Desarrollo')
-    .addServer('https://transmovi.mx/api/api', 'Servidor de Producción')
+    .addServer('https://dashcampay.com/apidev/', 'Servidor de Desarrollo')
+    .addServer('https://dashcampay.com/api', 'Servidor de Producción')
     .addBearerAuth(
       {
         type: 'http',
