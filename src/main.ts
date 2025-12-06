@@ -16,8 +16,8 @@ async function bootstrap() {
   });
 
   const config = new DocumentBuilder()
-    .setTitle('Transmovi API')
-    .setDescription('Documentación de la API de Transmovi') 
+    .setTitle('DashCam API')
+    .setDescription('Documentación de la API de DashCam') 
     .setVersion('2.0') 
     .addServer('http://localhost:3000', 'Servidor Local')
     .addServer('https://dashcampay.com/apidev/', 'Servidor de Desarrollo')
