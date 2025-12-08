@@ -47,7 +47,7 @@ export class DashboardService {
         const { fechaIni, fechaFinal } = await this.resolverPorFiltro(filtro || 1);
         data = await this.resolverPorRol(fechaIni, fechaFinal, idCliente, cliente, rol)
       }
-      const { graficaIngresosTotales, graficaPasajerosPorRuta, graficaAscensosVsBoleto, dataGripTop5RutasPorIngresos } = data
+      const { graficaIngresosTotales, graficaPasajerosPorRuta, graficaAscensosVsBoleto, dataGripTop5RutasPorIngresos, velocidadPromedioRuta } = data
 
       //Forzamos a cambiar el id a number
       const graficaIngresos = graficaIngresosTotales.map((item) => ({
@@ -68,6 +68,12 @@ export class DashboardService {
         ascensos: Number(item.ascensos),
         boletos: Number(item.boletos),
       }));
+
+      const velocidadPromedioPorRuta = velocidadPromedioRuta.map((item) => ({
+        ...item,
+        idRuta: Number(item.idRuta),
+      }));
+
       //console.log(data)
       return {
         ingresosAlDia: data.kpi1[0].ingresosDelDia,
@@ -75,7 +81,7 @@ export class DashboardService {
         pasajerosValidados: Number(data.kpi1[0].pasajerosValidados) || 0,
         totalMonederosUnicos: Number(data.kpi1[0].monederosActivos) || 0,
         ticketPromedio: Number(data.kpi1[0].ticketPromedio),
-        pasajerosAfiliados:Number(data.kpi1[0].monederosConPasajero) || 0,
+        pasajerosAfiliados: Number(data.kpi1[0].monederosConPasajero) || 0,
         validacionesExitosas: Number(data.kpi1[0].validacionesExitosas),
         validacionesFallidas: Number(data.kpi1[0].validacionesFallidas),
         unidadesEnServicio: Number(data.kpi2[0].unidadesEnServicio),
@@ -88,6 +94,7 @@ export class DashboardService {
         graficaIngresos,
         graficaPasajerosPorRutas,
         graficaAscensoBoleto,
+        velocidadPromedioPorRuta,
         dataGripTop5RutasPorIngresos,
       };
 
@@ -197,6 +204,7 @@ export class DashboardService {
       let graficaPasajerosPorRuta;
       let graficaAscensosVsBoleto;
       let dataGripTop5RutasPorIngresos;
+      let velocidadPromedioRuta;
       switch (rol) {
         case 1:
           if (idCliente === cliente) {
@@ -205,6 +213,7 @@ export class DashboardService {
             graficaIngresosTotales = await this.graficaIngresosTotalesSA(fechaInicio, fechaFin, idCliente);
             graficaPasajerosPorRuta = await this.graficaPasajerosPorRutaSA(fechaInicio, fechaFin, idCliente);
             graficaAscensosVsBoleto = await this.graficaAscensosVsBoletoSA(fechaInicio, fechaFin, idCliente);
+            velocidadPromedioRuta = await this.velocidadPromedioRutaSA(fechaInicio, fechaFin, idCliente);
             dataGripTop5RutasPorIngresos = await this.dataGripTop5RutasPorIngresosSA(fechaInicio, fechaFin, idCliente);
           } else {
             kpi1 = await this.kpiParte1(fechaInicio, fechaFin, idCliente);
@@ -212,6 +221,7 @@ export class DashboardService {
             graficaIngresosTotales = await this.graficaIngresosTotales(fechaInicio, fechaFin, idCliente);
             graficaPasajerosPorRuta = await this.graficaPasajerosPorRuta(fechaInicio, fechaFin, idCliente);
             graficaAscensosVsBoleto = await this.graficaAscensosVsBoleto(fechaInicio, fechaFin, idCliente);
+            velocidadPromedioRuta = await this.velocidadPromedioRuta(fechaInicio, fechaFin, idCliente);
             dataGripTop5RutasPorIngresos = await this.dataGripTop5RutasPorIngresos(fechaInicio, fechaFin, idCliente);
           }
 
@@ -223,6 +233,7 @@ export class DashboardService {
             graficaIngresosTotales = await this.graficaIngresosTotalesSA(fechaInicio, fechaFin, idCliente);
             graficaPasajerosPorRuta = await this.graficaPasajerosPorRutaSA(fechaInicio, fechaFin, idCliente);
             graficaAscensosVsBoleto = await this.graficaAscensosVsBoletoSA(fechaInicio, fechaFin, idCliente);
+            velocidadPromedioRuta = await this.velocidadPromedioRutaSA(fechaInicio, fechaFin, idCliente);
             dataGripTop5RutasPorIngresos = await this.dataGripTop5RutasPorIngresosSA(fechaInicio, fechaFin, idCliente);
           } else {
             kpi1 = await this.kpiParte1(fechaInicio, fechaFin, idCliente);
@@ -230,6 +241,7 @@ export class DashboardService {
             graficaIngresosTotales = await this.graficaIngresosTotales(fechaInicio, fechaFin, idCliente);
             graficaPasajerosPorRuta = await this.graficaPasajerosPorRuta(fechaInicio, fechaFin, idCliente);
             graficaAscensosVsBoleto = await this.graficaAscensosVsBoleto(fechaInicio, fechaFin, idCliente);
+            velocidadPromedioRuta = await this.velocidadPromedioRuta(fechaInicio, fechaFin, idCliente);
             dataGripTop5RutasPorIngresos = await this.dataGripTop5RutasPorIngresos(fechaInicio, fechaFin, idCliente);
           }
           break;
@@ -240,10 +252,11 @@ export class DashboardService {
           graficaIngresosTotales = await this.graficaIngresosTotales(fechaInicio, fechaFin, idCliente);
           graficaPasajerosPorRuta = await this.graficaPasajerosPorRuta(fechaInicio, fechaFin, idCliente);
           graficaAscensosVsBoleto = await this.graficaAscensosVsBoleto(fechaInicio, fechaFin, idCliente);
+          velocidadPromedioRuta = await this.velocidadPromedioRuta(fechaInicio, fechaFin, idCliente);
           dataGripTop5RutasPorIngresos = await this.dataGripTop5RutasPorIngresos(fechaInicio, fechaFin, idCliente);
           break;
       }
-      return { kpi1, kpi2, graficaIngresosTotales, graficaPasajerosPorRuta, graficaAscensosVsBoleto, dataGripTop5RutasPorIngresos }
+      return { kpi1, kpi2, graficaIngresosTotales, graficaPasajerosPorRuta, graficaAscensosVsBoleto, dataGripTop5RutasPorIngresos, velocidadPromedioRuta }
 
     } catch (error) {
       if (error instanceof HttpException) {
@@ -1137,5 +1150,130 @@ ORDER BY periodo, ingresosTotales DESC;
 
 `
     return this.clienteRepository.query(query, [...ids]);
+  }
+
+  /////////*/*/*/*/*/*//*//////////////////////////////////////////******/////*/*/*/*/*/*/*/*/*/*/*/*/*/*/*//*/*/**/***/*/****
+
+  private async velocidadPromedioRuta(
+    fechaInicio: string,
+    fechaFin: string,
+    idCliente: number
+  ) {
+    const query = `
+
+WITH rango AS (
+    SELECT DATEDIFF('${fechaFin}T23:59:59', '${fechaInicio}T00:00:00') AS dias
+),
+
+VelocidadRuta AS (
+    SELECT
+        r.Id AS idRuta,
+        r.Nombre AS ruta,
+
+        /* PERIODO DINÁMICO */
+        CASE
+            WHEN dias = 0 THEN DATE_FORMAT(p.FechaHora, '%Y-%m-%d %H:00')          -- Por hora
+            WHEN dias <= 15 THEN DATE(p.FechaHora)                                 -- Por día
+            WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(p.FechaHora, '%Y-%m'), ' Semana ', WEEK(p.FechaHora, 1))
+            ELSE DATE_FORMAT(p.FechaHora, '%Y-%m')                                  -- Por mes
+        END AS periodo,
+
+        ROUND(AVG(p.Velocidad), 2) AS velocidad_promedio
+
+    FROM Posiciones p
+    INNER JOIN rango ON 1=1
+    INNER JOIN Dispositivos d ON p.NumeroSerieDispositivo = d.NumeroSerie
+    INNER JOIN Instalaciones i ON d.Id = i.IdDispositivo AND d.IdCliente = i.IdCliente
+    INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND v.IdCliente = d.IdCliente
+    INNER JOIN Turnos t ON i.Id = t.IdInstalacion AND t.Estatus = 1
+    INNER JOIN Viajes vi ON t.Id = vi.IdTurno AND vi.Estatus = 1
+    INNER JOIN Derroteros drr ON vi.IdDerrotero = drr.Id AND drr.Estatus = 1
+    INNER JOIN Rutas r ON drr.IdRuta = r.Id AND r.Estatus = 1
+    INNER JOIN Clientes c ON c.Id = d.IdCliente AND c.Estatus = 1
+
+    WHERE p.FechaHora BETWEEN '${fechaInicio}T00:00:00' AND '${fechaFin}T23:59:59'
+      AND c.Id IN (${idCliente})
+      AND v.Estatus = 1
+      AND i.Estatus = 1
+      AND d.Estatus = 1
+
+    GROUP BY 
+        r.Id, r.Nombre,
+        CASE
+            WHEN dias = 0 THEN DATE_FORMAT(p.FechaHora, '%Y-%m-%d %H:00')
+            WHEN dias <= 15 THEN DATE(p.FechaHora)
+            WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(p.FechaHora, '%Y-%m'), ' Semana ', WEEK(p.FechaHora, 1))
+            ELSE DATE_FORMAT(p.FechaHora, '%Y-%m')
+        END
+)
+
+SELECT *
+FROM VelocidadRuta
+ORDER BY periodo, ruta;
+
+`
+    return this.clienteRepository.query(query);
+  }
+
+  private async velocidadPromedioRutaSA(
+    fechaInicio: string,
+    fechaFin: string,
+    idCliente: number
+  ) {
+    const { ids, placeholders } = await this.clienteHijos(idCliente);
+    const query = `
+
+WITH rango AS (
+    SELECT DATEDIFF('${fechaFin}T23:59:59', '${fechaInicio}T00:00:00') AS dias
+),
+
+VelocidadRuta AS (
+    SELECT
+        r.Id AS idRuta,
+        r.Nombre AS ruta,
+
+        /* PERIODO DINÁMICO */
+        CASE
+            WHEN dias = 0 THEN DATE_FORMAT(p.FechaHora, '%Y-%m-%d %H:00')          -- Por hora
+            WHEN dias <= 15 THEN DATE(p.FechaHora)                                 -- Por día
+            WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(p.FechaHora, '%Y-%m'), ' Semana ', WEEK(p.FechaHora, 1))
+            ELSE DATE_FORMAT(p.FechaHora, '%Y-%m')                                  -- Por mes
+        END AS periodo,
+
+        ROUND(AVG(p.Velocidad), 2) AS velocidad_promedio
+
+    FROM Posiciones p
+    INNER JOIN rango ON 1=1
+    INNER JOIN Dispositivos d ON p.NumeroSerieDispositivo = d.NumeroSerie
+    INNER JOIN Instalaciones i ON d.Id = i.IdDispositivo AND d.IdCliente = i.IdCliente
+    INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND v.IdCliente = d.IdCliente
+    INNER JOIN Turnos t ON i.Id = t.IdInstalacion AND t.Estatus = 1
+    INNER JOIN Viajes vi ON t.Id = vi.IdTurno AND vi.Estatus = 1
+    INNER JOIN Derroteros drr ON vi.IdDerrotero = drr.Id AND drr.Estatus = 1
+    INNER JOIN Rutas r ON drr.IdRuta = r.Id AND r.Estatus = 1
+    INNER JOIN Clientes c ON c.Id = d.IdCliente AND c.Estatus = 1
+
+    WHERE p.FechaHora BETWEEN '${fechaInicio}T00:00:00' AND '${fechaFin}T23:59:59'
+      AND c.Id IN (${placeholders})
+      AND v.Estatus = 1
+      AND i.Estatus = 1
+      AND d.Estatus = 1
+
+    GROUP BY 
+        r.Id, r.Nombre,
+        CASE
+            WHEN dias = 0 THEN DATE_FORMAT(p.FechaHora, '%Y-%m-%d %H:00')
+            WHEN dias <= 15 THEN DATE(p.FechaHora)
+            WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(p.FechaHora, '%Y-%m'), ' Semana ', WEEK(p.FechaHora, 1))
+            ELSE DATE_FORMAT(p.FechaHora, '%Y-%m')
+        END
+)
+
+SELECT *
+FROM VelocidadRuta
+ORDER BY periodo, ruta;
+
+`
+    return this.clienteRepository.query(query, [...ids, ...ids, ...ids, ...ids]);
   }
 }
