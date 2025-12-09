@@ -73,7 +73,7 @@ export class RutasController {
     return await this.rutasService.findByRegion(+idRegion, +idUser, +rol);
   }
 
-  @Get('paginate/:page/:limit')
+  @Get(':page/:limit')
   async getRutasUsuario(
     @Request() req,
     @Param('page', ParseIntPipe) page,

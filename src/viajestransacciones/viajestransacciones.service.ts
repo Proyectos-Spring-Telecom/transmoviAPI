@@ -46,7 +46,7 @@ export class ViajestransaccionesService {
         'CREATE',
         querylogger,
         idUser,
-        EnumModulos.VIAJESTRANSACCIONES,
+        EnumModulos.VIAJESTRANSACCIONES, 
         EstatusEnumBitcora.SUCCESS,
       );
 
