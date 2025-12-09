@@ -37,7 +37,7 @@ export class ViajesconteosService {
         'CREATE',
         querylogger,
         idUser,
-        26,
+        26, 
         EstatusEnumBitcora.SUCCESS,
       );
 
