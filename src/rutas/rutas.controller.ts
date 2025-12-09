@@ -73,7 +73,7 @@ export class RutasController {
     return await this.rutasService.findByRegion(+idRegion, +idUser, +rol);
   }
 
-  @Get(':page/:limit')
+  @Get('paginate/:page/:limit')
   async getRutasUsuario(
     @Request() req,
     @Param('page', ParseIntPipe) page,
@@ -84,9 +84,9 @@ export class RutasController {
     const rol = req.user.rol;
     return this.rutasService.obtenerRutasPorUsuarioSQL(+idUser, +cliente, +rol, +page, +limit);
   }
-
-
-
+  // ========================================
+  // 🔹 OBTENER PAGINADO DE RUTAS
+  // ========================================
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number, @Request() req) {
     const cliente = req.user.cliente;
