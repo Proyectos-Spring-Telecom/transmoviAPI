@@ -80,23 +80,29 @@ export class DashboardService {
         totalViajes: Number(item.totalViajes),
       }));
 
+      //console.log(data)
+      const kpi1 = data.kpi1?.[0] ?? {};
+      const kpi2 = data.kpi2?.[0] ?? {};
 
       return {
-        ingresosAlDia: data.kpi1[0].ingresosDelDia,
-        totalMovimientos: Number(data.kpi1[0].totalIntentos),
-        pasajerosValidados: Number(data.kpi1[0].pasajerosValidados) || 0,
-        totalMonederosUnicos: Number(data.kpi1[0].monederosActivos) || 0,
-        ticketPromedio: Number(data.kpi1[0].ticketPromedio),
-        pasajerosAfiliados: Number(data.kpi1[0].monederosConPasajero) || 0,
-        validacionesExitosas: Number(data.kpi1[0].validacionesExitosas),
-        validacionesFallidas: Number(data.kpi1[0].validacionesFallidas),
-        unidadesEnServicio: Number(data.kpi2[0].unidadesEnServicio),
-        totalUnidades: Number(data.kpi2[0].totalUnidades),
-        cumplimientoTurnos: data.kpi2[0].cumplimientoTurnosPorcentaje,
-        totalTurnos: Number(data.kpi2[0].totalTurnos) || 0,
-        totalTurnosCerrado: Number(data.kpi2[0].turnosCerrados) || 0,
-        ocupacionPromedio: data.kpi2[0].ocupacionPromedioTotal || 0,
-        capacidadTeorica: data.kpi2[0].capacidadTotalTeorica || 0,
+        ingresosAlDia: Number(kpi1.ingresosDelDia ?? 0),
+        totalMovimientos: Number(kpi1.totalIntentos ?? 0),
+        pasajerosValidados: Number(kpi1.pasajerosValidados ?? 0),
+        totalMonederosUnicos: Number(kpi1.monederosActivos ?? 0),
+        ticketPromedio: Number(kpi1.ticketPromedio ?? 0),
+        pasajerosAfiliados: Number(kpi1.monederosConPasajero ?? 0),
+        validacionesExitosas: Number(kpi1.validacionesExitosas ?? 0),
+        validacionesFallidas: Number(kpi1.validacionesFallidas ?? 0),
+
+        // KPI 2
+        unidadesEnServicio: Number(kpi2.unidadesEnServicio ?? 0),
+        totalUnidades: Number(kpi2.totalUnidades ?? 0),
+        cumplimientoTurnos: Number(kpi2.cumplimientoTurnosPorcentaje ?? 0),
+        totalTurnos: Number(kpi2.totalTurnos ?? 0),
+        totalTurnosCerrado: Number(kpi2.turnosCerrados ?? 0),
+        ocupacionPromedio: Number(kpi2.ocupacionPromedioTotal ?? 0),
+        capacidadTeorica: Number(kpi2.capacidadTotalTeorica ?? 0),
+
         graficaIngresos,
         graficaPasajerosPorRutas,
         graficaAscensoBoleto,
