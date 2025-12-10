@@ -4,7 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Clientes } from 'src/entities/Clientes';
 import { Repository } from 'typeorm';
 import { EnumFiltros } from 'src/common/estatus.enum';
-import { error } from 'console';
+import { error, log } from 'console';
 
 
 @Injectable()
@@ -74,7 +74,13 @@ export class DashboardService {
         idRuta: Number(item.idRuta),
       }));
 
-      //console.log(data)
+      const dataGripTop5RutasPorIngreso = dataGripTop5RutasPorIngresos.map((item) => ({
+        ...item,
+        idRuta: Number(item.idRuta),
+        totalViajes: Number(item.totalViajes),
+      }));
+
+
       return {
         ingresosAlDia: data.kpi1[0].ingresosDelDia,
         totalMovimientos: Number(data.kpi1[0].totalIntentos),
@@ -95,10 +101,11 @@ export class DashboardService {
         graficaPasajerosPorRutas,
         graficaAscensoBoleto,
         velocidadPromedioPorRuta,
-        dataGripTop5RutasPorIngresos,
+        dataGripTop5RutasPorIngreso,
       };
 
     } catch (error) {
+      console.log(error)
       if (error instanceof HttpException) {
         throw error;
       }
@@ -259,6 +266,7 @@ export class DashboardService {
       return { kpi1, kpi2, graficaIngresosTotales, graficaPasajerosPorRuta, graficaAscensosVsBoleto, dataGripTop5RutasPorIngresos, velocidadPromedioRuta }
 
     } catch (error) {
+      console.log(error)
       if (error instanceof HttpException) {
         throw error;
       }
@@ -310,7 +318,8 @@ FROM HistoricoTransaccionesDebito td
 INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
 INNER JOIN Clientes c ON d.IdCliente = c.Id
 WHERE td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
-  AND c.Id IN (${placeholders});`
+  AND c.Id IN (${placeholders})
+  GROUP BY c.Id;`
 
     return this.clienteRepository.query(query, [...ids]);
   }
@@ -430,7 +439,9 @@ FROM HistoricoTransaccionesDebito td
 INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
 INNER JOIN Clientes c ON d.IdCliente = c.Id
 WHERE td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
-  AND c.Id IN (${idCliente});
+  AND c.Id IN (${idCliente})
+  
+  GROUP BY c.Id;;
 `
 
     return this.clienteRepository.query(query,);
@@ -990,81 +1001,36 @@ ORDER BY p.periodo;
   ) {
     const query = `
 
-WITH rango AS (
+WITH ingresos AS (
     SELECT 
-        DATEDIFF('${fechaFin}T23:59:59Z', '${fechaInicio}T00:00:00Z') AS dias
-),
-
-transacciones AS (
-    SELECT 
-        V.Id AS IdViaje,
-        H.Monto,
-        
-        CASE 
-            WHEN dias = 0 THEN DATE(H.FechaHoraFinal)     -- Por día
-            WHEN dias <= 15 THEN DATE(H.FechaHoraFinal)                            -- Por día
-            WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(H.FechaHoraFinal, '%Y-%m'),
-                                        ' Semana ', WEEK(H.FechaHoraFinal, 1))     -- Por semana
-            ELSE DATE_FORMAT(H.FechaHoraFinal, '%Y-%m')                            -- Por mes
-        END AS periodo
-
-    FROM HistoricoTransaccionesDebito H
-    INNER JOIN ViajesTransacciones VT ON VT.IdTransaccionDebito = H.Id
-    INNER JOIN Viajes V ON V.Id = VT.IdViaje
-    CROSS JOIN rango
-    WHERE H.IdTipoTransaccion = 2
-      AND H.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
-),
-
-rutas AS (
-    SELECT 
-        V.Id AS IdViaje,
-        R.Id AS IdRuta,
-        R.Nombre AS Ruta,
-
-        CASE 
-            WHEN dias = 0 THEN DATE(V.Inicio)
-            WHEN dias <= 15 THEN DATE(V.Inicio)
-            WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(V.Inicio, '%Y-%m'),
-                                        ' Semana ', WEEK(V.Inicio, 1))
-            ELSE DATE_FORMAT(V.Inicio, '%Y-%m')
-        END AS periodo
-    FROM Viajes V
-    INNER JOIN Derroteros D ON D.Id = V.IdDerrotero
-    INNER JOIN Rutas R ON R.Id = D.IdRuta
-    CROSS JOIN rango
-    WHERE V.Inicio BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
-      AND V.IdCliente IN (${idCliente})
-),
-
-ingresos_por_ruta_periodo AS (
-    SELECT 
-        R.periodo,
-        R.Ruta,
-        SUM(T.Monto) AS ingresos
-    FROM rutas R
-    LEFT JOIN transacciones T 
-           ON T.IdViaje = R.IdViaje AND T.periodo = R.periodo
-    GROUP BY R.periodo, R.Ruta
-),
-
-ranked AS (
-    SELECT 
-        *,
-        ROW_NUMBER() OVER (PARTITION BY periodo ORDER BY ingresos DESC) AS rn
-    FROM ingresos_por_ruta_periodo
+        r.Id AS idRuta,
+        r.Nombre AS ruta,
+        COUNT(DISTINCT v.Id) AS totalViajes,
+        SUM(td.Monto) AS ingresosTotales
+    FROM HistoricoTransaccionesDebito td
+    JOIN ViajesTransacciones vt 
+            ON vt.IdTransaccionDebito = td.Id
+    JOIN Viajes v 
+            ON v.Id = vt.IdViaje
+    JOIN Derroteros d 
+            ON d.Id = v.IdDerrotero
+    JOIN Rutas r 
+            ON r.Id = d.IdRuta
+    JOIN Regiones reg 
+            ON reg.Id = r.IdRegion
+    WHERE td.IdTipoTransaccion = 2
+      AND td.FechaHoraFinal BETWEEN '${fechaInicio} 00:00:00' AND '${fechaFin} 23:59:59'
+      AND reg.IdCliente IN (${idCliente})     -- DISCRIMINACIÓN POR CLIENTE
+    GROUP BY r.Id, r.Nombre
 )
 
-SELECT 
-    periodo,
-    Ruta,
-    ROUND(ingresos, 2) AS ingresosTotales
-FROM ranked
-WHERE rn <= 5
-ORDER BY periodo, ingresosTotales DESC;
+SELECT *
+FROM ingresos
+ORDER BY ingresosTotales DESC
+LIMIT 5;
 
 `
-    return this.clienteRepository.query(query);
+    return await this.clienteRepository.query(query);
   }
 
   private async dataGripTop5RutasPorIngresosSA(
@@ -1074,82 +1040,36 @@ ORDER BY periodo, ingresosTotales DESC;
   ) {
     const { ids, placeholders } = await this.clienteHijos(idCliente);
     const query = `
-
-WITH rango AS (
+WITH ingresos AS (
     SELECT 
-        DATEDIFF('${fechaFin}T23:59:59Z', '${fechaInicio}T00:00:00Z') AS dias
-),
-
-transacciones AS (
-    SELECT 
-        V.Id AS IdViaje,
-        H.Monto,
-        
-        CASE 
-            WHEN dias = 0 THEN DATE(H.FechaHoraFinal)     -- Por día
-            WHEN dias <= 15 THEN DATE(H.FechaHoraFinal)                            -- Por día
-            WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(H.FechaHoraFinal, '%Y-%m'),
-                                        ' Semana ', WEEK(H.FechaHoraFinal, 1))     -- Por semana
-            ELSE DATE_FORMAT(H.FechaHoraFinal, '%Y-%m')                            -- Por mes
-        END AS periodo
-
-    FROM HistoricoTransaccionesDebito H
-    INNER JOIN ViajesTransacciones VT ON VT.IdTransaccionDebito = H.Id
-    INNER JOIN Viajes V ON V.Id = VT.IdViaje
-    CROSS JOIN rango
-    WHERE H.IdTipoTransaccion = 2
-      AND H.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
-),
-
-rutas AS (
-    SELECT 
-        V.Id AS IdViaje,
-        R.Id AS IdRuta,
-        R.Nombre AS Ruta,
-
-        CASE 
-            WHEN dias = 0 THEN DATE(V.Inicio)
-            WHEN dias <= 15 THEN DATE(V.Inicio)
-            WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(V.Inicio, '%Y-%m'),
-                                        ' Semana ', WEEK(V.Inicio, 1))
-            ELSE DATE_FORMAT(V.Inicio, '%Y-%m')
-        END AS periodo
-    FROM Viajes V
-    INNER JOIN Derroteros D ON D.Id = V.IdDerrotero
-    INNER JOIN Rutas R ON R.Id = D.IdRuta
-    CROSS JOIN rango
-    WHERE V.Inicio BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
-      AND V.IdCliente IN (${placeholders})
-),
-
-ingresos_por_ruta_periodo AS (
-    SELECT 
-        R.periodo,
-        R.Ruta,
-        SUM(T.Monto) AS ingresos
-    FROM rutas R
-    LEFT JOIN transacciones T 
-           ON T.IdViaje = R.IdViaje AND T.periodo = R.periodo
-    GROUP BY R.periodo, R.Ruta
-),
-
-ranked AS (
-    SELECT 
-        *,
-        ROW_NUMBER() OVER (PARTITION BY periodo ORDER BY ingresos DESC) AS rn
-    FROM ingresos_por_ruta_periodo
+        r.Id AS idRuta,
+        r.Nombre AS ruta,
+        COUNT(DISTINCT v.Id) AS totalViajes,
+        SUM(td.Monto) AS ingresosTotales
+    FROM HistoricoTransaccionesDebito td
+    JOIN ViajesTransacciones vt 
+            ON vt.IdTransaccionDebito = td.Id
+    JOIN Viajes v 
+            ON v.Id = vt.IdViaje
+    JOIN Derroteros d 
+            ON d.Id = v.IdDerrotero
+    JOIN Rutas r 
+            ON r.Id = d.IdRuta
+    JOIN Regiones reg 
+            ON reg.Id = r.IdRegion
+    WHERE td.IdTipoTransaccion = 2
+      AND td.FechaHoraFinal BETWEEN '${fechaInicio} 00:00:00' AND '${fechaFin} 23:59:59'
+      AND reg.IdCliente IN (${placeholders})     -- DISCRIMINACIÓN POR CLIENTE
+    GROUP BY r.Id, r.Nombre
 )
 
-SELECT 
-    periodo,
-    Ruta,
-    ROUND(ingresos, 2) AS ingresosTotales
-FROM ranked
-WHERE rn <= 5
-ORDER BY periodo, ingresosTotales DESC;
+SELECT *
+FROM ingresos
+ORDER BY ingresosTotales DESC
+LIMIT 5;
 
 `
-    return this.clienteRepository.query(query, [...ids]);
+    return await this.clienteRepository.query(query, [...ids]);
   }
 
   /////////*/*/*/*/*/*//*//////////////////////////////////////////******/////*/*/*/*/*/*/*/*/*/*/*/*/*/*/*//*/*/**/***/*/****

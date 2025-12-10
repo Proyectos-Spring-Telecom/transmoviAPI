@@ -10,6 +10,7 @@ import { Repository } from 'typeorm';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import { ApiCrudResponse, ApiResponseCommon, EstatusEnumBitcora } from 'src/common/ApiResponse';
 import { Clientes } from 'src/entities/Clientes';
+import { EnumModulos } from 'src/common/estatus.enum';
 
 @Injectable()
 export class ViajesconteosService {
@@ -37,7 +38,7 @@ export class ViajesconteosService {
         'CREATE',
         querylogger,
         idUser,
-        26, 
+        EnumModulos.VIAJESCONTEOS, 
         EstatusEnumBitcora.SUCCESS,
       );
 
