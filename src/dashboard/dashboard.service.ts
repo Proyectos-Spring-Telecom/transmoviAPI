@@ -4,7 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Clientes } from 'src/entities/Clientes';
 import { Repository } from 'typeorm';
 import { EnumFiltros } from 'src/common/estatus.enum';
-import { error } from 'console';
+import { error, log } from 'console';
 
 
 @Injectable()
@@ -47,45 +47,65 @@ export class DashboardService {
         const { fechaIni, fechaFinal } = await this.resolverPorFiltro(filtro || 1);
         data = await this.resolverPorRol(fechaIni, fechaFinal, idCliente, cliente, rol)
       }
-      const { grafica1, grafica2, grafica3, grafica4 } = data
+      const { graficaIngresosTotales, graficaPasajerosPorRuta, graficaAscensosVsBoleto, dataGripTop5RutasPorIngresos, velocidadPromedioRuta } = data
 
       //Forzamos a cambiar el id a number
-      const graficaIngresos = grafica1.map((item) => ({
+      const graficaIngresos = graficaIngresosTotales.map((item) => ({
         ...item,
         id: Number(item.id),
         validaciones_exitosas: Number(item.validaciones_exitosas),
         validaciones_fallidas: Number(item.validaciones_fallidas),
       }));
 
-      const graficaDerroteros = grafica2.map((item) => ({
+      const graficaPasajerosPorRutas = graficaPasajerosPorRuta.map((item) => ({
         ...item,
         idRuta: Number(item.idRuta),
         pasajeros: Number(item.pasajeros),
       }));
 
-      const graficaAscensoBoleto = grafica3.map((item) => ({
+      const graficaAscensoBoleto = graficaAscensosVsBoleto.map((item) => ({
         ...item,
         ascensos: Number(item.ascensos),
         boletos: Number(item.boletos),
       }));
-      //console.log(data)
+
+      const velocidadPromedioPorRuta = velocidadPromedioRuta.map((item) => ({
+        ...item,
+        idRuta: Number(item.idRuta),
+      }));
+
+      const dataGripTop5RutasPorIngreso = dataGripTop5RutasPorIngresos.map((item) => ({
+        ...item,
+        idRuta: Number(item.idRuta),
+        totalViajes: Number(item.totalViajes),
+      }));
+
+
       return {
         ingresosAlDia: data.kpi1[0].ingresosDelDia,
+        totalMovimientos: Number(data.kpi1[0].totalIntentos),
         pasajerosValidados: Number(data.kpi1[0].pasajerosValidados) || 0,
+        totalMonederosUnicos: Number(data.kpi1[0].monederosActivos) || 0,
         ticketPromedio: Number(data.kpi1[0].ticketPromedio),
+        pasajerosAfiliados: Number(data.kpi1[0].monederosConPasajero) || 0,
         validacionesExitosas: Number(data.kpi1[0].validacionesExitosas),
         validacionesFallidas: Number(data.kpi1[0].validacionesFallidas),
         unidadesEnServicio: Number(data.kpi2[0].unidadesEnServicio),
         totalUnidades: Number(data.kpi2[0].totalUnidades),
         cumplimientoTurnos: data.kpi2[0].cumplimientoTurnosPorcentaje,
+        totalTurnos: Number(data.kpi2[0].totalTurnos) || 0,
+        totalTurnosCerrado: Number(data.kpi2[0].turnosCerrados) || 0,
         ocupacionPromedio: data.kpi2[0].ocupacionPromedioTotal || 0,
+        capacidadTeorica: data.kpi2[0].capacidadTotalTeorica || 0,
         graficaIngresos,
-        graficaDerroteros,
+        graficaPasajerosPorRutas,
         graficaAscensoBoleto,
-        grafica4,
+        velocidadPromedioPorRuta,
+        dataGripTop5RutasPorIngreso,
       };
 
     } catch (error) {
+      console.log(error)
       if (error instanceof HttpException) {
         throw error;
       }
@@ -187,59 +207,66 @@ export class DashboardService {
     try {
       let kpi1;
       let kpi2;
-      let grafica1;
-      let grafica2;
-      let grafica3;
-      let grafica4;
+      let graficaIngresosTotales;
+      let graficaPasajerosPorRuta;
+      let graficaAscensosVsBoleto;
+      let dataGripTop5RutasPorIngresos;
+      let velocidadPromedioRuta;
       switch (rol) {
         case 1:
           if (idCliente === cliente) {
-            kpi1 = await this.kpiSA(fechaInicio, fechaFin, idCliente);
-            kpi2 = await this.kpi2SA(fechaInicio, fechaFin, idCliente);
-            grafica1 = await this.grafica1SA(fechaInicio, fechaFin, idCliente);
-            grafica2 = await this.grafica2SA(fechaInicio, fechaFin, idCliente);
-            grafica3 = await this.graficaAsc3SA(fechaInicio, fechaFin, idCliente);
-            grafica4 = await this.graficaAsc4SA(fechaInicio, fechaFin, idCliente);
+            kpi1 = await this.kpiParte1ClientePadre(fechaInicio, fechaFin, idCliente);
+            kpi2 = await this.kpiParte2ClientePadre(fechaInicio, fechaFin, idCliente);
+            graficaIngresosTotales = await this.graficaIngresosTotalesSA(fechaInicio, fechaFin, idCliente);
+            graficaPasajerosPorRuta = await this.graficaPasajerosPorRutaSA(fechaInicio, fechaFin, idCliente);
+            graficaAscensosVsBoleto = await this.graficaAscensosVsBoletoSA(fechaInicio, fechaFin, idCliente);
+            velocidadPromedioRuta = await this.velocidadPromedioRutaSA(fechaInicio, fechaFin, idCliente);
+            dataGripTop5RutasPorIngresos = await this.dataGripTop5RutasPorIngresosSA(fechaInicio, fechaFin, idCliente);
           } else {
-            kpi1 = await this.kpiDef(fechaInicio, fechaFin, idCliente);
-            kpi2 = await this.kpi2Def(fechaInicio, fechaFin, idCliente);
-            grafica1 = await this.grafica1(fechaInicio, fechaFin, idCliente);
-            grafica2 = await this.grafica2(fechaInicio, fechaFin, idCliente);
-            grafica3 = await this.graficaAsc3(fechaInicio, fechaFin, idCliente);
-            grafica4 = await this.graficaAsc4(fechaInicio, fechaFin, idCliente);
+            kpi1 = await this.kpiParte1(fechaInicio, fechaFin, idCliente);
+            kpi2 = await this.kpi2Parte2(fechaInicio, fechaFin, idCliente);
+            graficaIngresosTotales = await this.graficaIngresosTotales(fechaInicio, fechaFin, idCliente);
+            graficaPasajerosPorRuta = await this.graficaPasajerosPorRuta(fechaInicio, fechaFin, idCliente);
+            graficaAscensosVsBoleto = await this.graficaAscensosVsBoleto(fechaInicio, fechaFin, idCliente);
+            velocidadPromedioRuta = await this.velocidadPromedioRuta(fechaInicio, fechaFin, idCliente);
+            dataGripTop5RutasPorIngresos = await this.dataGripTop5RutasPorIngresos(fechaInicio, fechaFin, idCliente);
           }
 
           break;
         case 2:
           if (idCliente === cliente) {
-            kpi1 = await this.kpiSA(fechaInicio, fechaFin, idCliente);
-            kpi2 = await this.kpi2SA(fechaInicio, fechaFin, idCliente);
-            grafica1 = await this.grafica1SA(fechaInicio, fechaFin, idCliente);
-            grafica2 = await this.grafica2SA(fechaInicio, fechaFin, idCliente);
-            grafica3 = await this.graficaAsc3SA(fechaInicio, fechaFin, idCliente);
-            grafica4 = await this.graficaAsc4SA(fechaInicio, fechaFin, idCliente);
+            kpi1 = await this.kpiParte1ClientePadre(fechaInicio, fechaFin, idCliente);
+            kpi2 = await this.kpiParte2ClientePadre(fechaInicio, fechaFin, idCliente);
+            graficaIngresosTotales = await this.graficaIngresosTotalesSA(fechaInicio, fechaFin, idCliente);
+            graficaPasajerosPorRuta = await this.graficaPasajerosPorRutaSA(fechaInicio, fechaFin, idCliente);
+            graficaAscensosVsBoleto = await this.graficaAscensosVsBoletoSA(fechaInicio, fechaFin, idCliente);
+            velocidadPromedioRuta = await this.velocidadPromedioRutaSA(fechaInicio, fechaFin, idCliente);
+            dataGripTop5RutasPorIngresos = await this.dataGripTop5RutasPorIngresosSA(fechaInicio, fechaFin, idCliente);
           } else {
-            kpi1 = await this.kpiDef(fechaInicio, fechaFin, idCliente);
-            kpi2 = await this.kpi2Def(fechaInicio, fechaFin, idCliente);
-            grafica1 = await this.grafica1(fechaInicio, fechaFin, idCliente);
-            grafica2 = await this.grafica2(fechaInicio, fechaFin, idCliente);
-            grafica3 = await this.graficaAsc3(fechaInicio, fechaFin, idCliente);
-            grafica4 = await this.graficaAsc4(fechaInicio, fechaFin, idCliente);
+            kpi1 = await this.kpiParte1(fechaInicio, fechaFin, idCliente);
+            kpi2 = await this.kpi2Parte2(fechaInicio, fechaFin, idCliente);
+            graficaIngresosTotales = await this.graficaIngresosTotales(fechaInicio, fechaFin, idCliente);
+            graficaPasajerosPorRuta = await this.graficaPasajerosPorRuta(fechaInicio, fechaFin, idCliente);
+            graficaAscensosVsBoleto = await this.graficaAscensosVsBoleto(fechaInicio, fechaFin, idCliente);
+            velocidadPromedioRuta = await this.velocidadPromedioRuta(fechaInicio, fechaFin, idCliente);
+            dataGripTop5RutasPorIngresos = await this.dataGripTop5RutasPorIngresos(fechaInicio, fechaFin, idCliente);
           }
           break;
 
         default:
-          kpi1 = await this.kpiDef(fechaInicio, fechaFin, idCliente);
-          kpi2 = await this.kpi2Def(fechaInicio, fechaFin, idCliente);
-          grafica1 = await this.grafica1(fechaInicio, fechaFin, idCliente);
-          grafica2 = await this.grafica2(fechaInicio, fechaFin, idCliente);
-          grafica3 = await this.graficaAsc3(fechaInicio, fechaFin, idCliente);
-          grafica4 = await this.graficaAsc4(fechaInicio, fechaFin, idCliente);
+          kpi1 = await this.kpiParte1(fechaInicio, fechaFin, idCliente);
+          kpi2 = await this.kpi2Parte2(fechaInicio, fechaFin, idCliente);
+          graficaIngresosTotales = await this.graficaIngresosTotales(fechaInicio, fechaFin, idCliente);
+          graficaPasajerosPorRuta = await this.graficaPasajerosPorRuta(fechaInicio, fechaFin, idCliente);
+          graficaAscensosVsBoleto = await this.graficaAscensosVsBoleto(fechaInicio, fechaFin, idCliente);
+          velocidadPromedioRuta = await this.velocidadPromedioRuta(fechaInicio, fechaFin, idCliente);
+          dataGripTop5RutasPorIngresos = await this.dataGripTop5RutasPorIngresos(fechaInicio, fechaFin, idCliente);
           break;
       }
-      return { kpi1, kpi2, grafica1, grafica2, grafica3, grafica4 }
+      return { kpi1, kpi2, graficaIngresosTotales, graficaPasajerosPorRuta, graficaAscensosVsBoleto, dataGripTop5RutasPorIngresos, velocidadPromedioRuta }
 
     } catch (error) {
+      console.log(error)
       if (error instanceof HttpException) {
         throw error;
       }
@@ -251,13 +278,14 @@ export class DashboardService {
   }
 
 
-  private async kpiSA(
+  private async kpiParte1ClientePadre(
     fechaInicio: string,
     fechaFin: string,
     idCliente: number
   ) {
     const { ids, placeholders } = await this.clienteHijos(idCliente);
     const query = `
+    -- kpi parte 1 para usuarios super administrador y administrador
 SELECT
     IFNULL(SUM(CASE WHEN td.IdTipoTransaccion = 2 THEN td.Monto ELSE 0 END), 0) AS ingresosDelDia,
     COUNT(DISTINCT CASE WHEN td.IdTipoTransaccion = 2 THEN td.NumeroSerieMonedero END) AS pasajerosValidados,
@@ -270,24 +298,40 @@ SELECT
     SUM(CASE WHEN td.IdTipoTransaccion = 3 THEN 1 ELSE 0 END) AS validacionesFallidas,
     COUNT(*) AS totalIntentos,
     ROUND(SUM(CASE WHEN td.IdTipoTransaccion = 2 THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0) * 100, 2) AS porcentajeExitosas,
-    ROUND(SUM(CASE WHEN td.IdTipoTransaccion = 3 THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0) * 100, 2) AS porcentajeFallidas
+    ROUND(SUM(CASE WHEN td.IdTipoTransaccion = 3 THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0) * 100, 2) AS porcentajeFallidas,
+    (
+        SELECT COUNT(*)
+        FROM Monederos m
+        WHERE m.IdCliente = c.Id
+          AND m.Estatus = 1
+          AND m.FechaCreacion <= '${fechaFin}T23:59:59Z'
+    ) AS monederosActivos,
+     (
+    SELECT COUNT(*)
+    FROM Monederos m
+    WHERE m.IdCliente = c.Id
+      AND m.Estatus = 1
+      AND m.FechaCreacion <= '2025-12-05T23:59:59Z'
+      AND m.IdPasajero IS NOT NULL
+) AS monederosConPasajero
 FROM HistoricoTransaccionesDebito td
 INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
 INNER JOIN Clientes c ON d.IdCliente = c.Id
-WHERE td.FechaHoraFinal >= '${fechaInicio}T00:00:00Z'
-  AND td.FechaHoraFinal < '${fechaFin}T23:59:59Z'
-  AND c.Id IN (${placeholders});`
+WHERE td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
+  AND c.Id IN (${placeholders})
+  GROUP BY c.Id;`
 
     return this.clienteRepository.query(query, [...ids]);
   }
 
-  private async kpi2SA(
+  private async kpiParte2ClientePadre(
     fechaInicio: string,
     fechaFin: string,
     idCliente: number
   ) {
     const { ids, placeholders } = await this.clienteHijos(idCliente);
     const query = `
+    -- Kpi parte 2
 WITH Ocupacion AS (
     SELECT
         t.IdCliente,
@@ -322,7 +366,8 @@ SELECT
         END) / NULLIF(COUNT(DISTINCT v.Id), 0) * 100,
         2
     ) AS porcentajeEnServicio,
-
+	COUNT(DISTINCT t.Id) AS totalTurnos,
+    COUNT(DISTINCT CASE WHEN t.Fin IS NOT NULL THEN t.Id END) AS turnosCerrados,
     ROUND(
         COUNT(DISTINCT CASE
             WHEN t.Fin IS NOT NULL THEN t.Id END)
@@ -334,31 +379,34 @@ SELECT
         2
     ) AS cumplimientoTurnosPorcentaje,
 
-    ROUND(AVG(o.ocupacionPromedio), 2) AS ocupacionPromedioTotal
+    ROUND(AVG(o.ocupacionPromedio), 2) AS ocupacionPromedioTotal,
+    ROUND(AVG(v.PasajerosSentados + v.PasajerosParados)) AS capacidadTotalTeorica
 
 FROM Vehiculos v
 LEFT JOIN Instalaciones i ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente AND i.Estatus = 1
 LEFT JOIN Dispositivos d ON d.Id = i.IdDispositivo
 LEFT JOIN Posiciones up ON up.NumeroSerieDispositivo = d.NumeroSerie
-    AND up.FechaHora >= NOW() - INTERVAL 30 MINUTE
+    AND up.FechaHora >= NOW() - INTERVAL 15 MINUTE
 LEFT JOIN Turnos t ON t.IdCliente = v.IdCliente
     AND t.Estatus = 1
     AND t.Inicio >= '${fechaInicio}T00:00:00Z'
     AND t.Inicio < '${fechaFin}T23:59:59Z'
 LEFT JOIN Ocupacion o ON o.IdCliente = v.IdCliente AND o.idVehiculo = v.Id
 WHERE v.Estatus = 1
-  AND v.IdCliente IN (${placeholders});`
+  AND v.IdCliente IN (${placeholders});
+`
     return this.clienteRepository.query(query, [...ids]);
   }
 
   /////////*/*/*/*/*/*//*//////////////////////////////////////////******/////*/*/*/*/*/*/*/*/*/*/*/*/*/*/*//*/*/**/***/*/****
-  private async kpiDef(
+  private async kpiParte1(
     fechaInicio: string,
     fechaFin: string,
     idCliente: number
   ) {
 
     const query = `
+    -- kpi parte 1
 SELECT
     IFNULL(SUM(CASE WHEN td.IdTipoTransaccion = 2 THEN td.Monto ELSE 0 END), 0) AS ingresosDelDia,
     COUNT(DISTINCT CASE WHEN td.IdTipoTransaccion = 2 THEN td.NumeroSerieMonedero END) AS pasajerosValidados,
@@ -371,23 +419,42 @@ SELECT
     SUM(CASE WHEN td.IdTipoTransaccion = 3 THEN 1 ELSE 0 END) AS validacionesFallidas,
     COUNT(*) AS totalIntentos,
     ROUND(SUM(CASE WHEN td.IdTipoTransaccion = 2 THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0) * 100, 2) AS porcentajeExitosas,
-    ROUND(SUM(CASE WHEN td.IdTipoTransaccion = 3 THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0) * 100, 2) AS porcentajeFallidas
+    ROUND(SUM(CASE WHEN td.IdTipoTransaccion = 3 THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0) * 100, 2) AS porcentajeFallidas,
+    (
+        SELECT COUNT(*)
+        FROM Monederos m
+        WHERE m.IdCliente = c.Id
+          AND m.Estatus = 1
+          AND m.FechaCreacion <= '${fechaFin}T23:59:59Z'
+    ) AS monederosActivos,
+     (
+    SELECT COUNT(*)
+    FROM Monederos m
+    WHERE m.IdCliente = c.Id
+      AND m.Estatus = 1
+      AND m.FechaCreacion <= '2025-12-05T23:59:59Z'
+      AND m.IdPasajero IS NOT NULL
+) AS monederosConPasajero
 FROM HistoricoTransaccionesDebito td
 INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
 INNER JOIN Clientes c ON d.IdCliente = c.Id
-WHERE td.FechaHoraFinal >= '${fechaInicio}T00:00:00Z'
-  AND td.FechaHoraFinal < '${fechaFin}T23:59:59Z'
-  AND c.Id IN (${idCliente});`
+WHERE td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
+  AND c.Id IN (${idCliente})
+  
+  GROUP BY c.Id;;
+`
 
     return this.clienteRepository.query(query,);
   }
 
-  private async kpi2Def(
+  private async kpi2Parte2(
     fechaInicio: string,
     fechaFin: string,
     idCliente: number
   ) {
     const query = `
+
+    -- Kpi parte 2
 WITH Ocupacion AS (
     SELECT
         t.IdCliente,
@@ -422,7 +489,8 @@ SELECT
         END) / NULLIF(COUNT(DISTINCT v.Id), 0) * 100,
         2
     ) AS porcentajeEnServicio,
-
+	COUNT(DISTINCT t.Id) AS totalTurnos,
+    COUNT(DISTINCT CASE WHEN t.Fin IS NOT NULL THEN t.Id END) AS turnosCerrados,
     ROUND(
         COUNT(DISTINCT CASE
             WHEN t.Fin IS NOT NULL THEN t.Id END)
@@ -434,26 +502,28 @@ SELECT
         2
     ) AS cumplimientoTurnosPorcentaje,
 
-    ROUND(AVG(o.ocupacionPromedio), 2) AS ocupacionPromedioTotal
+    ROUND(AVG(o.ocupacionPromedio), 2) AS ocupacionPromedioTotal,
+    ROUND(AVG(v.PasajerosSentados + v.PasajerosParados)) AS capacidadTotalTeorica
 
 FROM Vehiculos v
 LEFT JOIN Instalaciones i ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente AND i.Estatus = 1
 LEFT JOIN Dispositivos d ON d.Id = i.IdDispositivo
 LEFT JOIN Posiciones up ON up.NumeroSerieDispositivo = d.NumeroSerie
-    AND up.FechaHora >= NOW() - INTERVAL 30 MINUTE
+    AND up.FechaHora >= NOW() - INTERVAL 15 MINUTE
 LEFT JOIN Turnos t ON t.IdCliente = v.IdCliente
     AND t.Estatus = 1
     AND t.Inicio >= '${fechaInicio}T00:00:00Z'
     AND t.Inicio < '${fechaFin}T23:59:59Z'
 LEFT JOIN Ocupacion o ON o.IdCliente = v.IdCliente AND o.idVehiculo = v.Id
 WHERE v.Estatus = 1
-  AND v.IdCliente IN (${idCliente});`
+  AND v.IdCliente IN (${idCliente});
+`
     return this.clienteRepository.query(query);
   }
 
   /////////*/*/*/*/*/*//*//////////////////////////////////////////******/////*/*/*/*/*/*/*/*/*/*/*/*/*/*/*//*/*/**/***/*/****
 
-  private async grafica1(
+  private async graficaIngresosTotales(
     fechaInicio: string,
     fechaFin: string,
     idCliente: number
@@ -526,7 +596,7 @@ ORDER BY periodo;
     return this.clienteRepository.query(query);
   }
 
-  private async grafica1SA(
+  private async graficaIngresosTotalesSA(
     fechaInicio: string,
     fechaFin: string,
     idCliente: number
@@ -602,7 +672,7 @@ ORDER BY periodo;
 
   /////////*/*/*/*/*/*//*//////////////////////////////////////////******/////*/*/*/*/*/*/*/*/*/*/*/*/*/*/*//*/*/**/***/*/****
 
-  private async grafica2(
+  private async graficaPasajerosPorRuta(
     fechaInicio: string,
     fechaFin: string,
     idCliente: number
@@ -618,7 +688,7 @@ Pasajeros AS (
 
         -- PERIODO dinámico según rango de días
         CASE
-            WHEN dias = 0 THEN HOUR(cp.FechaHora)          -- Por hora
+            WHEN dias = 0 THEN DATE_FORMAT(cp.FechaHora, '%Y-%m-%d %H:00')          -- Por hora
             WHEN dias <= 15 THEN DATE(cp.FechaHora)       -- Por día
             WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(cp.FechaHora, '%Y-%m'), ' Semana ', WEEK(cp.FechaHora, 1)) -- Por semana
             ELSE DATE_FORMAT(cp.FechaHora, '%Y-%m')       -- Por mes
@@ -641,7 +711,7 @@ Pasajeros AS (
       AND i.Estatus = 1
     GROUP BY r.Id, r.Nombre,
         CASE
-            WHEN dias = 0 THEN HOUR(cp.FechaHora)
+            WHEN dias = 0 THEN DATE_FORMAT(cp.FechaHora, '%Y-%m-%d %H:00')
             WHEN dias <= 15 THEN DATE(cp.FechaHora)
             WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(cp.FechaHora, '%Y-%m'), ' Semana ', WEEK(cp.FechaHora, 1))
             ELSE DATE_FORMAT(cp.FechaHora, '%Y-%m')
@@ -655,7 +725,7 @@ ORDER BY periodo, ruta;
     return this.clienteRepository.query(query);
   }
 
-  private async grafica2SA(
+  private async graficaPasajerosPorRutaSA(
     fechaInicio: string,
     fechaFin: string,
     idCliente: number
@@ -672,7 +742,7 @@ Pasajeros AS (
 
         -- PERIODO dinámico según rango de días
         CASE
-            WHEN dias = 0 THEN HOUR(cp.FechaHora)          -- Por hora
+            WHEN dias = 0 THEN DATE_FORMAT(cp.FechaHora, '%Y-%m-%d %H:00')          -- Por hora
             WHEN dias <= 15 THEN DATE(cp.FechaHora)       -- Por día
             WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(cp.FechaHora, '%Y-%m'), ' Semana ', WEEK(cp.FechaHora, 1)) -- Por semana
             ELSE DATE_FORMAT(cp.FechaHora, '%Y-%m')       -- Por mes
@@ -695,7 +765,7 @@ Pasajeros AS (
       AND i.Estatus = 1
     GROUP BY r.Id, r.Nombre,
         CASE
-            WHEN dias = 0 THEN HOUR(cp.FechaHora)
+            WHEN dias = 0 THEN DATE_FORMAT(cp.FechaHora, '%Y-%m-%d %H:00')
             WHEN dias <= 15 THEN DATE(cp.FechaHora)
             WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(cp.FechaHora, '%Y-%m'), ' Semana ', WEEK(cp.FechaHora, 1))
             ELSE DATE_FORMAT(cp.FechaHora, '%Y-%m')
@@ -711,7 +781,7 @@ ORDER BY periodo, ruta;
 
   /////////*/*/*/*/*/*//*//////////////////////////////////////////******/////*/*/*/*/*/*/*/*/*/*/*/*/*/*/*//*/*/**/***/*/****
 
-  private async graficaAsc3(
+  private async graficaAscensosVsBoleto(
     fechaInicio: string,
     fechaFin: string,
     idCliente: number
@@ -816,7 +886,7 @@ ORDER BY p.periodo;
     return this.clienteRepository.query(query);
   }
 
-  private async graficaAsc3SA(
+  private async graficaAscensosVsBoletoSA(
     fechaInicio: string,
     fechaFin: string,
     idCliente: number
@@ -924,7 +994,87 @@ ORDER BY p.periodo;
 
   /////////*/*/*/*/*/*//*//////////////////////////////////////////******/////*/*/*/*/*/*/*/*/*/*/*/*/*/*/*//*/*/**/***/*/****
 
-  private async graficaAsc4(
+  private async dataGripTop5RutasPorIngresos(
+    fechaInicio: string,
+    fechaFin: string,
+    idCliente: number
+  ) {
+    const query = `
+
+WITH ingresos AS (
+    SELECT 
+        r.Id AS idRuta,
+        r.Nombre AS ruta,
+        COUNT(DISTINCT v.Id) AS totalViajes,
+        SUM(td.Monto) AS ingresosTotales
+    FROM HistoricoTransaccionesDebito td
+    JOIN ViajesTransacciones vt 
+            ON vt.IdTransaccionDebito = td.Id
+    JOIN Viajes v 
+            ON v.Id = vt.IdViaje
+    JOIN Derroteros d 
+            ON d.Id = v.IdDerrotero
+    JOIN Rutas r 
+            ON r.Id = d.IdRuta
+    JOIN Regiones reg 
+            ON reg.Id = r.IdRegion
+    WHERE td.IdTipoTransaccion = 2
+      AND td.FechaHoraFinal BETWEEN '${fechaInicio} 00:00:00' AND '${fechaFin} 23:59:59'
+      AND reg.IdCliente IN (${idCliente})     -- DISCRIMINACIÓN POR CLIENTE
+    GROUP BY r.Id, r.Nombre
+)
+
+SELECT *
+FROM ingresos
+ORDER BY ingresosTotales DESC
+LIMIT 5;
+
+`
+    return await this.clienteRepository.query(query);
+  }
+
+  private async dataGripTop5RutasPorIngresosSA(
+    fechaInicio: string,
+    fechaFin: string,
+    idCliente: number
+  ) {
+    const { ids, placeholders } = await this.clienteHijos(idCliente);
+    const query = `
+WITH ingresos AS (
+    SELECT 
+        r.Id AS idRuta,
+        r.Nombre AS ruta,
+        COUNT(DISTINCT v.Id) AS totalViajes,
+        SUM(td.Monto) AS ingresosTotales
+    FROM HistoricoTransaccionesDebito td
+    JOIN ViajesTransacciones vt 
+            ON vt.IdTransaccionDebito = td.Id
+    JOIN Viajes v 
+            ON v.Id = vt.IdViaje
+    JOIN Derroteros d 
+            ON d.Id = v.IdDerrotero
+    JOIN Rutas r 
+            ON r.Id = d.IdRuta
+    JOIN Regiones reg 
+            ON reg.Id = r.IdRegion
+    WHERE td.IdTipoTransaccion = 2
+      AND td.FechaHoraFinal BETWEEN '${fechaInicio} 00:00:00' AND '${fechaFin} 23:59:59'
+      AND reg.IdCliente IN (${placeholders})     -- DISCRIMINACIÓN POR CLIENTE
+    GROUP BY r.Id, r.Nombre
+)
+
+SELECT *
+FROM ingresos
+ORDER BY ingresosTotales DESC
+LIMIT 5;
+
+`
+    return await this.clienteRepository.query(query, [...ids]);
+  }
+
+  /////////*/*/*/*/*/*//*//////////////////////////////////////////******/////*/*/*/*/*/*/*/*/*/*/*/*/*/*/*//*/*/**/***/*/****
+
+  private async velocidadPromedioRuta(
     fechaInicio: string,
     fechaFin: string,
     idCliente: number
@@ -932,83 +1082,60 @@ ORDER BY p.periodo;
     const query = `
 
 WITH rango AS (
-    SELECT 
-        DATEDIFF('${fechaFin}T23:59:59Z', '${fechaInicio}T00:00:00Z') AS dias
+    SELECT DATEDIFF('${fechaFin}T23:59:59', '${fechaInicio}T00:00:00') AS dias
 ),
 
-transacciones AS (
-    SELECT 
-        V.Id AS IdViaje,
-        H.Monto,
-        
-        CASE 
-            WHEN dias = 0 THEN DATE_FORMAT(H.FechaHoraFinal, '%Y-%m-%d %H:00')     -- Por hora
-            WHEN dias <= 15 THEN DATE(H.FechaHoraFinal)                            -- Por día
-            WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(H.FechaHoraFinal, '%Y-%m'),
-                                        ' Semana ', WEEK(H.FechaHoraFinal, 1))     -- Por semana
-            ELSE DATE_FORMAT(H.FechaHoraFinal, '%Y-%m')                            -- Por mes
-        END AS periodo
+VelocidadRuta AS (
+    SELECT
+        r.Id AS idRuta,
+        r.Nombre AS ruta,
 
-    FROM HistoricoTransaccionesDebito H
-    INNER JOIN ViajesTransacciones VT ON VT.IdTransaccionDebito = H.Id
-    INNER JOIN Viajes V ON V.Id = VT.IdViaje
-    CROSS JOIN rango
-    WHERE H.IdTipoTransaccion = 2
-      AND H.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
-),
+        /* PERIODO DINÁMICO */
+        CASE
+            WHEN dias = 0 THEN DATE_FORMAT(p.FechaHora, '%Y-%m-%d %H:00')          -- Por hora
+            WHEN dias <= 15 THEN DATE(p.FechaHora)                                 -- Por día
+            WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(p.FechaHora, '%Y-%m'), ' Semana ', WEEK(p.FechaHora, 1))
+            ELSE DATE_FORMAT(p.FechaHora, '%Y-%m')                                  -- Por mes
+        END AS periodo,
 
-rutas AS (
-    SELECT 
-        V.Id AS IdViaje,
-        R.Id AS IdRuta,
-        R.Nombre AS Ruta,
+        ROUND(AVG(p.Velocidad), 2) AS velocidad_promedio
 
-        CASE 
-            WHEN dias = 0 THEN DATE_FORMAT(V.Inicio, '%Y-%m-%d %H:00')
-            WHEN dias <= 15 THEN DATE(V.Inicio)
-            WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(V.Inicio, '%Y-%m'),
-                                        ' Semana ', WEEK(V.Inicio, 1))
-            ELSE DATE_FORMAT(V.Inicio, '%Y-%m')
-        END AS periodo
-    FROM Viajes V
-    INNER JOIN Derroteros D ON D.Id = V.IdDerrotero
-    INNER JOIN Rutas R ON R.Id = D.IdRuta
-    CROSS JOIN rango
-    WHERE V.Inicio BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
-      AND V.IdCliente IN (${idCliente})
-),
+    FROM Posiciones p
+    INNER JOIN rango ON 1=1
+    INNER JOIN Dispositivos d ON p.NumeroSerieDispositivo = d.NumeroSerie
+    INNER JOIN Instalaciones i ON d.Id = i.IdDispositivo AND d.IdCliente = i.IdCliente
+    INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND v.IdCliente = d.IdCliente
+    INNER JOIN Turnos t ON i.Id = t.IdInstalacion AND t.Estatus = 1
+    INNER JOIN Viajes vi ON t.Id = vi.IdTurno AND vi.Estatus = 1
+    INNER JOIN Derroteros drr ON vi.IdDerrotero = drr.Id AND drr.Estatus = 1
+    INNER JOIN Rutas r ON drr.IdRuta = r.Id AND r.Estatus = 1
+    INNER JOIN Clientes c ON c.Id = d.IdCliente AND c.Estatus = 1
 
-ingresos_por_ruta_periodo AS (
-    SELECT 
-        R.periodo,
-        R.Ruta,
-        SUM(T.Monto) AS ingresos
-    FROM rutas R
-    LEFT JOIN transacciones T 
-           ON T.IdViaje = R.IdViaje AND T.periodo = R.periodo
-    GROUP BY R.periodo, R.Ruta
-),
+    WHERE p.FechaHora BETWEEN '${fechaInicio}T00:00:00' AND '${fechaFin}T23:59:59'
+      AND c.Id IN (${idCliente})
+      AND v.Estatus = 1
+      AND i.Estatus = 1
+      AND d.Estatus = 1
 
-ranked AS (
-    SELECT 
-        *,
-        ROW_NUMBER() OVER (PARTITION BY periodo ORDER BY ingresos DESC) AS rn
-    FROM ingresos_por_ruta_periodo
+    GROUP BY 
+        r.Id, r.Nombre,
+        CASE
+            WHEN dias = 0 THEN DATE_FORMAT(p.FechaHora, '%Y-%m-%d %H:00')
+            WHEN dias <= 15 THEN DATE(p.FechaHora)
+            WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(p.FechaHora, '%Y-%m'), ' Semana ', WEEK(p.FechaHora, 1))
+            ELSE DATE_FORMAT(p.FechaHora, '%Y-%m')
+        END
 )
 
-SELECT 
-    periodo,
-    Ruta,
-    ROUND(ingresos, 2) AS ingresosTotales
-FROM ranked
-WHERE rn <= 5
-ORDER BY periodo, ingresosTotales DESC;
+SELECT *
+FROM VelocidadRuta
+ORDER BY periodo, ruta;
 
 `
     return this.clienteRepository.query(query);
   }
 
-  private async graficaAsc4SA(
+  private async velocidadPromedioRutaSA(
     fechaInicio: string,
     fechaFin: string,
     idCliente: number
@@ -1017,79 +1144,56 @@ ORDER BY periodo, ingresosTotales DESC;
     const query = `
 
 WITH rango AS (
-    SELECT 
-        DATEDIFF('${fechaFin}T23:59:59Z', '${fechaInicio}T00:00:00Z') AS dias
+    SELECT DATEDIFF('${fechaFin}T23:59:59', '${fechaInicio}T00:00:00') AS dias
 ),
 
-transacciones AS (
-    SELECT 
-        V.Id AS IdViaje,
-        H.Monto,
-        
-        CASE 
-            WHEN dias = 0 THEN DATE_FORMAT(H.FechaHoraFinal, '%Y-%m-%d %H:00')     -- Por hora
-            WHEN dias <= 15 THEN DATE(H.FechaHoraFinal)                            -- Por día
-            WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(H.FechaHoraFinal, '%Y-%m'),
-                                        ' Semana ', WEEK(H.FechaHoraFinal, 1))     -- Por semana
-            ELSE DATE_FORMAT(H.FechaHoraFinal, '%Y-%m')                            -- Por mes
-        END AS periodo
+VelocidadRuta AS (
+    SELECT
+        r.Id AS idRuta,
+        r.Nombre AS ruta,
 
-    FROM HistoricoTransaccionesDebito H
-    INNER JOIN ViajesTransacciones VT ON VT.IdTransaccionDebito = H.Id
-    INNER JOIN Viajes V ON V.Id = VT.IdViaje
-    CROSS JOIN rango
-    WHERE H.IdTipoTransaccion = 2
-      AND H.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
-),
+        /* PERIODO DINÁMICO */
+        CASE
+            WHEN dias = 0 THEN DATE_FORMAT(p.FechaHora, '%Y-%m-%d %H:00')          -- Por hora
+            WHEN dias <= 15 THEN DATE(p.FechaHora)                                 -- Por día
+            WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(p.FechaHora, '%Y-%m'), ' Semana ', WEEK(p.FechaHora, 1))
+            ELSE DATE_FORMAT(p.FechaHora, '%Y-%m')                                  -- Por mes
+        END AS periodo,
 
-rutas AS (
-    SELECT 
-        V.Id AS IdViaje,
-        R.Id AS IdRuta,
-        R.Nombre AS Ruta,
+        ROUND(AVG(p.Velocidad), 2) AS velocidad_promedio
 
-        CASE 
-            WHEN dias = 0 THEN DATE_FORMAT(V.Inicio, '%Y-%m-%d %H:00')
-            WHEN dias <= 15 THEN DATE(V.Inicio)
-            WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(V.Inicio, '%Y-%m'),
-                                        ' Semana ', WEEK(V.Inicio, 1))
-            ELSE DATE_FORMAT(V.Inicio, '%Y-%m')
-        END AS periodo
-    FROM Viajes V
-    INNER JOIN Derroteros D ON D.Id = V.IdDerrotero
-    INNER JOIN Rutas R ON R.Id = D.IdRuta
-    CROSS JOIN rango
-    WHERE V.Inicio BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
-      AND V.IdCliente IN (${placeholders})
-),
+    FROM Posiciones p
+    INNER JOIN rango ON 1=1
+    INNER JOIN Dispositivos d ON p.NumeroSerieDispositivo = d.NumeroSerie
+    INNER JOIN Instalaciones i ON d.Id = i.IdDispositivo AND d.IdCliente = i.IdCliente
+    INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND v.IdCliente = d.IdCliente
+    INNER JOIN Turnos t ON i.Id = t.IdInstalacion AND t.Estatus = 1
+    INNER JOIN Viajes vi ON t.Id = vi.IdTurno AND vi.Estatus = 1
+    INNER JOIN Derroteros drr ON vi.IdDerrotero = drr.Id AND drr.Estatus = 1
+    INNER JOIN Rutas r ON drr.IdRuta = r.Id AND r.Estatus = 1
+    INNER JOIN Clientes c ON c.Id = d.IdCliente AND c.Estatus = 1
 
-ingresos_por_ruta_periodo AS (
-    SELECT 
-        R.periodo,
-        R.Ruta,
-        SUM(T.Monto) AS ingresos
-    FROM rutas R
-    LEFT JOIN transacciones T 
-           ON T.IdViaje = R.IdViaje AND T.periodo = R.periodo
-    GROUP BY R.periodo, R.Ruta
-),
+    WHERE p.FechaHora BETWEEN '${fechaInicio}T00:00:00' AND '${fechaFin}T23:59:59'
+      AND c.Id IN (${placeholders})
+      AND v.Estatus = 1
+      AND i.Estatus = 1
+      AND d.Estatus = 1
 
-ranked AS (
-    SELECT 
-        *,
-        ROW_NUMBER() OVER (PARTITION BY periodo ORDER BY ingresos DESC) AS rn
-    FROM ingresos_por_ruta_periodo
+    GROUP BY 
+        r.Id, r.Nombre,
+        CASE
+            WHEN dias = 0 THEN DATE_FORMAT(p.FechaHora, '%Y-%m-%d %H:00')
+            WHEN dias <= 15 THEN DATE(p.FechaHora)
+            WHEN dias <= 60 THEN CONCAT(DATE_FORMAT(p.FechaHora, '%Y-%m'), ' Semana ', WEEK(p.FechaHora, 1))
+            ELSE DATE_FORMAT(p.FechaHora, '%Y-%m')
+        END
 )
 
-SELECT 
-    periodo,
-    Ruta,
-    ROUND(ingresos, 2) AS ingresosTotales
-FROM ranked
-WHERE rn <= 5
-ORDER BY periodo, ingresosTotales DESC;
+SELECT *
+FROM VelocidadRuta
+ORDER BY periodo, ruta;
 
 `
-    return this.clienteRepository.query(query, [...ids]);
+    return this.clienteRepository.query(query, [...ids, ...ids, ...ids, ...ids]);
   }
 }
