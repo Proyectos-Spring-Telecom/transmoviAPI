@@ -770,7 +770,7 @@ AND mv.Id = ?
         throw new NotFoundException('Mantenimiento vehicular no encontrado');
       }
 
-      await this.mantenimientoVehicularRepository.update(idMantenimiento, { estatus: estatus });
+      await this.mantenimientoVehicularRepository.update(idMantenimiento, { idEstatus: estatus });
 
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { id: idMantenimiento, estatus: estatus };

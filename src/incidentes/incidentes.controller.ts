@@ -157,9 +157,26 @@ export class IncidentesController {
   }
 
   @Patch(':id')
+  @UseInterceptors(
+    FileInterceptor('imagen', {
+      storage: multer.memoryStorage(),
+      limits: { fileSize: 10 * 1024 * 1024 }, // máximo 10 MB
+      fileFilter: (req, file, cb) => {
+        const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'application/pdf'];
+        if (file && !allowedTypes.includes(file.mimetype)) {
+          return cb(
+            new Error('Solo se permiten PNG, JPG, JPEG o PDF'),
+            false,
+          );
+        }
+        cb(null, true);
+      },
+    }),
+  )
+  @ApiConsumes('multipart/form-data')
   @ApiOperation({
     summary: 'Actualizar un incidente',
-    description: 'Actualiza los datos de un incidente existente. Solo se actualizan los campos proporcionados.',
+    description: 'Actualiza los datos de un incidente existente. Solo se actualizan los campos proporcionados. El campo imagen puede ser una imagen (archivo) o una URL string.',
   })
   @ApiParam({
     name: 'id',
@@ -169,7 +186,7 @@ export class IncidentesController {
   })
   @ApiBody({
     type: UpdateIncidentesDto,
-    description: 'Datos del incidente a actualizar',
+    description: 'Datos del incidente a actualizar (FormData)',
   })
   @ApiResponse({
     status: 200,
@@ -190,6 +207,7 @@ export class IncidentesController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateIncidentesDto: UpdateIncidentesDto,
+    @UploadedFile() imagenFile: Express.Multer.File,
     @Request() req,
   ): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
@@ -197,6 +215,7 @@ export class IncidentesController {
       id,
       updateIncidentesDto,
       idUser,
+      imagenFile,
     );
   }
 

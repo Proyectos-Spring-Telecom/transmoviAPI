@@ -180,6 +180,7 @@ export class IncidentesService {
           fhRegistro: item.fhRegistro,
           idOperador: Number(item.idOperador),
           incidente: item.incidente,
+          idEstatus: item.idEstatus ? Number(item.idEstatus) : null,
           estatus: item.estatus,
           imagen: item.imagen,
           placaVehiculo: item.instalacion?.vehiculos?.placa || null,
@@ -242,6 +243,7 @@ export class IncidentesService {
             fhRegistro: incidente.fhRegistro,
             idOperador: Number(incidente.idOperador),
             incidente: incidente.incidente,
+            idEstatus: incidente.idEstatus ? Number(incidente.idEstatus) : null,
             estatus: incidente.estatus,
             imagen: incidente.imagen,
             placaVehiculo: incidente.instalacion?.vehiculos?.placa || null,
@@ -266,6 +268,7 @@ export class IncidentesService {
     id: number,
     updateIncidentesDto: UpdateIncidentesDto,
     idUser: number,
+    imagenFile?: Express.Multer.File,
   ): Promise<ApiCrudResponse> {
     try {
       const incidente = await this.incidentesRepository.findOne({
@@ -273,6 +276,18 @@ export class IncidentesService {
       });
       if (!incidente) {
         throw new NotFoundException('Incidente no encontrado');
+      }
+
+      // Subir imagen a S3 si se proporciona un archivo nuevo
+      let imagenUrl: string | null = null;
+      if (imagenFile) {
+        const uploadResult = await this.s3Service.uploadFile(
+          imagenFile,
+          'Incidentes',
+          idUser,
+          36, // ID del módulo de incidentes
+        );
+        imagenUrl = uploadResult.url;
       }
 
       // Validar claves foráneas si se proporcionan
@@ -298,10 +313,73 @@ export class IncidentesService {
         }
       }
 
-      await this.incidentesRepository.update(
-        id,
-        updateIncidentesDto,
-      );
+      // Preparar datos para actualizar, filtrando campos undefined, null y strings vacíos
+      // (FormData puede enviar strings vacíos en lugar de undefined)
+      const dataToUpdate: any = {};
+      
+      // Helper para verificar si un valor está presente y no es vacío
+      const hasValue = (value: any): boolean => {
+        return value !== undefined && value !== null && value !== '';
+      };
+      
+      // Helper para convertir a número si es posible
+      const toNumber = (value: any): number | null => {
+        if (value === null || value === undefined || value === '') return null;
+        const num = Number(value);
+        return isNaN(num) ? null : num;
+      };
+
+      // Verificar y agregar idInstalacion
+      const idInstalacionNum = toNumber(updateIncidentesDto.idInstalacion);
+      if (idInstalacionNum !== null) {
+        dataToUpdate.idInstalacion = idInstalacionNum;
+      }
+
+      // Verificar y agregar idOperador
+      const idOperadorNum = toNumber(updateIncidentesDto.idOperador);
+      if (idOperadorNum !== null) {
+        dataToUpdate.idOperador = idOperadorNum;
+      }
+
+      // Verificar y agregar incidente
+      if (hasValue(updateIncidentesDto.incidente)) {
+        dataToUpdate.incidente = String(updateIncidentesDto.incidente).trim();
+      }
+
+      // Verificar y agregar idEstatus
+      const idEstatusNum = toNumber(updateIncidentesDto.idEstatus);
+      if (idEstatusNum !== null) {
+        dataToUpdate.idEstatus = idEstatusNum;
+      }
+
+      // Verificar y agregar estatus
+      const estatusNum = toNumber(updateIncidentesDto.estatus);
+      if (estatusNum !== null) {
+        dataToUpdate.estatus = estatusNum;
+      }
+
+      // Verificar y agregar imagen
+      // Si se subió un archivo nuevo, usar su URL
+      // Si no, pero viene un string en el DTO, usar ese string (URL existente)
+      // Si no viene nada, no actualizar este campo
+      if (imagenUrl) {
+        dataToUpdate.imagen = imagenUrl;
+      } else if (hasValue(updateIncidentesDto.imagen)) {
+        dataToUpdate.imagen = String(updateIncidentesDto.imagen).trim();
+      }
+
+      // Verificar y agregar fhRegistro
+      if (hasValue(updateIncidentesDto.fhRegistro)) {
+        dataToUpdate.fhRegistro = updateIncidentesDto.fhRegistro;
+      }
+
+      // Solo actualizar si hay campos para actualizar
+      if (Object.keys(dataToUpdate).length > 0) {
+        await this.incidentesRepository.update(
+          id,
+          dataToUpdate,
+        );
+      }
       const incidenteResult = await this.incidentesRepository.findOne({
         where: { id: id },
       });
@@ -480,7 +558,7 @@ export class IncidentesService {
         throw new NotFoundException('Incidente no encontrado');
       }
 
-      await this.incidentesRepository.update(idIncidente, { estatus: estatus });
+      await this.incidentesRepository.update(idIncidente, { idEstatus: estatus });
 
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { id: idIncidente, estatus: estatus };

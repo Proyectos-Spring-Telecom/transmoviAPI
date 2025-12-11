@@ -138,10 +138,10 @@ SELECT
   d.NumeroSerie AS instalacionDispositivoNumeroSerie,
   d.Marca AS instalacionDispositivoMarca,
   d.Modelo AS instalacionDispositivoModelo,
-  c.Id AS instalacionContadorId,
-  c.NumeroSerie AS instalacionContadorNumeroSerie,
-  c.Marca AS instalacionContadorMarca,
-  c.Modelo AS instalacionContadorModelo,
+  cont.Id AS instalacionContadorId,
+  cont.NumeroSerie AS instalacionContadorNumeroSerie,
+  cont.Marca AS instalacionContadorMarca,
+  cont.Modelo AS instalacionContadorModelo,
   veh.Id AS instalacionVehiculoId,
   veh.Marca AS instalacionVehiculoMarca,
   veh.Modelo AS instalacionVehiculoModelo,
@@ -155,7 +155,7 @@ INNER JOIN Instalaciones i ON mk.IdInstalacion = i.Id
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 LEFT JOIN Vehiculos veh ON i.IdVehiculo = veh.Id AND i.IdCliente = veh.IdCliente
 LEFT JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
-LEFT JOIN Contadores c ON i.IdContador = c.Id AND i.IdCliente = c.IdCliente
+LEFT JOIN Contadores cont ON i.IdContador = cont.Id AND i.IdCliente = cont.IdCliente
 ORDER BY mk.FHRegistro DESC
 LIMIT ? OFFSET ?;
             `,
@@ -204,10 +204,10 @@ SELECT
   d.NumeroSerie AS instalacionDispositivoNumeroSerie,
   d.Marca AS instalacionDispositivoMarca,
   d.Modelo AS instalacionDispositivoModelo,
-  c.Id AS instalacionContadorId,
-  c.NumeroSerie AS instalacionContadorNumeroSerie,
-  c.Marca AS instalacionContadorMarca,
-  c.Modelo AS instalacionContadorModelo,
+  cont.Id AS instalacionContadorId,
+  cont.NumeroSerie AS instalacionContadorNumeroSerie,
+  cont.Marca AS instalacionContadorMarca,
+  cont.Modelo AS instalacionContadorModelo,
   veh.Id AS instalacionVehiculoId,
   veh.Marca AS instalacionVehiculoMarca,
   veh.Modelo AS instalacionVehiculoModelo
@@ -216,7 +216,7 @@ INNER JOIN Instalaciones i ON mk.IdInstalacion = i.Id
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 LEFT JOIN Vehiculos veh ON i.IdVehiculo = veh.Id AND i.IdCliente = veh.IdCliente
 LEFT JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
-LEFT JOIN Contadores c ON i.IdContador = c.Id AND i.IdCliente = c.IdCliente
+LEFT JOIN Contadores cont ON i.IdContador = cont.Id AND i.IdCliente = cont.IdCliente
 WHERE c.Id IN (${placeholders})
 ORDER BY mk.FHRegistro DESC
 LIMIT ? OFFSET ?;
@@ -244,8 +244,8 @@ WHERE c.Id IN (${placeholders})
       const mantenimientosTransformados = data.map((item: any) => ({
         id: Number(item.id),
         idInstalacion: item.idInstalacion ? Number(item.idInstalacion) : null,
-        kmInicial: item.kmInicial ? Number(item.kmInicial) : null,
-        kmDeseado: item.kmDeseado ? Number(item.kmDeseado) : null,
+        kmInicial: item.kmInicial != null ? Number(item.kmInicial) : null,
+        kmDeseado: item.kmDeseado != null ? Number(item.kmDeseado) : null,
         periodo: item.periodo,
         anio: item.anio,
         fhRegistro: item.fhRegistro,
@@ -330,12 +330,12 @@ WHERE c.Id IN (${placeholders})
           {
             id: Number(item.id),
             idInstalacion: item.idInstalacion ? Number(item.idInstalacion) : null,
-            kmInicial: item.kmInicial ? Number(item.kmInicial) : null,
-            kmDeseado: item.kmDeseado ? Number(item.kmDeseado) : null,
+            kmInicial: item.kmInicial != null ? Number(item.kmInicial) : null,
+            kmDeseado: item.kmDeseado != null ? Number(item.kmDeseado) : null,
             periodo: item.periodo,
             anio: item.anio,
             fhRegistro: item.fhRegistro,
-            estatus: item.estatus,
+            estatus: mantenimiento.estatus,
             placaVehiculo: mantenimiento.instalacion?.vehiculos?.placa || null,
             imagenVehiculo: mantenimiento.instalacion?.vehiculos?.foto || null,
             instalacion: item.idInstalacion ? { id: Number(item.idInstalacion) } : null,

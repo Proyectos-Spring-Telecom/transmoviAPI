@@ -55,7 +55,17 @@ export class CreateIncidentesDto {
 
   @ApiProperty({
     example: 1,
-    description: 'Estatus del incidente',
+    description: 'ID del estatus de mantenimiento relacionado',
+    required: false,
+  })
+  @Transform(toNumber)
+  @IsInt({ message: 'El ID de estatus debe ser un número entero.' })
+  @IsOptional()
+  idEstatus?: number;
+
+  @ApiProperty({
+    example: 1,
+    description: 'Estatus del incidente (para activar/desactivar)',
     required: false,
   })
   @Transform(toNumber)

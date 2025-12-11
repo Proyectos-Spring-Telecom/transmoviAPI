@@ -114,9 +114,24 @@ export class VerificacionesService {
         notaVerificacionUrl = uploadResult.url;
       }
 
+      // Convertir fechas de formato ISO a formato DATE (YYYY-MM-DD)
+      const formatDateForDB = (dateString: string | undefined): string | undefined => {
+        if (!dateString) return undefined;
+        // Si ya está en formato YYYY-MM-DD, retornarlo
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+          return dateString;
+        }
+        // Si está en formato ISO, extraer solo la parte de la fecha
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return undefined;
+        return date.toISOString().split('T')[0];
+      };
+
       // Crear el registro con los datos del DTO
       const dataToCreate = {
         ...createVerificacionesDto,
+        verificacionActual: formatDateForDB(createVerificacionesDto.verificacionActual),
+        proximaVerificacion: formatDateForDB(createVerificacionesDto.proximaVerificacion),
         notaVerificacion: notaVerificacionUrl,
       };
 
@@ -261,15 +276,15 @@ export class VerificacionesService {
             `
 SELECT
   v.Id AS id,
-  v.VerificacionActual AS verificacionActual,
-  v.ProximaVerificacion AS proximaVerificacion,
+  DATE_FORMAT(v.VerificacionActual, '%Y-%m-%d') AS verificacionActual,
+  DATE_FORMAT(v.ProximaVerificacion, '%Y-%m-%d') AS proximaVerificacion,
   v.IdInstalacion AS idInstalacion,
   v.IdOperador AS idOperador,
   v.Estatus AS estatus,
   v.NotaVerificacion AS notaVerificacion,
   v.FHRegistro AS fhRegistro,
   v.IdTipoVerificacion AS idTipoVerificacion,
-  v.Evaluacion AS evaluacion,
+  NULL AS evaluacion,
   ct.Nombre AS nombreTipoVerificacion,
   veh.Placa AS placaVehiculo,
   veh.Foto AS imagenVehiculo,
@@ -330,15 +345,15 @@ INNER JOIN Clientes c ON i.IdCliente = c.Id
             `
 SELECT
   v.Id AS id,
-  v.VerificacionActual AS verificacionActual,
-  v.ProximaVerificacion AS proximaVerificacion,
+  DATE_FORMAT(v.VerificacionActual, '%Y-%m-%d') AS verificacionActual,
+  DATE_FORMAT(v.ProximaVerificacion, '%Y-%m-%d') AS proximaVerificacion,
   v.IdInstalacion AS idInstalacion,
   v.IdOperador AS idOperador,
   v.Estatus AS estatus,
   v.NotaVerificacion AS notaVerificacion,
   v.FHRegistro AS fhRegistro,
   v.IdTipoVerificacion AS idTipoVerificacion,
-  v.Evaluacion AS evaluacion,
+  NULL AS evaluacion,
   ct.Nombre AS nombreTipoVerificacion,
   veh.Placa AS placaVehiculo,
   veh.Foto AS imagenVehiculo,
@@ -408,7 +423,7 @@ WHERE c.Id IN (${placeholders})
             fhRegistro: item.fhRegistro,
             idTipoVerificacion: item.idTipoVerificacion ? Number(item.idTipoVerificacion) : null,
             evaluacion: evaluacionTransformada,
-            nombreTipoVerificacion: item.nombreTipoVerificacion || null,
+            nombreTipoVerificacion: item.nombreTipoVerificacion?.trim() || null,
             placaVehiculo: item.placaVehiculo || null,
             imagenVehiculo: item.imagenVehiculo || null,
             nombreOperador: item.nombreOperador?.trim() || null,
@@ -457,15 +472,15 @@ WHERE c.Id IN (${placeholders})
             `
 SELECT
   v.Id AS id,
-  v.VerificacionActual AS verificacionActual,
-  v.ProximaVerificacion AS proximaVerificacion,
+  DATE_FORMAT(v.VerificacionActual, '%Y-%m-%d') AS verificacionActual,
+  DATE_FORMAT(v.ProximaVerificacion, '%Y-%m-%d') AS proximaVerificacion,
   v.IdInstalacion AS idInstalacion,
   v.IdOperador AS idOperador,
   v.Estatus AS estatus,
   v.NotaVerificacion AS notaVerificacion,
   v.FHRegistro AS fhRegistro,
   v.IdTipoVerificacion AS idTipoVerificacion,
-  v.Evaluacion AS evaluacion,
+  NULL AS evaluacion,
   ct.Nombre AS nombreTipoVerificacion,
   veh.Placa AS placaVehiculo,
   veh.Foto AS imagenVehiculo,
@@ -508,15 +523,15 @@ WHERE v.Id = ?
             `
 SELECT
   v.Id AS id,
-  v.VerificacionActual AS verificacionActual,
-  v.ProximaVerificacion AS proximaVerificacion,
+  DATE_FORMAT(v.VerificacionActual, '%Y-%m-%d') AS verificacionActual,
+  DATE_FORMAT(v.ProximaVerificacion, '%Y-%m-%d') AS proximaVerificacion,
   v.IdInstalacion AS idInstalacion,
   v.IdOperador AS idOperador,
   v.Estatus AS estatus,
   v.NotaVerificacion AS notaVerificacion,
   v.FHRegistro AS fhRegistro,
   v.IdTipoVerificacion AS idTipoVerificacion,
-  v.Evaluacion AS evaluacion,
+  NULL AS evaluacion,
   ct.Nombre AS nombreTipoVerificacion,
   veh.Placa AS placaVehiculo,
   veh.Foto AS imagenVehiculo,
@@ -577,7 +592,7 @@ AND v.Id = ?
             fhRegistro: item.fhRegistro,
             idTipoVerificacion: item.idTipoVerificacion ? Number(item.idTipoVerificacion) : null,
             evaluacion: evaluacionTransformada,
-            nombreTipoVerificacion: item.nombreTipoVerificacion || null,
+            nombreTipoVerificacion: item.nombreTipoVerificacion?.trim() || null,
             placaVehiculo: item.placaVehiculo || null,
             imagenVehiculo: item.imagenVehiculo || null,
             nombreOperador: item.nombreOperador?.trim() || null,
@@ -609,6 +624,7 @@ AND v.Id = ?
     id: number,
     updateVerificacionesDto: UpdateVerificacionesDto,
     idUser: number,
+    notaVerificacionFile?: Express.Multer.File,
   ): Promise<ApiCrudResponse> {
     try {
       const verificacion = await this.verificacionesRepository.findOne({
@@ -652,10 +668,123 @@ AND v.Id = ?
         }
       }
 
-      await this.verificacionesRepository.update(
-        id,
-        updateVerificacionesDto,
-      );
+      // Subir imagen de notaVerificacion a S3 si se proporciona un archivo nuevo
+      let notaVerificacionUrl: string | null = null;
+      if (notaVerificacionFile) {
+        const uploadResult = await this.s3Service.uploadFile(
+          notaVerificacionFile,
+          'Verificaciones',
+          idUser,
+          6, // ID del módulo de verificaciones (ajustar según corresponda)
+        );
+        notaVerificacionUrl = uploadResult.url;
+      }
+
+      // Convertir fechas de formato ISO a formato DATE (YYYY-MM-DD)
+      const formatDateForDB = (dateString: string | undefined): string | undefined => {
+        if (!dateString) return undefined;
+        // Si ya está en formato YYYY-MM-DD, retornarlo
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+          return dateString;
+        }
+        // Si está en formato ISO, extraer solo la parte de la fecha
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return undefined;
+        return date.toISOString().split('T')[0];
+      };
+
+      // Preparar datos para actualizar, filtrando campos undefined, null y strings vacíos
+      // (FormData puede enviar strings vacíos en lugar de undefined)
+      const dataToUpdate: any = {};
+      
+      // Helper para verificar si un valor está presente y no es vacío
+      const hasValue = (value: any): boolean => {
+        return value !== undefined && value !== null && value !== '';
+      };
+      
+      // Helper para convertir a número si es posible
+      const toNumber = (value: any): number | null => {
+        if (value === null || value === undefined || value === '') return null;
+        const num = Number(value);
+        return isNaN(num) ? null : num;
+      };
+      
+      // Verificar y agregar verificacionActual
+      if (hasValue(updateVerificacionesDto.verificacionActual)) {
+        const fechaFormateada = formatDateForDB(String(updateVerificacionesDto.verificacionActual));
+        if (fechaFormateada) {
+          dataToUpdate.verificacionActual = fechaFormateada;
+        }
+      }
+      
+      // Verificar y agregar proximaVerificacion
+      if (hasValue(updateVerificacionesDto.proximaVerificacion)) {
+        const fechaFormateada = formatDateForDB(String(updateVerificacionesDto.proximaVerificacion));
+        if (fechaFormateada) {
+          dataToUpdate.proximaVerificacion = fechaFormateada;
+        }
+      }
+      
+      // Verificar y agregar idInstalacion
+      const idInstalacionNum = toNumber(updateVerificacionesDto.idInstalacion);
+      if (idInstalacionNum !== null) {
+        dataToUpdate.idInstalacion = idInstalacionNum;
+      }
+      
+      // Verificar y agregar idOperador
+      const idOperadorNum = toNumber(updateVerificacionesDto.idOperador);
+      if (idOperadorNum !== null) {
+        dataToUpdate.idOperador = idOperadorNum;
+      }
+      
+      // Verificar y agregar estatus
+      const estatusNum = toNumber(updateVerificacionesDto.estatus);
+      if (estatusNum !== null) {
+        dataToUpdate.estatus = estatusNum;
+      }
+      
+      // Verificar y agregar notaVerificacion
+      // Si se subió un archivo nuevo, usar su URL
+      // Si no, pero viene un string en el DTO, usar ese string (URL existente)
+      // Si no viene nada, no actualizar este campo
+      if (notaVerificacionUrl) {
+        dataToUpdate.notaVerificacion = notaVerificacionUrl;
+      } else if (hasValue(updateVerificacionesDto.notaVerificacion)) {
+        dataToUpdate.notaVerificacion = String(updateVerificacionesDto.notaVerificacion).trim();
+      }
+      
+      // Verificar y agregar idTipoVerificacion
+      const idTipoVerificacionNum = toNumber(updateVerificacionesDto.idTipoVerificacion);
+      if (idTipoVerificacionNum !== null) {
+        dataToUpdate.idTipoVerificacion = idTipoVerificacionNum;
+      }
+      
+      // Verificar y agregar evaluacion
+      if (updateVerificacionesDto.evaluacion !== undefined && updateVerificacionesDto.evaluacion !== null) {
+        // Si es string, intentar parsearlo como JSON
+        const evaluacionValue: any = updateVerificacionesDto.evaluacion;
+        if (typeof evaluacionValue === 'string') {
+          const trimmed = String(evaluacionValue).trim();
+          if (trimmed !== '') {
+            try {
+              dataToUpdate.evaluacion = JSON.parse(trimmed);
+            } catch {
+              // Si no es JSON válido, no agregarlo
+            }
+          }
+        } else if (typeof evaluacionValue === 'object') {
+          dataToUpdate.evaluacion = evaluacionValue;
+        }
+      }
+
+      // Solo actualizar si hay campos para actualizar
+      if (Object.keys(dataToUpdate).length > 0) {
+        await this.verificacionesRepository.update(
+          id,
+          dataToUpdate,
+        );
+      }
+
       const verificacionResult = await this.verificacionesRepository.findOne({
         where: { id: id },
       });

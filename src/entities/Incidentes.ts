@@ -33,6 +33,9 @@ export class Incidentes {
   @Column("varchar", { name: "Incidente", nullable: true, length: 1000 })
   incidente: string | null;
 
+  @Column("int", { name: "IdEstatus", nullable: true })
+  idEstatus: number | null;
+
   @Column("int", { name: "Estatus", nullable: true, default: () => "'1'" })
   estatus: number | null;
 

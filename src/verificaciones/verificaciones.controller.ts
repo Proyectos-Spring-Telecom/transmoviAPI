@@ -174,9 +174,26 @@ export class VerificacionesController {
   }
 
   @Patch(':id')
+  @UseInterceptors(
+    FileInterceptor('notaVerificacion', {
+      storage: multer.memoryStorage(),
+      limits: { fileSize: 10 * 1024 * 1024 }, // máximo 10 MB
+      fileFilter: (req, file, cb) => {
+        const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'application/pdf'];
+        if (file && !allowedTypes.includes(file.mimetype)) {
+          return cb(
+            new Error('Solo se permiten PNG, JPG, JPEG o PDF'),
+            false,
+          );
+        }
+        cb(null, true);
+      },
+    }),
+  )
+  @ApiConsumes('multipart/form-data')
   @ApiOperation({
     summary: 'Actualizar una verificación',
-    description: 'Actualiza los datos de una verificación existente. Solo se actualizan los campos proporcionados.',
+    description: 'Actualiza los datos de una verificación existente. Solo se actualizan los campos proporcionados. El campo notaVerificacion puede ser una imagen (archivo) o una URL string.',
   })
   @ApiParam({
     name: 'id',
@@ -186,7 +203,7 @@ export class VerificacionesController {
   })
   @ApiBody({
     type: UpdateVerificacionesDto,
-    description: 'Datos de la verificación a actualizar',
+    description: 'Datos de la verificación a actualizar (FormData)',
   })
   @ApiResponse({
     status: 200,
@@ -207,6 +224,7 @@ export class VerificacionesController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateVerificacionesDto: UpdateVerificacionesDto,
+    @UploadedFile() notaVerificacionFile: Express.Multer.File,
     @Request() req,
   ): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
@@ -214,6 +232,7 @@ export class VerificacionesController {
       id,
       updateVerificacionesDto,
       idUser,
+      notaVerificacionFile,
     );
   }
 
