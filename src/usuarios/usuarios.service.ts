@@ -612,7 +612,7 @@ ORDER BY u.Id DESC
     }
   }
 
-  //Creacion de pin operador
+  //Actualizar o Agregar deviceID
   async updateDispositivo(
     userName: string,
     idUser: number,
@@ -635,6 +635,22 @@ ORDER BY u.Id DESC
       if (!dispositivo) {
         throw new NotFoundException(
           `Dispositivo numero de serie: ${updateUsuarioDispositivoDto.deviceId} no fue encontrado.`,
+        );
+      }
+
+      const usuariosOperadorDevice = await this.usuarioRepository.find({
+        where: {
+          deviceId: 'DSP-TR-001',
+        },
+      });
+
+      if (usuariosOperadorDevice.length > 0) {
+        await Promise.all(
+          usuariosOperadorDevice.map((usuario) =>
+            this.usuarioRepository.update(usuario.id, {
+              deviceId: null,
+            }),
+          ),
         );
       }
 
