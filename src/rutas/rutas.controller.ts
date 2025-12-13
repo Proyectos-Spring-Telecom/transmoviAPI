@@ -84,9 +84,7 @@ export class RutasController {
     const rol = req.user.rol;
     return this.rutasService.obtenerRutasPorUsuarioSQL(+idUser, +cliente, +rol, +page, +limit);
   }
-  // ========================================
-  // 🔹 OBTENER PAGINADO DE RUTAS
-  // ========================================
+
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number, @Request() req) {
     const cliente = req.user.cliente;
