@@ -447,7 +447,7 @@ INNER JOIN Clientes c ON d.IdCliente = c.Id
 WHERE td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
   AND c.Id IN (${idCliente})
   
-  GROUP BY c.Id;;
+  GROUP BY c.Id;
 `
 
     return this.clienteRepository.query(query,);

@@ -256,13 +256,6 @@ export class AuthService {
         where: { idUsuario: user.id, estatus: 1 },
       });
 
-      const payload = {
-        id: user.id,
-        email: user.userName,
-        cliente: user.idCliente,
-        rol: user.idRol,
-      };
-
       function pad(n: number) {
         return n < 10 ? '0' + n : n;
       }
@@ -336,6 +329,14 @@ SELECT
 FROM DatosUsuario du
 LEFT JOIN LicenciasJSON lj ON lj.IdUsuario = du.IdUsuario;
           `)
+
+      const payload = {
+        id: user.id,
+        email: user.userName,
+        cliente: user.idCliente,
+        rol: user.idRol,
+        idOperador: operador[0].idOperador
+      };
       return {
         message: `login exitoso`,
         id: Number(operador[0].IdUsuario),
@@ -492,6 +493,13 @@ SELECT
 FROM DatosUsuario du
 LEFT JOIN LicenciasJSON lj ON lj.IdUsuario = du.IdUsuario;
           `)
+        const payload = {
+          id: user.id,
+          email: user.userName,
+          cliente: user.idCliente,
+          rol: user.idRol,
+          idOperador: operador[0].idOperador
+        };
         return {
           message: `login exitoso`,
           id: Number(operador[0].IdUsuario),

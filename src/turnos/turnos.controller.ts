@@ -33,7 +33,8 @@ export class TurnosController {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
     const rol = req.user.rol;
-    return await this.turnosService.create(+idUser, createTurnoDto);
+    const idOperador = req.user.idOperador;
+    return await this.turnosService.create(+idUser, +cliente, +idOperador, createTurnoDto);
   }
 
   @Get('list')
@@ -85,7 +86,8 @@ export class TurnosController {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
     const rol = req.user.rol;
-    return await this.turnosService.update(id, +idUser, updateTurnoDto);
+    const idOperador = req.user.idOperador;
+    return await this.turnosService.update(id, +idUser, +cliente, +idOperador, updateTurnoDto);
   }
 
   @Delete(':id')

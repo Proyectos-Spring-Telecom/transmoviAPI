@@ -27,7 +27,8 @@ export class ViajesController {
     const idUser = req.user.userId;
     const cliente = req.user.cliente;
     const rol = req.user.rol;
-    return this.viajesService.create(+idUser, createViajeDto);
+    const idOperador = req.user.idOperador;
+    return this.viajesService.create(+idUser, +cliente, +idOperador, createViajeDto);
   }
 
   @Patch(':id')
@@ -37,7 +38,10 @@ export class ViajesController {
     @Request() req,
   ) {
     const idUser = req.user.userId;
-    return this.viajesService.update(+idUser, +id, updateViajeDto);
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+    const idOperador = req.user.idOperador;
+    return this.viajesService.update(+idUser, +cliente, +idOperador, +id, updateViajeDto);
   }
 
   @Get('list')
