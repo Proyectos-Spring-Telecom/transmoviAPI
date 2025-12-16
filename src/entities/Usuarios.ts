@@ -35,7 +35,7 @@ export class Usuarios {
   passwordHash: string;
 
   @Column("varchar", { name: "CodigoHash", nullable: true, length: 255 })
-  codigohash: string | null;
+  codigoHash: string | null;
 
   @Column("tinyint", { name: "EmailConfirmado", default: () => "'0'" })
   emailConfirmado: number;

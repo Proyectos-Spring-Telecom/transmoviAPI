@@ -27,8 +27,8 @@ import { MailService } from 'src/mail/mail.service';
 import { JwtService } from '@nestjs/jwt';
 import { Clientes } from 'src/entities/Clientes';
 import { EnumModulos, EstatusEnum } from 'src/common/estatus.enum';
-import { UpdateUsuarioDispositivoDto } from './dto/update-usuario-dispositivo.dto';
 import { Validadores } from 'src/entities/Validadores';
+import { UpdateUsuarioValidadorDto } from './dto/update-usuario-validador.dto';
 
 @Injectable()
 export class UsuariosService {
@@ -533,6 +533,8 @@ ORDER BY u.Id DESC
       const usuario = await this.usuarioRepository.findOne({
         where: { userName: updateUsuarioOperadorDto.userName },
       });
+
+
       if (!usuario) {
         throw new NotFoundException(
           `Usuario con nombre de usuario: ${updateUsuarioOperadorDto.userName} no encontrado.`,
@@ -558,8 +560,8 @@ ORDER BY u.Id DESC
       const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())} ${pad(fechaDesfasada.getHours())}:${pad(fechaDesfasada.getMinutes())}:${pad(fechaDesfasada.getSeconds())}`;
       const bodyOperador = {
         userName: updateUsuarioOperadorDto.userName,
-        pinHash: pinPassword,
-        actualizacionPin: fechaActual,
+        codigoHash: pinPassword,
+        actualizacionCodigo: fechaActual,
       };
 
       //Agregamos el pin al updateUsuarioOperadorDto
@@ -614,34 +616,34 @@ ORDER BY u.Id DESC
   }
 
   //Creacion de pin operador
-  async updateDispositivo(
+  async updateValidador(
     userName: string,
     idUser: number,
-    updateUsuarioDispositivoDto: UpdateUsuarioDispositivoDto,
+    updateUsuarioValidadorDto: UpdateUsuarioValidadorDto,
   ): Promise<ApiCrudResponse> {
     try {
       //Buscamos al usuario
       const usuario = await this.usuarioRepository.findOne({
-        where: { userName: updateUsuarioDispositivoDto.userName },
+        where: { userName: updateUsuarioValidadorDto.userName },
       });
       if (!usuario) {
         throw new NotFoundException(
-          `Usuario con nombre de usuario: ${updateUsuarioDispositivoDto.userName} no encontrado.`,
+          `Usuario con nombre de usuario: ${updateUsuarioValidadorDto.userName} no encontrado.`,
         );
       }
 
       const dispositivo = await this.validadoresRepository.findOne({
-        where: { numeroSerie: updateUsuarioDispositivoDto.validadorId },
+        where: { numeroSerie: updateUsuarioValidadorDto.validadorId },
       });
       if (!dispositivo) {
         throw new NotFoundException(
-          `Validador numero de serie: ${updateUsuarioDispositivoDto.validadorId} no fue encontrado.`,
+          `Validador numero de serie: ${updateUsuarioValidadorDto.validadorId} no fue encontrado.`,
         );
       }
 
       const usuariosOperadorDevice = await this.usuarioRepository.find({
         where: {
-          deviceId: updateUsuarioDispositivoDto.deviceId,
+          validadorId: updateUsuarioValidadorDto.validadorId,
         },
       });
 
@@ -649,14 +651,14 @@ ORDER BY u.Id DESC
         await Promise.all(
           usuariosOperadorDevice.map((usuario) =>
             this.usuarioRepository.update(usuario.id, {
-              deviceId: null,
+              validadorId: null,
             }),
           ),
         );
       }
 
       const bodyOperador = {
-        validadorId: updateUsuarioDispositivoDto.validadorId,
+        validadorId: updateUsuarioValidadorDto.validadorId,
       };
 
       //Agregamos el dispositivo al usuario
@@ -666,7 +668,7 @@ ORDER BY u.Id DESC
       );
 
       //-----Registro en la bitacora----- SUCCESS
-      const querylogger = { updateUsuarioDispositivoDto };
+      const querylogger = { updateUsuarioValidadorDto };
       await this.bitacoraLogger.logToBitacora(
         'Usuarios',
         `El deviceId ha sido actualizado para el usuario con ID: ${usuario.id}.`,
@@ -689,10 +691,10 @@ ORDER BY u.Id DESC
       return result;
     } catch (error) {
       //-----Registro en la bitacora----- SUCCESS
-      const querylogger = { updateUsuarioDispositivoDto };
+      const querylogger = { updateUsuarioValidadorDto };
       await this.bitacoraLogger.logToBitacora(
         'Usuarios',
-        `El deviceId ha sido actualizado para el usuario con ID: ${idUser}.`,
+        `El validadorId ha sido actualizado para el usuario con ID: ${idUser}.`,
         'UPDATE',
         querylogger,
         idUser,

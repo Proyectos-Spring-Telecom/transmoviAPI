@@ -26,7 +26,7 @@ import {
 import { ApiCrudResponse } from 'src/common/ApiResponse';
 import { UpdateUsuarioOperadorDto } from './dto/update-usuario-operador.dto';
 import { UpdateUsuarioContrasena } from './dto/update-usuario-contrasena.dto';
-import { UpdateUsuarioDispositivoDto } from './dto/update-usuario-dispositivo.dto';
+import { UpdateUsuarioValidadorDto } from './dto/update-usuario-validador.dto';
 
 @UseGuards(JwtAuthGuard)
 @ApiTags('Usuarios')
@@ -191,20 +191,20 @@ export class UsuariosController {
     );
   }
 
-  @Patch('actualizar/dispositivo')
-  @ApiOperation({ summary: 'Actualizar dispositivo del operador' })
-  @ApiResponse({ status: 200, description: 'Dispositivo Actualizado' })
+  @Patch('actualizar/validador')
+  @ApiOperation({ summary: 'Actualizar validador del operador' })
+  @ApiResponse({ status: 200, description: 'Validador Actualizado' })
   @ApiResponse({ status: 400, description: 'Datos inválidos' })
-  async updateDispositivo(
-    @Body() updateUsuarioDispositivoDto: UpdateUsuarioDispositivoDto,
+  async updateValidador(
+    @Body() updateUsuarioValidadorDto: UpdateUsuarioValidadorDto,
     @Request() req,
   ): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
     const userName = req.user.email;
-    return await this.usuariosService.updateDispositivo(
+    return await this.usuariosService.updateValidador(
       userName,
       +idUser,
-      updateUsuarioDispositivoDto,
+      updateUsuarioValidadorDto,
     );
   }
 

@@ -390,7 +390,7 @@ SELECT
 
 FROM Vehiculos v
 LEFT JOIN Instalaciones i ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente AND i.Estatus = 1
-LEFT JOIN Validadores d ON d.Id = i.IdDispositivo
+LEFT JOIN Validadores d ON d.Id = i.idValidador
 LEFT JOIN Posiciones up ON up.NumeroSerieValidador = d.NumeroSerie
 
     AND up.FechaHora >= NOW() - INTERVAL 15 MINUTE
@@ -514,7 +514,7 @@ SELECT
 
 FROM Vehiculos v
 LEFT JOIN Instalaciones i ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente AND i.Estatus = 1
-LEFT JOIN Validadores d ON d.Id = i.IdDispositivo
+LEFT JOIN Validadores d ON d.Id = i.idValidador
 LEFT JOIN Posiciones up ON up.NumeroSerieValidador = d.NumeroSerie
 
     AND up.FechaHora >= NOW() - INTERVAL 15 MINUTE
@@ -1020,8 +1020,8 @@ WITH ingresos AS (
             ON vt.IdTransaccionDebito = td.Id
     JOIN Viajes v 
             ON v.Id = vt.IdViaje
-    JOIN Derroteros d 
-            ON d.Id = v.IdDerrotero
+    JOIN Variantes d 
+            ON d.Id = v.IdVariante
     JOIN Rutas r 
             ON r.Id = d.IdRuta
     JOIN Regiones reg 
@@ -1059,8 +1059,8 @@ WITH ingresos AS (
             ON vt.IdTransaccionDebito = td.Id
     JOIN Viajes v 
             ON v.Id = vt.IdViaje
-    JOIN Derroteros d 
-            ON d.Id = v.IdDerrotero
+    JOIN Variantes d 
+            ON d.Id = v.IdVariante
     JOIN Rutas r 
             ON r.Id = d.IdRuta
     JOIN Regiones reg 
@@ -1111,7 +1111,7 @@ VelocidadRuta AS (
     FROM Posiciones p
     INNER JOIN rango ON 1=1
     INNER JOIN Validadores d ON p.NumeroSerieValidador = d.NumeroSerie
-    INNER JOIN Instalaciones i ON d.Id = i.IdDispositivo AND d.IdCliente = i.IdCliente
+    INNER JOIN Instalaciones i ON d.Id = i.idValidador AND d.IdCliente = i.IdCliente
     INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND v.IdCliente = d.IdCliente
     INNER JOIN Turnos t ON i.Id = t.IdInstalacion AND t.Estatus = 1
     INNER JOIN Viajes vi ON t.Id = vi.IdTurno AND vi.Estatus = 1
@@ -1173,7 +1173,7 @@ VelocidadRuta AS (
     FROM Posiciones p
     INNER JOIN rango ON 1=1
     INNER JOIN Validadores d ON p.NumeroSerieValidador = d.NumeroSerie
-    INNER JOIN Instalaciones i ON d.Id = i.IdDispositivo AND d.IdCliente = i.IdCliente
+    INNER JOIN Instalaciones i ON d.Id = i.idValidador AND d.IdCliente = i.IdCliente
     INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND v.IdCliente = d.IdCliente
     INNER JOIN Turnos t ON i.Id = t.IdInstalacion AND t.Estatus = 1
     INNER JOIN Viajes vi ON t.Id = vi.IdTurno AND vi.Estatus = 1

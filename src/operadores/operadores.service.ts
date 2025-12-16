@@ -558,7 +558,7 @@ SELECT
   u.ApellidoPaterno AS apellidoPaternoUsuario,
   u.ApellidoMaterno AS apellidoMaternoUsuario,
   u.Telefono AS telefonoUsuario,
-  u.DeviceId AS deviceId,
+  u.ValidadorId AS validadorId,
   u.FotoPerfil AS fotoPerfil,
   u.FechaCreacion AS fechaCreacionUsuario,
   u.FechaActualizacion AS fechaActualizacionUsuario,

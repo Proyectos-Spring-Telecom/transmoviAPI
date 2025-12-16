@@ -19,7 +19,8 @@ async function bootstrap() {
     .setTitle('DashCam API')
     .setDescription('Documentación de la API de DashCam') 
     .setVersion('2.0') 
-    .addServer('http://216.238.90.247:3001', 'Servidor de Desarrollo')
+    .addServer('http://216.238.90.247:3001', 'Servidor de Desarrollo')   
+     .addServer('http://localhost:3000', 'Servidor de Desarrollo')
     .addBearerAuth(
       {
         type: 'http',

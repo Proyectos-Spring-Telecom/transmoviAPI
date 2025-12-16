@@ -9,5 +9,5 @@ export class UpdateTurnoDto {
   })
   @IsString()
   @IsNotEmpty()
-  numeroSerieDispositivo: string;
+  numeroSerieValidador: string;
 }

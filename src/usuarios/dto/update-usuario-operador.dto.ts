@@ -57,17 +57,5 @@ export class UpdateUsuarioOperadorDto {
   })
   codigohash: string;
 
-  @IsString()
-  @IsNotEmpty()
-  @ApiProperty({
-    description: 'Identificador del validador',
-    example: '15aBW',
-  })
-  validadorId: string;
 
-  @IsOptional()
-  @IsDateString()
-  @ApiProperty({ description: 'Actualización de PIN', required: false })
-  actualizacionCodigo?: string;
-  
 }

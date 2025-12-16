@@ -15,6 +15,7 @@ import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import { Usuarios } from 'src/entities/Usuarios';
 import { Clientes } from 'src/entities/Clientes';
 import { Contadores } from 'src/entities/Contadores';
+import { Viajes } from 'src/entities/Viajes';
 import { UpdateConteoPasajerosDto } from './dto/update-conteopasajero.dto';
 import { EnumModulos } from 'src/common/estatus.enum';
 
@@ -29,6 +30,8 @@ export class ConteopasajerosService {
     private readonly usuariosRepository: Repository<Usuarios>,
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
+    @InjectRepository(Viajes)
+    private readonly viajesRepository: Repository<Viajes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
   ) { }
 
@@ -40,19 +43,83 @@ export class ConteopasajerosService {
     idUser: number,
   ): Promise<ApiCrudResponse> {
     try {
-      const newConteoPasajero = await this.conteopasajeroRepository.create(
-        createConteopasajeroDto,
+      // Validar que el contador existe
+      const contador = await this.contadoresRepository.findOne({ 
+        where: { numeroSerie: createConteopasajeroDto.numeroSerieContador } 
+      });
+
+      if (!contador) {
+        throw new NotFoundException(
+          `El contador con número de serie '${createConteopasajeroDto.numeroSerieContador}' no existe.`
+        );
+      }
+
+      // Validar que el viaje existe si se proporciona idViaje
+      if (createConteopasajeroDto.idViaje) {
+        const viaje = await this.viajesRepository.findOne({ 
+          where: { id: createConteopasajeroDto.idViaje } 
+        });
+
+        if (!viaje) {
+          throw new NotFoundException(
+            `El viaje con ID '${createConteopasajeroDto.idViaje}' no existe.`
+          );
+        }
+      }
+
+      // Preparar los datos para crear, asegurando que idViaje sea null si no se proporciona
+      const dataToCreate: any = {
+        entradas: createConteopasajeroDto.entradas,
+        salidas: createConteopasajeroDto.salidas,
+        diferencia: createConteopasajeroDto.diferencia,
+        fechaHora: createConteopasajeroDto.fechaHora,
+        numeroSerieContador: createConteopasajeroDto.numeroSerieContador,
+        idViaje: createConteopasajeroDto.idViaje || null,
+      };
+      
+      const newConteoPasajero = this.conteopasajeroRepository.create(
+        dataToCreate,
       );
-      const conteoPasajeroSave = await this.conteopasajeroRepository.save(newConteoPasajero);
+      
+      // Guardar el registro
+      const saveResult = await this.conteopasajeroRepository.save(newConteoPasajero);
+      const conteoPasajeroSave = Array.isArray(saveResult) ? saveResult[0] : saveResult;
 
-      // Registro en la bitácora SUCCESS
-   
-      const contador = await this.contadoresRepository.findOne({ where: { numeroSerie: createConteopasajeroDto.numeroSerieContador } })
+      // Verificar que el registro realmente se guardó en la base de datos
+      if (!conteoPasajeroSave || !conteoPasajeroSave.id) {
+        throw new InternalServerErrorException(
+          'Error al guardar el registro de ConteoPasajero. El registro no se creó correctamente.'
+        );
+      }
 
-      if (contador) {
+      // Verificar nuevamente consultando la base de datos
+      const registroVerificado = await this.conteopasajeroRepository.findOne({
+        where: { id: conteoPasajeroSave.id }
+      });
 
-        const usuario = await this.usuariosRepository.findOne({ where: { idCliente: contador.idCliente, idRol: 2 } })
-        // Registro en la bitácora SUCCESS
+      if (!registroVerificado) {
+        throw new InternalServerErrorException(
+          'Error al verificar el registro de ConteoPasajero. El registro no se encontró en la base de datos después de guardarlo.'
+        );
+      }
+
+      // Preparar respuesta exitosa
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'El registro de ConteoPasajero se realizó con éxito.',
+        data: {
+          id: Number(conteoPasajeroSave.id),
+          nombre: `${conteoPasajeroSave.id} ${conteoPasajeroSave.numeroSerieContador}` || '',
+        },
+      };
+
+      // Registro en la bitácora SUCCESS (después de confirmar que se guardó)
+      // Usar try-catch para que un error en la bitácora no afecte la respuesta
+      try {
+        const usuario = await this.usuariosRepository.findOne({ 
+          where: { idCliente: contador.idCliente, idRol: 2 } 
+        });
+        
         const querylogger = { createConteopasajeroDto };
         await this.bitacoraLogger.logToBitacora(
           'ConteoPasajeros',
@@ -63,24 +130,18 @@ export class ConteopasajerosService {
           23,
           EstatusEnumBitcora.SUCCESS,
         );
+      } catch (bitacoraError) {
+        // Log del error de bitácora pero no afectar la respuesta
+        console.error('Error al registrar en bitácora:', bitacoraError);
       }
 
-
-      const result: ApiCrudResponse = {
-        status: 'success',
-        message: 'El registro de ConteoPasajero se realizó con éxito.',
-        data: {
-          id: Number(conteoPasajeroSave.id),
-          nombre: `${conteoPasajeroSave.id} ${conteoPasajeroSave.numeroSerieContador}` || '',
-        },
-      };
       return result;
     } catch (error) {
       // Registro en la bitácora ERROR
       const querylogger = { createConteopasajeroDto };
       await this.bitacoraLogger.logToBitacora(
         'ConteoPasajeros',
-        `Se creó un ConteoPasajeros con Numero de serie Contador: ${createConteopasajeroDto.numeroSerieContador}`,
+        `Error al crear ConteoPasajeros con Numero de serie Contador: ${createConteopasajeroDto.numeroSerieContador}`,
         'CREATE',
         querylogger,
         idUser,
@@ -88,9 +149,25 @@ export class ConteopasajerosService {
         EstatusEnumBitcora.ERROR,
         error.message,
       );
+      
       if (error instanceof HttpException) {
         throw error;
       }
+
+      // Detectar errores de foreign key y proporcionar mensaje más claro
+      if (error.message && error.message.includes('foreign key constraint fails')) {
+        if (error.message.includes('FK_ConteoPasajeros_Contadores')) {
+          throw new NotFoundException(
+            `El contador con número de serie '${createConteopasajeroDto.numeroSerieContador}' no existe.`
+          );
+        }
+        if (error.message.includes('IdViaje')) {
+          throw new NotFoundException(
+            `El viaje con ID '${createConteopasajeroDto.idViaje}' no existe.`
+          );
+        }
+      }
+
       throw new InternalServerErrorException({
         message: 'Error al crear ConteoPasajeros',
         error: error.message,

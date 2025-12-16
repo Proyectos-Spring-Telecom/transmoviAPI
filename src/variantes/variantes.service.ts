@@ -9,8 +9,9 @@ import { CreateVarianteDto } from './dto/create-variante.dto';
 import { UpdateVarianteDto } from './dto/update-variante.dto';
 import { generarRecorridoDetallado } from '../utils/recorrido.utils';
 import {
-  ApiDerroteroResponse,
+  
   ApiResponseCommon,
+  ApiVarianteResponse,
   EstatusEnumBitcora,
 } from '../common/ApiResponse';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -68,7 +69,7 @@ export class VariantesService {
       );
 
       //API response
-      const result: ApiDerroteroResponse = {
+      const result: ApiVarianteResponse = {
         status: 'succes',
         message: 'Se creo correctamente Variante',
         id: Number(varianteSave.id),
@@ -712,8 +713,8 @@ SELECT
   d.PuntoFin AS puntoFin,
   d.RecorridoDetallado AS recorridoDetallado,
   d.DistanciaKm AS distanciaKm,
-  d.FechaCreacion AS fechaCreacionDerrotero,
-  d.Estatus AS estatusDerrotero,
+  d.FechaCreacion AS fechaCreacionVariante,
+  d.Estatus AS estatusVariante,
 
   -- Datos de la ruta asociada
   ru.Id AS idRuta,
@@ -1134,7 +1135,7 @@ WHERE ur.IdUsuario = ?
       );
 
       //API response
-      const result: ApiDerroteroResponse = {
+      const result: ApiVarianteResponse = {
         status: 'success',
         message: 'Se actualizo correctamente estatus del Variante',
         id: Number(variante.id),
@@ -1212,7 +1213,7 @@ WHERE ur.IdUsuario = ?
       );
 
       //API response
-      const result: ApiDerroteroResponse = {
+      const result: ApiVarianteResponse = {
         status: 'succes',
         message: 'Se actualizo correctamente Variante',
         id: id,
@@ -1269,7 +1270,7 @@ WHERE ur.IdUsuario = ?
       );
 
       //API response
-      const result: ApiDerroteroResponse = {
+      const result: ApiVarianteResponse = {
         status: 'succes',
         message: 'Se elimino correctamente el Variante',
         id: Number(variante.id),
@@ -1335,7 +1336,7 @@ WHERE ur.IdUsuario = ?
       );
 
       //API response
-      const result: ApiDerroteroResponse = {
+      const result: ApiVarianteResponse = {
         status: 'succes',
         message: 'Se elimino correctamente el Variante',
         id: Number(variante.id),

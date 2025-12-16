@@ -58,27 +58,28 @@ export class TurnosService {
       const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())} ${pad(fechaDesfasada.getHours())}:${pad(fechaDesfasada.getMinutes())}:${pad(fechaDesfasada.getSeconds())}`;
 
 
-      const { numeroSerieDispositivo, ...body } = createTurnoDto
-
+      const { numeroSerieValidador } = createTurnoDto
+ 
       const query = `
       SELECT
 	i.Id 
-FROM Dispositivos d
-LEFT JOIN Instalaciones i ON i.IdDispositivo = d.Id
-WHERE d.NumeroSerie = '${numeroSerieDispositivo}'
+FROM Validadores d
+LEFT JOIN Instalaciones i ON i.idValidador = d.Id
+WHERE d.NumeroSerie = '${numeroSerieValidador}'
 AND i.Estatus = 1
       `
 
       const instalacion = await this.turnosRepository.query(query);
       if (instalacion.length === 0) {
-        throw new NotFoundException('No se ha encontrado la instalación asignada al dispositivo.');
+        throw new NotFoundException('No se ha encontrado la instalación asignada al validador.');
       }
 
-      body.inicio = fechaDesfasada;
-      body.estatus = EstatusEnum.ACTIVO;
-      body.idCliente = cliente;
-      body.idOperador = idOperador;
-      body.idInstalacion = instalacion[0].Id
+      const body = {
+        estatus: EstatusEnum.ACTIVO,
+        idCliente: cliente,
+        idOperador: idOperador,
+        idInstalacion: instalacion[0].Id
+      }
 
       const newTurno = await this.turnosRepository.create(body);
       const turnoSave = await this.turnosRepository.save(newTurno);
@@ -1079,20 +1080,20 @@ ORDER BY t.Inicio DESC;
       if (!idOperador) {
         throw new UnauthorizedException(`El usuario no está autorizado para actualizar un turno.`)
       }
-      const { numeroSerieDispositivo } = updateTurnoDto
+      const { numeroSerieValidador } = updateTurnoDto
 
       const query = `
       SELECT
 	i.Id 
-FROM Dispositivos d
-LEFT JOIN Instalaciones i ON i.IdDispositivo = d.Id
-WHERE d.NumeroSerie = '${numeroSerieDispositivo}'
+FROM Validadores d
+LEFT JOIN Instalaciones i ON i.idValidador = d.Id
+WHERE d.NumeroSerie = '${numeroSerieValidador}'
 AND i.Estatus = 1
       `
 
       const instalacion = await this.turnosRepository.query(query);
       if (instalacion.length === 0) {
-        throw new NotFoundException('No se ha encontrado la instalación asignada al dispositivo.');
+        throw new NotFoundException('No se ha encontrado la instalación asignada al validador.');
       }
       const idInstalacion = instalacion[0].Id
       //Generamos el desfase de horarios

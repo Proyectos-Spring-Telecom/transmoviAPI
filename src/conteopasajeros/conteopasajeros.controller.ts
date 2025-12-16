@@ -26,6 +26,7 @@ export class ConteopasajerosController {
     private readonly conteopasajerosService: ConteopasajerosService,
   ) { }
 
+  @UseGuards(JwtAuthGuard)
   @Post()
   async create(
     @Body() createConteopasajeroDto: CreateConteoPasajerosDto, @Req()

@@ -18,6 +18,7 @@ import {
 } from 'src/common/ApiResponse';
 import { EnumModulos, EstatusEnum } from 'src/common/estatus.enum';
 import { Clientes } from 'src/entities/Clientes';
+import { Turnos } from 'src/entities/Turnos';
 import { UpdateViajeDto } from './dto/update-viaje.dto';
 
 @Injectable()
@@ -28,6 +29,8 @@ export class ViajesService {
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
+    @InjectRepository(Turnos)
+    private readonly turnosRepository: Repository<Turnos>,
   ) { }
   // ========================================
   // 🔹 CREAR UN VIAJE
@@ -43,6 +46,22 @@ export class ViajesService {
       if (!idOperador) {
         throw new UnauthorizedException(`Usuario no autorizado para la generación de viajes.`)
       }
+
+      // Validar que el turno existe y está activo (estatus = 1)
+      if (createViajeDto.idTurno) {
+        const turno = await this.turnosRepository.findOne({
+          where: { id: createViajeDto.idTurno },
+        });
+
+        if (!turno) {
+          throw new NotFoundException(`El turno con ID ${createViajeDto.idTurno} no existe.`);
+        }
+
+        if (turno.estatus !== 1) {
+          throw new BadRequestException(`No se puede crear un viaje porque el turno con ID ${createViajeDto.idTurno} no está activo (estatus: ${turno.estatus}).`);
+        }
+      }
+
       //Creamos el turno
       function pad(n: number) {
         return n < 10 ? '0' + n : n;

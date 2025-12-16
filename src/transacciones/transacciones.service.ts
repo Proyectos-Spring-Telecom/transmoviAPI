@@ -741,7 +741,7 @@ SELECT
     td.FechaHoraFinal AS fechaHoraFinal,
     td.FHRegistro AS fhRegistro,
     td.NumeroSerieMonedero AS numeroSerieMonedero,
-    td.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    td.NumeroSerieValidador AS numeroSerieValidador,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -788,7 +788,7 @@ SELECT
     tr.FechaHoraFinal AS fechaHoraFinal,
     tr.FHRegistro AS fhRegistro,
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
-    tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    tr.NumeroSerieValidador AS numeroSerieValidador,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -885,7 +885,7 @@ SELECT
     td.FechaHoraFinal AS fechaHoraFinal,
     td.FHRegistro AS fhRegistro,
     td.NumeroSerieMonedero AS numeroSerieMonedero,
-    td.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    td.NumeroSerieValidador AS numeroSerieValidador,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -933,7 +933,7 @@ SELECT
     tr.FechaHoraFinal AS fechaHoraFinal,
     tr.FHRegistro AS fhRegistro,
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
-    tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    tr.NumeroSerieValidador AS numeroSerieValidador,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -1038,7 +1038,7 @@ SELECT
     td.FechaHoraFinal AS fechaHoraFinal,
     td.FHRegistro AS fhRegistro,
     td.NumeroSerieMonedero AS numeroSerieMonedero,
-    td.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    td.NumeroSerieValidador AS numeroSerieValidador,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -1087,7 +1087,7 @@ SELECT
     tr.FechaHoraFinal AS fechaHoraFinal,
     tr.FHRegistro AS fhRegistro,
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
-    tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    tr.NumeroSerieValidador AS numeroSerieValidador,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -1196,7 +1196,7 @@ SELECT
     td.FechaHoraFinal AS fechaHoraFinal,
     td.FHRegistro AS fhRegistro,
     td.NumeroSerieMonedero AS numeroSerieMonedero,
-    td.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    td.NumeroSerieValidador AS numeroSerieValidador,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -1244,7 +1244,7 @@ SELECT
     tr.FechaHoraFinal AS fechaHoraFinal,
     tr.FHRegistro AS fhRegistro,
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
-    tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    tr.NumeroSerieValidador AS numeroSerieValidador,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -2082,7 +2082,7 @@ SELECT
     tr.FechaHoraFinal AS fechaHoraFinal,
     tr.FHRegistro AS fhRegistro,
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
-    tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    tr.NumeroSerieValidador AS numeroSerieValidador,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -2103,7 +2103,7 @@ FROM ${entidadRecarga} tr
 INNER JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
 LEFT JOIN Validadores d 
-    ON tr.NumeroSerieDispositivo = d.NumeroSerie
+    ON tr.NumeroSerieValidador = d.NumeroSerie
 INNER JOIN Monederos m 
     ON tr.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
@@ -2136,7 +2136,7 @@ SELECT
     td.FechaHoraFinal AS fechaHoraFinal,
     td.FHRegistro AS fhRegistro,
     td.NumeroSerieMonedero AS numeroSerieMonedero,
-    td.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    td.NumeroSerieValidador AS numeroSerieValidador,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -2182,7 +2182,7 @@ SELECT
     tr.FechaHoraFinal AS fechaHoraFinal,
     tr.FHRegistro AS fhRegistro,
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
-    tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    tr.NumeroSerieValidador AS numeroSerieValidador,
 
     -- Datos del cliente
     c.Id AS idCliente,

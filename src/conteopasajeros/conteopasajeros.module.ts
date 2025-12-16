@@ -7,9 +7,10 @@ import { BitacoraModule } from 'src/bitacora/bitacora.module';
 import { Contadores } from 'src/entities/Contadores';
 import { Usuarios } from 'src/entities/Usuarios';
 import { Clientes } from 'src/entities/Clientes';
+import { Viajes } from 'src/entities/Viajes';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ConteoPasajeros, Contadores, Usuarios, Clientes]), BitacoraModule],
+  imports: [TypeOrmModule.forFeature([ConteoPasajeros, Contadores, Usuarios, Clientes, Viajes]), BitacoraModule],
   controllers: [ConteopasajerosController],
   providers: [ConteopasajerosService],
 })

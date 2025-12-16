@@ -13,7 +13,7 @@ import {
 
 
 
-export class UpdateUsuarioDispositivoDto {
+export class UpdateUsuarioValidadorDto {
   @IsEmail()
   @IsNotEmpty()
   @ApiProperty({

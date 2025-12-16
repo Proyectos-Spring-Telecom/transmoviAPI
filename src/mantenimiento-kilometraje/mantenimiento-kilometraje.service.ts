@@ -647,7 +647,7 @@ WHERE c.Id IN (${placeholders})
             p.Estado AS estado
           FROM Posiciones p
           INNER JOIN Validadores d ON p.NumeroSerieValidador = d.NumeroSerie
-          INNER JOIN Instalaciones i ON d.Id = i.IdDispositivo AND d.IdCliente = i.IdCliente
+          INNER JOIN Instalaciones i ON d.Id = i.idValidador AND d.IdCliente = i.IdCliente
           LEFT JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
           WHERE i.Id = ?
             AND MONTH(p.FechaHora) = ?

@@ -9,7 +9,7 @@ export interface Paginated {
   lastPage: number;
 }
 
-export interface ApiDerroteroResponse {
+export interface ApiVarianteResponse {
   status: string;
   message: string;
   id: number;

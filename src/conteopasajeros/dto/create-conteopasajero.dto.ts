@@ -43,4 +43,13 @@ export class CreateConteoPasajerosDto {
   @IsString()
   @IsNotEmpty()
   numeroSerieContador: string;
+
+  @ApiProperty({
+    description: 'ID del viaje asociado',
+    example: 1,
+    required: false,
+  })
+  @IsInt()
+  @IsOptional()
+  idViaje?: number;
 }

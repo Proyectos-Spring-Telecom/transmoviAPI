@@ -247,8 +247,8 @@ export class AuthService {
 
       if (
         !user ||
-        !user.codigohash ||
-        !(await bcrypt.compare(loginAuthPin.codigohash, user.codigohash))
+        !user.codigoHash ||
+        !(await bcrypt.compare(loginAuthPin.codigohash, user.codigoHash))
       ) {
         throw new UnauthorizedException('Credenciales invalidas');
       }
@@ -270,7 +270,7 @@ export class AuthService {
       await this.usuariosRepository.update(user.id, {
         ultimoLogin: fechaActual,
       });
-      const pin = user.codigohash ? 1 : 0;
+      const pin = user.codigoHash ? 1 : 0;
       const operador = await this.usuariosRepository.query(`
           WITH DatosUsuario AS (
     SELECT
@@ -283,7 +283,7 @@ export class AuthService {
         u.UltimoLogin AS ultimoLogin,
         u.FechaCreacion AS fechaCreacion,
         u.FotoPerfil AS fotoPerfil,
-        u.DeviceId AS deviceId,
+        u.ValidadorId AS validadorId,
 
         -- CLIENTE
         c.Id AS idCliente,
@@ -359,7 +359,7 @@ LEFT JOIN LicenciasJSON lj ON lj.IdUsuario = du.IdUsuario;
         ultimoLogin: operador[0].ultimoLogin,
         fechaCreacion: operador[0].fechaCreacion,
         fotoPerfil: operador[0].fotoOperador,
-        deviceId: operador[0].deviceId,
+        validadorId: operador[0].validadorId,
         pinExist: pin,
         userName: user.userName,
         Licencias: operador[0].Licencias,
@@ -436,7 +436,7 @@ LEFT JOIN LicenciasJSON lj ON lj.IdUsuario = du.IdUsuario;
 
       //login para operadores
       if (Number(user.idRol) === 3) {
-        const pin = user.codigohash ? 1 : 0;
+        const pin = user.codigoHash ? 1 : 0;
         const operador = await this.usuariosRepository.query(`
           WITH DatosUsuario AS (
     SELECT
@@ -449,7 +449,7 @@ LEFT JOIN LicenciasJSON lj ON lj.IdUsuario = du.IdUsuario;
         u.UltimoLogin AS ultimoLogin,
         u.FechaCreacion AS fechaCreacion,
         u.FotoPerfil AS fotoPerfil,
-        u.DeviceId AS deviceId,
+        u.ValidadorId AS validadorId,
 
         -- CLIENTE
         c.Id AS idCliente,

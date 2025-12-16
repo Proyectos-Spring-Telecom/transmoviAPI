@@ -94,6 +94,9 @@ export class Viajes {
   )
   conteoPasajeros: ConteoPasajeros[];
 
+  @OneToMany(() => ConteoPasajeros, (conteoPasajeros) => conteoPasajeros.idViaje2)
+  conteoPasajerosDirectos: ConteoPasajeros[];
+
   @OneToMany(() => ViajesConteos, (vc) => vc.viaje)
   viajesConteos: ViajesConteos[];
 }

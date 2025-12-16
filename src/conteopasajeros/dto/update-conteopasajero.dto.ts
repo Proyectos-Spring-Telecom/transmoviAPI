@@ -28,13 +28,20 @@ export class UpdateConteoPasajerosDto {
     @IsOptional()
     diferencia?: number;
 
-    @ApiProperty({
-        description: 'Fecha y hora en la que ocurrió el conteo',
-        example: '2025-09-12T14:30:00Z',
-    })
-    @IsDateString()
-    @IsOptional()
-    fechaHora?: Date;
+  @ApiProperty({
+    description: 'Fecha y hora en la que ocurrió el conteo',
+    example: '2025-09-12T14:30:00Z',
+  })
+  @IsDateString()
+  @IsOptional()
+  fechaHora?: Date;
 
-
+  @ApiProperty({
+    description: 'ID del viaje asociado',
+    example: 1,
+    required: false,
+  })
+  @IsInt()
+  @IsOptional()
+  idViaje?: number;
 }

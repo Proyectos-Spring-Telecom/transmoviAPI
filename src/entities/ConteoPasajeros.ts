@@ -46,6 +46,9 @@ export class ConteoPasajeros {
   @Column('varchar', { name: 'NumeroSerieContador', length: 100 })
   numeroSerieContador: string;
 
+  @Column('bigint', { name: 'IdViaje', nullable: true })
+  idViaje: number | null;
+
   @ManyToOne(() => Contadores, (contadores) => contadores.conteoPasajeros, {
     onDelete: 'NO ACTION',
     onUpdate: 'NO ACTION',
@@ -54,6 +57,14 @@ export class ConteoPasajeros {
     { name: 'NumeroSerieContador', referencedColumnName: 'numeroSerie' },
   ])
   numeroSerieContador2: Contadores;
+
+  @ManyToOne(() => Viajes, (viajes) => viajes.conteoPasajerosDirectos, {
+    onDelete: 'NO ACTION',
+    onUpdate: 'NO ACTION',
+    nullable: true,
+  })
+  @JoinColumn([{ name: 'IdViaje', referencedColumnName: 'id' }])
+  idViaje2: Viajes | null;
 
   @ManyToMany(() => Viajes, (viajes) => viajes.conteoPasajeros)
   @JoinTable({
