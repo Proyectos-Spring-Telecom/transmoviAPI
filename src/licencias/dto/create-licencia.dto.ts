@@ -6,17 +6,44 @@ import {
   IsNumber,
   IsIn,
   IsEnum,
+  IsOptional,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { EnumCategoriaLicencia, EnumTipoLicencia } from 'src/common/estatus.enum';
+
+// Helper function para transformar valores de FormData a números
+const toNumber = ({ value }: { value: any }): number | undefined => {
+  if (value === null || value === undefined || value === '') {
+    return undefined;
+  }
+  if (typeof value === 'number') {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const num = parseInt(value, 10);
+    return isNaN(num) ? undefined : num;
+  }
+  return undefined;
+};
 
 export class CreateLicenciaDto {
   @ApiProperty({
+    type: 'string',
+    format: 'binary',
+    description: 'Archivo de la licencia (imagen o PDF)',
+    required: false,
+  })
+  @IsOptional()
+  licencia?: any;
+
+  @ApiProperty({
     description: 'Nombre o descripción de la licencia',
     example: 'Licencia Federal Tipo A',
+    required: false,
   })
   @IsString()
-  @IsNotEmpty()
-  licencia: string;
+  @IsOptional()
+  nombreLicencia?: string;
 
   @ApiProperty({
     description: 'Número de la licencia',
@@ -45,6 +72,7 @@ export class CreateLicenciaDto {
     description: 'Tipo de licencia del operador (A, B, C, D, E o F).',
     example: EnumTipoLicencia.A,
   })
+  @Transform(toNumber)
   @IsEnum(EnumTipoLicencia, {
     message:
       'idTipoLicencia debe ser un valor válido: 1(A), 2(B), 3(C), 4(D), 5(E), 6(F)',
@@ -57,6 +85,7 @@ export class CreateLicenciaDto {
     description: 'Categoría de la licencia según su tipo de cobertura.',
     example: EnumCategoriaLicencia.FEDERAL,
   })
+  @Transform(toNumber)
   @IsEnum(EnumCategoriaLicencia, {
     message:
       'idCategoriaLicencia debe ser un valor válido: 1 (Federal) o 2 (Estatal)',
@@ -68,6 +97,7 @@ export class CreateLicenciaDto {
     description: 'ID del operador al que pertenece la licencia',
     example: 8,
   })
+  @Transform(toNumber)
   @IsNumber()
   @IsNotEmpty()
   idOperador: number;

@@ -10,12 +10,16 @@ import {
   Request,
   ParseIntPipe,
   Put,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import * as multer from 'multer';
 import { LicenciasService } from './licencias.service';
 import { CreateLicenciaDto } from './dto/create-licencia.dto';
 import { UpdateLicenciaDto } from './dto/update-licencia.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags, ApiConsumes, ApiOperation, ApiBody } from '@nestjs/swagger';
 
 @ApiTags('Licencias')
 @ApiBearerAuth('bearer-token')
@@ -25,11 +29,40 @@ export class LicenciasController {
   constructor(private readonly licenciasService: LicenciasService) {}
 
   @Post()
-  create(@Body() createLicenciaDto: CreateLicenciaDto, @Request() req) {
+  @UseInterceptors(
+    FileInterceptor('licencia', {
+      storage: multer.memoryStorage(),
+      limits: { fileSize: 10 * 1024 * 1024 }, // máximo 10 MB
+      fileFilter: (req, file, cb) => {
+        const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'application/pdf'];
+        if (file && !allowedTypes.includes(file.mimetype)) {
+          return cb(
+            new Error('Solo se permiten PNG, JPG, JPEG o PDF'),
+            false,
+          );
+        }
+        cb(null, true);
+      },
+    }),
+  )
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary: 'Crear una nueva licencia',
+    description: 'Crea un nuevo registro de licencia con toda la información. El campo licencia debe ser un archivo (imagen o PDF).',
+  })
+  @ApiBody({
+    type: CreateLicenciaDto,
+    description: 'Datos de la licencia a crear (FormData)',
+  })
+  create(
+    @Body() createLicenciaDto: CreateLicenciaDto,
+    @UploadedFile() licenciaFile: Express.Multer.File,
+    @Request() req,
+  ) {
     const idUser = req.user.userId;
     const cliente = req.user.cliente;
     const rol = req.user.rol;
-    return this.licenciasService.create(idUser, createLicenciaDto);
+    return this.licenciasService.create(idUser, createLicenciaDto, licenciaFile);
   }
 
   @Get('list')

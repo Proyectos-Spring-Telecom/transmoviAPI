@@ -18,6 +18,7 @@ import {
 } from 'src/common/ApiResponse';
 import { EnumModulos } from 'src/common/estatus.enum';
 import { Clientes } from 'src/entities/Clientes';
+import { S3Service } from 'src/s3/s3.service';
 
 @Injectable()
 export class LicenciasService {
@@ -27,12 +28,13 @@ export class LicenciasService {
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
+    private readonly s3Service: S3Service,
   ) { }
 
   // ========================================
   // 🔹 CREAR UNA LICENCIA
   // ========================================
-  async create(idUser: number, createLicenciaDto: CreateLicenciaDto) {
+  async create(idUser: number, createLicenciaDto: CreateLicenciaDto, licenciaFile?: Express.Multer.File) {
     try {
       const numeroLicencia = await this.licenciasRepository.findOne({
         where: {
@@ -42,8 +44,25 @@ export class LicenciasService {
       if (numeroLicencia) {
         throw new BadRequestException('Licencia ya ha sido registrado.');
       }
-      const nuevaLicencia =
-        await this.licenciasRepository.create(createLicenciaDto);
+
+      // Subir archivo de licencia a S3 si se proporciona
+      let licenciaUrl: string | null = null;
+      if (licenciaFile) {
+        const uploadResult = await this.s3Service.uploadFile(
+          licenciaFile,
+          'Licencias',
+          idUser,
+          EnumModulos.OPERADORES, // ID del módulo de operadores (las licencias están relacionadas con operadores)
+        );
+        licenciaUrl = uploadResult.url;
+      }
+
+      // Crear el registro con los datos del DTO y la URL del archivo
+      // El campo 'licencia' del DTO es el archivo, así que usamos 'nombreLicencia' si viene, o la URL del archivo, o un valor por defecto
+      const nuevaLicencia = await this.licenciasRepository.create({
+        ...createLicenciaDto,
+        licencia: licenciaUrl || createLicenciaDto.nombreLicencia || `Licencia ${createLicenciaDto.numeroLicencia}`,
+      });
       const licenciaSave = await this.licenciasRepository.save(nuevaLicencia);
 
       //-----Registro en la bitacora-----SUCCESS
