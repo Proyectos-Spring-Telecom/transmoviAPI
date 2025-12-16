@@ -45,7 +45,7 @@ export class UsuariosService {
     private readonly clienteRepository: Repository<Clientes>,
     private readonly emailService: MailService,
     private readonly jwtService: JwtService,
-  ) {}
+  ) { }
 
   //funcion para obtener los clientes hijos
   private async clienteHijos(cliente: number) {
@@ -636,6 +636,22 @@ ORDER BY u.Id DESC
       if (!dispositivo) {
         throw new NotFoundException(
           `Validador numero de serie: ${updateUsuarioDispositivoDto.validadorId} no fue encontrado.`,
+        );
+      }
+
+      const usuariosOperadorDevice = await this.usuarioRepository.find({
+        where: {
+          deviceId: updateUsuarioDispositivoDto.deviceId,
+        },
+      });
+
+      if (usuariosOperadorDevice.length > 0) {
+        await Promise.all(
+          usuariosOperadorDevice.map((usuario) =>
+            this.usuarioRepository.update(usuario.id, {
+              deviceId: null,
+            }),
+          ),
         );
       }
 

@@ -1,8 +1,10 @@
 import {
+  BadRequestException,
   HttpException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { CreateViajeDto } from './dto/create-viaje.dto';
 import { Viajes } from 'src/entities/Viajes';
@@ -14,7 +16,7 @@ import {
   ApiResponseCommon,
   EstatusEnumBitcora,
 } from 'src/common/ApiResponse';
-import { EnumModulos } from 'src/common/estatus.enum';
+import { EnumModulos, EstatusEnum } from 'src/common/estatus.enum';
 import { Clientes } from 'src/entities/Clientes';
 import { UpdateViajeDto } from './dto/update-viaje.dto';
 
@@ -32,9 +34,29 @@ export class ViajesService {
   // ========================================
   async create(
     idUser: number,
+    cliente: number,
+    idOperador: number,
     createViajeDto: CreateViajeDto,
   ): Promise<ApiCrudResponse> {
     try {
+      //validamos que el usuario sea rol operador
+      if (!idOperador) {
+        throw new UnauthorizedException(`Usuario no autorizado para la generación de viajes.`)
+      }
+      //Creamos el turno
+      function pad(n: number) {
+        return n < 10 ? '0' + n : n;
+      }
+      const ahora = new Date();
+      const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas
+      const fechaDesfasada = new Date(ahora.getTime() + desfaseMs);
+      const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())} ${pad(fechaDesfasada.getHours())}:${pad(fechaDesfasada.getMinutes())}:${pad(fechaDesfasada.getSeconds())}`;
+
+      createViajeDto.inicio = fechaDesfasada;
+      createViajeDto.estatus = EstatusEnum.ACTIVO;
+      createViajeDto.idCliente = cliente;
+      createViajeDto.idOperador = idOperador;
+
       const newViaje = await this.viajesRepository.create(createViajeDto);
       const viajeSave = await this.viajesRepository.save(newViaje);
 
@@ -87,67 +109,89 @@ export class ViajesService {
   // ========================================
   // 🔹 ACTUALIZAR UN VIAJE
   // ========================================
-async update(
-  idUser: number,
-  id: number,
-  updateViajeDto: UpdateViajeDto,
-): Promise<ApiCrudResponse> {
-  try {
-    // Buscamos el viaje
-    const viaje = await this.viajesRepository.findOne({ where: { id } });
-    if (!viaje) {
-      throw new NotFoundException(`Viaje con ID ${id} no encontrado`);
+  async update(
+    idUser: number,
+    cliente: number,
+    idOperador: number,
+    id: number,
+    updateViajeDto: UpdateViajeDto,
+  ): Promise<ApiCrudResponse> {
+    try {
+      //validamos que el usuario sea rol operador
+      if (!idOperador) {
+        throw new UnauthorizedException(`Usuario no autorizado para la generación de viajes.`)
+      }
+      //Generamos el desfase de horarios
+      function pad(n: number) {
+        return n < 10 ? '0' + n : n;
+      }
+      const ahora = new Date();
+      const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas
+      const fechaDesfasada = new Date(ahora.getTime() + desfaseMs);
+      const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())} ${pad(fechaDesfasada.getHours())}:${pad(fechaDesfasada.getMinutes())}:${pad(fechaDesfasada.getSeconds())}`;
+      // Buscamos el viaje
+      const viaje = await this.viajesRepository.findOne({ where: { id } });
+      if (!viaje) {
+        throw new NotFoundException(`Viaje con ID ${id} no encontrado`);
+      }
+
+
+      if (cliente != viaje.idCliente || idOperador != viaje.idOperador) {
+        throw new BadRequestException(`Los datos del viaje con ID: ${id} no coinciden con los del usuario.`)
+      }
+
+      updateViajeDto.estatus = EstatusEnum.INACTIVO;
+      updateViajeDto.fin = fechaDesfasada;
+
+      // Actualizamos solo los campos enviados
+      await this.viajesRepository.update(id, updateViajeDto);
+
+      // Registro en la bitácora SUCCESS
+      const querylogger = { updateViajeDto };
+      await this.bitacoraLogger.logToBitacora(
+        'Viajes',
+        `Se actualizó el viaje con ID: ${viaje.id}`,
+        'UPDATE',
+        querylogger,
+        idUser,
+        EnumModulos.VIAJES,
+        EstatusEnumBitcora.SUCCESS,
+      );
+
+      // API response SUCCESS
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: 'Viaje actualizado correctamente',
+        data: {
+          id: Number(viaje.id),
+          nombre: `Cliente ID: ${viaje.idCliente}, Turno ID: ${viaje.idTurno}, Variante ID: ${viaje.idVariante}, Operador ID: ${viaje.idOperador}`,
+        },
+      };
+
+      return result;
+    } catch (error) {
+      // Registro en la bitácora FAIL
+      const querylogger = { updateViajeDto };
+      await this.bitacoraLogger.logToBitacora(
+        'Viajes',
+        `Error al actualizar el viaje con ID: ${id}`,
+        'UPDATE',
+        querylogger,
+        idUser,
+        EnumModulos.VIAJES,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Error al actualizar el viaje',
+        error: error.message,
+      });
     }
-
-    // Actualizamos solo los campos enviados
-    await this.viajesRepository.update(id, updateViajeDto);
-
-    // Registro en la bitácora SUCCESS
-    const querylogger = { updateViajeDto };
-    await this.bitacoraLogger.logToBitacora(
-      'Viajes',
-      `Se actualizó el viaje con ID: ${viaje.id}`,
-      'UPDATE',
-      querylogger,
-      idUser,
-      EnumModulos.VIAJES,
-      EstatusEnumBitcora.SUCCESS,
-    );
-
-    // API response SUCCESS
-    const result: ApiCrudResponse = {
-      status: 'success',
-      message: 'Viaje actualizado correctamente',
-      data: {
-        id: Number(viaje.id),
-        nombre: `Cliente ID: ${viaje.idCliente}, Turno ID: ${viaje.idTurno}, Derrotero ID: ${viaje.idVariante}, Operador ID: ${viaje.idOperador}`,
-      },
-    };
-
-    return result;
-  } catch (error) {
-    // Registro en la bitácora FAIL
-    const querylogger = { updateViajeDto };
-    await this.bitacoraLogger.logToBitacora(
-      'Viajes',
-      `Error al actualizar el viaje con ID: ${id}`,
-      'UPDATE',
-      querylogger,
-      idUser,
-      EnumModulos.VIAJES,
-      EstatusEnumBitcora.ERROR,
-      error.message,
-    );
-
-    if (error instanceof HttpException) {
-      throw error;
-    }
-    throw new InternalServerErrorException({
-      message: 'Error al actualizar el viaje',
-      error: error.message,
-    });
   }
-}
 
   //funcion para obtener los clientes hijos
   private async clienteHijos(cliente: number) {
@@ -1021,7 +1065,7 @@ ORDER BY v.Id DESC
     try {
       let viajes;
       viajes = await this.viajesRepository.query(
-            `
+        `
 SELECT
   -- Viaje
   v.Id AS id,
@@ -1110,8 +1154,8 @@ LEFT JOIN Zonas regFin ON r.IdZonaFin = regFin.Id
 
 ORDER BY v.Id DESC
             `,
-            [id],
-          );
+        [id],
+      );
 
       if (viajes.length === 0) {
         throw new NotFoundException('No se encontraron viajes.');

@@ -4,6 +4,7 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { CreateTurnoDto } from './dto/create-turno.dto';
 import { UpdateTurnoDto } from './dto/update-turno.dto';
@@ -18,6 +19,7 @@ import {
 } from 'src/common/ApiResponse';
 import { UpdateTurnosEstatusDto } from './dto/update-turno-estatus.dto';
 import { Clientes } from 'src/entities/Clientes';
+import { EnumModulos, EstatusEnum } from 'src/common/estatus.enum';
 import { Operadores } from 'src/entities/Operadores';
 import { Instalaciones } from 'src/entities/Instalaciones';
 
@@ -33,45 +35,52 @@ export class TurnosService {
     @InjectRepository(Instalaciones)
     private readonly instalacionesRepository: Repository<Instalaciones>,
     private readonly bitacoraLogger: BitacoraLoggerService,
-  ) {}
+  ) { }
 
   async create(
     idUser: number,
+    cliente: number,
+    idOperador: number,
     createTurnoDto: CreateTurnoDto,
   ): Promise<ApiCrudResponse> {
     try {
-      // Validar que el operador existe
-      const operador = await this.operadoresRepository.findOne({
-        where: { id: createTurnoDto.idOperador },
-      });
-      if (!operador) {
-        throw new NotFoundException(
-          `El operador con ID: ${createTurnoDto.idOperador} no fue encontrado.`,
-        );
+      //validamos que el usuario sea rol operador
+      if (!idOperador) {
+        throw new UnauthorizedException(`El usuario no está autorizado para generar un turno.`)
       }
-
-      // Validar que el cliente existe
-      const cliente = await this.clienteRepository.findOne({
-        where: { id: createTurnoDto.idCliente },
-      });
-      if (!cliente) {
-        throw new NotFoundException(
-          `El cliente con ID: ${createTurnoDto.idCliente} no fue encontrado.`,
-        );
-      }
-
-      // Validar que la instalación existe
-      const instalacion = await this.instalacionesRepository.findOne({
-        where: { id: createTurnoDto.idInstalacion },
-      });
-      if (!instalacion) {
-        throw new NotFoundException(
-          `La instalación con ID: ${createTurnoDto.idInstalacion} no fue encontrada.`,
-        );
-      }
-
       //Creamos el turno
-      const newTurno = await this.turnosRepository.create(createTurnoDto);
+      function pad(n: number) {
+        return n < 10 ? '0' + n : n;
+      }
+      const ahora = new Date();
+      const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas
+      const fechaDesfasada = new Date(ahora.getTime() + desfaseMs);
+      const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())} ${pad(fechaDesfasada.getHours())}:${pad(fechaDesfasada.getMinutes())}:${pad(fechaDesfasada.getSeconds())}`;
+
+
+      const { numeroSerieDispositivo, ...body } = createTurnoDto
+
+      const query = `
+      SELECT
+	i.Id 
+FROM Dispositivos d
+LEFT JOIN Instalaciones i ON i.IdDispositivo = d.Id
+WHERE d.NumeroSerie = '${numeroSerieDispositivo}'
+AND i.Estatus = 1
+      `
+
+      const instalacion = await this.turnosRepository.query(query);
+      if (instalacion.length === 0) {
+        throw new NotFoundException('No se ha encontrado la instalación asignada al dispositivo.');
+      }
+
+      body.inicio = fechaDesfasada;
+      body.estatus = EstatusEnum.ACTIVO;
+      body.idCliente = cliente;
+      body.idOperador = idOperador;
+      body.idInstalacion = instalacion[0].Id
+
+      const newTurno = await this.turnosRepository.create(body);
       const turnoSave = await this.turnosRepository.save(newTurno);
 
       //-----Registro en la bitacora----- SUCCESS
@@ -82,7 +91,7 @@ export class TurnosService {
         'CREATE',
         querylogger,
         idUser,
-        14,
+        EnumModulos.TURNOS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -107,7 +116,7 @@ export class TurnosService {
         'CREATE',
         querylogger,
         idUser,
-        14,
+        EnumModulos.TURNOS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -883,15 +892,15 @@ ORDER BY t.Id DESC;
           break;
 
         case 2:
-          turnos = await this.consultarTurnoOne(cliente,id)
+          turnos = await this.consultarTurnoOne(cliente, id)
           break;
 
         case 8:
-        turnos = await this.consultarTurnoOne(cliente,id)
+          turnos = await this.consultarTurnoOne(cliente, id)
           break;
-        
+
         case 10:
-          turnos = await this.consultarTurnoOne(cliente,id)
+          turnos = await this.consultarTurnoOne(cliente, id)
           break;
 
         default:
@@ -1023,7 +1032,7 @@ ORDER BY t.Inicio DESC;
         'UPDATE',
         querylogger,
         idUser,
-        14,
+        EnumModulos.TURNOS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -1047,7 +1056,7 @@ ORDER BY t.Inicio DESC;
         'UPDATE',
         querylogger,
         idUser,
-        14,
+        EnumModulos.TURNOS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -1061,10 +1070,56 @@ ORDER BY t.Inicio DESC;
     }
   }
 
-  async update(id: number, idUser: number, updateTurnoDto: UpdateTurnoDto) {
+  async update(id: number, idUser: number,
+    cliente: number,
+    idOperador: number,
+    updateTurnoDto: UpdateTurnoDto) {
     try {
+      //validamos que el usuario sea rol operador
+      if (!idOperador) {
+        throw new UnauthorizedException(`El usuario no está autorizado para actualizar un turno.`)
+      }
+      const { numeroSerieDispositivo } = updateTurnoDto
+
+      const query = `
+      SELECT
+	i.Id 
+FROM Dispositivos d
+LEFT JOIN Instalaciones i ON i.IdDispositivo = d.Id
+WHERE d.NumeroSerie = '${numeroSerieDispositivo}'
+AND i.Estatus = 1
+      `
+
+      const instalacion = await this.turnosRepository.query(query);
+      if (instalacion.length === 0) {
+        throw new NotFoundException('No se ha encontrado la instalación asignada al dispositivo.');
+      }
+      const idInstalacion = instalacion[0].Id
+      //Generamos el desfase de horarios
+      function pad(n: number) {
+        return n < 10 ? '0' + n : n;
+      }
+      const ahora = new Date();
+      const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas
+      const fechaDesfasada = new Date(ahora.getTime() + desfaseMs);
+      const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())} ${pad(fechaDesfasada.getHours())}:${pad(fechaDesfasada.getMinutes())}:${pad(fechaDesfasada.getSeconds())}`;
+      // buscamos el turno
+      const turnoFind = await this.turnosRepository.findOne({ where: { id: id } })
+
+      if (!turnoFind) {
+        throw new NotFoundException(`El turno con ID: ${id} no fue encontrado.`)
+      }
+
+      if (cliente != turnoFind.idCliente || idOperador != turnoFind.idOperador || idInstalacion != turnoFind.idInstalacion) {
+        throw new BadRequestException(`El turno con ID: ${id} no coincide los valores del turno con el del usuario.`)
+      }
+      const body = {
+        fin: fechaDesfasada,
+        estatus: EstatusEnum.INACTIVO,
+      }
+
       //actualizamos
-      await this.turnosRepository.update(id, updateTurnoDto);
+      await this.turnosRepository.update(id, body);
 
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { updateTurnoDto };
@@ -1074,7 +1129,7 @@ ORDER BY t.Inicio DESC;
         'UPDATE',
         querylogger,
         idUser,
-        14,
+        EnumModulos.TURNOS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -1097,7 +1152,7 @@ ORDER BY t.Inicio DESC;
         'UPDATE',
         querylogger,
         idUser,
-        14,
+        EnumModulos.TURNOS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -1124,7 +1179,7 @@ ORDER BY t.Inicio DESC;
         'UPDATE',
         querylogger,
         idUser,
-        14,
+        EnumModulos.TURNOS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -1147,7 +1202,7 @@ ORDER BY t.Inicio DESC;
         'UPDATE',
         querylogger,
         idUser,
-        14,
+        EnumModulos.TURNOS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );

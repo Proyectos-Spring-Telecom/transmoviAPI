@@ -85,8 +85,6 @@ export class RutasController {
     return this.rutasService.obtenerRutasPorUsuarioSQL(+idUser, +cliente, +rol, +page, +limit);
   }
 
-
-
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number, @Request() req) {
     const cliente = req.user.cliente;
