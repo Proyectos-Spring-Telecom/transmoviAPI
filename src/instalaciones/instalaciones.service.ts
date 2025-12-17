@@ -1216,10 +1216,10 @@ ORDER BY i.Id DESC;
       }
 
       //verificamos que exista el contadores a actualizar
-      if (updateInstalacioneDto.estatusContadoresAnterior) {
+      if (updateInstalacioneDto.estatusContadorAnterior) {
         //Actualizamos el estado del contadores anterior
         await this.contadoresRepository.update(instalacion.idContador, {
-          estadoActual: updateInstalacioneDto.estatusContadoresAnterior,
+          estadoActual: updateInstalacioneDto.estatusContadorAnterior,
         });
         //Actualizamos el estado del contadores nuevo a asignado
         await this.contadoresRepository.update(

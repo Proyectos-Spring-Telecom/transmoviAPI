@@ -226,7 +226,7 @@ export class AuthService {
          y el cliente al que pertenece debe estar activo
       */
       const user = await this.usuariosRepository.findOne({
-        relations: ['idRol2', 'idCliente2'],
+        relations: ['idRol2', 'idCliente2', 'idCliente2.idPadre2'],
         where: {
           userName: loginAuthPin.userName,
           validadorId: loginAuthPin.validadorId,
@@ -296,7 +296,7 @@ export class AuthService {
         c.Nombre AS nombreCliente,
         c.ApellidoPaterno AS apellidoPaternoCliente,
         c.ApellidoMaterno AS apellidoMaternoCliente,
-        c.Logotipo AS logotipo,
+        COALESCE(c.Logotipo, cp.Logotipo) AS logotipo,
 
         -- OPERADOR
         o.Id AS idOperador,
@@ -309,6 +309,7 @@ export class AuthService {
         o.Estatus AS estatusOperador
     FROM Usuarios u
     INNER JOIN Clientes c ON c.Id = u.IdCliente
+    LEFT JOIN Clientes cp ON c.IdPadre = cp.Id
     LEFT JOIN Operadores o ON o.IdUsuario = u.Id
     WHERE u.Id = ${user.id}
 ),
@@ -388,7 +389,7 @@ LEFT JOIN LicenciasJSON lj ON lj.IdUsuario = du.IdUsuario;
     try {
       console.log("HOLA")
       const user = await this.usuariosRepository.findOne({
-        relations: ['idRol2', 'idCliente2'],
+        relations: ['idRol2', 'idCliente2', 'idCliente2.idPadre2'],
         where: {
           userName: loginAuthDto.userName,
           estatus: 1,
@@ -462,7 +463,7 @@ LEFT JOIN LicenciasJSON lj ON lj.IdUsuario = du.IdUsuario;
         c.Nombre AS nombreCliente,
         c.ApellidoPaterno AS apellidoPaternoCliente,
         c.ApellidoMaterno AS apellidoMaternoCliente,
-        c.Logotipo AS logotipo,
+        COALESCE(c.Logotipo, cp.Logotipo) AS logotipo,
 
         -- OPERADOR
         o.Id AS idOperador,
@@ -475,6 +476,7 @@ LEFT JOIN LicenciasJSON lj ON lj.IdUsuario = du.IdUsuario;
         o.Estatus AS estatusOperador
     FROM Usuarios u
     INNER JOIN Clientes c ON c.Id = u.IdCliente
+    LEFT JOIN Clientes cp ON c.IdPadre = cp.Id
     LEFT JOIN Operadores o ON o.IdUsuario = u.Id
     WHERE u.Id = ${user.id}
 ),
@@ -539,6 +541,9 @@ LEFT JOIN LicenciasJSON lj ON lj.IdUsuario = du.IdUsuario;
           permisos: permisos,
         };
       }
+      // Obtener logotipo del cliente o del padre si es null
+      const logotipo = user.idCliente2?.logotipo || user.idCliente2?.idPadre2?.logotipo || null;
+
       return {
         message: `login exitoso`,
         id: Number(`${user.id}`),
@@ -549,7 +554,7 @@ LEFT JOIN LicenciasJSON lj ON lj.IdUsuario = du.IdUsuario;
         nombreCliente: `${user.idCliente2?.nombre}`,
         apellidoPaternoCliente: `${user.idCliente2?.apellidoPaterno}`,
         apellidoMaternoCliente: `${user.idCliente2?.apellidoMaterno}`,
-        logotipo: `${user.idCliente2?.logotipo}`,
+        logotipo: logotipo ? `${logotipo}` : null,
         telefono: `${user.telefono}`,
         ultimoLogin: `${user.ultimoLogin}`,
         fechaCreacion: `${user.fechaCreacion}`,

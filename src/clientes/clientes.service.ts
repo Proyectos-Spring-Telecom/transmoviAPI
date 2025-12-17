@@ -177,33 +177,34 @@ export class ClientesService {
           clientes = await this.clienteRepository.query(
             `
 SELECT
-  Id AS id,
-  RFC AS rfc,
-  TipoPersona AS tipoPersona,
-  Nombre AS nombre,
-  ApellidoPaterno AS apellidoPaterno,
-  ApellidoMaterno AS apellidoMaterno,
-  Telefono AS telefono,
-  Correo AS correo,
-  Estado AS estado,
-  Municipio AS municipio,
-  Colonia AS colonia,
-  Calle AS calle,
-  EntreCalles AS entreCalles,
-  NumeroExterior AS numeroExterior,
-  NumeroInterior AS numeroInterior,
-  CP AS cp,
-  NombreEncargado AS nombreEncargado,
-  TelefonoEncargado AS telefonoEncargado,
-  CorreoEncargado AS correoEncargado,
-  ConstanciaSituacionFiscal AS constanciaSituacionFiscal,
-  ComprobanteDomicilio AS comprobanteDomicilio,
-  ActaConstitutiva AS actaConstitutiva,
-  Logotipo AS logotipo,
-  Estatus AS estatus
+  c.Id AS id,
+  c.RFC AS rfc,
+  c.TipoPersona AS tipoPersona,
+  c.Nombre AS nombre,
+  c.ApellidoPaterno AS apellidoPaterno,
+  c.ApellidoMaterno AS apellidoMaterno,
+  c.Telefono AS telefono,
+  c.Correo AS correo,
+  c.Estado AS estado,
+  c.Municipio AS municipio,
+  c.Colonia AS colonia,
+  c.Calle AS calle,
+  c.EntreCalles AS entreCalles,
+  c.NumeroExterior AS numeroExterior,
+  c.NumeroInterior AS numeroInterior,
+  c.CP AS cp,
+  c.NombreEncargado AS nombreEncargado,
+  c.TelefonoEncargado AS telefonoEncargado,
+  c.CorreoEncargado AS correoEncargado,
+  c.ConstanciaSituacionFiscal AS constanciaSituacionFiscal,
+  c.ComprobanteDomicilio AS comprobanteDomicilio,
+  c.ActaConstitutiva AS actaConstitutiva,
+  COALESCE(c.Logotipo, cp.Logotipo) AS logotipo,
+  c.Estatus AS estatus
   
-FROM Clientes
-ORDER BY Id ASC
+FROM Clientes c
+LEFT JOIN Clientes cp ON c.IdPadre = cp.Id
+ORDER BY c.Id ASC
   LIMIT ? OFFSET ?;
             `,
             [ limit, offset],
@@ -224,34 +225,35 @@ FROM Clientes
           clientes = await this.clienteRepository.query(
             `
 SELECT
-  Id AS id,
-  RFC AS rfc,
-  TipoPersona AS tipoPersona,
-  Nombre AS nombre,
-  ApellidoPaterno AS apellidoPaterno,
-  ApellidoMaterno AS apellidoMaterno,
-  Telefono AS telefono,
-  Correo AS correo,
-  Estado AS estado,
-  Municipio AS municipio,
-  Colonia AS colonia,
-  Calle AS calle,
-  EntreCalles AS entreCalles,
-  NumeroExterior AS numeroExterior,
-  NumeroInterior AS numeroInterior,
-  CP AS cp,
-  NombreEncargado AS nombreEncargado,
-  TelefonoEncargado AS telefonoEncargado,
-  CorreoEncargado AS correoEncargado,
-  ConstanciaSituacionFiscal AS constanciaSituacionFiscal,
-  ComprobanteDomicilio AS comprobanteDomicilio,
-  ActaConstitutiva AS actaConstitutiva,
-  Logotipo AS logotipo,
-  Estatus AS estatus
+  c.Id AS id,
+  c.RFC AS rfc,
+  c.TipoPersona AS tipoPersona,
+  c.Nombre AS nombre,
+  c.ApellidoPaterno AS apellidoPaterno,
+  c.ApellidoMaterno AS apellidoMaterno,
+  c.Telefono AS telefono,
+  c.Correo AS correo,
+  c.Estado AS estado,
+  c.Municipio AS municipio,
+  c.Colonia AS colonia,
+  c.Calle AS calle,
+  c.EntreCalles AS entreCalles,
+  c.NumeroExterior AS numeroExterior,
+  c.NumeroInterior AS numeroInterior,
+  c.CP AS cp,
+  c.NombreEncargado AS nombreEncargado,
+  c.TelefonoEncargado AS telefonoEncargado,
+  c.CorreoEncargado AS correoEncargado,
+  c.ConstanciaSituacionFiscal AS constanciaSituacionFiscal,
+  c.ComprobanteDomicilio AS comprobanteDomicilio,
+  c.ActaConstitutiva AS actaConstitutiva,
+  COALESCE(c.Logotipo, cp.Logotipo) AS logotipo,
+  c.Estatus AS estatus
   
-FROM Clientes
-WHERE Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
-ORDER BY Id ASC
+FROM Clientes c
+LEFT JOIN Clientes cp ON c.IdPadre = cp.Id
+WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+ORDER BY c.Id ASC
   LIMIT ? OFFSET ?;
             `,
             [...ids, limit, offset],
@@ -314,14 +316,15 @@ ORDER BY Id ASC
           clientes = await this.clienteRepository.query(
             `
 SELECT
-  Id AS id,
-  Nombre AS nombre,
-  ApellidoPaterno AS apellidoPaterno,
-  ApellidoMaterno AS apellidoMaterno,
-  Logotipo AS logotipo
-FROM Clientes
-WHERE Estatus = 1
-ORDER BY Id ASC;
+  c.Id AS id,
+  c.Nombre AS nombre,
+  c.ApellidoPaterno AS apellidoPaterno,
+  c.ApellidoMaterno AS apellidoMaterno,
+  COALESCE(c.Logotipo, cp.Logotipo) AS logotipo
+FROM Clientes c
+LEFT JOIN Clientes cp ON c.IdPadre = cp.Id
+WHERE c.Estatus = 1
+ORDER BY c.Id ASC;
             `,
           );
           break;
@@ -332,15 +335,16 @@ ORDER BY Id ASC;
           clientes = await this.clienteRepository.query(
             `
 SELECT
-  Id AS id,
-  Nombre AS nombre,
-  ApellidoPaterno AS apellidoPaterno,
-  ApellidoMaterno AS apellidoMaterno,
-  Logotipo AS logotipo
-FROM Clientes
-WHERE Id IN (${placeholders})  -- 🔹 aquí colocas el ID del cliente que quieres consultar
-  AND Estatus = 1
-ORDER BY Id ASC;
+  c.Id AS id,
+  c.Nombre AS nombre,
+  c.ApellidoPaterno AS apellidoPaterno,
+  c.ApellidoMaterno AS apellidoMaterno,
+  COALESCE(c.Logotipo, cp.Logotipo) AS logotipo
+FROM Clientes c
+LEFT JOIN Clientes cp ON c.IdPadre = cp.Id
+WHERE c.Id IN (${placeholders})  -- 🔹 aquí colocas el ID del cliente que quieres consultar
+  AND c.Estatus = 1
+ORDER BY c.Id ASC;
 
             `,
             [...ids],

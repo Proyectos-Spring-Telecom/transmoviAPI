@@ -16,9 +16,10 @@ import {
   ApiResponseCommon,
   EstatusEnumBitcora,
 } from 'src/common/ApiResponse';
-import { EnumModulos, EstatusEnum } from 'src/common/estatus.enum';
+import { EnumModulos, EstatusEnum, EstatusConteo } from 'src/common/estatus.enum';
 import { Clientes } from 'src/entities/Clientes';
 import { Turnos } from 'src/entities/Turnos';
+import { ConteoPasajeros } from 'src/entities/ConteoPasajeros';
 import { UpdateViajeDto } from './dto/update-viaje.dto';
 
 @Injectable()
@@ -31,6 +32,8 @@ export class ViajesService {
     private readonly bitacoraLogger: BitacoraLoggerService,
     @InjectRepository(Turnos)
     private readonly turnosRepository: Repository<Turnos>,
+    @InjectRepository(ConteoPasajeros)
+    private readonly conteoPasajerosRepository: Repository<ConteoPasajeros>,
   ) { }
   // ========================================
   // 🔹 CREAR UN VIAJE
@@ -164,6 +167,17 @@ export class ViajesService {
 
       // Actualizamos solo los campos enviados
       await this.viajesRepository.update(id, updateViajeDto);
+
+      // Cerrar todos los conteos de pasajeros activos relacionados con este viaje
+      await this.conteoPasajerosRepository.update(
+        {
+          idViaje: id,
+          estatus: EstatusConteo.ACTIVO,
+        },
+        {
+          estatus: EstatusConteo.INACTIVO,
+        },
+      );
 
       // Registro en la bitácora SUCCESS
       const querylogger = { updateViajeDto };

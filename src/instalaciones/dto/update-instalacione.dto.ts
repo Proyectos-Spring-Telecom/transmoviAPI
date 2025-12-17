@@ -46,7 +46,7 @@ export class UpdateInstalacioneDto extends PartialType(CreateInstalacionesDto) {
   })
   @IsInt()
   @IsIn([0, 1, 2, 3, 4, 5], { message: 'Solo se permite 0, 1, 2, 3, 4, 5' })
-  estatusContadoresAnterior?: number;
+  estatusContadorAnterior?: number;
 
   @ApiProperty({
     description: 'Comentario acerca de los componentes',

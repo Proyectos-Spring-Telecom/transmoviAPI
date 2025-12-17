@@ -120,22 +120,49 @@ export class ContadoresService {
     return { ids, placeholders };
   }
 
-  //Obtener los contadores por cliente -- obsoleto
+  //Obtener los contadores por cliente -- incluye disponibles y el que está en uso
   async findAllListClientes(id: number, cliente: number) {
     try {
-      const contadores = await this.contadoresRepository.find({
-        where: {
-          idCliente: id,
-          estatus: EstatusEnum.ACTIVO,
-          estadoActual: EstadoComponente.DISPONIBLE,
-        },
-      });
-      
+      // Consulta SQL para obtener contadores disponibles y el que está en uso
+      const contadores = await this.contadoresRepository.query(
+        `
+SELECT
+  c.Id AS id,
+  c.NumeroSerie AS numeroSerie,
+  c.Marca AS marca,
+  c.Modelo AS modelo,
+  c.FechaCreacion AS fechaCreacion,
+  c.FechaActualizacion AS fechaActualizacion,
+  c.EstadoActual AS estadoActual,
+  c.Estatus AS estatus,
+  c.IdCliente AS idCliente,
+  CASE 
+    WHEN i.Id IS NOT NULL THEN 1
+    ELSE 0
+  END AS enUso
+FROM Contadores c
+LEFT JOIN Instalaciones i ON c.Id = i.IdContador AND i.Estatus = 1
+WHERE c.IdCliente = ?
+  AND c.Estatus = 1
+  AND (
+    c.EstadoActual = ? -- DISPONIBLE
+    OR i.Id IS NOT NULL -- En uso (asignado a instalación activa)
+  )
+ORDER BY 
+  enUso DESC, -- Primero los que están en uso
+  c.Id ASC;
+        `,
+        [id, EstadoComponente.DISPONIBLE],
+      );
 
       //Forzamos a cambiar el id a number
       const data = contadores.map((item) => ({
         ...item,
         id: Number(item.id),
+        idCliente: Number(item.idCliente),
+        estadoActual: Number(item.estadoActual),
+        estatus: Number(item.estatus),
+        enUso: Number(item.enUso),
       }));
 
       const result: ApiResponseCommon = {
