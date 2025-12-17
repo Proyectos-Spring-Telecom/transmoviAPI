@@ -49,6 +49,9 @@ export class ConteoPasajeros {
   @Column('bigint', { name: 'IdViaje', nullable: true })
   idViaje: number | null;
 
+  @Column('tinyint', { name: 'Estatus', nullable: true, default: () => "'1'" })
+  estatus: number | null;
+
   @ManyToOne(() => Contadores, (contadores) => contadores.conteoPasajeros, {
     onDelete: 'NO ACTION',
     onUpdate: 'NO ACTION',

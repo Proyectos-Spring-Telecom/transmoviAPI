@@ -8,9 +8,11 @@ import { Contadores } from 'src/entities/Contadores';
 import { Usuarios } from 'src/entities/Usuarios';
 import { Clientes } from 'src/entities/Clientes';
 import { Viajes } from 'src/entities/Viajes';
+import { Instalaciones } from 'src/entities/Instalaciones';
+import { Turnos } from 'src/entities/Turnos';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ConteoPasajeros, Contadores, Usuarios, Clientes, Viajes]), BitacoraModule],
+  imports: [TypeOrmModule.forFeature([ConteoPasajeros, Contadores, Usuarios, Clientes, Viajes, Instalaciones, Turnos]), BitacoraModule],
   controllers: [ConteopasajerosController],
   providers: [ConteopasajerosService],
 })

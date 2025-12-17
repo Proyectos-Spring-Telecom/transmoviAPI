@@ -83,6 +83,11 @@ export enum EnumTipoTarifa {
   INCREMENTAL = 1,
 }
 
+export enum EstatusConteo {
+  INACTIVO = 0,
+  ACTIVO = 1,
+}
+
 export enum EnumCategoriaLicencia {
   FEDERAL = 1,
   ESTATAL = 2,

@@ -16,8 +16,10 @@ import { Usuarios } from 'src/entities/Usuarios';
 import { Clientes } from 'src/entities/Clientes';
 import { Contadores } from 'src/entities/Contadores';
 import { Viajes } from 'src/entities/Viajes';
+import { Instalaciones } from 'src/entities/Instalaciones';
+import { Turnos } from 'src/entities/Turnos';
 import { UpdateConteoPasajerosDto } from './dto/update-conteopasajero.dto';
-import { EnumModulos } from 'src/common/estatus.enum';
+import { EnumModulos, EstatusConteo } from 'src/common/estatus.enum';
 
 @Injectable()
 export class ConteopasajerosService {
@@ -32,6 +34,10 @@ export class ConteopasajerosService {
     private readonly clienteRepository: Repository<Clientes>,
     @InjectRepository(Viajes)
     private readonly viajesRepository: Repository<Viajes>,
+    @InjectRepository(Instalaciones)
+    private readonly instalacionesRepository: Repository<Instalaciones>,
+    @InjectRepository(Turnos)
+    private readonly turnosRepository: Repository<Turnos>,
     private readonly bitacoraLogger: BitacoraLoggerService,
   ) { }
 
@@ -54,32 +60,72 @@ export class ConteopasajerosService {
         );
       }
 
-      // Validar que el viaje existe si se proporciona idViaje
-      if (createConteopasajeroDto.idViaje) {
-        const viaje = await this.viajesRepository.findOne({ 
-          where: { id: createConteopasajeroDto.idViaje } 
-        });
-
-        if (!viaje) {
-          throw new NotFoundException(
-            `El viaje con ID '${createConteopasajeroDto.idViaje}' no existe.`
-          );
-        }
+      // Obtener la instalación relacionada con el contador
+      const instalacion = await this.instalacionesRepository.findOne({
+        where: {
+          idContador: contador.id,
+          idCliente: contador.idCliente,
+          estatus: 1, // Solo instalaciones activas
+        },
+      });
+      if (!instalacion) {
+        throw new NotFoundException(
+          `No se encontró una instalación activa para el contador con número de serie '${createConteopasajeroDto.numeroSerieContador}'.`
+        );
       }
 
-      // Preparar los datos para crear, asegurando que idViaje sea null si no se proporciona
+      // Obtener el turno activo relacionado con la instalación
+      const turno = await this.turnosRepository.findOne({
+        where: {
+          idInstalacion: instalacion.id,
+          idCliente: contador.idCliente,
+          estatus: 1, // Solo turnos activos
+        },
+        order: {
+          inicio: 'DESC', // Obtener el turno más reciente
+        },
+      });
+      if (!turno) {
+        throw new NotFoundException(
+          `No se encontró un turno activo para la instalación del contador '${createConteopasajeroDto.numeroSerieContador}'.`
+        );
+      }
+
+      // Obtener el viaje activo relacionado con el turno
+      const viaje = await this.viajesRepository.findOne({
+        where: {
+          idTurno: turno.id,
+          idCliente: contador.idCliente,
+          estatus: 1, // Solo viajes activos
+        },
+        order: {
+          inicio: 'DESC', // Obtener el viaje más reciente
+        },
+      });
+
+      if (!viaje) {
+        throw new NotFoundException(
+          `No se encontró un viaje activo para el turno de la instalación del contador '${createConteopasajeroDto.numeroSerieContador}'.`
+        );
+      }
+
+      // Preparar los datos para crear con idViaje y numeroSerieContador
+      // Usar valores por defecto para campos requeridos
+      const ahora = new Date();
+      const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas
+      const fechaHora = new Date(ahora.getTime() + desfaseMs);
+
       const dataToCreate: any = {
-        entradas: createConteopasajeroDto.entradas,
-        salidas: createConteopasajeroDto.salidas,
-        diferencia: createConteopasajeroDto.diferencia,
-        fechaHora: createConteopasajeroDto.fechaHora,
         numeroSerieContador: createConteopasajeroDto.numeroSerieContador,
-        idViaje: createConteopasajeroDto.idViaje || null,
+        idViaje: viaje.id,
+        diferencia: 0, // Valor por defecto
+        fechaHora: fechaHora, // Fecha actual con desfase
+        entradas: 0, // Valor por defecto
+        salidas: 0, // Valor por defecto
+        estatus: EstatusConteo.ACTIVO, // Establecer como activo
       };
       
-      const newConteoPasajero = this.conteopasajeroRepository.create(
-        dataToCreate,
-      );
+      const newConteoPasajero = this.conteopasajeroRepository.create(dataToCreate);
       
       // Guardar el registro
       const saveResult = await this.conteopasajeroRepository.save(newConteoPasajero);
@@ -89,17 +135,6 @@ export class ConteopasajerosService {
       if (!conteoPasajeroSave || !conteoPasajeroSave.id) {
         throw new InternalServerErrorException(
           'Error al guardar el registro de ConteoPasajero. El registro no se creó correctamente.'
-        );
-      }
-
-      // Verificar nuevamente consultando la base de datos
-      const registroVerificado = await this.conteopasajeroRepository.findOne({
-        where: { id: conteoPasajeroSave.id }
-      });
-
-      if (!registroVerificado) {
-        throw new InternalServerErrorException(
-          'Error al verificar el registro de ConteoPasajero. El registro no se encontró en la base de datos después de guardarlo.'
         );
       }
 
@@ -113,17 +148,12 @@ export class ConteopasajerosService {
         },
       };
 
-      // Registro en la bitácora SUCCESS (después de confirmar que se guardó)
-      // Usar try-catch para que un error en la bitácora no afecte la respuesta
+      // Registro en la bitácora SUCCESS
       try {
-        const usuario = await this.usuariosRepository.findOne({ 
-          where: { idCliente: contador.idCliente, idRol: 2 } 
-        });
-        
         const querylogger = { createConteopasajeroDto };
         await this.bitacoraLogger.logToBitacora(
           'ConteoPasajeros',
-          `Se creó un ConteoPasajeros con Numero de serie Contador: ${createConteopasajeroDto.numeroSerieContador}`,
+          `Se creó un ConteoPasajeros con Numero de serie Contador: ${createConteopasajeroDto.numeroSerieContador} y Viaje ID: ${viaje.id}`,
           'CREATE',
           querylogger,
           idUser,
@@ -163,7 +193,7 @@ export class ConteopasajerosService {
         }
         if (error.message.includes('IdViaje')) {
           throw new NotFoundException(
-            `El viaje con ID '${createConteopasajeroDto.idViaje}' no existe.`
+            `No se pudo asociar el viaje al conteo de pasajeros. Verifique que existe un viaje activo para el contador '${createConteopasajeroDto.numeroSerieContador}'.`
           );
         }
       }
@@ -992,40 +1022,103 @@ WHERE cp.FechaHora BETWEEN '${fechaInicio}TT00:00:00' AND '${fechaFin}T23:59:00'
   // ========================================
   // 🔹 ACTUALIZAR CONTEOPASAJERO
   // ========================================
-  async update(id: number, updateConteoPasajerosDto: UpdateConteoPasajerosDto) {
+  async update(updateConteoPasajerosDto: UpdateConteoPasajerosDto, idUser: number) {
     try {
+      // Buscar el conteo activo por numeroSerieContador
       const conteoPasajero = await this.conteopasajeroRepository.findOne({
-        where:
-          { id: id }
+        where: {
+          numeroSerieContador: updateConteoPasajerosDto.numeroSerieContador,
+          estatus: EstatusConteo.ACTIVO,
+        },
       });
-      if (!conteoPasajero) throw new NotFoundException('Conteo Pasajero no encontrada.');
 
-      //Actualizamos los datos de conteopasajeros
-      await this.conteopasajeroRepository.update(id, updateConteoPasajerosDto);
+      if (!conteoPasajero) {
+        throw new NotFoundException(
+          `No se encontró un conteo activo para el contador con número de serie '${updateConteoPasajerosDto.numeroSerieContador}'.`
+        );
+      }
 
-      const contador = await this.contadoresRepository.findOne({ where: { numeroSerie: conteoPasajero.numeroSerieContador } });
+      // Obtener valores actuales
+      let nuevasEntradas = conteoPasajero.entradas || 0;
+      let nuevasSalidas = conteoPasajero.salidas || 0;
+
+      // Verificar si subidas o bajadas tienen valores válidos (diferentes de null, undefined y 0)
+      const tieneSubidas = updateConteoPasajerosDto.subidas !== null && 
+                          updateConteoPasajerosDto.subidas !== undefined && 
+                          updateConteoPasajerosDto.subidas !== 0;
+      
+      const tieneBajadas = updateConteoPasajerosDto.bajadas !== null && 
+                          updateConteoPasajerosDto.bajadas !== undefined && 
+                          updateConteoPasajerosDto.bajadas !== 0;
+
+      // Lógica de actualización
+      if (tieneSubidas && updateConteoPasajerosDto.subidas !== undefined) {
+        // Si viene subidas con valor, sumarlo
+        nuevasEntradas += updateConteoPasajerosDto.subidas;
+      }
+      
+      if (tieneBajadas && updateConteoPasajerosDto.bajadas !== undefined) {
+        // Si viene bajadas con valor, sumarlo
+        nuevasSalidas += updateConteoPasajerosDto.bajadas;
+      }
+
+      // Si subidas y bajadas NO tienen valores válidos, usar el flag esSubida
+      if (!tieneSubidas && !tieneBajadas && updateConteoPasajerosDto.esSubida !== null && updateConteoPasajerosDto.esSubida !== undefined) {
+        // Si viene el flag esSubida, usar ese flujo
+        if (updateConteoPasajerosDto.esSubida === true) {
+          nuevasEntradas += 1;
+        } else {
+          nuevasSalidas += 1;
+        }
+      }
+
+      // Calcular la diferencia
+      const nuevaDiferencia = nuevasEntradas - nuevasSalidas;
+
+      // Actualizar los datos
+      const updateResult = await this.conteopasajeroRepository.update(conteoPasajero.id, {
+        entradas: nuevasEntradas,
+        salidas: nuevasSalidas,
+        diferencia: nuevaDiferencia,
+      });
+
+      // Verificar que se actualizó al menos un registro
+      if (updateResult.affected === 0) {
+        throw new InternalServerErrorException(
+          'No se pudo actualizar el registro de ConteoPasajero. No se afectaron registros.'
+        );
+      }
+
+      // Obtener el contador para la bitácora
+      const contador = await this.contadoresRepository.findOne({
+        where: { numeroSerie: updateConteoPasajerosDto.numeroSerieContador },
+      });
+
       if (contador) {
-        const usuario = await this.usuariosRepository.findOne({ where: { idCliente: contador.idCliente, idRol: 2 } })
+        const usuario = await this.usuariosRepository.findOne({
+          where: { idCliente: contador.idCliente, idRol: 2 },
+        });
+
         // Registro en la bitácora SUCCESS
         const querylogger = { updateConteoPasajerosDto };
         await this.bitacoraLogger.logToBitacora(
           'ConteoPasajeros',
-          `Se actualizo un ConteoPasajeros con ID ${id}, Numero de serie Contador: ${conteoPasajero.numeroSerieContador}`,
+          `Se actualizó un ConteoPasajeros con ID ${conteoPasajero.id}, Numero de serie Contador: ${updateConteoPasajerosDto.numeroSerieContador}`,
           'UPDATE',
           querylogger,
-          usuario?.id || 1,
+          idUser,
           EnumModulos.CONTEOPASAJEROS,
           EstatusEnumBitcora.SUCCESS,
         );
-      };
+      }
 
       // API response
       const result: ApiCrudResponse = {
         status: 'success',
         message: 'ConteoPasajero fue actualizada correctamente',
         data: {
-          id: id,
-          nombre: `ConteoPasajero ${id} `,
+          id: conteoPasajero.id,
+          nombre: `ConteoPasajero ${conteoPasajero.id} `,
         },
       };
       return result;
