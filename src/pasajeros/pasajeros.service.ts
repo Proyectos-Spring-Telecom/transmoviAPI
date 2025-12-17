@@ -745,11 +745,16 @@ GROUP BY p.Id, u.Id, u.UserName, NombreCompleto;
         [id],
       );
 
-      const data = pasajero.map((item) => ({
+      if (!pasajero || pasajero.length === 0) {
+        throw new NotFoundException('No se encontró información del pasajero.');
+      }
+
+      const item = pasajero[0];
+      const data = {
         ...item,
         idPasajero: Number(item.idPasajero),
         idUsuario: Number(item.idUsuario),
-      }));
+      };
 
       return {
         data: data,

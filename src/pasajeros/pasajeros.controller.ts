@@ -78,15 +78,15 @@ export class PasajerosController {
     return this.pasajerosService.findAllListPasajeros(+cliente, +rol);
   }
 
-  @Get('main/:idUsuario')
+  @Get('wallet')
   findMainPasajero(
-    @Param('idUsuario', ParseIntPipe) id: number,
     @Request() req,
   ) {
+    const idUsuario = req.user.userId;
     const idUser = req.user.userId;
     const cliente = req.user.cliente;
     const rol = req.user.rol;
-    return this.pasajerosService.obtenerMainPasajero(id, idUser, cliente, rol);
+    return this.pasajerosService.obtenerMainPasajero(idUsuario, idUser, cliente, rol);
   }
 
   @Get(':page/:limit')
