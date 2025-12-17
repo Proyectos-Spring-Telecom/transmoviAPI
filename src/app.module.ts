@@ -53,6 +53,7 @@ import { VerificacionesModule } from './verificaciones/verificaciones.module';
 import { ReportesModule } from './reportes/reportes.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { IncidentesModule } from './incidentes/incidentes.module';
+import { CatMetodoPagoModule } from './cat-metodo-pago/cat-metodo-pago.module';
 import Joi from 'joi';
 
 @Module({
@@ -198,6 +199,8 @@ import Joi from 'joi';
     DashboardModule,
 
     IncidentesModule,
+
+    CatMetodoPagoModule,
   ],
   controllers: [AppController],
   providers: [AppService],

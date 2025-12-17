@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import {
   IsDateString,
   IsEnum,
+  IsInt,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -23,6 +24,15 @@ export class CreateTransaccioneRecargaDto {
   @IsNumber({ maxDecimalPlaces: 2 })
   @IsNotEmpty()
   monto: number;
+
+  @ApiProperty({
+    example: '(1) Efectivo, (2) Tarjetas de crédito, (3) Tarjetas de débito',
+    description: 'El metodo de pago al realizar una recarga.',
+  })
+  @IsNumber()
+  @IsInt()
+  @IsNotEmpty()
+  idMetodoPago: number;
 
   @ApiProperty({
     example: 19.432608,

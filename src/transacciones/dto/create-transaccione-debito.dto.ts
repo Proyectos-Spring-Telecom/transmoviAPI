@@ -11,25 +11,23 @@ import {
 import { EnumControlTransacciones, EnumTipoTransaccion } from 'src/common/estatus.enum';
 
 export class CreateTransaccioneDebitoDto {
-  @IsEnum(EnumTipoTransaccion, {
-    message: 'El tipo de transaccion a realizar: 1 (Recarga), 2 (Debito)',
+  @ApiPropertyOptional({
+    description: 'ID del viaje',
+    example: -99.133209,
   })
-  @IsOptional()
-  idTipoTransaccion?: EnumTipoTransaccion;
-
-  @ApiProperty({
-    example: 150.75,
-    description: 'Monto de la transacción (2 decimales)',
-  })
-  @IsNumber({ maxDecimalPlaces: 2 })
   @IsNotEmpty()
-  monto: number;
+  @IsNumber()
+  idViaje: number;
 
-  @ApiProperty({
-    description: 'Control de la transacción',
-    example: `${0} (pagado), ${1} (abierto)`,
-    required: false,
-  })
+  @IsInt()
+  @IsNumber()
+  @IsOptional()
+  idTipoTransaccion?: number;
+
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @IsOptional()
+  monto?: number;
+
   @IsInt()
   @IsOptional()
   controlTransaccion?: EnumControlTransacciones = EnumControlTransacciones.PAGADO;
@@ -40,7 +38,7 @@ export class CreateTransaccioneDebitoDto {
   })
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 7 })
-  latitudInicial?: number;
+  latitud?: number;
 
   @ApiPropertyOptional({
     description: 'Longitud inicial del recorrido',
@@ -48,49 +46,15 @@ export class CreateTransaccioneDebitoDto {
   })
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 7 })
-  longitudInicial?: number;
+  longitud?: number;
 
-  @ApiPropertyOptional({
-    description: 'Fecha y hora de inicio',
-    example: '2025-01-15T14:30:00',
-  })
   @IsOptional()
   @IsDateString()
-  fechaHoraInicio?: string;
+  fechaHora?: string;
 
-  @ApiPropertyOptional({
-    description: 'Distancia inicial en kilómetros',
-    example: 0.5,
-  })
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
   distanciaInicialKm?: number;
-
-  @ApiProperty({
-    example: 19.432608,
-    description: 'Latitud de la ubicación (opcional)',
-    required: false,
-  })
-  @IsNumber({ maxDecimalPlaces: 7 })
-  @IsOptional()
-  latitudFinal?: number;
-
-  @ApiProperty({
-    example: -99.133209,
-    description: 'Longitud de la ubicación (opcional)',
-    required: false,
-  })
-  @IsNumber({ maxDecimalPlaces: 7 })
-  @IsOptional()
-  longitudFinal?: number;
-
-  @ApiProperty({
-    example: '2025-09-10T12:30:00Z',
-    description: 'Fecha y hora de la transacción en formato ISO8601',
-  })
-  @IsDateString()
-  @IsOptional()
-  fechaHoraFinal: string;
 
   @ApiProperty({
     example: 'MON-0001',

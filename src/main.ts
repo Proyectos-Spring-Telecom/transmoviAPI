@@ -39,6 +39,7 @@ async function bootstrap() {
     .addTag('Catálogo categoría licencia', 'Catálogo de categorías de licencias')
     .addTag('Catálogo combustible', 'Catálogo de tipos de combustible')
     .addTag('Catálogo estatus mantenimiento', 'Catálogo de estatus de mantenimiento')
+    .addTag('Catálogo metodo pago', 'Catálogo de metodos de pagos')
     .addTag('Catálogo referencia servicio', 'Catálogo de referencias de servicio')
     .addTag('Catálogo tipo combustible', 'Catálogo de tipos de combustible')
     .addTag('Catálogo tipo descuento', 'Catálogo de tipos de descuento')

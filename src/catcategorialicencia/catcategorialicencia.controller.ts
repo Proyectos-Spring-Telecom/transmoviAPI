@@ -3,10 +3,10 @@ import { CatcategorialicenciaService } from './catcategorialicencia.service';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
-@ApiTags('Catálogo categoría licencia')
-@ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
+@ApiTags('Catálogo categoría licencia')
 @Controller('catcategorialicencia')
+@ApiBearerAuth('bearer-token')
 export class CatcategorialicenciaController {
   constructor(private readonly catcategorialicenciaService: CatcategorialicenciaService) {}
 

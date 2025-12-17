@@ -12,6 +12,7 @@ import { applySchema } from 'src/common/apply-schema.decorator';
 @Index('FK_TransaccionesRecargas_CatTiposTransacciones_idx', ['idTipoTransaccion'], {})
 @Index('FK_TransaccionesRecarga_NumeroSerieMonedero_idx', ['numeroSerieMonedero'], {})
 @Index('FK_TransaccionesRecarga_NumeroSerieDispositivo_idx', ['numeroSerieDispositivo'], {})
+@Index('FK_TransaccionesRecarga_CatMetodoPago', ['idMetodoPago'], {})
 @Entity('TransaccionesRecarga')
 export class TransaccionesRecarga {
   @PrimaryGeneratedColumn({ type: 'bigint', name: 'Id' })
@@ -25,6 +26,9 @@ export class TransaccionesRecarga {
 
   @Column('decimal', { name: 'Monto', precision: 10, scale: 2 })
   monto: number;
+
+  @Column('bigint', { name: 'IdMetodoPago' })
+  idMetodoPago: number;
 
   @Column('decimal', { name: 'LatitudFinal', precision: 10, scale: 7, nullable: true })
   latitudFinal: number | null;
