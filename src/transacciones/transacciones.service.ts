@@ -879,7 +879,6 @@ export class TransaccionesService {
       let entidadRecarga;
       let entidadDebito;
       let transacciones;
-
       //Generamos la fecha actual
       function pad(n: number) {
         return n < 10 ? '0' + n : n;
@@ -1045,7 +1044,7 @@ INNER JOIN Clientes c
 -- condiciones
 WHERE DATE(tr.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
 
-ORDER BY FechaHoraFinal DESC
+ORDER BY FHRegistro DESC
   LIMIT ? OFFSET ?;
         `,
             [limit, offset],
@@ -1197,7 +1196,7 @@ INNER JOIN Clientes c
 WHERE DATE(tr.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
 AND m.IdCliente = ?
 
-ORDER BY FechaHoraFinal DESC
+ORDER BY FHRegistro DESC
 LIMIT ? OFFSET ?;
 
         `,
@@ -1358,7 +1357,7 @@ WHERE DATE(tr.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
 AND m.Estatus = 1
 AND p.Id = ?
 
-ORDER BY FechaHoraFinal DESC
+ORDER BY FHRegistro DESC
 LIMIT ? OFFSET ?;
 
         `,
@@ -1520,7 +1519,7 @@ INNER JOIN Clientes c
 WHERE DATE(tr.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
 AND m.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
 
-ORDER BY FechaHoraFinal DESC
+ORDER BY FHRegistro DESC
 LIMIT ? OFFSET ?;
 
         `,
@@ -2260,7 +2259,7 @@ INNER JOIN Clientes c
 -- condiciones
 WHERE DATE(tr.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
 
-ORDER BY FechaHoraFinal DESC
+ORDER BY FHRegistro DESC
         `,
           );
           break;
@@ -2363,7 +2362,7 @@ INNER JOIN Clientes c
 WHERE DATE(tr.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
 AND m.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
 
-ORDER BY FechaHoraFinal DESC
+ORDER BY FHRegistro DESC
 
         `,
             [...ids, ...ids],
@@ -2463,7 +2462,7 @@ INNER JOIN Clientes c
 WHERE DATE(tr.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
 AND m.IdCliente = ?
 
-ORDER BY FechaHoraFinal DESC
+ORDER BY FHRegistro DESC
         `,
             [cliente, cliente],
           );
