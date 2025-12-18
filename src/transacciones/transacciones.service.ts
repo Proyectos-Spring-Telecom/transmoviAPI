@@ -40,7 +40,7 @@ import { HistoricoTransaccionesDebito } from 'src/entities/HistoricoTransaccione
 import { UpdateTransaccioneDebitoDto } from './dto/update-transaccione-debito.dto';
 import { GetTransaccioneDto } from './dto/get-transacciones.dto';
 import { Viajes } from 'src/entities/Viajes';
-import { TrackingUtil } from 'src/utils/tracking.util';
+import { calcularDistanciaHastaIndex, snapToRoute } from 'src/utils/recorrido.utils';
 
 @Injectable()
 export class TransaccionesService {
@@ -201,18 +201,24 @@ export class TransaccionesService {
       if (!estatusTurno || !estatusViaje) {
         throw new BadRequestException(`Transacción realizada fuera del viaje o del turno.`)
       }
-      const trackingUtil = new TrackingUtil();
 
-      const currentPos = { lat: 18.982083264566207, lng: -99.24154830144228 };
-      const recorrido = recorridoInterpolar;
+      const posicionActual = { lat: createTransaccioneDebitoDto.latitud, lng: createTransaccioneDebitoDto.longitud };
 
-      const { distanciaRecorridaKm, progreso } = trackingUtil.calculateProgress(currentPos, recorrido);
-      
-      console.log(distanciaRecorridaKm, progreso)
+      const { montoCalculado, controlTransaccion } = await this.montoTarifa(
+        recorridoInterpolar,
+        distanciaKm,
+        tarifaBase,
+        distanciaBaseKm,
+        incrementoCadaMetros,
+        costoAdicional,
+        tipoTarifa,
+        posicionActual,
+      );
 
-      // Guardás en Posiciones / UltimaPosicion
+      console.log(montoCalculado, '*/*/*/*/*/*/ monto calculado')
 
-      let montoConDescuento = Number(createTransaccioneDebitoDto.monto);
+      createTransaccioneDebitoDto.controlTransaccion = controlTransaccion;
+      let montoConDescuento = montoCalculado;
 
       if (monedero.idTipoPasajero) {
         const tipoPasajero = await this.CatTiposPasajerosRepository.findOne({
@@ -424,19 +430,26 @@ WHERE v.Id = ${idViaje}
     incremento: number,
     costoAdicional: number,
     tipoTarifa: number,
+    posicionActual: {}
   ) {
     try {
-      let monto;
+      let montoCalculado;
+      let controlTransaccion;
+      console.log('Entro a monto tarifa con tipo de tarifa:', tipoTarifa)
       switch (tipoTarifa) {
         case EnumTipoTarifa.ESTACIONARIA:
-          monto = tarifaBase
+          montoCalculado = tarifaBase
+          controlTransaccion = EnumControlTransacciones.PAGADO
+          console.log('Entro a tarifa estacionaria con tarifa base:', tarifaBase)
           break;
 
         case EnumTipoTarifa.INCREMENTAL:
-
+          montoCalculado = tarifaBase
+          controlTransaccion = EnumControlTransacciones.ABIERTA
+          console.log('Entro a tarifa incremental con tarifa base:', tarifaBase)
           break;
       }
-      return monto
+      return { montoCalculado, controlTransaccion }
     } catch (error) {
       console.log({ 'TransaccionesDebito': error })
       if (error instanceof HttpException) throw error;

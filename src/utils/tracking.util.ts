@@ -1,67 +1,41 @@
-import { Injectable } from '@nestjs/common';
+import {
+    snapToRoute,
+    calcularDistanciaHastaIndex,
+    calcularDistanciaReal
+} from './recorrido.utils';
+import { Punto } from '../common/ApiResponse';
 
-interface LatLng {
-    lat: number;
-    lng: number;
+interface TrackingState {
+    distanciaRecorrida: number;
+    distanciaRestante: number;
+    progreso: number;
+    etaSegundos: number;
+    fueraDeRuta: boolean;
 }
 
-@Injectable()
-export class TrackingUtil {
+export function calcularTracking(
+    current: Punto,
+    recorrido: Punto[],
+    velocidadMps: number
+): TrackingState {
 
-    /**
-     * Encuentra el punto más cercano en la ruta (snap) y su índice
-     */
-    snapToRoute(current: LatLng, recorrido: LatLng[]): { index: number; distance: number } {
-        console.log('entro en tracking')
-        let minDist = Infinity;
-        let closestIndex = 0;
+    const { index, distanciaMetros } = snapToRoute(current, recorrido);
 
-        recorrido.forEach((p, i) => {
-            const d = this.haversine(current, p);
-            if (d < minDist) {
-                minDist = d;
-                closestIndex = i;
-            }
-        });
+    const distanciaTotal = calcularDistanciaReal(recorrido);
+    const distanciaRecorrida = calcularDistanciaHastaIndex(recorrido, index);
+    const distanciaRestante = Math.max(
+        distanciaTotal - distanciaRecorrida,
+        0
+    );
 
-        return { index: closestIndex, distance: minDist };
-    }
-
-    /**
-     * Calcula la distancia entre dos puntos en km usando Haversine
-     */
-    haversine(p1: LatLng, p2: LatLng): number {
-        const R = 6371; // km
-        const dLat = this.deg2rad(p2.lat - p1.lat);
-        const dLon = this.deg2rad(p2.lng - p1.lng);
-        const a =
-            Math.sin(dLat / 2) ** 2 +
-            Math.cos(this.deg2rad(p1.lat)) *
-            Math.cos(this.deg2rad(p2.lat)) *
-            Math.sin(dLon / 2) ** 2;
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
-    }
-
-    private deg2rad(deg: number): number {
-        return deg * (Math.PI / 180);
-    }
-
-    /**
-     * Calcula distancia recorrida y progreso
-     */
-    calculateProgress(current: LatLng, recorrido: LatLng[]): { distanciaRecorridaKm: number; progreso: number } {
-        const { index } = this.snapToRoute(current, recorrido);
-        const distanciaRecorridaKm = index * 0.1; // cada punto = 100m
-        const progreso = index / recorrido.length;
-        return { distanciaRecorridaKm, progreso };
-    }
-
-    /**
-     * Detecta desvío
-     */
-    /* checkDesvio(current: LatLng, recorrido: LatLng, thresholdMeters = 50): boolean {
-        const { distance } = this.snapToRoute(current, recorrido);
-        return distance * 1000 > thresholdMeters;
-    } */
+    return {
+        distanciaRecorrida,
+        distanciaRestante,
+        progreso: distanciaRecorrida / distanciaTotal,
+        etaSegundos:
+            velocidadMps > 0
+                ? distanciaRestante / velocidadMps
+                : Infinity,
+        fueraDeRuta: distanciaMetros > 50 // metros
+    };
 }

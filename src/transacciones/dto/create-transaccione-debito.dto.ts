@@ -36,17 +36,17 @@ export class CreateTransaccioneDebitoDto {
     description: 'Latitud inicial del recorrido',
     example: 19.432608,
   })
-  @IsOptional()
+  @IsNotEmpty()
   @IsNumber({ maxDecimalPlaces: 7 })
-  latitud?: number;
+  latitud: number;
 
   @ApiPropertyOptional({
     description: 'Longitud inicial del recorrido',
     example: -99.133209,
   })
-  @IsOptional()
+  @IsNotEmpty()
   @IsNumber({ maxDecimalPlaces: 7 })
-  longitud?: number;
+  longitud: number;
 
   @IsOptional()
   @IsDateString()
