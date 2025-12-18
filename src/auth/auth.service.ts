@@ -683,7 +683,6 @@ Muchas gracias por su preferencia.`;
         user.userName,
         name,
         token,
-        codigo,
       );
       return `Se ha enviado un correo con el codigo.`;
     } catch (error) {
