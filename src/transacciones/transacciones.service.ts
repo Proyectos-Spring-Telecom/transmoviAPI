@@ -22,6 +22,7 @@ import { PasajerosService } from 'src/pasajeros/pasajeros.service';
 import { Clientes } from 'src/entities/Clientes';
 import { CreateTransaccioneDebitoDto } from './dto/create-transaccione-debito.dto';
 import {
+  EnumControlTarifaIncremental,
   EnumControlTransacciones,
   EnumModulos,
   EnumTipoDescuento,
@@ -109,6 +110,7 @@ export class TransaccionesService {
         createTransaccioneRecargaDto,
       );
       newTransaccion.idTipoTransaccion = EnumTipoTransaccion.RECARGA
+      newTransaccion.idUsuario = idUser
       const transaccionSave =
         await this.transaccionesrecargaRepository.save(newTransaccion);
 
@@ -197,12 +199,33 @@ export class TransaccionesService {
         costoAdicional,
         tipoTarifa
       } = viajeData[0]
-      console.log(...viajeData)
+      //console.log(...viajeData)
       if (!estatusTurno || !estatusViaje) {
         throw new BadRequestException(`Transacción realizada fuera del viaje o del turno.`)
       }
 
-      const posicionActual = { lat: createTransaccioneDebitoDto.latitud, lng: createTransaccioneDebitoDto.longitud };
+      //Obtenemos la fecha con desfase de 6 horas
+      const fechaDesfasada = horaDesfasada
+
+      //Creamos el body para crear una transaccion
+      const bodyTransaccionDebito = {
+        idTipoTransaccion: EnumTipoTransaccion.DEBITO,
+        monto: 0,
+        controlTransaccion: null,
+        latitudInicial: createTransaccioneDebitoDto.latitud,
+        longitudInicial: createTransaccioneDebitoDto.longitud,
+        fechaHoraInicio: fechaDesfasada,
+        distanciaInicialKm: null,
+        latitudFinal: null,
+        longitudFinal: null,
+        fechaHoraFinal: null,
+        numeroSerieMonedero: createTransaccioneDebitoDto.numeroSerieMonedero,
+        numeroSerieDispositivo: createTransaccioneDebitoDto.numeroSerieDispositivo,
+
+      }
+
+      //Creamos las variables para nuesto flujo de montoTarifa
+      const controlTarifaIncremental = EnumControlTarifaIncremental.INICIAL;
 
       const { montoCalculado, controlTransaccion } = await this.montoTarifa(
         recorridoInterpolar,
@@ -212,10 +235,12 @@ export class TransaccionesService {
         incrementoCadaMetros,
         costoAdicional,
         tipoTarifa,
-        posicionActual,
+        Number(createTransaccioneDebitoDto.latitud),
+        Number(createTransaccioneDebitoDto.longitud),
+        controlTarifaIncremental,
       );
 
-      console.log(montoCalculado, '*/*/*/*/*/*/ monto calculado')
+
 
       createTransaccioneDebitoDto.controlTransaccion = controlTransaccion;
       let montoConDescuento = montoCalculado;
@@ -423,14 +448,16 @@ WHERE v.Id = ${idViaje}
   }
 
   async montoTarifa(
-    recorridoInterpolar: object,
+    recorridoInterpolar: [],
     distanciaKm: number,
     tarifaBase: number,
     distanciaBaseKm: number,
     incremento: number,
     costoAdicional: number,
     tipoTarifa: number,
-    posicionActual: {}
+    latitud: number,
+    longitud: number,
+    controlTarifaIncremental: number,
   ) {
     try {
       let montoCalculado;
@@ -444,6 +471,14 @@ WHERE v.Id = ${idViaje}
           break;
 
         case EnumTipoTarifa.INCREMENTAL:
+          const posicionActual = { lat: latitud, lng: longitud };
+          const { index, distanciaMetros } = snapToRoute(
+            posicionActual,
+            recorridoInterpolar
+          );
+          console.log('El index', index)
+          console.log('Buscamos las cordenadas del index', recorridoInterpolar[index - 1])
+          console.log(index, distanciaMetros)
           montoCalculado = tarifaBase
           controlTransaccion = EnumControlTransacciones.ABIERTA
           console.log('Entro a tarifa incremental con tarifa base:', tarifaBase)
@@ -2380,4 +2415,432 @@ INNER JOIN Clientes c
       });
     }
   }
+
+  async paginadoRecarga(
+    idUser: number,
+    email: string,
+    cliente: number,
+    rol: number,
+    getTransaccioneDto: GetTransaccioneDto
+  ) {
+    try {
+      //Declaramos las variables para el consumo del api
+      let { fechaInicio, fechaFin } = getTransaccioneDto
+      const { page, limit } = getTransaccioneDto
+      let entidadRecarga;
+      let transacciones;
+
+      //Generamos la fecha actual
+      function pad(n: number) {
+        return n < 10 ? '0' + n : n;
+      }
+      const ahora = new Date();
+      const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas
+      const fechaDesfasada = new Date(ahora.getTime() + desfaseMs);
+      // Solo la fecha del momento
+      const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())}`;
+
+      //Si fechaInicio y fechaFin son null arroja las transacciones del dia de la tabla TransaccionesRecarga y TransaccionesDebito
+      if (!fechaInicio && !fechaFin) {
+        fechaInicio = fechaActual
+        fechaFin = fechaActual
+        entidadRecarga = 'TransaccionesRecarga';
+        console.log(fechaInicio, fechaFin, fechaActual, entidadRecarga, rol);
+        transacciones = await this.resolverPorRolRecargas(fechaInicio, fechaFin, idUser, email, cliente, rol, page, limit, entidadRecarga);
+      } else {
+        //Si fechaInicio y fechaFin no son null arroja las transacciones del dia de la tabla HistoricoTransaccionesRecarga y HistoricoTransaccionesDebito
+        //asigna fechaActual solo si el valor de la izquierda es null o undefined
+        fechaInicio = fechaInicio?.split("T")[0] ?? fechaActual;
+        fechaFin = fechaFin?.split("T")[0] ?? fechaActual;
+        entidadRecarga = 'HistoricoTransaccionesRecarga';
+        console.log(fechaInicio, fechaFin, fechaActual, entidadRecarga, rol);
+        transacciones = await this.resolverPorRolRecargas(fechaInicio, fechaFin, idUser, email, cliente, rol, page, limit, entidadRecarga);
+      }
+
+      const { data, total } = transacciones
+
+      //API Response
+      const result: ApiResponseCommon = {
+        data: data,
+        paginated: {
+          total: total,
+          page,
+          lastPage: Math.ceil(total / limit),
+        },
+      };
+      return result;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new BadRequestException({
+        message: 'Error al obtener transacciones paginado.',
+      });
+    }
+  }
+
+
+  async resolverPorRolRecargas(
+    fechaInicio: string,
+    fechaFin: string,
+    idUser: number,
+    email: string,
+    cliente: number,
+    rol: number,
+    page: number,
+    limit: number,
+    entidadRecarga: string
+  ) {
+    try {
+      let totalResult;
+      let transacciones;
+      const offset = (page - 1) * limit;
+      switch (rol) {
+        case 1:
+          transacciones = await this.transaccionesrecargaRepository.query(
+            `
+SELECT 
+    'RECARGA' AS origenTabla,
+    tr.Id AS id,
+    ctt.Nombre AS tipoTransaccion,
+    tr.Monto AS monto,
+    tr.LatitudFinal AS latitudFinal,
+    tr.LongitudFinal AS longitudFinal,
+    tr.FechaHoraFinal AS fechaHoraFinal,
+    tr.FHRegistro AS fhRegistro,
+    tr.NumeroSerieMonedero AS numeroSerieMonedero,
+    tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+
+    -- Datos del cliente
+    c.Id AS idCliente,
+    c.Nombre AS nombreCliente,
+    c.ApellidoPaterno AS apellidoPaternoCliente,
+    c.ApellidoMaterno AS apellidoMaternoCliente,
+
+    -- Datos del dispositivo
+    d.Marca AS marcaDispositivo,
+    d.Modelo AS modeloDispositivo,
+
+    -- Datos del pasajero
+    p.Id AS idPasajero,
+    p.Nombre AS nombrePasajero,
+    p.ApellidoPaterno AS apellidoPaternoPasajero,
+    p.ApellidoMaterno AS apellidoMaternoPasajero
+
+FROM ${entidadRecarga} tr
+INNER JOIN CatTiposTransacciones ctt 
+    ON tr.IdTipoTransaccion = ctt.Id
+LEFT JOIN Dispositivos d 
+    ON tr.NumeroSerieDispositivo = d.NumeroSerie
+INNER JOIN Monederos m 
+    ON tr.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Pasajeros p 
+    ON m.IdPasajero = p.Id
+INNER JOIN Clientes c
+    ON m.IdCliente = c.Id
+
+
+  AND tr.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z'
+                          AND '${fechaFin}T23:59:59Z'
+
+ORDER BY tr.FechaHoraFinal DESC
+  LIMIT ? OFFSET ?;
+        `,
+            [limit, offset],
+          );
+
+          // Query para total (sin paginación)
+          totalResult = await this.transaccionesrecargaRepository.query(
+            `
+            SELECT COUNT(*) AS total
+		FROM ${entidadRecarga} tr
+INNER JOIN CatTiposTransacciones ctt 
+    ON tr.IdTipoTransaccion = ctt.Id
+LEFT JOIN Dispositivos d 
+    ON tr.NumeroSerieDispositivo = d.NumeroSerie
+INNER JOIN Monederos m 
+    ON tr.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Pasajeros p 
+    ON m.IdPasajero = p.Id
+INNER JOIN Clientes c
+    ON m.IdCliente = c.Id
+
+
+  AND tr.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z'
+                          AND '${fechaFin}T23:59:59Z'
+  `,
+          );
+          break;
+
+        case 2:
+          transacciones = await this.transaccionesrecargaRepository.query(
+            `
+SELECT 
+    'RECARGA' AS origenTabla,
+    tr.Id AS id,
+    ctt.Nombre AS tipoTransaccion,
+    tr.Monto AS monto,
+    tr.LatitudFinal AS latitudFinal,
+    tr.LongitudFinal AS longitudFinal,
+    tr.FechaHoraFinal AS fechaHoraFinal,
+    tr.FHRegistro AS fhRegistro,
+    tr.NumeroSerieMonedero AS numeroSerieMonedero,
+    tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+
+    -- Datos del cliente
+    c.Id AS idCliente,
+    c.Nombre AS nombreCliente,
+    c.ApellidoPaterno AS apellidoPaternoCliente,
+    c.ApellidoMaterno AS apellidoMaternoCliente,
+
+    -- Datos del dispositivo
+    d.Marca AS marcaDispositivo,
+    d.Modelo AS modeloDispositivo,
+
+    -- Datos del pasajero
+    p.Id AS idPasajero,
+    p.Nombre AS nombrePasajero,
+    p.ApellidoPaterno AS apellidoPaternoPasajero,
+    p.ApellidoMaterno AS apellidoMaternoPasajero
+
+FROM ${entidadRecarga} tr
+INNER JOIN CatTiposTransacciones ctt 
+    ON tr.IdTipoTransaccion = ctt.Id
+LEFT JOIN Dispositivos d 
+    ON tr.NumeroSerieDispositivo = d.NumeroSerie
+INNER JOIN Monederos m 
+    ON tr.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Pasajeros p 
+    ON m.IdPasajero = p.Id
+INNER JOIN Clientes c
+    ON m.IdCliente = c.Id
+
+WHERE c.Id = ?   -- 👈 filtro por cliente
+  AND tr.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z'
+                          AND '${fechaFin}T23:59:59Z'
+
+ORDER BY tr.FechaHoraFinal DESC
+LIMIT ? OFFSET ?;
+
+        `,
+            [cliente, limit, offset],
+          );
+
+          // Query para total (sin paginación)
+          totalResult = await this.transaccionesrecargaRepository.query(
+            `
+            SELECT COUNT(*) AS total
+FROM ${entidadRecarga} tr
+INNER JOIN CatTiposTransacciones ctt 
+    ON tr.IdTipoTransaccion = ctt.Id
+LEFT JOIN Dispositivos d 
+    ON tr.NumeroSerieDispositivo = d.NumeroSerie
+INNER JOIN Monederos m 
+    ON tr.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Pasajeros p 
+    ON m.IdPasajero = p.Id
+INNER JOIN Clientes c
+    ON m.IdCliente = c.Id
+
+WHERE c.Id = ?   -- 👈 filtro por cliente
+  AND tr.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z'
+                          AND '${fechaFin}T23:59:59Z'
+  `, [cliente]
+          );
+          break;
+          
+        case 9:
+          //Datos por usuario
+          const pasajero =
+            await this.pasajeroService.findOnePasajeroCorreo(email);
+          transacciones = await this.transaccionesrecargaRepository.query(
+            `
+SELECT 
+    'RECARGA' AS origenTabla,       -- 👈 solo indica de qué tabla proviene
+    tr.Id AS id,
+    ctt.Nombre AS tipoTransaccion,  -- 👈 valor real del tipo
+    tr.Monto AS monto,
+    tr.LatitudFinal AS latitudFinal,
+    tr.LongitudFinal AS longitudFinal,
+    tr.FechaHoraFinal AS fechaHoraFinal,
+    tr.FHRegistro AS fhRegistro,
+    tr.NumeroSerieMonedero AS numeroSerieMonedero,
+    tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+
+    -- Datos del cliente
+    c.Id AS idCliente,
+    c.Nombre AS nombreCliente,
+    c.ApellidoPaterno AS apellidoPaternoCliente,
+    c.ApellidoMaterno AS apellidoMaternoCliente,
+    
+
+    d.Marca AS marcaDispositivo,
+    d.Modelo AS modeloDispositivo,
+
+    p.Id AS idPasajero,
+    p.Nombre AS nombrePasajero,
+    p.ApellidoPaterno AS apellidoPaternoPasajero,
+    p.ApellidoMaterno AS apellidoMaternoPasajero
+
+FROM ${entidadRecarga} tr
+INNER JOIN CatTiposTransacciones ctt 
+    ON tr.IdTipoTransaccion = ctt.Id
+LEFT JOIN Dispositivos d 
+    ON tr.NumeroSerieDispositivo = d.NumeroSerie
+INNER JOIN Monederos m 
+    ON tr.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Pasajeros p 
+    ON m.IdPasajero = p.Id
+INNER JOIN Clientes c
+	ON m.IdCliente = c.Id
+    
+-- condiciones
+WHERE tr.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
+AND m.Estatus = 1
+AND p.Id = ?
+
+ORDER BY FechaHoraFinal DESC
+LIMIT ? OFFSET ?;
+
+        `,
+            [Number(pasajero.id), limit, offset],
+          );
+          // Query para total (sin paginación)
+          totalResult = await this.transaccionesrecargaRepository.query(
+            `
+SELECT COUNT(*) AS total
+FROM ${entidadRecarga} tr
+INNER JOIN CatTiposTransacciones ctt 
+    ON tr.IdTipoTransaccion = ctt.Id
+LEFT JOIN Dispositivos d 
+    ON tr.NumeroSerieDispositivo = d.NumeroSerie
+INNER JOIN Monederos m 
+    ON tr.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Pasajeros p 
+    ON m.IdPasajero = p.Id
+INNER JOIN Clientes c
+	ON m.IdCliente = c.Id
+    
+-- condiciones
+WHERE tr.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
+AND m.Estatus = 1
+AND p.Id = ?
+
+  `,
+            [Number(pasajero.id), Number(pasajero.id)], // <-- Aquí debe ir como segundo argumento de query()
+          );
+          break;
+
+        case 11:
+          transacciones = await this.transaccionesrecargaRepository.query(
+            `
+SELECT 
+    'RECARGA' AS origenTabla,
+    tr.Id AS id,
+    ctt.Nombre AS tipoTransaccion,
+    tr.Monto AS monto,
+    tr.LatitudFinal AS latitudFinal,
+    tr.LongitudFinal AS longitudFinal,
+    tr.FechaHoraFinal AS fechaHoraFinal,
+    tr.FHRegistro AS fhRegistro,
+    tr.NumeroSerieMonedero AS numeroSerieMonedero,
+    tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+
+    -- Datos del cliente
+    c.Id AS idCliente,
+    c.Nombre AS nombreCliente,
+    c.ApellidoPaterno AS apellidoPaternoCliente,
+    c.ApellidoMaterno AS apellidoMaternoCliente,
+
+    -- Datos del dispositivo
+    d.Marca AS marcaDispositivo,
+    d.Modelo AS modeloDispositivo,
+
+    -- Datos del pasajero
+    p.Id AS idPasajero,
+    p.Nombre AS nombrePasajero,
+    p.ApellidoPaterno AS apellidoPaternoPasajero,
+    p.ApellidoMaterno AS apellidoMaternoPasajero
+
+FROM ${entidadRecarga} tr
+INNER JOIN CatTiposTransacciones ctt 
+    ON tr.IdTipoTransaccion = ctt.Id
+LEFT JOIN Dispositivos d 
+    ON tr.NumeroSerieDispositivo = d.NumeroSerie
+INNER JOIN Monederos m 
+    ON tr.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Pasajeros p 
+    ON m.IdPasajero = p.Id
+INNER JOIN Clientes c
+    ON m.IdCliente = c.Id
+
+WHERE tr.IdUsuario = ?   -- 👈 filtro por usuario
+  AND tr.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z'
+                          AND '${fechaFin}T23:59:59Z'
+
+ORDER BY tr.FechaHoraFinal DESC
+LIMIT ? OFFSET ?;
+
+        `,
+            [idUser, limit, offset],
+          );
+
+          // Query para total (sin paginación)
+          totalResult = await this.transaccionesrecargaRepository.query(
+            `
+            SELECT COUNT(*) AS total
+FROM ${entidadRecarga} tr
+INNER JOIN CatTiposTransacciones ctt 
+    ON tr.IdTipoTransaccion = ctt.Id
+LEFT JOIN Dispositivos d 
+    ON tr.NumeroSerieDispositivo = d.NumeroSerie
+INNER JOIN Monederos m 
+    ON tr.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Pasajeros p 
+    ON m.IdPasajero = p.Id
+INNER JOIN Clientes c
+    ON m.IdCliente = c.Id
+
+WHERE tr.IdUsuario = ?   -- 👈 filtro por usuario
+  AND tr.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z'
+                          AND '${fechaFin}T23:59:59Z'
+  `, [idUser]
+          );
+          break;
+      }
+
+      const total = Number(totalResult[0]?.total || 0);
+
+      // 🔥 Transformación de datos (ids → number, nombreCompleto)
+      const data = transacciones.map((item) => ({
+        ...item,
+        id: Number(item.id),
+        monto: Number(item.monto),
+        latitudFinal: Number(item.latitudFinal),
+        longitudFinal: Number(item.longitudFinal),
+        idCliente: Number(item.idCliente),
+        idPasajero: Number(item.idPasajero),
+      }));
+
+      //API Response
+      const result: ApiResponseCommon = {
+        data: data,
+        paginated: {
+          total: total,
+          page,
+          lastPage: Math.ceil(total / limit),
+        },
+      };
+      return { data, total };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new BadRequestException({
+        message: 'Error al obtener transacciones paginadas por rol',
+      });
+    }
+
+  }
+
 }

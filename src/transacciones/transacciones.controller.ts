@@ -67,6 +67,26 @@ export class TransaccionesController {
     );
   }
 
+  @Post('paginado/recargas')
+  @UseGuards(JwtAuthGuard)
+  async paginadoTransaccionRecargas(
+    @Body() getTransaccioneDto: GetTransaccioneDto,
+    @Request() req,
+  ) {
+    const idUser = req.user.userId;
+    const email = req.user.email;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+
+    return await this.transaccionesService.paginadoRecarga(
+      +idUser,
+      email,
+      +cliente,
+      +rol,
+      getTransaccioneDto
+    );
+  }
+
   @Post('paginado')
   @UseGuards(JwtAuthGuard)
   async paginadoTransaccion(
@@ -111,25 +131,25 @@ export class TransaccionesController {
     return this.transaccionesService.findOneTransaccionDebito(id);
   }
 
-/*   @Get(':page/:limit')
-  @UseGuards(JwtAuthGuard)
-  async findAllTransacciones(
-    @Param('page', ParseIntPipe) page: number,
-    @Param('limit', ParseIntPipe) limit: number,
-    @Request() req,
-  ): Promise<ApiResponseCommon> {
-    const idUser = req.user.userId;
-    const email = req.user.email;
-    const cliente = req.user.cliente;
-    const rol = req.user.rol;
-
-    return await this.transaccionesService.findAllTransacciones(
-      +idUser,
-      email,
-      +cliente,
-      +rol,
-      page,
-      limit
-    );
-  } */
+  /*   @Get(':page/:limit')
+    @UseGuards(JwtAuthGuard)
+    async findAllTransacciones(
+      @Param('page', ParseIntPipe) page: number,
+      @Param('limit', ParseIntPipe) limit: number,
+      @Request() req,
+    ): Promise<ApiResponseCommon> {
+      const idUser = req.user.userId;
+      const email = req.user.email;
+      const cliente = req.user.cliente;
+      const rol = req.user.rol;
+  
+      return await this.transaccionesService.findAllTransacciones(
+        +idUser,
+        email,
+        +cliente,
+        +rol,
+        page,
+        limit
+      );
+    } */
 }

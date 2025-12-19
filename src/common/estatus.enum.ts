@@ -107,3 +107,8 @@ export enum EnumControlTransacciones {
   PAGADO = 0,
   ABIERTA = 1,
 }
+
+export enum EnumControlTarifaIncremental {
+  INICIAL = 1,
+  FINAL = 2,
+}
