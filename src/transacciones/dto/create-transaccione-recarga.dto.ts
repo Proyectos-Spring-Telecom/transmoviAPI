@@ -41,7 +41,7 @@ export class CreateTransaccioneRecargaDto {
   })
   @IsNumber({ maxDecimalPlaces: 7 })
   @IsOptional()
-  latitudInicial?: number;
+  latitudFinal?: number;
 
   @ApiProperty({
     example: -99.133209,
@@ -50,14 +50,14 @@ export class CreateTransaccioneRecargaDto {
   })
   @IsNumber({ maxDecimalPlaces: 7 })
   @IsOptional()
-  longitudInicial?: number;
+  longitudFinal?: number;
 
   @ApiProperty({
     example: '2025-09-10T12:30:00Z',
     description: 'Fecha y hora de la transacción en formato ISO8601',
   })
   @IsDateString()
-  fechaHoraInicial: string;
+  fechaHoraFinal: string;
 
   @ApiProperty({
     example: 'MON-0001',
@@ -74,4 +74,8 @@ export class CreateTransaccioneRecargaDto {
   @IsString()
   @IsOptional()
   numeroSerieDispositivo?: string;
+
+  @IsNumber()
+  @IsOptional()
+  idUsuario?: number;
 }
