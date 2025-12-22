@@ -47,4 +47,7 @@ export class TransaccionesRecarga {
   @Column('varchar', { name: 'NumeroSerieValidador', length: 100, nullable: true })
   numeroSerieValidador: string | null;
 
+  @Column('bigint', { name: 'IdUsuario', nullable: true })
+  idUsuario: number | null;
+
 }

@@ -137,11 +137,12 @@ export class CreatePasajeroDto {
 
   @ApiProperty({
     example: 'MON-0001',
-    description: 'Número de serie único del monedero',
+    description: 'Número de serie único del monedero (opcional). Si no se proporciona, se generará automáticamente un número de serie aleatorio único.',
+    required: false,
   })
   @IsString()
   @IsOptional()
-  numeroSerieMonedero: string;
+  numeroSerieMonedero?: string;
 
   @IsOptional()
   @Transform(toNumber)

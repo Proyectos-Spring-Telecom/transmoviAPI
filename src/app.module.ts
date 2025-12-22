@@ -55,6 +55,7 @@ import { ReportesModule } from './reportes/reportes.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { IncidentesModule } from './incidentes/incidentes.module';
 import { CatTipoTarifaModule } from './cat-tipo-tarifa/cat-tipo-tarifa.module';
+import { NetpayModule } from './netpay/netpay.module';
 import Joi from 'joi';
 
 @Module({
@@ -79,6 +80,10 @@ import Joi from 'joi';
         E_MAIL: Joi.string().optional(),
         E_MAIL_PASSWORD: Joi.string().optional(),
         SMTP_PASSWORD: Joi.string().optional(),
+        NETPAY_ENVIRONMENT: Joi.string().valid('sandbox', 'production').default('sandbox'),
+        NETPAY_BASE_URL: Joi.string().uri().optional(),
+        NETPAY_PUBLIC_KEY: Joi.string().optional(),
+        NETPAY_PRIVATE_KEY: Joi.string().optional(),
       }),
     }),
 
@@ -208,6 +213,8 @@ import Joi from 'joi';
     IncidentesModule,
 
     CatTipoTarifaModule,
+
+    NetpayModule,
   ],
   controllers: [AppController],
   providers: [AppService],

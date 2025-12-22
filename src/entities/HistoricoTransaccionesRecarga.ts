@@ -59,6 +59,9 @@ export class HistoricoTransaccionesRecarga {
   })
   numeroSerieValidador: string | null;
 
+  @Column('bigint', { name: 'IdUsuario', nullable: true })
+  idUsuario: number | null;
+
   // -------- RELACIONES --------
 
 }

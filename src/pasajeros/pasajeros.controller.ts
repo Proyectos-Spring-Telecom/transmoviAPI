@@ -63,7 +63,8 @@ export class PasajerosController {
     @Request() req,
   ) {
     const idUser = req.user.userId;
-    return this.pasajerosService.createPasajeros(createPasajeroDto, idUser, documentacionFile);
+    const cliente = req.user.cliente;
+    return this.pasajerosService.createPasajeros(createPasajeroDto, idUser, +cliente, documentacionFile);
   }
 
   // ========================================

@@ -59,6 +59,9 @@ export class Monederos {
   @Column('bigint', { name: 'IdTipoPasajero' })
   idTipoPasajero: number;
 
+  @Column('tinyint', { name: 'EsVirtual', default: () => "'0'" })
+  esVirtual: number;
+
   @ManyToOne(() => Clientes, (clientes) => clientes.monederos, {
     onDelete: 'NO ACTION',
     onUpdate: 'NO ACTION',

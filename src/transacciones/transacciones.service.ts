@@ -40,14 +40,18 @@ import { CatTiposPasajeros } from 'src/entities/CatTiposPasajeros';
 import { TransbordosPermitidos } from 'src/entities/TransbordosPermitidos';
 import { DetalleTransbordos } from 'src/entities/DetalleTransbordos';
 import { HistoricoTransaccionesDebito } from 'src/entities/HistoricoTransaccionesDebito';
+import { HistoricoTransaccionesRecarga } from 'src/entities/HistoricoTransaccionesRecarga';
 import { Viajes } from 'src/entities/Viajes';
 import { Tarifas } from 'src/entities/Tarifas';
 import { Variantes } from 'src/entities/Variantes';
 import { Turnos } from 'src/entities/Turnos';
 import { Instalaciones } from 'src/entities/Instalaciones';
+import { Pasajeros } from 'src/entities/Pasajeros';
 
 import { UpdateTransaccioneDebitoDto } from './dto/update-transaccione-debito.dto';
 import { GetTransaccioneDto } from './dto/get-transacciones.dto';
+import { GetHistoricoRecargasDto } from './dto/get-historico-recargas.dto';
+import haversine from 'haversine-distance';
 
 @Injectable()
 export class TransaccionesService {
@@ -62,11 +66,16 @@ export class TransaccionesService {
 
     @InjectRepository(HistoricoTransaccionesDebito)
     private readonly historicoTransaccionesDebitoRepository: Repository<HistoricoTransaccionesDebito>,
+    
+    @InjectRepository(HistoricoTransaccionesRecarga)
+    private readonly historicoTransaccionesRecargaRepository: Repository<HistoricoTransaccionesRecarga>,
    
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
     @InjectRepository(CatTiposPasajeros)
     private readonly CatTiposPasajerosRepository: Repository<CatTiposPasajeros>,
+    @InjectRepository(Pasajeros)
+    private readonly pasajeroRepository: Repository<Pasajeros>,
     @InjectRepository(Monederos)
     private readonly monederoRepository: Repository<Monederos>,
     @InjectRepository(TransbordosPermitidos)
@@ -87,6 +96,217 @@ export class TransaccionesService {
     private readonly monederosService: MonederosService,
     private readonly pasajeroService: PasajerosService,
   ) { }
+
+  /**
+   * Calcula la distancia en kil?metros desde el punto inicial de la variante hasta el punto de transacci?n,
+   * sumando punto a punto a lo largo del recorridoDetallado
+   * @param variante Variante con recorridoDetallado y puntoInicio
+   * @param latitud Latitud del punto de la transacci?n
+   * @param longitud Longitud del punto de la transacci?n
+   * @returns Distancia en kil?metros desde el punto inicial hasta el punto de transacci?n, o 0 si no se puede calcular
+   */
+  private calcularDistanciaInicialKm(
+    variante: Variantes | null,
+    latitud: number,
+    longitud: number,
+  ): number {
+    if (!variante?.recorridoDetallado) {
+      return 0;
+    }
+
+    try {
+      const recorrido = this.parsearRecorridoDetallado(variante.recorridoDetallado);
+      if (!recorrido || recorrido.length === 0) {
+        return 0;
+      }
+
+      const puntoTransaccion = { lat: latitud, lng: longitud };
+      const puntoMasCercanoIndex = this.encontrarPuntoMasCercano(recorrido, puntoTransaccion);
+      
+      if (puntoMasCercanoIndex === -1) {
+        return 0;
+      }
+
+      const puntoMasCercano = recorrido[puntoMasCercanoIndex];
+      
+      // Calcular distancia desde puntoInicio hasta el primer punto del recorrido (si son diferentes)
+      const distanciaDesdePuntoInicio = this.calcularDistanciaDesdePuntoInicio(
+        variante,
+        recorrido[0],
+      );
+
+      // Calcular distancia acumulada a lo largo del recorrido desde el inicio hasta el punto m?s cercano
+      const distanciaAcumuladaRecorrido = this.calcularDistanciaAcumuladaRecorrido(
+        recorrido,
+        puntoMasCercanoIndex,
+      );
+
+      // Calcular distancia desde el punto m?s cercano hasta el punto de transacci?n
+      const distanciaPuntoMasCercanoATransaccion = haversine(
+        puntoMasCercano,
+        puntoTransaccion,
+      );
+
+      // Distancia total = distancia desde puntoInicio + distancia a lo largo del recorrido + distancia final
+      const distanciaTotal = distanciaDesdePuntoInicio + 
+                            distanciaAcumuladaRecorrido + 
+                            distanciaPuntoMasCercanoATransaccion;
+
+      const distanciaEnKm = parseFloat((distanciaTotal / 1000).toFixed(2));
+      
+      return isNaN(distanciaEnKm) || distanciaEnKm < 0 ? 0 : distanciaEnKm;
+    } catch (error) {
+      return 0;
+    }
+  }
+
+  /**
+   * Parsea el recorridoDetallado que puede venir como string JSON o como objeto
+   * @param recorridoDetallado Recorrido detallado en formato string o array
+   * @returns Array de puntos con lat y lng, o null si no se puede parsear
+   */
+  private parsearRecorridoDetallado(
+    recorridoDetallado: object | null,
+  ): Array<{ lat: number; lng: number }> | null {
+    if (!recorridoDetallado) {
+      return null;
+    }
+
+    try {
+      if (typeof recorridoDetallado === 'string') {
+        return JSON.parse(recorridoDetallado);
+      }
+      
+      return recorridoDetallado as Array<{ lat: number; lng: number }>;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Extrae las coordenadas del puntoInicio de la variante
+   * Soporta dos formatos: { lat, lng } o { direccion, coordenadas: { lat, lng } }
+   * @param puntoInicio Punto de inicio de la variante
+   * @returns Coordenadas { lat, lng } o null si no se pueden extraer
+   */
+  private extraerCoordenadasPuntoInicio(
+    puntoInicio: object | null,
+  ): { lat: number; lng: number } | null {
+    if (!puntoInicio) {
+      return null;
+    }
+
+    const puntoInicioRaw = puntoInicio as any;
+    let lat: number | undefined;
+    let lng: number | undefined;
+
+    if (puntoInicioRaw.coordenadas) {
+      lat = puntoInicioRaw.coordenadas.lat;
+      lng = puntoInicioRaw.coordenadas.lng;
+    } else if (puntoInicioRaw.lat !== undefined && puntoInicioRaw.lng !== undefined) {
+      lat = puntoInicioRaw.lat;
+      lng = puntoInicioRaw.lng;
+    }
+
+    if (typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng)) {
+      return { lat, lng };
+    }
+
+    return null;
+  }
+
+  /**
+   * Encuentra el ?ndice del punto m?s cercano en el recorrido al punto de transacci?n
+   * @param recorrido Array de puntos del recorrido
+   * @param puntoTransaccion Punto de la transacci?n
+   * @returns ?ndice del punto m?s cercano, o -1 si no se encuentra
+   */
+  private encontrarPuntoMasCercano(
+    recorrido: Array<{ lat: number; lng: number }>,
+    puntoTransaccion: { lat: number; lng: number },
+  ): number {
+    let puntoMasCercanoIndex = -1;
+    let distanciaMinima = Infinity;
+
+    for (let i = 0; i < recorrido.length; i++) {
+      const punto = recorrido[i];
+      
+      if (typeof punto.lat !== 'number' || typeof punto.lng !== 'number') {
+        continue;
+      }
+
+      const distancia = haversine(punto, puntoTransaccion);
+
+      if (distancia < distanciaMinima) {
+        distanciaMinima = distancia;
+        puntoMasCercanoIndex = i;
+      }
+    }
+
+    return puntoMasCercanoIndex;
+  }
+
+  /**
+   * Calcula la distancia desde el puntoInicio de la variante hasta el primer punto del recorrido
+   * @param variante Variante con puntoInicio
+   * @param primerPuntoRecorrido Primer punto del recorridoDetallado
+   * @returns Distancia en metros, o 0 si no se puede calcular o si son el mismo punto
+   */
+  private calcularDistanciaDesdePuntoInicio(
+    variante: Variantes,
+    primerPuntoRecorrido: { lat: number; lng: number },
+  ): number {
+    if (!variante.puntoInicio || 
+        typeof primerPuntoRecorrido.lat !== 'number' || 
+        typeof primerPuntoRecorrido.lng !== 'number') {
+      return 0;
+    }
+
+    const coordenadasPuntoInicio = this.extraerCoordenadasPuntoInicio(variante.puntoInicio);
+    if (!coordenadasPuntoInicio) {
+      return 0;
+    }
+
+    const distancia = haversine(coordenadasPuntoInicio, primerPuntoRecorrido);
+    
+    // Si la distancia es menor a 10 metros, consideramos que son el mismo punto
+    return distancia > 10 ? distancia : 0;
+  }
+
+  /**
+   * Calcula la distancia acumulada sumando punto a punto a lo largo del recorrido
+   * desde el ?ndice 0 hasta el ?ndice del punto m?s cercano
+   * @param recorrido Array de puntos del recorrido
+   * @param puntoMasCercanoIndex ?ndice del punto m?s cercano
+   * @returns Distancia acumulada en metros
+   */
+  private calcularDistanciaAcumuladaRecorrido(
+    recorrido: Array<{ lat: number; lng: number }>,
+    puntoMasCercanoIndex: number,
+  ): number {
+    if (puntoMasCercanoIndex <= 0) {
+      return 0;
+    }
+
+    let distanciaAcumulada = 0;
+
+    for (let i = 0; i < puntoMasCercanoIndex; i++) {
+      const puntoActual = recorrido[i];
+      const puntoSiguiente = recorrido[i + 1];
+
+      if (
+        typeof puntoActual.lat === 'number' &&
+        typeof puntoActual.lng === 'number' &&
+        typeof puntoSiguiente.lat === 'number' &&
+        typeof puntoSiguiente.lng === 'number'
+      ) {
+        const distanciaSegmento = haversine(puntoActual, puntoSiguiente);
+        distanciaAcumulada += distanciaSegmento;
+      }
+    }
+
+    return distanciaAcumulada;
+  }
 
   //Funcion para transaccion Recarga
   async createTransaccionRecarga(
@@ -124,6 +344,7 @@ export class TransaccionesService {
         longitudFinal: createTransaccioneRecargaDto.longitudInicial,
         numeroSerieMonedero: createTransaccioneRecargaDto.numeroSerieMonedero,
         numeroSerieValidador: createTransaccioneRecargaDto.numeroSerieValidador,
+        idUsuario: idUser, // Guardar el ID del usuario que realiza la recarga
       });
       newTransaccion.idTipoTransaccion = EnumTipoTransaccion.RECARGA;
       newTransaccion.controlTransaccion = EnumControlTransacciones.PAGADO;
@@ -133,7 +354,7 @@ export class TransaccionesService {
       const transaccionSave =
         await this.transaccionesrecargaRepository.save(newTransaccion);
 
-      // --- Registro en la bitácora --- SUCCESS
+      // --- Registro en la bit?cora --- SUCCESS
       const querylogger = { createTransaccioneRecargaDto };
       await this.bitacoraLogger.logToBitacora(
         'Transacciones',
@@ -158,7 +379,7 @@ export class TransaccionesService {
       };
       return result;
     } catch (error) {
-      // --- Registro en la bitácora --- ERROR
+      // --- Registro en la bit?cora --- ERROR
       console.log(JSON.stringify(error)); 
       const querylogger = { createTransaccioneRecargaDto };
       await this.bitacoraLogger.logToBitacora(
@@ -189,10 +410,10 @@ export class TransaccionesService {
     let estado: EstadoTransaccion = EstadoTransaccion.INICIADA;
 
     try {
-      // 1️⃣ Cambiamos estado a VALIDANDO_SALDO
+      // 1?? Cambiamos estado a VALIDANDO_SALDO
       estado = transicionarEstado(estado, EventoTransaccion.CREAR);
 
-      // 2️⃣ Buscamos el monedero
+      // 2?? Buscamos el monedero
       const monedero = await this.monederoRepository.findOne({
         where: {
           numeroSerie: createTransaccioneDebitoDto.numeroSerieMonedero,
@@ -204,8 +425,9 @@ export class TransaccionesService {
         throw new BadRequestException('Monedero no encontrado');
       }
 
-      // 2.3️⃣ Consulta de información de instalación, validador, turno, viaje, variante y tarifa usando idViaje
+      // 2.3?? Consulta de informaci?n de instalaci?n, validador, turno, viaje, variante y tarifa usando idViaje
       let infoValidadorViaje: any = null;
+      let variante: Variantes | null = null; // Guardar la variante para calcular distancia
 
       if (createTransaccioneDebitoDto.idViaje) {
         // Buscar el viaje con sus relaciones
@@ -218,7 +440,17 @@ export class TransaccionesService {
           throw new NotFoundException(`El viaje con ID ${createTransaccioneDebitoDto.idViaje} no existe`);
         }
 
-        // Obtener el turno con la instalación
+        // Guardar la variante para calcular la distancia
+        // Asegurarnos de obtener la variante completa con todos sus campos
+        if (viaje.idVariante) {
+          variante = await this.variantesRepository.findOne({
+            where: { id: viaje.idVariante },
+          });
+        } else {
+          variante = viaje.idVariante2;
+        }
+
+        // Obtener el turno con la instalaci?n
         const turno = await this.turnosRepository.findOne({
           where: { id: viaje.idTurno },
           relations: ['idInstalacion2'],
@@ -228,14 +460,14 @@ export class TransaccionesService {
           throw new NotFoundException(`El turno con ID ${viaje.idTurno} no existe`);
         }
 
-        // Obtener la instalación con el validador
+        // Obtener la instalaci?n con el validador
         const instalacion = await this.instalacionesRepository.findOne({
           where: { id: turno.idInstalacion },
           relations: ['validadores'],
         });
 
         if (!instalacion) {
-          throw new NotFoundException(`La instalación con ID ${turno.idInstalacion} no existe`);
+          throw new NotFoundException(`La instalaci?n con ID ${turno.idInstalacion} no existe`);
         }
 
         // Obtener la tarifa de la variante
@@ -258,7 +490,7 @@ export class TransaccionesService {
           TipoTarifa: tarifa?.tipoTarifa || null,
         }];
       } else {
-        // Si no se proporciona idViaje, mantener la lógica anterior con el query SQL
+        // Si no se proporciona idViaje, mantener la l?gica anterior con el query SQL
         infoValidadorViaje = await this.transaccionesdebitoRepository.query(
           `
           SELECT 
@@ -288,18 +520,26 @@ export class TransaccionesService {
           `,
           [createTransaccioneDebitoDto.numeroSerieValidador],
         );
+
+        // Obtener la variante para calcular la distancia
+        if (infoValidadorViaje && infoValidadorViaje.length > 0 && infoValidadorViaje[0].idVariante) {
+          variante = await this.variantesRepository.findOne({
+            where: { id: infoValidadorViaje[0].idVariante },
+          });
+        }
       }
 
-      // 2.4️⃣ Validar que tenemos información de tarifa
+      // 2.4?? Validar que tenemos informaci?n de tarifa
       if (!infoValidadorViaje || infoValidadorViaje.length === 0 || !infoValidadorViaje[0].TipoTarifa) {
-        throw new BadRequestException('No se pudo obtener la información de tarifa del viaje');
+        throw new BadRequestException('No se pudo obtener la informaci?n de tarifa del viaje');
       }
 
       const tarifaInfo = infoValidadorViaje[0];
       const tipoTarifa = Number(tarifaInfo.TipoTarifa);
       const tarifaBase = Number(tarifaInfo.TarifaBase) || 0;
+      const idViaje = tarifaInfo.idViaje ? Number(tarifaInfo.idViaje) : null;
 
-      // 2.5️⃣ Determinamos controlTransaccion según el tipo de tarifa
+      // 2.5?? Determinamos controlTransaccion seg?n el tipo de tarifa
       // Si TipoTarifa = 1 (Fija), controlTransaccion = PAGADO
       // Si TipoTarifa = 2 (Abierta), controlTransaccion = ABIERTA
       let controlTransaccion: EnumControlTransacciones;
@@ -312,45 +552,33 @@ export class TransaccionesService {
         controlTransaccion = EnumControlTransacciones.PAGADO;
       }
 
-      // 2.6️⃣ Calculamos el monto según el tipo de tarifa
+      // 2.6?? Calculamos el monto seg?n el tipo de tarifa
       // Si TipoTarifa = 1 (Fija), usar TarifaBase
-      // Si TipoTarifa = 2 (Abierta), también usar TarifaBase (o se puede extender la lógica)
+      // Si TipoTarifa = 2 (Abierta), tambi?n usar TarifaBase (o se puede extender la l?gica)
       let montoCalculado = tarifaBase;
       
       if (tipoTarifa === EnumTipoTarifa.FIJA) {
         montoCalculado = tarifaBase;
       } else if (tipoTarifa === EnumTipoTarifa.ABIERTA) {
-        // Para tarifa abierta, usar TarifaBase (puede extenderse con lógica adicional)
+        // Para tarifa abierta, usar TarifaBase (puede extenderse con l?gica adicional)
         montoCalculado = tarifaBase;
       }
 
-      // 2.6️⃣ Calculamos el numeroTransbordo y aplicamos el descuento del transbordo (opcional)
-      // Si no existe un transbordo para el cliente y la variante, continuamos con la lógica normal
+      // 2.6?? Calculamos el numeroTransbordo y aplicamos el descuento del transbordo (opcional)
+      // Si no existe un transbordo para el cliente, continuamos con la l?gica normal
       let numeroTransbordo: number | null = null;
       
-      // Obtener el idVariante del viaje
-      const idVarianteViaje = infoValidadorViaje[0]?.idVariante || null;
+      // Buscar el transbordo que pertenezca al cliente
+      const transbordoPermitido = await this.transbordosPermitidosRepository.findOne({
+        where: { 
+          idCliente: Number(monedero.idCliente),
+        },
+        relations: ['tipoDescuento'],
+      });
       
-      // Buscar el transbordo que pertenezca al cliente Y a la variante del viaje
-      const transbordoPermitido = idVarianteViaje
-        ? await this.transbordosPermitidosRepository.findOne({
-            where: { 
-              idCliente: Number(monedero.idCliente),
-              idVariante: Number(idVarianteViaje),
-            },
-            relations: ['tipoDescuento'],
-          })
-        : null;
-      
-      if (idVarianteViaje && !transbordoPermitido) {
-        console.log(`No se encontró transbordo para el cliente ${monedero.idCliente} y la variante ${idVarianteViaje} - No se aplicará descuento de transbordo`);
-      } else if (transbordoPermitido) {
-        console.log(`Transbordo encontrado para cliente ${monedero.idCliente} y variante ${idVarianteViaje} - ID: ${transbordoPermitido.id}`);
-      }
-      
-      // Solo aplicamos la lógica de transbordos si existe configuración para el cliente y la variante coincide
+      // Solo aplicamos la l?gica de transbordos si existe configuraci?n para el cliente
       if (transbordoPermitido && transbordoPermitido.tiempo && transbordoPermitido.numeroTransbordos) {
-        // Calculamos la fecha límite hacia atrás (tiempo en minutos)
+        // Calculamos la fecha l?mite hacia atr?s (tiempo en minutos)
         // Aplicar desfase de -6 horas para la zona horaria
         const ahora = new Date();
         const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas en milisegundos
@@ -374,15 +602,15 @@ export class TransaccionesService {
         console.log('Transbordos - Transacciones en rango:', transaccionesEnRango.length, '| NumeroTransbordos:', transaccionesEnRango.map(t => t.numeroTransbordo));
 
         if (transaccionesEnRango.length === 0) {
-          // Es la primera transacción en ese rango de tiempo (cobro inicial)
+          // Es la primera transacci?n en ese rango de tiempo (cobro inicial)
           numeroTransbordo = 0;
-          console.log('NumeroTransbordo asignado: 0 (primera transacción)');
+          console.log('NumeroTransbordo asignado: 0 (primera transacci?n)');
         } else {
-          // Buscamos la transacción con numeroTransbordo = 0 (el cobro inicial)
+          // Buscamos la transacci?n con numeroTransbordo = 0 (el cobro inicial)
           const cobroInicial = transaccionesEnRango.find((t) => t.numeroTransbordo === 0);
           
           if (cobroInicial) {
-            // Calculamos si el tiempo desde el cobro inicial ya pasó
+            // Calculamos si el tiempo desde el cobro inicial ya pas?
             const fechaCobroInicial = new Date(
               cobroInicial.fechaHoraInicio || cobroInicial.fechaHoraFinal || cobroInicial.fhRegistro
             );
@@ -390,13 +618,13 @@ export class TransaccionesService {
               fechaCobroInicial.getTime() + tiempoEnMs,
             );
 
-            // Si el tiempo desde el cobro inicial ya pasó, reiniciamos el contador a 0
+            // Si el tiempo desde el cobro inicial ya pas?, reiniciamos el contador a 0
             if (fechaHoraTransaccion > fechaExpiracionCobroInicial) {
               numeroTransbordo = 0;
               console.log('NumeroTransbordo asignado: 0 (tiempo expirado)');
             } else {
-              // El cobro inicial todavía está vigente, continuamos con el consecutivo (1, 2, 3, etc.)
-              // Incluimos todos los números de transbordo (incluyendo 0) para calcular correctamente el máximo
+              // El cobro inicial todav?a est? vigente, continuamos con el consecutivo (1, 2, 3, etc.)
+              // Incluimos todos los n?meros de transbordo (incluyendo 0) para calcular correctamente el m?ximo
               const numerosTransbordo = transaccionesEnRango
                 .map((t) => t.numeroTransbordo)
                 .filter((n) => n !== null && n !== undefined) as number[];
@@ -405,18 +633,18 @@ export class TransaccionesService {
                 const maxNumeroTransbordo = Math.max(...numerosTransbordo);
                 const siguienteTransbordo = maxNumeroTransbordo + 1;
                 
-                // Validar si se alcanzó el número máximo de transbordos permitidos
-                // Si se alcanzó o superó el máximo, reiniciamos el contador a 0
+                // Validar si se alcanz? el n?mero m?ximo de transbordos permitidos
+                // Si se alcanz? o super? el m?ximo, reiniciamos el contador a 0
                 if (siguienteTransbordo > transbordoPermitido.numeroTransbordos) {
                   numeroTransbordo = 0;
-                  console.log('NumeroTransbordo asignado: 0 (máximo alcanzado)');
+                  console.log('NumeroTransbordo asignado: 0 (m?ximo alcanzado)');
                 } else {
                   numeroTransbordo = siguienteTransbordo;
                   console.log('NumeroTransbordo asignado:', numeroTransbordo, '(incrementado desde', maxNumeroTransbordo, ')');
                 }
               } else {
                 numeroTransbordo = 1;
-                console.log('NumeroTransbordo asignado: 1 (primer transbordo después del inicial)');
+                console.log('NumeroTransbordo asignado: 1 (primer transbordo despu?s del inicial)');
               }
             }
           } else {
@@ -428,7 +656,7 @@ export class TransaccionesService {
         
         console.log('NumeroTransbordo final:', numeroTransbordo);
 
-        // Buscamos el costo del transbordo en DetalleTransbordos y aplicamos el descuento según el tipo
+        // Buscamos el costo del transbordo en DetalleTransbordos y aplicamos el descuento seg?n el tipo
         // Aplicamos el descuento si numeroTransbordo no es null (incluye 0) y hay tipo de descuento configurado
         if (numeroTransbordo !== null && transbordoPermitido.id && transbordoPermitido.idTipoDescuento) {
           const detalleTransbordo = await this.detalleTransbordosRepository.findOne({
@@ -438,7 +666,7 @@ export class TransaccionesService {
             },
           });
 
-          // Si encontramos el detalle, aplicamos el descuento según el tipo
+          // Si encontramos el detalle, aplicamos el descuento seg?n el tipo
           if (detalleTransbordo && detalleTransbordo.costo !== null) {
             const tipoDescuentoTransbordo = Number(transbordoPermitido.idTipoDescuento);
             const costoTransbordo = Number(detalleTransbordo.costo);
@@ -464,14 +692,14 @@ export class TransaccionesService {
               montoCalculado = 0;
             }
             
-            console.log('Monto calculado después del descuento:', montoCalculado);
+            console.log('Monto calculado despu?s del descuento:', montoCalculado);
           } else {
-            console.log('No se encontró detalle transbordo para nroTransbordo:', numeroTransbordo);
+            console.log('No se encontr? detalle transbordo para nroTransbordo:', numeroTransbordo);
           }
         }
       }
 
-      // 3️⃣ Calculamos monto final (aquí se pueden aplicar descuentos si existen)
+      // 3?? Calculamos monto final (aqu? se pueden aplicar descuentos si existen)
       let montoConDescuento = montoCalculado;
 
       if (monedero.idTipoPasajero) {
@@ -504,38 +732,53 @@ export class TransaccionesService {
 
       let montoFinal = Number(monedero.saldo) - montoConDescuento;
 
-      // 4️⃣ Validación de saldo
+      // 4?? Validaci?n de saldo
       if (montoFinal < 0) {
         estado = transicionarEstado(
           estado,
           EventoTransaccion.SALDO_INSUFICIENTE,
         );
 
-        // Guardar transacción rechazada
+        // Guardar transacci?n rechazada
         // Mapear latitud/longitud a latitudInicial/longitudInicial
         // Aplicar desfase de -6 horas para la zona horaria
         const ahora = new Date();
         const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas en milisegundos
         const fechaHoraInicio = new Date(ahora.getTime() + desfaseMs);
+        
+        // Calcular distancia inicial desde el punto inicial de la variante
+        const distanciaInicialKm = this.calcularDistanciaInicialKm(
+          variante,
+          createTransaccioneDebitoDto.latitud,
+          createTransaccioneDebitoDto.longitud,
+        );
+        
+        // Asegurar que el valor sea un n?mero v?lido
+        const distanciaInicialKmFinal = (typeof distanciaInicialKm === 'number' && !isNaN(distanciaInicialKm)) 
+          ? parseFloat(distanciaInicialKm.toFixed(2)) 
+          : 0;
+        
         const newTransaccion = this.transaccionesdebitoRepository.create({
           idTipoTransaccion: EnumTipoTransaccion.RECHAZO,
           monto: montoConDescuento,
           controlTransaccion: EnumControlTransacciones.PAGADO,
           latitudInicial: createTransaccioneDebitoDto.latitud,
           longitudInicial: createTransaccioneDebitoDto.longitud,
-          distanciaInicialKm: 0,
+          distanciaInicialKm: distanciaInicialKmFinal,
           fechaHoraInicio: fechaHoraInicio,
           numeroSerieMonedero: createTransaccioneDebitoDto.numeroSerieMonedero,
           numeroSerieValidador: createTransaccioneDebitoDto.numeroSerieValidador,
+          idViaje: idViaje,
         });
         await this.transaccionesdebitoRepository.save(newTransaccion);
+        
         //se guarda en el historico
         await this.historicoTransaccionesDebitoRepository.save(newTransaccion);
 
-        // Registrar en bitácora
+        // Registrar en bit?cora
         await this.bitacoraLogger.logToBitacora(
           'Transacciones',
-          `Transacción de débito RECHAZADA por saldo insuficiente`,
+          `Transacci?n de d?bito RECHAZADA por saldo insuficiente`,
           'CREATE',
           { createTransaccioneDebitoDto },
           idUser,
@@ -547,11 +790,11 @@ export class TransaccionesService {
         throw new BadRequestException('Saldo insuficiente');
       }
 
-      // 5️⃣ Si saldo OK, actualizamos el monedero y estado
+      // 5?? Si saldo OK, actualizamos el monedero y estado
       estado = transicionarEstado(estado, EventoTransaccion.SALDO_OK);
       
-      // Solo actualizar el saldo del monedero si la transacción es PAGADO
-      // Si es ABIERTA, no se descuenta el saldo todavía
+      // Solo actualizar el saldo del monedero si la transacci?n es PAGADO
+      // Si es ABIERTA, no se descuenta el saldo todav?a
       let montoAGuardar = 0;
       if (controlTransaccion === EnumControlTransacciones.PAGADO) {
         await this.monederosService.updateMonederoSaldo(
@@ -565,36 +808,51 @@ export class TransaccionesService {
         montoAGuardar = 0;
       }
 
-      // 6️⃣ Guardamos transacción aprobada
+      // 6?? Guardamos transacci?n aprobada
       // Mapear latitud/longitud a latitudInicial/longitudInicial
       // Aplicar desfase de -6 horas para la zona horaria
       const ahora = new Date();
       const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas en milisegundos
       const fechaHoraInicio = new Date(ahora.getTime() + desfaseMs);
+      
+      // Calcular distancia inicial desde el punto inicial de la variante
+      const distanciaInicialKm = this.calcularDistanciaInicialKm(
+        variante,
+        createTransaccioneDebitoDto.latitud,
+        createTransaccioneDebitoDto.longitud,
+      );
+      
+      // Asegurar que el valor sea un n?mero v?lido
+      const distanciaInicialKmFinal = (typeof distanciaInicialKm === 'number' && !isNaN(distanciaInicialKm)) 
+        ? parseFloat(distanciaInicialKm.toFixed(2)) 
+        : 0;
+      
       const newTransaccion = this.transaccionesdebitoRepository.create({
         idTipoTransaccion: EnumTipoTransaccion.DEBITO,
         monto: montoAGuardar,
         controlTransaccion: controlTransaccion,
         latitudInicial: createTransaccioneDebitoDto.latitud,
         longitudInicial: createTransaccioneDebitoDto.longitud,
-        distanciaInicialKm: 0,
+        distanciaInicialKm: distanciaInicialKmFinal,
         fechaHoraInicio: fechaHoraInicio,
         numeroSerieMonedero: createTransaccioneDebitoDto.numeroSerieMonedero,
         numeroSerieValidador: createTransaccioneDebitoDto.numeroSerieValidador,
         numeroTransbordo,
+        idViaje: idViaje,
       });
       const transaccionSave =
         await this.transaccionesdebitoRepository.save(newTransaccion);
+      
       let transaccionSaveHis;
 
       //Se guardara la transaccion en el historico de transacciones solamente cuando controltransaccion sea pagado
       if (controlTransaccion === EnumControlTransacciones.PAGADO) {
         transaccionSaveHis =
           await this.historicoTransaccionesDebitoRepository.save(newTransaccion);
-        // 7️⃣ Bitácora de éxito //controltransaccion pagado----
+        // 7?? Bit?cora de ?xito //controltransaccion pagado----
         await this.bitacoraLogger.logToBitacora(
           'Transacciones',
-          `Transacción de débito APROBADA`,
+          `Transacci?n de d?bito APROBADA`,
           'CREATE',
           { createTransaccioneDebitoDto },
           idUser,
@@ -602,22 +860,22 @@ export class TransaccionesService {
           EstatusEnumBitcora.SUCCESS,
         );
 
-        // 8️⃣ Finalizamos la transacción //controltransaccion pagado----
+        // 8?? Finalizamos la transacci?n //controltransaccion pagado----
         estado = transicionarEstado(estado, EventoTransaccion.FINALIZAR);
 
         return {
           status: 'success',
-          message: 'Transacción creada correctamente',
+          message: 'Transacci?n creada correctamente',
           data: {
             id: Number(transaccionSaveHis.id) || Number(transaccionSave.id),
             nombre: `${monedero.numeroSerie}`,
           },
         };
       } else {
-        // 7️⃣ Bitácora de éxito para transacciones ABIERTAS
+        // 7?? Bit?cora de ?xito para transacciones ABIERTAS
         await this.bitacoraLogger.logToBitacora(
           'Transacciones',
-          `Transacción de débito APROBADA (ABIERTA)`,
+          `Transacci?n de d?bito APROBADA (ABIERTA)`,
           'CREATE',
           { createTransaccioneDebitoDto },
           idUser,
@@ -625,12 +883,12 @@ export class TransaccionesService {
           EstatusEnumBitcora.SUCCESS,
         );
 
-        // 8️⃣ Finalizamos la transacción
+        // 8?? Finalizamos la transacci?n
         estado = transicionarEstado(estado, EventoTransaccion.FINALIZAR);
 
         return {
           status: 'success',
-          message: 'Transacción creada correctamente',
+          message: 'Transacci?n creada correctamente',
           data: {
             id: Number(transaccionSave.id),
             nombre: `${monedero?.numeroSerie || createTransaccioneDebitoDto.numeroSerieMonedero}`,
@@ -643,11 +901,11 @@ export class TransaccionesService {
         throw error;
       }
 
-      // Bitácora de error
+      // Bit?cora de error
       const querylogger = { createTransaccioneDebitoDto };
       await this.bitacoraLogger.logToBitacora(
         'Transacciones',
-        `Error en transacción de débito`,
+        `Error en transacci?n de d?bito`,
         'CREATE',
         querylogger,
         idUser,
@@ -659,7 +917,7 @@ export class TransaccionesService {
       if (error instanceof HttpException) throw error;
 
       throw new InternalServerErrorException(
-        `Error al generar la transacción de débito`,
+        `Error al generar la transacci?n de d?bito`,
       );
     }
   }
@@ -681,15 +939,15 @@ export class TransaccionesService {
         throw new BadRequestException('Monedero no encontrado');
       }
 
-      // 3️⃣ Calculamos monto final (aquí se pueden aplicar descuentos si existen)
-      // Si no se proporciona monto, obtenerlo de la transacción existente
+      // 3?? Calculamos monto final (aqu? se pueden aplicar descuentos si existen)
+      // Si no se proporciona monto, obtenerlo de la transacci?n existente
       let montoBase = updateTransaccioneDebitoDto.monto;
       if (!montoBase) {
         const transaccionExistente = await this.transaccionesdebitoRepository.findOne({
           where: { id: updateTransaccioneDebitoDto.idTransaccionDebito }
         });
         if (!transaccionExistente) {
-          throw new NotFoundException('La transacción no existe');
+          throw new NotFoundException('La transacci?n no existe');
         }
         montoBase = transaccionExistente.monto;
       }
@@ -724,12 +982,21 @@ export class TransaccionesService {
 
       let montoFinal = Number(monedero.saldo) - montoConDescuento;
 
-      // 4️⃣ Validación de saldo
+      // 4?? Validaci?n de saldo
       if (montoFinal < 0) {
         updateTransaccioneDebitoDto.idTipoTransaccion =
           EnumTipoTransaccion.RECHAZO;
 
-        // Guardar transacción rechazada
+        // Obtener idViaje de la transacci?n existente si existe
+        let idViajeUpdate: number | null = null;
+        if (updateTransaccioneDebitoDto.idTransaccionDebito) {
+          const transaccionExistente = await this.transaccionesdebitoRepository.findOne({
+            where: { id: updateTransaccioneDebitoDto.idTransaccionDebito }
+          });
+          idViajeUpdate = transaccionExistente?.idViaje || null;
+        }
+
+        // Guardar transacci?n rechazada
         const updateTransaccion = this.transaccionesdebitoRepository.create({
           idTipoTransaccion: EnumTipoTransaccion.RECHAZO,
           monto: montoFinal,
@@ -739,16 +1006,17 @@ export class TransaccionesService {
           fechaHoraFinal: updateTransaccioneDebitoDto.fechaHoraFinal,
           numeroSerieMonedero: updateTransaccioneDebitoDto.numeroSerieMonedero,
           numeroSerieValidador: updateTransaccioneDebitoDto.numeroSerieValidador,
+          idViaje: idViajeUpdate,
         }
         );
         await this.transaccionesdebitoRepository.save(updateTransaccion);
         //se guarda en el historico
         await this.historicoTransaccionesDebitoRepository.save(updateTransaccion);
 
-        // Registrar en bitácora
+        // Registrar en bit?cora
         await this.bitacoraLogger.logToBitacora(
           'Transacciones',
-          `Transacción de débito RECHAZADA por saldo insuficiente`,
+          `Transacci?n de d?bito RECHAZADA por saldo insuficiente`,
           'CREATE',
           { updateTransaccioneDebitoDto },
           idUser,
@@ -760,15 +1028,15 @@ export class TransaccionesService {
         throw new BadRequestException('Saldo insuficiente');
       }
 
-      // 5️⃣ Si saldo OK, actualizamos el monedero y estado
+      // 5?? Si saldo OK, actualizamos el monedero y estado
       await this.monederosService.updateMonederoSaldo(
         updateTransaccioneDebitoDto.numeroSerieMonedero,
         idUser,
         montoFinal,
       );
 
-      // 6️⃣ Guardamos transacción aprobada
-      // Construir objeto de actualización solo con los campos proporcionados
+      // 6?? Guardamos transacci?n aprobada
+      // Construir objeto de actualizaci?n solo con los campos proporcionados
       const updateData: any = {
         idTipoTransaccion: EnumTipoTransaccion.DEBITO,
         monto: montoConDescuento,
@@ -804,7 +1072,7 @@ export class TransaccionesService {
         });
 
       if (!transaccionSave) {
-        throw new NotFoundException('La transacción no existe');
+        throw new NotFoundException('La transacci?n no existe');
       }
 
       const { id: _, ...transaccionBody } = transaccionSave
@@ -815,14 +1083,14 @@ export class TransaccionesService {
 
       return {
         status: 'success',
-        message: 'Transacción creada correctamente',
+        message: 'Transacci?n creada correctamente',
         data: {
           id: Number(transaccionSaveHis.id),
           nombre: `${monedero.numeroSerie}`,
         },
       };
     } catch (error) {
-      // --- Registro en la bitácora --- ERROR
+      // --- Registro en la bit?cora --- ERROR
       const querylogger = { updateTransaccioneDebitoDto };
       await this.bitacoraLogger.logToBitacora(
         'Transacciones',
@@ -851,7 +1119,7 @@ export class TransaccionesService {
       [cliente],
     );
 
-    const idsFiltrados = clientesFiltrado[0]; // El primer índice contiene los resultados
+    const idsFiltrados = clientesFiltrado[0]; // El primer ?ndice contiene los resultados
     const ids = idsFiltrados
       .map((clientesFiltrado: any) => Number(clientesFiltrado.Id))
       .filter(Boolean);
@@ -859,7 +1127,7 @@ export class TransaccionesService {
       return { data: [] }; // No hay clientes que consultar
     }
 
-    // 3. Construir el query dinámico con los IDs
+    // 3. Construir el query din?mico con los IDs
     const placeholders = ids.map(() => '?').join(', ');
     return { ids, placeholders };
   }
@@ -950,9 +1218,9 @@ export class TransaccionesService {
           transacciones = await this.transaccionesrecargaRepository.query(
             `
 SELECT 
-    'DEBITO' AS origenTabla,        -- 👈 de qué tabla viene
+    'DEBITO' AS origenTabla,        -- ?? de qu? tabla viene
     td.Id AS id,
-    ctt.Nombre AS tipoTransaccion,  -- 👈 tipo según el catálogo (RECARGA, DEBITO o RECHAZADO)
+    ctt.Nombre AS tipoTransaccion,  -- ?? tipo seg?n el cat?logo (RECARGA, DEBITO o RECHAZADO)
     td.Monto AS monto,
     td.LatitudInicial AS latitudInicial,
     td.LongitudInicial AS longitudInicial,
@@ -975,7 +1243,7 @@ SELECT
     d.Marca AS marcaDispositivo,
     d.Modelo AS modeloDispositivo,
 
-    -- Pasajero (vía Monedero)
+    -- Pasajero (v?a Monedero)
     p.Id AS idPasajero,
     p.Nombre AS nombrePasajero,
     p.ApellidoPaterno AS apellidoPaternoPasajero,
@@ -1000,9 +1268,9 @@ WHERE DATE(td.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
 UNION ALL
 
 SELECT 
-    'RECARGA' AS origenTabla,       -- 👈 solo indica de qué tabla proviene
+    'RECARGA' AS origenTabla,       -- ?? solo indica de qu? tabla proviene
     tr.Id AS id,
-    ctt.Nombre AS tipoTransaccion,  -- 👈 valor real del tipo
+    ctt.Nombre AS tipoTransaccion,  -- ?? valor real del tipo
     tr.Monto AS monto,
     NULL AS latitudInicial,
     NULL AS longitudInicial,
@@ -1050,7 +1318,7 @@ ORDER BY FHRegistro DESC
             [limit, offset],
           );
 
-          // Query para total (sin paginación)
+          // Query para total (sin paginaci?n)
           totalResult = await this.transaccionesrecargaRepository.query(
             `
 SELECT COUNT(*) AS total
@@ -1100,9 +1368,9 @@ WHERE DATE(tr.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
           transacciones = await this.transaccionesrecargaRepository.query(
             `
 SELECT 
-    'DEBITO' AS origenTabla,        -- 👈 de qué tabla viene
+    'DEBITO' AS origenTabla,        -- ?? de qu? tabla viene
     td.Id AS id,
-    ctt.Nombre AS tipoTransaccion,  -- 👈 tipo según el catálogo (RECARGA, DEBITO o RECHAZADO)
+    ctt.Nombre AS tipoTransaccion,  -- ?? tipo seg?n el cat?logo (RECARGA, DEBITO o RECHAZADO)
     td.Monto AS monto,
     td.LatitudInicial AS latitudInicial,
     td.LongitudInicial AS longitudInicial,
@@ -1125,7 +1393,7 @@ SELECT
     d.Marca AS marcaDispositivo,
     d.Modelo AS modeloDispositivo,
 
-    -- Pasajero (vía Monedero)
+    -- Pasajero (v?a Monedero)
     p.Id AS idPasajero,
     p.Nombre AS nombrePasajero,
     p.ApellidoPaterno AS apellidoPaternoPasajero,
@@ -1151,9 +1419,9 @@ AND m.IdCliente = ?
 UNION ALL
 
 SELECT 
-    'RECARGA' AS origenTabla,       -- 👈 solo indica de qué tabla proviene
+    'RECARGA' AS origenTabla,       -- ?? solo indica de qu? tabla proviene
     tr.Id AS id,
-    ctt.Nombre AS tipoTransaccion,  -- 👈 valor real del tipo
+    ctt.Nombre AS tipoTransaccion,  -- ?? valor real del tipo
     tr.Monto AS monto,
     NULL AS latitudInicial,
     NULL AS longitudInicial,
@@ -1203,7 +1471,7 @@ LIMIT ? OFFSET ?;
             [cliente, cliente, limit, offset],
           );
 
-          // Query para total (sin paginación)
+          // Query para total (sin paginaci?n)
           totalResult = await this.transaccionesrecargaRepository.query(
             `
 SELECT COUNT(*) AS total
@@ -1259,9 +1527,9 @@ AND m.IdCliente = ?
           transacciones = await this.transaccionesrecargaRepository.query(
             `
 SELECT 
-    'DEBITO' AS origenTabla,        -- 👈 de qué tabla viene
+    'DEBITO' AS origenTabla,        -- ?? de qu? tabla viene
     td.Id AS id,
-    ctt.Nombre AS tipoTransaccion,  -- 👈 tipo según el catálogo (RECARGA, DEBITO o RECHAZADO)
+    ctt.Nombre AS tipoTransaccion,  -- ?? tipo seg?n el cat?logo (RECARGA, DEBITO o RECHAZADO)
     td.Monto AS monto,
     td.LatitudInicial AS latitudInicial,
     td.LongitudInicial AS longitudInicial,
@@ -1284,7 +1552,7 @@ SELECT
     d.Marca AS marcaDispositivo,
     d.Modelo AS modeloDispositivo,
 
-    -- Pasajero (vía Monedero)
+    -- Pasajero (v?a Monedero)
     p.Id AS idPasajero,
     p.Nombre AS nombrePasajero,
     p.ApellidoPaterno AS apellidoPaternoPasajero,
@@ -1311,9 +1579,9 @@ AND p.Id = ?
 UNION ALL
 
 SELECT 
-    'RECARGA' AS origenTabla,       -- 👈 solo indica de qué tabla proviene
+    'RECARGA' AS origenTabla,       -- ?? solo indica de qu? tabla proviene
     tr.Id AS id,
-    ctt.Nombre AS tipoTransaccion,  -- 👈 valor real del tipo
+    ctt.Nombre AS tipoTransaccion,  -- ?? valor real del tipo
     tr.Monto AS monto,
     NULL AS latitudInicial,
     NULL AS longitudInicial,
@@ -1364,7 +1632,7 @@ LIMIT ? OFFSET ?;
             [Number(pasajero.id), Number(pasajero.id), limit, offset],
           );
 
-          // Query para total (sin paginación)
+          // Query para total (sin paginaci?n)
           totalResult = await this.transaccionesrecargaRepository.query(
             `
 SELECT COUNT(*) AS total
@@ -1410,7 +1678,7 @@ AND p.Id = ?
 ) AS todas;
 
   `,
-            [Number(pasajero.id), Number(pasajero.id)], // <-- Aquí debe ir como segundo argumento de query()
+            [Number(pasajero.id), Number(pasajero.id)], // <-- Aqu? debe ir como segundo argumento de query()
           );
 
           break;
@@ -1423,9 +1691,9 @@ AND p.Id = ?
           transacciones = await this.transaccionesrecargaRepository.query(
             `
 SELECT 
-    'DEBITO' AS origenTabla,        -- 👈 de qué tabla viene
+    'DEBITO' AS origenTabla,        -- ?? de qu? tabla viene
     td.Id AS id,
-    ctt.Nombre AS tipoTransaccion,  -- 👈 tipo según el catálogo (RECARGA, DEBITO o RECHAZADO)
+    ctt.Nombre AS tipoTransaccion,  -- ?? tipo seg?n el cat?logo (RECARGA, DEBITO o RECHAZADO)
     td.Monto AS monto,
     td.LatitudInicial AS latitudInicial,
     td.LongitudInicial AS longitudInicial,
@@ -1448,7 +1716,7 @@ SELECT
     d.Marca AS marcaDispositivo,
     d.Modelo AS modeloDispositivo,
 
-    -- Pasajero (vía Monedero)
+    -- Pasajero (v?a Monedero)
     p.Id AS idPasajero,
     p.Nombre AS nombrePasajero,
     p.ApellidoPaterno AS apellidoPaternoPasajero,
@@ -1468,15 +1736,15 @@ INNER JOIN Clientes c
     
 -- condiciones
 WHERE DATE(td.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
-AND m.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+AND m.IdCliente IN (${placeholders})   -- ?? aqu? colocas el ID del cliente que quieres consultar
 
 
 UNION ALL
 
 SELECT 
-    'RECARGA' AS origenTabla,       -- 👈 solo indica de qué tabla proviene
+    'RECARGA' AS origenTabla,       -- ?? solo indica de qu? tabla proviene
     tr.Id AS id,
-    ctt.Nombre AS tipoTransaccion,  -- 👈 valor real del tipo
+    ctt.Nombre AS tipoTransaccion,  -- ?? valor real del tipo
     tr.Monto AS monto,
     NULL AS latitudInicial,
     NULL AS longitudInicial,
@@ -1517,7 +1785,7 @@ INNER JOIN Clientes c
     
 -- condiciones
 WHERE DATE(tr.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
-AND m.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+AND m.IdCliente IN (${placeholders})   -- ?? aqu? colocas el ID del cliente que quieres consultar
 
 ORDER BY FHRegistro DESC
 LIMIT ? OFFSET ?;
@@ -1526,7 +1794,7 @@ LIMIT ? OFFSET ?;
             [...ids, ...ids, limit, offset],
           );
 
-          // Query para total (sin paginación)
+          // Query para total (sin paginaci?n)
           totalResult = await this.transaccionesrecargaRepository.query(
             `
 SELECT COUNT(*) AS total
@@ -1546,7 +1814,7 @@ INNER JOIN Clientes c
     
 -- condiciones
 WHERE DATE(td.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
-AND m.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+AND m.IdCliente IN (${placeholders})   -- ?? aqu? colocas el ID del cliente que quieres consultar
 
     UNION ALL
 
@@ -1565,7 +1833,7 @@ INNER JOIN Clientes c
     
 -- condiciones
 WHERE DATE(tr.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
-AND m.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+AND m.IdCliente IN (${placeholders})   -- ?? aqu? colocas el ID del cliente que quieres consultar
 
 
 ) AS todas;
@@ -1578,7 +1846,7 @@ AND m.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente q
 
       const total = Number(totalResult[0]?.total || 0);
 
-      // 🔥 Transformación de datos (ids → number, nombreCompleto)
+      // ?? Transformaci?n de datos (ids ? number, nombreCompleto)
       const data = transacciones.map((item) => ({
         ...item,
         id: Number(item.id),
@@ -1629,9 +1897,9 @@ AND m.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente q
           transacciones = await this.transaccionesrecargaRepository.query(
             `
 SELECT 
-    'DEBITO' AS origenTabla,        -- 👈 de qué tabla viene
+    'DEBITO' AS origenTabla,        -- ?? de qu? tabla viene
     td.Id AS id,
-    ctt.Nombre AS tipoTransaccion,  -- 👈 tipo según el catálogo (RECARGA, DEBITO o RECHAZADO)
+    ctt.Nombre AS tipoTransaccion,  -- ?? tipo seg?n el cat?logo (RECARGA, DEBITO o RECHAZADO)
     td.Monto AS monto,
     td.Latitud AS latitud,
     td.Longitud AS longitud,
@@ -1653,7 +1921,7 @@ SELECT
 
 
 
-    -- Pasajero (vía Monedero)
+    -- Pasajero (v?a Monedero)
     p.Id AS idPasajero,
     p.Nombre AS nombrePasajero,
     p.ApellidoPaterno AS apellidoPaternoPasajero,
@@ -1674,9 +1942,9 @@ INNER JOIN Clientes c
 UNION ALL
 
 SELECT 
-    'RECARGA' AS origenTabla,       -- 👈 solo indica de qué tabla proviene
+    'RECARGA' AS origenTabla,       -- ?? solo indica de qu? tabla proviene
     tr.Id AS id,
-    ctt.Nombre AS tipoTransaccion,  -- 👈 valor real del tipo
+    ctt.Nombre AS tipoTransaccion,  -- ?? valor real del tipo
     tr.Monto AS monto,
     tr.Latitud AS latitud,
     tr.Longitud AS longitud,
@@ -1721,7 +1989,7 @@ ORDER BY FHRegistro DESC
             [limit, offset],
           );
 
-          // Query para total (sin paginación)
+          // Query para total (sin paginaci?n)
           totalResult = await this.transaccionesrecargaRepository.query(
             `
 SELECT COUNT(*) AS total
@@ -1801,7 +2069,7 @@ FROM (
   INNER JOIN Clientes c
 	ON m.IdCliente = c.Id
 
-  WHERE m.IdCliente = ?   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+  WHERE m.IdCliente = ?   -- ?? aqu? colocas el ID del cliente que quieres consultar
 
   UNION ALL
 
@@ -1845,7 +2113,7 @@ FROM (
   INNER JOIN Clientes c
 	ON m.IdCliente = c.Id
 
-  WHERE m.IdCliente = ?   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+  WHERE m.IdCliente = ?   -- ?? aqu? colocas el ID del cliente que quieres consultar
 )
 ORDER BY FHRegistro DESC
 LIMIT ? OFFSET ?;
@@ -1854,7 +2122,7 @@ LIMIT ? OFFSET ?;
             [cliente, cliente, limit, offset],
           );
 
-          // Query para total (sin paginación)
+          // Query para total (sin paginaci?n)
           totalResult = await this.transaccionesrecargaRepository.query(
             `
 SELECT COUNT(*) AS total
@@ -1862,14 +2130,14 @@ FROM (
   SELECT td.Id
   FROM TransaccionesDebito td
   INNER JOIN Monederos m ON td.NumeroSerieMonedero = m.NumeroSerie
-  WHERE m.IdCliente = ?   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+  WHERE m.IdCliente = ?   -- ?? aqu? colocas el ID del cliente que quieres consultar
 
   UNION ALL
 
   SELECT tr.Id
   FROM TransaccionesRecarga tr
   INNER JOIN Monederos m ON tr.NumeroSerieMonedero = m.NumeroSerie
-  WHERE m.IdCliente = ?   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+  WHERE m.IdCliente = ?   -- ?? aqu? colocas el ID del cliente que quieres consultar
 ) AS todas;
 
   `,
@@ -1951,7 +2219,7 @@ LIMIT ? OFFSET ?;
             [Number(pasajero.id), Number(pasajero.id), limit, offset],
           );
 
-          // Query para total (sin paginación)
+          // Query para total (sin paginaci?n)
           totalResult = await this.transaccionesrecargaRepository.query(
             `
 SELECT COUNT(*) AS total
@@ -1961,7 +2229,7 @@ FROM (
     INNER JOIN CatTiposTransacciones ctt ON td.IdTipoTransaccion = ctt.Id
     INNER JOIN Monederos m ON td.NumeroSerieMonedero = m.NumeroSerie
     INNER JOIN Pasajeros p ON m.IdPasajero = p.Id
-    WHERE p.Id = ?  -- 👈 pasajero específico
+    WHERE p.Id = ?  -- ?? pasajero espec?fico
       AND m.Estatus = 1
 
     UNION ALL
@@ -1971,12 +2239,12 @@ FROM (
     INNER JOIN CatTiposTransacciones ctt ON tr.IdTipoTransaccion = ctt.Id
     INNER JOIN Monederos m ON tr.NumeroSerieMonedero = m.NumeroSerie
     INNER JOIN Pasajeros p ON m.IdPasajero = p.Id
-    WHERE p.Id = ?  -- 👈 mismo pasajero
+    WHERE p.Id = ?  -- ?? mismo pasajero
       AND m.Estatus = 1
 ) AS transacciones_pasajero;
 
   `,
-            [Number(pasajero.id), Number(pasajero.id)], // <-- Aquí debe ir como segundo argumento de query()
+            [Number(pasajero.id), Number(pasajero.id)], // <-- Aqu? debe ir como segundo argumento de query()
           );
 
           break;
@@ -2030,7 +2298,7 @@ FROM (
   INNER JOIN Clientes c
 	ON m.IdCliente = c.Id
 
-  WHERE m.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+  WHERE m.IdCliente IN (${placeholders})   -- ?? aqu? colocas el ID del cliente que quieres consultar
 
   UNION ALL
 
@@ -2075,7 +2343,7 @@ FROM (
   INNER JOIN Clientes c
 	ON m.IdCliente = c.Id
 
-  WHERE m.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+  WHERE m.IdCliente IN (${placeholders})   -- ?? aqu? colocas el ID del cliente que quieres consultar
 )
 ORDER BY FHRegistro DESC
 LIMIT ? OFFSET ?;
@@ -2084,7 +2352,7 @@ LIMIT ? OFFSET ?;
             [...ids, ...ids, limit, offset],
           );
 
-          // Query para total (sin paginación)
+          // Query para total (sin paginaci?n)
           totalResult = await this.transaccionesrecargaRepository.query(
             `
 SELECT COUNT(*) AS total
@@ -2092,14 +2360,14 @@ FROM (
   SELECT td.Id
   FROM TransaccionesDebito td
   INNER JOIN Monederos m ON td.NumeroSerieMonedero = m.NumeroSerie
-  WHERE m.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+  WHERE m.IdCliente IN (${placeholders})   -- ?? aqu? colocas el ID del cliente que quieres consultar
 
   UNION ALL
 
   SELECT tr.Id
   FROM TransaccionesRecarga tr
   INNER JOIN Monederos m ON tr.NumeroSerieMonedero = m.NumeroSerie
-  WHERE m.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+  WHERE m.IdCliente IN (${placeholders})   -- ?? aqu? colocas el ID del cliente que quieres consultar
 ) AS todas;
 
   `,
@@ -2110,7 +2378,7 @@ FROM (
 
       const total = Number(totalResult[0]?.total || 0);
 
-      // 🔥 Transformación de datos (ids → number, nombreCompleto)
+      // ?? Transformaci?n de datos (ids ? number, nombreCompleto)
       const data = transacciones.map((item) => ({
         ...item,
         id: Number(item.id),
@@ -2168,9 +2436,9 @@ FROM (
           transacciones = await this.transaccionesrecargaRepository.query(
             `
 SELECT 
-    'DEBITO' AS origenTabla,        -- 👈 de qué tabla viene
+    'DEBITO' AS origenTabla,        -- ?? de qu? tabla viene
     td.Id AS id,
-    ctt.Nombre AS tipoTransaccion,  -- 👈 tipo según el catálogo (RECARGA, DEBITO o RECHAZADO)
+    ctt.Nombre AS tipoTransaccion,  -- ?? tipo seg?n el cat?logo (RECARGA, DEBITO o RECHAZADO)
     td.Monto AS monto,
     td.LatitudFinal AS latitudFinal,
     td.LongitudFinal AS longitudFinal,
@@ -2191,7 +2459,7 @@ SELECT
     d.Marca AS marcaValidador,
     d.Modelo AS modeloValidador,
 
-    -- Pasajero (vía Monedero)
+    -- Pasajero (v?a Monedero)
     p.Id AS idPasajero,
     p.Nombre AS nombrePasajero,
     p.ApellidoPaterno AS apellidoPaternoPasajero,
@@ -2216,9 +2484,9 @@ WHERE DATE(td.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
 UNION ALL
 
 SELECT 
-    'RECARGA' AS origenTabla,       -- 👈 solo indica de qué tabla proviene
+    'RECARGA' AS origenTabla,       -- ?? solo indica de qu? tabla proviene
     tr.Id AS id,
-    ctt.Nombre AS tipoTransaccion,  -- 👈 valor real del tipo
+    ctt.Nombre AS tipoTransaccion,  -- ?? valor real del tipo
     tr.Monto AS monto,
     tr.LatitudFinal AS latitudFinal,
     tr.LongitudFinal AS longitudFinal,
@@ -2291,7 +2559,7 @@ ORDER BY FHRegistro DESC
     d.Marca AS marcaDispositivo,
     d.Modelo AS modeloDispositivo,
 
-    -- Pasajero (vía Monedero)
+    -- Pasajero (v?a Monedero)
     p.Id AS idPasajero,
     p.Nombre AS nombrePasajero,
     p.ApellidoPaterno AS apellidoPaternoPasajero,
@@ -2311,15 +2579,15 @@ INNER JOIN Clientes c
     
 -- condiciones
 WHERE DATE(td.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
-AND m.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+AND m.IdCliente IN (${placeholders})   -- ?? aqu? colocas el ID del cliente que quieres consultar
 
 
 UNION ALL
 
 SELECT 
-    'RECARGA' AS origenTabla,       -- 👈 solo indica de qué tabla proviene
+    'RECARGA' AS origenTabla,       -- ?? solo indica de qu? tabla proviene
     tr.Id AS id,
-    ctt.Nombre AS tipoTransaccion,  -- 👈 valor real del tipo
+    ctt.Nombre AS tipoTransaccion,  -- ?? valor real del tipo
     tr.Monto AS monto,
     NULL AS latitudInicial,
     NULL AS longitudInicial,
@@ -2360,7 +2628,7 @@ INNER JOIN Clientes c
     
 -- condiciones
 WHERE DATE(tr.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
-AND m.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+AND m.IdCliente IN (${placeholders})   -- ?? aqu? colocas el ID del cliente que quieres consultar
 
 ORDER BY FHRegistro DESC
 
@@ -2374,9 +2642,9 @@ ORDER BY FHRegistro DESC
           transacciones = await this.transaccionesrecargaRepository.query(
             `
 SELECT 
-    'DEBITO' AS origenTabla,        -- 👈 de qué tabla viene
+    'DEBITO' AS origenTabla,        -- ?? de qu? tabla viene
     td.Id AS id,
-    ctt.Nombre AS tipoTransaccion,  -- 👈 tipo según el catálogo (RECARGA, DEBITO o RECHAZADO)
+    ctt.Nombre AS tipoTransaccion,  -- ?? tipo seg?n el cat?logo (RECARGA, DEBITO o RECHAZADO)
     td.Monto AS monto,
     td.LatitudFinal AS latitudFinal,
     td.LongitudFinal AS longitudFinal,
@@ -2396,7 +2664,7 @@ SELECT
     d.Marca AS marcaDispositivo,
     d.Modelo AS modeloDispositivo,
 
-    -- Pasajero (vía Monedero)
+    -- Pasajero (v?a Monedero)
     p.Id AS idPasajero,
     p.Nombre AS nombrePasajero,
     p.ApellidoPaterno AS apellidoPaternoPasajero,
@@ -2420,9 +2688,9 @@ AND m.IdCliente = ?
 UNION ALL
 
 SELECT 
-    'RECARGA' AS origenTabla,       -- 👈 solo indica de qué tabla proviene
+    'RECARGA' AS origenTabla,       -- ?? solo indica de qu? tabla proviene
     tr.Id AS id,
-    ctt.Nombre AS tipoTransaccion,  -- 👈 valor real del tipo
+    ctt.Nombre AS tipoTransaccion,  -- ?? valor real del tipo
     tr.Monto AS monto,
     tr.LatitudFinal AS latitudFinal,
     tr.LongitudFinal AS longitudFinal,
@@ -2469,7 +2737,7 @@ ORDER BY FHRegistro DESC
           break;
       }
 
-      // 🔥 Transformación de datos (ids → number, nombreCompleto)
+      // ?? Transformaci?n de datos (ids ? number, nombreCompleto)
       const data = transacciones.map((item) => ({
         ...item,
         id: Number(item.id),
@@ -2502,9 +2770,9 @@ ORDER BY FHRegistro DESC
       transacciones = await this.transaccionesrecargaRepository.query(
         `
 SELECT 
-    'RECARGA' AS origenTabla,       -- 👈 solo indica de qué tabla proviene
+    'RECARGA' AS origenTabla,       -- ?? solo indica de qu? tabla proviene
     tr.Id AS id,
-    ctt.Nombre AS tipoTransaccion,  -- 👈 valor real del tipo
+    ctt.Nombre AS tipoTransaccion,  -- ?? valor real del tipo
     tr.Monto AS monto,
     tr.LatitudFinal AS latitudFinal,
     tr.LongitudFinal AS longitudFinal,
@@ -2549,7 +2817,7 @@ INNER JOIN Clientes c
       if (!transacciones)
         throw new NotFoundException('Transaccion no encontradas');
 
-      // 🔥 Transformación de datos (ids → number, nombreCompleto)
+      // ?? Transformaci?n de datos (ids ? number, nombreCompleto)
       const data = transacciones.map((item) => ({
         ...item,
         id: Number(item.id),
@@ -2577,9 +2845,9 @@ INNER JOIN Clientes c
       transacciones = await this.transaccionesrecargaRepository.query(
         `
 SELECT 
-    'DEBITO' AS origenTabla,        -- 👈 de qué tabla viene
+    'DEBITO' AS origenTabla,        -- ?? de qu? tabla viene
     td.Id AS id,
-    ctt.Nombre AS tipoTransaccion,  -- 👈 tipo según el catálogo (RECARGA, DEBITO o RECHAZADO)
+    ctt.Nombre AS tipoTransaccion,  -- ?? tipo seg?n el cat?logo (RECARGA, DEBITO o RECHAZADO)
     td.Monto AS monto,
     td.LatitudFinal AS latitudFinal,
     td.LongitudFinal AS longitudFinal,
@@ -2600,7 +2868,7 @@ SELECT
     d.Marca AS marcaValidador,
     d.Modelo AS modeloValidador,
 
-    -- Pasajero (vía Monedero)
+    -- Pasajero (v?a Monedero)
     p.Id AS idPasajero,
     p.Nombre AS nombrePasajero,
     p.ApellidoPaterno AS apellidoPaternoPasajero,
@@ -2625,7 +2893,7 @@ INNER JOIN Clientes c
 
       if (!transacciones)
         throw new NotFoundException('Transaccion no encontradas');
-      // 🔥 Transformación de datos (ids → number, nombreCompleto)
+      // ?? Transformaci?n de datos (ids ? number, nombreCompleto)
       const data = transacciones.map((item) => ({
         ...item,
         id: Number(item.id),
@@ -2642,6 +2910,386 @@ INNER JOIN Clientes c
       }
       throw new BadRequestException({
         message: 'Error al obtener transacciones',
+      });
+    }
+  }
+
+  /**
+   * Obtiene el histórico de recargas paginado con filtros según el rol del usuario
+   * @param idUser ID del usuario
+   * @param email Email del usuario
+   * @param cliente ID del cliente
+   * @param rol Rol del usuario (1=SA, 2=ADMIN, 3=Cajero, 9=Pasajero)
+   * @param getHistoricoRecargasDto DTO con parámetros de paginación y fechas
+   * @returns Histórico de recargas paginado
+   */
+  async getHistoricoRecargasPaginado(
+    idUser: number,
+    email: string,
+    cliente: number,
+    rol: number,
+    getHistoricoRecargasDto: GetHistoricoRecargasDto,
+  ): Promise<ApiResponseCommon> {
+    try {
+      const { page, limit, fechaInicio, fechaFin } = getHistoricoRecargasDto;
+      const offset = (page - 1) * limit;
+
+      // Construir condición de fechas (separadas para cada tabla)
+      // Usar FHRegistro para el filtro de fechas
+      let fechaCondition = ''; // Para casos 1, 2, 3 (solo HistoricoTransaccionesRecarga)
+      let fechaConditionHistorico = ''; // Para caso 9 - tabla HistoricoTransaccionesRecarga
+      let fechaConditionActivo = ''; // Para caso 9 - tabla TransaccionesRecarga
+      const queryParams: any[] = [];
+
+      if (fechaInicio && fechaFin) {
+        fechaCondition = 'AND DATE(htr.FHRegistro) BETWEEN ? AND ?';
+        fechaConditionHistorico = 'AND DATE(htr.FHRegistro) BETWEEN ? AND ?';
+        fechaConditionActivo = 'AND DATE(tr.FHRegistro) BETWEEN ? AND ?';
+        queryParams.push(fechaInicio, fechaFin);
+      } else if (fechaInicio) {
+        fechaCondition = 'AND DATE(htr.FHRegistro) >= ?';
+        fechaConditionHistorico = 'AND DATE(htr.FHRegistro) >= ?';
+        fechaConditionActivo = 'AND DATE(tr.FHRegistro) >= ?';
+        queryParams.push(fechaInicio);
+      } else if (fechaFin) {
+        fechaCondition = 'AND DATE(htr.FHRegistro) <= ?';
+        fechaConditionHistorico = 'AND DATE(htr.FHRegistro) <= ?';
+        fechaConditionActivo = 'AND DATE(tr.FHRegistro) <= ?';
+        queryParams.push(fechaFin);
+      }
+
+      let recargas: any[];
+      let totalResult: any[];
+
+      switch (rol) {
+        case 1:
+          // SA = Todas las recargas
+          recargas = await this.historicoTransaccionesRecargaRepository.query(
+            `
+SELECT 
+    htr.Id AS id,
+    htr.IdTipoTransaccion AS idTipoTransaccion,
+    ctt.Nombre AS tipoTransaccion,
+    htr.ControlTransaccion AS controlTransaccion,
+    htr.Monto AS monto,
+    htr.LatitudFinal AS latitudFinal,
+    htr.LongitudFinal AS longitudFinal,
+    htr.FechaHoraFinal AS fechaHoraFinal,
+    htr.FHRegistro AS fhRegistro,
+    htr.NumeroSerieMonedero AS numeroSerieMonedero,
+    htr.NumeroSerieValidador AS numeroSerieValidador,
+    htr.IdUsuario AS idUsuario,
+    
+    -- Datos del cliente
+    c.Id AS idCliente,
+    c.Nombre AS nombreCliente,
+    c.ApellidoPaterno AS apellidoPaternoCliente,
+    c.ApellidoMaterno AS apellidoMaternoCliente,
+    
+    -- Datos del monedero y pasajero
+    m.Id AS idMonedero,
+    p.Id AS idPasajero,
+    p.Nombre AS nombrePasajero,
+    p.ApellidoPaterno AS apellidoPaternoPasajero,
+    p.ApellidoMaterno AS apellidoMaternoPasajero,
+    
+    -- Datos del usuario que realizó la recarga
+    u.Id AS idUsuarioRecarga,
+    u.Nombre AS nombreUsuario,
+    u.ApellidoPaterno AS apellidoPaternoUsuario,
+    u.ApellidoMaterno AS apellidoMaternoUsuario
+
+FROM HistoricoTransaccionesRecarga htr
+INNER JOIN CatTiposTransacciones ctt ON htr.IdTipoTransaccion = ctt.Id
+INNER JOIN Monederos m ON htr.NumeroSerieMonedero = m.NumeroSerie
+INNER JOIN Clientes c ON m.IdCliente = c.Id
+LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
+LEFT JOIN Usuarios u ON htr.IdUsuario = u.Id
+WHERE 1=1
+${fechaCondition}
+ORDER BY htr.FechaHoraFinal DESC
+LIMIT ? OFFSET ?;
+            `,
+            [...queryParams, limit, offset],
+          );
+
+          totalResult = await this.historicoTransaccionesRecargaRepository.query(
+            `
+SELECT COUNT(*) AS total
+FROM HistoricoTransaccionesRecarga htr
+INNER JOIN Monederos m ON htr.NumeroSerieMonedero = m.NumeroSerie
+INNER JOIN Clientes c ON m.IdCliente = c.Id
+WHERE 1=1
+${fechaCondition};
+            `,
+            queryParams,
+          );
+          break;
+
+        case 2:
+          // ADMIN = Sus recargas y las de clientes hijos
+          const { ids, placeholders } = await this.clienteHijos(cliente);
+          
+          recargas = await this.historicoTransaccionesRecargaRepository.query(
+            `
+SELECT 
+    htr.Id AS id,
+    htr.IdTipoTransaccion AS idTipoTransaccion,
+    ctt.Nombre AS tipoTransaccion,
+    htr.ControlTransaccion AS controlTransaccion,
+    htr.Monto AS monto,
+    htr.LatitudFinal AS latitudFinal,
+    htr.LongitudFinal AS longitudFinal,
+    htr.FechaHoraFinal AS fechaHoraFinal,
+    htr.FHRegistro AS fhRegistro,
+    htr.NumeroSerieMonedero AS numeroSerieMonedero,
+    htr.NumeroSerieValidador AS numeroSerieValidador,
+    htr.IdUsuario AS idUsuario,
+    
+    -- Datos del cliente
+    c.Id AS idCliente,
+    c.Nombre AS nombreCliente,
+    c.ApellidoPaterno AS apellidoPaternoCliente,
+    c.ApellidoMaterno AS apellidoMaternoCliente,
+    
+    -- Datos del monedero y pasajero
+    m.Id AS idMonedero,
+    p.Id AS idPasajero,
+    p.Nombre AS nombrePasajero,
+    p.ApellidoPaterno AS apellidoPaternoPasajero,
+    p.ApellidoMaterno AS apellidoMaternoPasajero,
+    
+    -- Datos del usuario que realizó la recarga
+    u.Id AS idUsuarioRecarga,
+    u.Nombre AS nombreUsuario,
+    u.ApellidoPaterno AS apellidoPaternoUsuario,
+    u.ApellidoMaterno AS apellidoMaternoUsuario
+
+FROM HistoricoTransaccionesRecarga htr
+INNER JOIN CatTiposTransacciones ctt ON htr.IdTipoTransaccion = ctt.Id
+INNER JOIN Monederos m ON htr.NumeroSerieMonedero = m.NumeroSerie
+INNER JOIN Clientes c ON m.IdCliente = c.Id
+LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
+LEFT JOIN Usuarios u ON htr.IdUsuario = u.Id
+WHERE m.IdCliente IN (${placeholders})
+${fechaCondition}
+ORDER BY htr.FechaHoraFinal DESC
+LIMIT ? OFFSET ?;
+            `,
+            [...ids, ...queryParams, limit, offset],
+          );
+
+          totalResult = await this.historicoTransaccionesRecargaRepository.query(
+            `
+SELECT COUNT(*) AS total
+FROM HistoricoTransaccionesRecarga htr
+INNER JOIN Monederos m ON htr.NumeroSerieMonedero = m.NumeroSerie
+INNER JOIN Clientes c ON m.IdCliente = c.Id
+WHERE m.IdCliente IN (${placeholders})
+${fechaCondition};
+            `,
+            [...ids, ...queryParams],
+          );
+          break;
+
+        case 3:
+          // Cajero = Solo sus recargas (por IdUsuario)
+          recargas = await this.historicoTransaccionesRecargaRepository.query(
+            `
+SELECT 
+    htr.Id AS id,
+    htr.IdTipoTransaccion AS idTipoTransaccion,
+    ctt.Nombre AS tipoTransaccion,
+    htr.ControlTransaccion AS controlTransaccion,
+    htr.Monto AS monto,
+    htr.LatitudFinal AS latitudFinal,
+    htr.LongitudFinal AS longitudFinal,
+    htr.FechaHoraFinal AS fechaHoraFinal,
+    htr.FHRegistro AS fhRegistro,
+    htr.NumeroSerieMonedero AS numeroSerieMonedero,
+    htr.NumeroSerieValidador AS numeroSerieValidador,
+    htr.IdUsuario AS idUsuario,
+    
+    -- Datos del cliente
+    c.Id AS idCliente,
+    c.Nombre AS nombreCliente,
+    c.ApellidoPaterno AS apellidoPaternoCliente,
+    c.ApellidoMaterno AS apellidoMaternoCliente,
+    
+    -- Datos del monedero y pasajero
+    m.Id AS idMonedero,
+    p.Id AS idPasajero,
+    p.Nombre AS nombrePasajero,
+    p.ApellidoPaterno AS apellidoPaternoPasajero,
+    p.ApellidoMaterno AS apellidoMaternoPasajero,
+    
+    -- Datos del usuario que realizó la recarga
+    u.Id AS idUsuarioRecarga,
+    u.Nombre AS nombreUsuario,
+    u.ApellidoPaterno AS apellidoPaternoUsuario,
+    u.ApellidoMaterno AS apellidoMaternoUsuario
+
+FROM HistoricoTransaccionesRecarga htr
+INNER JOIN CatTiposTransacciones ctt ON htr.IdTipoTransaccion = ctt.Id
+INNER JOIN Monederos m ON htr.NumeroSerieMonedero = m.NumeroSerie
+INNER JOIN Clientes c ON m.IdCliente = c.Id
+LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
+LEFT JOIN Usuarios u ON htr.IdUsuario = u.Id
+WHERE htr.IdUsuario = ?
+${fechaCondition}
+ORDER BY htr.FechaHoraFinal DESC
+LIMIT ? OFFSET ?;
+            `,
+            [idUser, ...queryParams, limit, offset],
+          );
+
+          totalResult = await this.historicoTransaccionesRecargaRepository.query(
+            `
+SELECT COUNT(*) AS total
+FROM HistoricoTransaccionesRecarga htr
+WHERE htr.IdUsuario = ?
+${fechaCondition};
+            `,
+            [idUser, ...queryParams],
+          );
+          break;
+
+        case 9:
+          // Pasajero = Solo las de él (filtrar por monederos del pasajero asociado al usuario)
+          // Buscar pasajero por IdUsuario directamente o por correo como fallback
+          let pasajeroId: number | null = null;
+          
+          try {
+            // Intentar buscar pasajero por IdUsuario directamente
+            const pasajeroPorUsuario = await this.pasajeroRepository.findOne({
+              where: { idUsuario: idUser },
+            });
+            
+            if (pasajeroPorUsuario) {
+              pasajeroId = pasajeroPorUsuario.id;
+            } else {
+              // Fallback: buscar por correo
+              const pasajeroPorCorreo = await this.pasajeroService.findOnePasajeroCorreo(email);
+              if (pasajeroPorCorreo && pasajeroPorCorreo.id) {
+                pasajeroId = pasajeroPorCorreo.id;
+              }
+            }
+          } catch (error) {
+            // Si falla, intentar por correo
+            try {
+              const pasajeroPorCorreo = await this.pasajeroService.findOnePasajeroCorreo(email);
+              if (pasajeroPorCorreo && pasajeroPorCorreo.id) {
+                pasajeroId = pasajeroPorCorreo.id;
+              }
+            } catch (e) {
+              // Si no se encuentra, pasajeroId queda null
+            }
+          }
+          
+          // Buscar recargas solo en HistoricoTransaccionesRecarga
+          // Filtrar por: IdUsuario del usuario Y idCliente del usuario (solo las recargas que él realizó en su cliente)
+          // Para pasajero: solo mostrar las recargas donde IdUsuario = idUser AND m.IdCliente = cliente
+          const condicionesWhereHistorico = `htr.IdUsuario = ? AND m.IdCliente = ?`;
+          const paramsWhere = [idUser, cliente, ...queryParams];
+          
+          // Obtener recargas del histórico con paginación
+          recargas = await this.historicoTransaccionesRecargaRepository.query(
+            `
+SELECT 
+    htr.Id AS id,
+    htr.IdTipoTransaccion AS idTipoTransaccion,
+    ctt.Nombre AS tipoTransaccion,
+    htr.ControlTransaccion AS controlTransaccion,
+    htr.Monto AS monto,
+    htr.LatitudFinal AS latitudFinal,
+    htr.LongitudFinal AS longitudFinal,
+    htr.FechaHoraFinal AS fechaHoraFinal,
+    htr.FHRegistro AS fhRegistro,
+    htr.NumeroSerieMonedero AS numeroSerieMonedero,
+    htr.NumeroSerieValidador AS numeroSerieValidador,
+    htr.IdUsuario AS idUsuario,
+    
+    -- Datos del cliente
+    c.Id AS idCliente,
+    c.Nombre AS nombreCliente,
+    c.ApellidoPaterno AS apellidoPaternoCliente,
+    c.ApellidoMaterno AS apellidoMaternoCliente,
+    
+    -- Datos del monedero y pasajero
+    m.Id AS idMonedero,
+    p.Id AS idPasajero,
+    p.Nombre AS nombrePasajero,
+    p.ApellidoPaterno AS apellidoPaternoPasajero,
+    p.ApellidoMaterno AS apellidoMaternoPasajero,
+    
+    -- Datos del usuario que realizó la recarga
+    u.Id AS idUsuarioRecarga,
+    u.Nombre AS nombreUsuario,
+    u.ApellidoPaterno AS apellidoPaternoUsuario,
+    u.ApellidoMaterno AS apellidoMaternoUsuario
+
+FROM HistoricoTransaccionesRecarga htr
+INNER JOIN CatTiposTransacciones ctt ON htr.IdTipoTransaccion = ctt.Id
+INNER JOIN Monederos m ON htr.NumeroSerieMonedero = m.NumeroSerie
+INNER JOIN Clientes c ON m.IdCliente = c.Id
+LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
+LEFT JOIN Usuarios u ON htr.IdUsuario = u.Id
+WHERE ${condicionesWhereHistorico}
+${fechaConditionHistorico}
+ORDER BY htr.FechaHoraFinal DESC
+LIMIT ? OFFSET ?;
+            `,
+            [...paramsWhere, limit, offset],
+          );
+
+          // Query para total
+          totalResult = await this.historicoTransaccionesRecargaRepository.query(
+            `
+SELECT COUNT(*) AS total
+FROM HistoricoTransaccionesRecarga htr
+INNER JOIN Monederos m ON htr.NumeroSerieMonedero = m.NumeroSerie
+WHERE ${condicionesWhereHistorico}
+${fechaConditionHistorico};
+            `,
+            paramsWhere,
+          );
+          break;
+
+        default:
+          throw new BadRequestException('Rol no válido para consultar histórico de recargas');
+      }
+
+      const total = Number(totalResult[0]?.total || 0);
+
+      // Convertir BigInt a Number
+      const data = recargas.map((item) => ({
+        ...item,
+        id: Number(item.id),
+        idTipoTransaccion: Number(item.idTipoTransaccion),
+        monto: Number(item.monto),
+        idCliente: Number(item.idCliente),
+        idMonedero: item.idMonedero ? Number(item.idMonedero) : null,
+        idPasajero: item.idPasajero ? Number(item.idPasajero) : null,
+        idUsuario: item.idUsuario ? Number(item.idUsuario) : null,
+        idUsuarioRecarga: item.idUsuarioRecarga ? Number(item.idUsuarioRecarga) : null,
+      }));
+
+      const result: ApiResponseCommon = {
+        data: data,
+        paginated: {
+          total: total,
+          page: page,
+          lastPage: Math.ceil(total / limit),
+        },
+      };
+
+      return result;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new BadRequestException({
+        message: 'Error al obtener histórico de recargas',
       });
     }
   }

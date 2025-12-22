@@ -2,14 +2,18 @@ import {
   Column,
   Entity,
   Index,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { Viajes } from './Viajes';
 import { applySchema } from 'src/common/apply-schema.decorator';
 
 @applySchema
 @Index('FK_HistTransDeb_NumeroSerieMonedero_idx', ['numeroSerieMonedero'], {})
 @Index('FK_HistTransDeb_NumeroSerieValidador_idx', ['numeroSerieValidador'], {})
 @Index('FK_HistTransDeb_CatTiposTransacciones_idx', ['idTipoTransaccion'], {})
+@Index('FK_HistTransDeb_Viajes', ['idViaje'], {})
 @Entity('HistoricoTransaccionesDebito')
 export class HistoricoTransaccionesDebito {
   @PrimaryGeneratedColumn({ type: 'bigint', name: 'Id' })
@@ -66,6 +70,16 @@ export class HistoricoTransaccionesDebito {
 
   @Column('varchar', { name: 'NumeroSerieValidador', length: 100 })
   numeroSerieValidador: string;
+
+  @Column('bigint', { name: 'IdViaje', nullable: true })
+  idViaje: number | null;
+
+  @ManyToOne(() => Viajes, (viajes) => viajes, {
+    onDelete: 'NO ACTION',
+    onUpdate: 'NO ACTION',
+  })
+  @JoinColumn([{ name: 'IdViaje', referencedColumnName: 'id' }])
+  idViaje2: Viajes | null;
 
   // -------- RELACIONES --------
 

@@ -49,11 +49,45 @@ export class PasajerosService {
   ) {}
 
   // ========================================
+  // 🔹 FUNCIÓN PRIVADA PARA GENERAR NÚMERO DE SERIE ÚNICO
+  // ========================================
+  private async generarNumeroSerieUnico(): Promise<string> {
+    let numeroSerie: string;
+    let existe: boolean;
+    let intentos = 0;
+    const maxIntentos = 100;
+
+    do {
+      // Generar número de serie aleatorio con formato MON-XXXX donde XXXX son números aleatorios
+      // Usar timestamp y número aleatorio para mayor unicidad
+      const timestamp = Date.now().toString().slice(-6); // Últimos 6 dígitos del timestamp
+      const numeroAleatorio = Math.floor(1000 + Math.random() * 9000); // Número entre 1000 y 9999
+      numeroSerie = `MON-${timestamp}-${numeroAleatorio}`;
+
+      // Verificar si ya existe
+      const monederoExistente = await this.monederosRepository.findOne({
+        where: { numeroSerie },
+      });
+      existe = !!monederoExistente;
+      intentos++;
+
+      if (intentos >= maxIntentos) {
+        throw new InternalServerErrorException(
+          'No se pudo generar un número de serie único después de múltiples intentos.',
+        );
+      }
+    } while (existe);
+
+    return numeroSerie;
+  }
+
+  // ========================================
   // 🔹  CREAMOS EL PASAJERO DE MANERA INTERNA
   // ========================================
   async createPasajeros(
     createPasajeroDto: CreatePasajeroDto,
     idUser: number,
+    cliente: number,
     documentacionFile?: Express.Multer.File,
   ): Promise<ApiCrudResponse> {
     try {
@@ -88,23 +122,62 @@ export class PasajerosService {
         );
       }
 
-      //Buscamos el monedero que este dado de alta
-      const monederos = await this.monederosRepository.findOne({
-        where: {
-          numeroSerie: createPasajeroDto.numeroSerieMonedero,
-          estatus: 1,
-        },
-      });
-      if (!monederos) {
-        throw new BadRequestException(
-          `No se encontró el monedero con número de serie ${createPasajeroDto.numeroSerieMonedero}.`,
-        );
-      }
+      let monederos: Monederos | null = null;
+      let numeroSerieMonedero: string;
 
-      if (monederos.idPasajero) {
-        throw new BadRequestException(
-          `El monedero con número de serie ${createPasajeroDto.numeroSerieMonedero} está asociado a un pasajero.`,
+      // Si no se proporciona numeroSerieMonedero, generar uno aleatorio único
+      if (!createPasajeroDto.numeroSerieMonedero) {
+        // Generar número de serie aleatorio único
+        numeroSerieMonedero = await this.generarNumeroSerieUnico();
+        
+        // Crear nuevo monedero con el número de serie generado
+        const ahora = new Date();
+        const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas en milisegundos
+        const fechaDesfasada = new Date(ahora.getTime() + desfaseMs);
+
+        const nuevoMonedero = this.monederosRepository.create({
+          numeroSerie: numeroSerieMonedero,
+          saldo: 0,
+          fechaActivacion: fechaDesfasada,
+          estatus: EstatusEnum.INACTIVO, // Se activará cuando se asigne al pasajero
+          idCliente: cliente,
+          idTipoPasajero: createPasajeroDto.idTipoPasajero || 1, // Valor por defecto si no se proporciona
+          esVirtual: 1, // Monedero virtual creado automáticamente
+        });
+
+        monederos = await this.monederosRepository.save(nuevoMonedero);
+
+        // Registro en la bitácora SUCCESS
+        await this.bitacoraLogger.logToBitacora(
+          'Monederos',
+          `Se creó un monedero automático con número de serie: ${numeroSerieMonedero}.`,
+          'CREATE',
+          { numeroSerie: numeroSerieMonedero, idCliente: cliente },
+          idUser,
+          EnumModulos.MONEDEROS,
+          EstatusEnumBitcora.SUCCESS,
         );
+      } else {
+        // Si se proporciona, buscar el monedero existente
+        numeroSerieMonedero = createPasajeroDto.numeroSerieMonedero;
+        monederos = await this.monederosRepository.findOne({
+          where: {
+            numeroSerie: numeroSerieMonedero,
+            estatus: 1,
+          },
+        });
+
+        if (!monederos) {
+          throw new BadRequestException(
+            `No se encontró el monedero con número de serie ${numeroSerieMonedero}.`,
+          );
+        }
+
+        if (monederos.idPasajero) {
+          throw new BadRequestException(
+            `El monedero con número de serie ${numeroSerieMonedero} está asociado a un pasajero.`,
+          );
+        }
       }
 
       const hashedPassword = await bcrypt.hash(
@@ -125,7 +198,7 @@ export class PasajerosService {
         fotoPerfil: documentacionUrl || 'https://transmovi.s3.us-east-2.amazonaws.com/imagenes/user_default.png',
         estatus: EstatusEnum.ACTIVO,
         idRol: 9,
-        idCliente: monederos.idCliente,
+        idCliente: cliente,
       });
       const userSave = await this.usuariosRepository.save(newUser); //creamos el usuario
 
@@ -170,11 +243,18 @@ export class PasajerosService {
 
       const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())} ${pad(fechaDesfasada.getHours())}:${pad(fechaDesfasada.getMinutes())}:${pad(fechaDesfasada.getSeconds())}`;
 
+      // Validar que monederos existe
+      if (!monederos) {
+        throw new InternalServerErrorException(
+          'Error: El monedero no fue creado o encontrado correctamente.',
+        );
+      }
+
       await this.monederosRepository.update(monederos.id, {
         fechaActivacion: fechaDesfasada,
         estatus: EstatusEnum.ACTIVO,
         idPasajero: pasajeroSave.id,
-        idTipoPasajero: createPasajeroDto.idTipoPasajero,
+        idTipoPasajero: createPasajeroDto.idTipoPasajero || monederos.idTipoPasajero,
       });
 
       // --- Registro en la bitácora --- SUCCESS

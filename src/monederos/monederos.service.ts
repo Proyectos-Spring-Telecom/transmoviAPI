@@ -82,8 +82,10 @@ export class MonederosService {
       createMonederoDto.estatus = EnumEstatusMonederos.ACTIVO;
 
       //Guardamos el monedero
-      const newMonedero =
-        await this.monederoRepository.create(createMonederoDto);
+      const newMonedero = this.monederoRepository.create({
+        ...createMonederoDto,
+        esVirtual: 0, // Monedero físico creado manualmente
+      });
       const monederoSave = await this.monederoRepository.save(newMonedero);
 
       // --- Registro en la bitácora --- SUCCESS
@@ -205,6 +207,7 @@ SELECT
     m.Estatus AS estatus,
     m.IdPasajero AS idPasajero,
     m.IdCliente AS idCliente,
+    m.EsVirtual AS esVirtual,
 
     p.Id AS idPasajeroMonederos,
     p.Nombre AS pasajeroNombre,
@@ -262,6 +265,7 @@ SELECT
     m.Estatus AS estatus,
     m.IdPasajero AS idPasajero,
     m.IdCliente AS idCliente,
+    m.EsVirtual AS esVirtual,
 
     p.Id AS idPasajeroMonederos,
     p.Nombre AS pasajeroNombre,
@@ -321,6 +325,7 @@ SELECT
     m.Estatus AS estatus,
     m.IdPasajero AS idPasajero,
     m.IdCliente AS idCliente,
+    m.EsVirtual AS esVirtual,
 
     p.Id AS idPasajeroMonederos,
     p.Nombre AS pasajeroNombre,
@@ -372,6 +377,7 @@ WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que qu
         idCliente: Number(item.idCliente),
         idPasajeroMonedero: Number(item.idPasajeroMonederos),
         idClienteMonedero: Number(item.idClienteMonedero),
+        tipoMonedero: item.esVirtual === 1 ? 'virtual' : 'fisico',
       }));
 
       const total = Number(totalResult[0]?.total || 0);
@@ -422,6 +428,7 @@ WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que qu
         saldo: Number(item.saldo),
         idPasajero: Number(item.idPasajero),
         idCliente: Number(item.idCliente),
+        tipoMonedero: item.esVirtual === 1 ? 'virtual' : 'fisico',
       }));
 
       const result: ApiResponseCommon = {
@@ -466,6 +473,7 @@ SELECT
     m.FechaCreacion AS fechaCreacion,
     m.FechaActualizacion AS fechaActualizacion,
     m.Estatus AS estatusMonedero,
+    m.EsVirtual AS esVirtual,
 
     p.Id AS idPasajero,
     p.Nombre AS pasajeroNombre,
@@ -505,6 +513,7 @@ SELECT
     m.FechaCreacion AS fechaCreacion,
     m.FechaActualizacion AS fechaActualizacion,
     m.Estatus AS estatusMonedero,
+    m.EsVirtual AS esVirtual,
 
     p.Id AS idPasajero,
     p.Nombre AS pasajeroNombre,
@@ -545,6 +554,7 @@ SELECT
     m.FechaCreacion AS fechaCreacion,
     m.FechaActualizacion AS fechaActualizacion,
     m.Estatus AS estatusMonedero,
+    m.EsVirtual AS esVirtual,
 
     p.Id AS idPasajero,
     p.Nombre AS pasajeroNombre,
@@ -580,6 +590,7 @@ ORDER BY m.Id DESC;
         saldo: Number(item.saldo),
         idPasajero: Number(item.idPasajero),
         idCliente: Number(item.idCliente),
+        tipoMonedero: item.esVirtual === 1 ? 'virtual' : 'fisico',
       }));
 
       //Api response
@@ -618,6 +629,7 @@ ORDER BY m.Id DESC;
         saldo: Number(monedero.saldo),
         idPasajero: Number(monedero.idPasajero),
         idCliente: Number(monedero.idCliente),
+        tipoMonedero: monedero.esVirtual === 1 ? 'virtual' : 'fisico',
       };
       return { data: monederoResult };
     } catch (error) {
@@ -650,6 +662,7 @@ ORDER BY m.Id DESC;
         saldo: Number(monedero.saldo),
         idPasajero: Number(monedero.idPasajero),
         idCliente: Number(monedero.idCliente),
+        tipoMonedero: monedero.esVirtual === 1 ? 'virtual' : 'fisico',
       };
       return { data: monederoResult };
     } catch (error) {

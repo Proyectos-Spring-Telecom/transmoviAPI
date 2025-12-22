@@ -66,16 +66,6 @@ export class CreateTransbordoDto {
   idCliente: number;
 
   @ApiProperty({
-    description: 'ID de la variante a la que pertenece este transbordo',
-    example: 10,
-    type: Number,
-  })
-  @IsNotEmpty({ message: 'El ID de la variante es obligatorio' })
-  @IsInt({ message: 'El ID de la variante debe ser un número entero' })
-  @IsPositive({ message: 'El ID de la variante debe ser positivo' })
-  idVariante: number;
-
-  @ApiProperty({
     description: 'Detalles de los transbordos (costos por cada número de transbordo)',
     type: [CreateDetalleTransbordoDto],
     example: [

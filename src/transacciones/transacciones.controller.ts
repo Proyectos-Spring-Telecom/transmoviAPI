@@ -15,9 +15,10 @@ import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { CreateTransaccioneDebitoDto } from './dto/create-transaccione-debito.dto';
 import { CreateTransaccioneRecargaDto } from './dto/create-transaccione-recarga.dto';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { UpdateTransaccioneDebitoDto } from './dto/update-transaccione-debito.dto';
 import { GetTransaccioneDto } from './dto/get-transacciones.dto';
+import { GetHistoricoRecargasDto } from './dto/get-historico-recargas.dto';
 
 @ApiTags('Transacciones')
 @Controller('transacciones')
@@ -89,6 +90,37 @@ export class TransaccionesController {
       getTransaccioneDto.limit,
       getTransaccioneDto.fechaInicio,
       getTransaccioneDto.fechaFin
+    );
+  }
+
+  @Post('recargas/historico')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: 'Obtiene el histórico de recargas paginado',
+    description:
+      'Obtiene el histórico de recargas con paginación. Los filtros se aplican según el rol del usuario:\n' +
+      '- SA (rol 1): Todas las recargas\n' +
+      '- ADMIN (rol 2): Sus recargas y las de clientes hijos\n' +
+      '- Cajero (rol 3): Solo sus recargas\n' +
+      '- Pasajero (rol 9): Solo las recargas de sus monederos',
+  })
+  @ApiResponse({ status: 200, description: 'Histórico de recargas obtenido exitosamente' })
+  @ApiResponse({ status: 400, description: 'Datos inválidos' })
+  async getHistoricoRecargas(
+    @Body() getHistoricoRecargasDto: GetHistoricoRecargasDto,
+    @Request() req,
+  ): Promise<ApiResponseCommon> {
+    const idUser = req.user.userId;
+    const email = req.user.email;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+
+    return await this.transaccionesService.getHistoricoRecargasPaginado(
+      +idUser,
+      email,
+      +cliente,
+      +rol,
+      getHistoricoRecargasDto,
     );
   }
 

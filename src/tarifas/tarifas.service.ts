@@ -956,6 +956,85 @@ ORDER BY t.Id DESC
   }
 
   // ========================================
+  // 🔹 OBTENER TARIFA POR ID VARIANTE
+  // ========================================
+  async findByVariante(idVariante: number, idUser: number): Promise<ApiResponseCommon> {
+    try {
+      // Validar que la variante existe
+      const variante = await this.variantesRepository.findOne({
+        where: { id: idVariante },
+      });
+
+      if (!variante) {
+        throw new NotFoundException(`La variante con ID ${idVariante} no fue encontrada.`);
+      }
+
+      // Buscar la tarifa por idVariante
+      const tarifa = await this.tarifasRepository.findOne({
+        where: { idVariante: idVariante, estatus: 1 },
+        relations: ['idVariante2'],
+      });
+
+      if (!tarifa) {
+        throw new NotFoundException(`No se encontró una tarifa activa para la variante con ID ${idVariante}.`);
+      }
+
+      // Formatear la respuesta
+      const data = {
+        id: Number(tarifa.id),
+        tarifaBase: Number(tarifa.tarifaBase),
+        distanciaBaseKm: tarifa.distanciaBaseKm ? Number(tarifa.distanciaBaseKm) : null,
+        incrementoCadaMetros: tarifa.incrementoCadaMetros ? Number(tarifa.incrementoCadaMetros) : null,
+        costoAdicional: tarifa.costoAdicional ? Number(tarifa.costoAdicional) : null,
+        tipoTarifa: Number(tarifa.tipoTarifa),
+        fechaCreacion: tarifa.fechaCreacion,
+        fechaActualizacion: tarifa.fechaActualizacion,
+        estatus: Number(tarifa.estatus),
+        idVariante: Number(tarifa.idVariante),
+        nombreVariante: tarifa.idVariante2?.nombre || null,
+      };
+
+      // Registro en la bitácora SUCCESS
+      await this.bitacoraLogger.logToBitacora(
+        'Tarifas',
+        `Se consultó la tarifa para la variante con ID: ${idVariante}.`,
+        'READ',
+        { idVariante },
+        idUser,
+        EnumModulos.TARIFAS,
+        EstatusEnumBitcora.SUCCESS,
+      );
+
+      const result: ApiResponseCommon = {
+        data: [data],
+      };
+
+      return result;
+    } catch (error) {
+      // Registro en la bitácora ERROR
+      await this.bitacoraLogger.logToBitacora(
+        'Tarifas',
+        `Error al consultar tarifa para la variante con ID: ${idVariante}.`,
+        'READ',
+        { idVariante },
+        idUser,
+        EnumModulos.TARIFAS,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException({
+        message: 'Error al obtener la tarifa por variante.',
+        error: error.message,
+      });
+    }
+  }
+
+  // ========================================
   // 🔹 ACTUALIZAR ESTATUS DE LA TARIFA
   // ========================================
   async updateEstatus(
