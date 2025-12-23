@@ -35,10 +35,18 @@ export class CreateCustomerDto {
   phone?: string;
 
   @ApiPropertyOptional({
-    description: 'Token de tarjeta a asignar al cliente',
+    description: 'Token de tarjeta a asignar al cliente (se asignará después de crear el cliente)',
     example: 'tok_test_1234567890',
   })
   @IsString()
   @IsOptional()
   token?: string;
+
+  @ApiPropertyOptional({
+    description: 'Identificador único del cliente en tu sistema',
+    example: 'id-cliente-12',
+  })
+  @IsString()
+  @IsOptional()
+  identifier?: string;
 }

@@ -6,9 +6,11 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
   HttpCode,
   HttpStatus,
+  BadRequestException,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { NetpayService } from './netpay.service';
@@ -71,19 +73,45 @@ export class NetpayController {
     return this.netpayService.createCustomer(createCustomerDto);
   }
 
-  @Get('customers/:customerId')
-  @ApiOperation({ summary: 'Consulta información de un cliente' })
+  @Get('customers')
+  @ApiOperation({ 
+    summary: 'Consulta información de un cliente',
+    description: 'Consulta información de un cliente usando su customerId (puede ser id string o clientId número) como query parameter.',
+  })
   @ApiResponse({ status: 200, description: 'Información del cliente' })
   @ApiResponse({ status: 404, description: 'Cliente no encontrado' })
-  async getCustomer(@Param('customerId') customerId: string) {
+  async getCustomer(@Query('customerId') customerId: string) {
+    if (!customerId) {
+      throw new BadRequestException('El parámetro customerId es requerido');
+    }
     return this.netpayService.getCustomer(customerId);
   }
 
-  @Put('customers/:customerId/cards')
-  @ApiOperation({ summary: 'Asigna una tarjeta a un cliente existente' })
+  @Put('customers/:customerId/token')
+  @ApiOperation({ 
+    summary: 'Asigna una tarjeta (token) a un cliente existente',
+    description: 'Asigna un token de tarjeta generado por NetpayJS a un cliente existente. Acepta clientId (número) o id (string).',
+  })
   @ApiResponse({ status: 200, description: 'Tarjeta asignada exitosamente' })
   @ApiResponse({ status: 400, description: 'Datos inválidos' })
   async assignCardToCustomer(
+    @Param('customerId') customerId: string,
+    @Body() assignCardDto: AssignCardDto,
+  ) {
+    return this.netpayService.assignCardToCustomer({
+      ...assignCardDto,
+      customerId,
+    });
+  }
+
+  @Put('customers/:customerId/cards')
+  @ApiOperation({ 
+    summary: 'Asigna una tarjeta (token) a un cliente existente (alias)',
+    description: 'Alias para /token. Asigna un token de tarjeta generado por NetpayJS a un cliente existente. Acepta clientId (número) o id (string).',
+  })
+  @ApiResponse({ status: 200, description: 'Tarjeta asignada exitosamente' })
+  @ApiResponse({ status: 400, description: 'Datos inválidos' })
+  async assignCardToCustomerAlias(
     @Param('customerId') customerId: string,
     @Body() assignCardDto: AssignCardDto,
   ) {

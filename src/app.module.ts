@@ -56,6 +56,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { IncidentesModule } from './incidentes/incidentes.module';
 import { CatTipoTarifaModule } from './cat-tipo-tarifa/cat-tipo-tarifa.module';
 import { NetpayModule } from './netpay/netpay.module';
+import { CatMetodoPagoModule } from './cat-metodo-pago/cat-metodo-pago.module';
 import Joi from 'joi';
 
 @Module({
@@ -215,6 +216,8 @@ import Joi from 'joi';
     CatTipoTarifaModule,
 
     NetpayModule,
+
+    CatMetodoPagoModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -98,6 +98,18 @@ export class TransaccionesService {
   ) { }
 
   /**
+   * Transforma el valor de EsQR (0/1) a texto descriptivo
+   * @param esQR Valor numérico (0 o 1) o null
+   * @returns "Monedero Físico" si es 0, "Monedero QR" si es 1, null si es null
+   */
+  private transformarEsQR(esQR: number | null | undefined): string | null {
+    if (esQR === null || esQR === undefined) {
+      return null;
+    }
+    return esQR === 1 ? 'Monedero QR' : 'Monedero Físico';
+  }
+
+  /**
    * Calcula la distancia en kil?metros desde el punto inicial de la variante hasta el punto de transacci?n,
    * sumando punto a punto a lo largo del recorridoDetallado
    * @param variante Variante con recorridoDetallado y puntoInicio
@@ -769,6 +781,7 @@ export class TransaccionesService {
           numeroSerieMonedero: createTransaccioneDebitoDto.numeroSerieMonedero,
           numeroSerieValidador: createTransaccioneDebitoDto.numeroSerieValidador,
           idViaje: idViaje,
+          esQR: createTransaccioneDebitoDto.esQR ? 1 : 0,
         });
         await this.transaccionesdebitoRepository.save(newTransaccion);
         
@@ -839,6 +852,7 @@ export class TransaccionesService {
         numeroSerieValidador: createTransaccioneDebitoDto.numeroSerieValidador,
         numeroTransbordo,
         idViaje: idViaje,
+        esQR: createTransaccioneDebitoDto.esQR ? 1 : 0,
       });
       const transaccionSave =
         await this.transaccionesdebitoRepository.save(newTransaccion);
@@ -1192,8 +1206,10 @@ export class TransaccionesService {
       if (error instanceof HttpException) {
         throw error;
       }
+      console.error('Error en paginado:', error);
       throw new BadRequestException({
         message: 'Error al obtener transacciones paginado.',
+        error: error.message,
       });
     }
   }
@@ -1217,6 +1233,7 @@ export class TransaccionesService {
         case 1:
           transacciones = await this.transaccionesrecargaRepository.query(
             `
+SELECT * FROM (
 SELECT 
     'DEBITO' AS origenTabla,        -- ?? de qu? tabla viene
     td.Id AS id,
@@ -1231,6 +1248,7 @@ SELECT
     td.FHRegistro AS fhRegistro,
     td.NumeroSerieMonedero AS numeroSerieMonedero,
     td.NumeroSerieValidador AS numeroSerieValidador,
+    td.EsQR AS esQR,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -1281,6 +1299,7 @@ SELECT
     tr.FHRegistro AS fhRegistro,
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
     tr.NumeroSerieValidador AS numeroSerieValidador,
+    NULL AS esQR,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -1311,11 +1330,10 @@ INNER JOIN Clientes c
     
 -- condiciones
 WHERE DATE(tr.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
-
-ORDER BY FHRegistro DESC
-  LIMIT ? OFFSET ?;
+) AS todas_transacciones
+ORDER BY fhRegistro DESC
+LIMIT ${limit} OFFSET ${offset};
         `,
-            [limit, offset],
           );
 
           // Query para total (sin paginaci?n)
@@ -1367,6 +1385,7 @@ WHERE DATE(tr.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
           //Usuarios Operador
           transacciones = await this.transaccionesrecargaRepository.query(
             `
+SELECT * FROM (
 SELECT 
     'DEBITO' AS origenTabla,        -- ?? de qu? tabla viene
     td.Id AS id,
@@ -1381,6 +1400,7 @@ SELECT
     td.FHRegistro AS fhRegistro,
     td.NumeroSerieMonedero AS numeroSerieMonedero,
     td.NumeroSerieValidador AS numeroSerieValidador,
+    td.EsQR AS esQR,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -1432,6 +1452,7 @@ SELECT
     tr.FHRegistro AS fhRegistro,
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
     tr.NumeroSerieValidador AS numeroSerieValidador,
+    NULL AS esQR,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -1463,12 +1484,11 @@ INNER JOIN Clientes c
 -- condiciones
 WHERE DATE(tr.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
 AND m.IdCliente = ?
-
-ORDER BY FHRegistro DESC
-LIMIT ? OFFSET ?;
-
+) AS todas_transacciones
+ORDER BY fhRegistro DESC
+LIMIT ${limit} OFFSET ${offset};
         `,
-            [cliente, cliente, limit, offset],
+            [cliente, cliente],
           );
 
           // Query para total (sin paginaci?n)
@@ -1524,8 +1544,14 @@ AND m.IdCliente = ?
           //Datos por usuario
           const pasajero =
             await this.pasajeroService.findOnePasajeroCorreo(email);
+          
+          if (!pasajero || !pasajero.id) {
+            throw new NotFoundException('Pasajero no encontrado para el usuario');
+          }
+          
           transacciones = await this.transaccionesrecargaRepository.query(
             `
+SELECT * FROM (
 SELECT 
     'DEBITO' AS origenTabla,        -- ?? de qu? tabla viene
     td.Id AS id,
@@ -1540,6 +1566,7 @@ SELECT
     td.FHRegistro AS fhRegistro,
     td.NumeroSerieMonedero AS numeroSerieMonedero,
     td.NumeroSerieValidador AS numeroSerieValidador,
+    td.EsQR AS esQR,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -1592,6 +1619,7 @@ SELECT
     tr.FHRegistro AS fhRegistro,
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
     tr.NumeroSerieValidador AS numeroSerieValidador,
+    NULL AS esQR,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -1624,12 +1652,11 @@ INNER JOIN Clientes c
 WHERE DATE(tr.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
 AND m.Estatus = 1
 AND p.Id = ?
-
-ORDER BY FHRegistro DESC
-LIMIT ? OFFSET ?;
-
+) AS todas_transacciones
+ORDER BY fhRegistro DESC
+LIMIT ${limit} OFFSET ${offset};
         `,
-            [Number(pasajero.id), Number(pasajero.id), limit, offset],
+            [Number(pasajero.id), Number(pasajero.id)],
           );
 
           // Query para total (sin paginaci?n)
@@ -1638,7 +1665,7 @@ LIMIT ? OFFSET ?;
 SELECT COUNT(*) AS total
 FROM (
     SELECT td.Id
-    FROM TransaccionesDebito td
+    FROM ${entidadDebito} td
 INNER JOIN CatTiposTransacciones ctt 
     ON td.IdTipoTransaccion = ctt.Id
 LEFT JOIN Validadores d 
@@ -1658,7 +1685,7 @@ AND p.Id = ?
     UNION ALL
 
     SELECT tr.Id
-    FROM TransaccionesRecarga tr
+    FROM ${entidadRecarga} tr
 INNER JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
 LEFT JOIN Validadores d 
@@ -1704,6 +1731,7 @@ SELECT
     td.FHRegistro AS fhRegistro,
     td.NumeroSerieMonedero AS numeroSerieMonedero,
     td.NumeroSerieValidador AS numeroSerieValidador,
+    td.EsQR AS esQR,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -1755,6 +1783,7 @@ SELECT
     tr.FHRegistro AS fhRegistro,
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
     tr.NumeroSerieValidador AS numeroSerieValidador,
+    NULL AS esQR,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -1846,6 +1875,14 @@ AND m.IdCliente IN (${placeholders})   -- ?? aqu? colocas el ID del cliente que 
 
       const total = Number(totalResult[0]?.total || 0);
 
+      // Validar que transacciones sea un array
+      if (!Array.isArray(transacciones)) {
+        console.error('transacciones no es un array:', transacciones);
+        throw new BadRequestException({
+          message: 'Error: las transacciones no se obtuvieron correctamente',
+        });
+      }
+
       // ?? Transformaci?n de datos (ids ? number, nombreCompleto)
       const data = transacciones.map((item) => ({
         ...item,
@@ -1857,6 +1894,9 @@ AND m.IdCliente IN (${placeholders})   -- ?? aqu? colocas el ID del cliente que 
         longitudFinal: Number(item.longitudFinal),
         idCliente: Number(item.idCliente),
         idPasajero: Number(item.idPasajero),
+        tipoMonedero: item.origenTabla === 'DEBITO' && item.esQR !== undefined 
+          ? this.transformarEsQR(Number(item.esQR)) 
+          : null,
       }));
 
       //API Response
@@ -1873,8 +1913,11 @@ AND m.IdCliente IN (${placeholders})   -- ?? aqu? colocas el ID del cliente que 
       if (error instanceof HttpException) {
         throw error;
       }
+      console.error('Error en resolverPorRolDefault:', error);
+      console.error('Rol:', rol, 'EntidadDebito:', entidadDebito, 'EntidadRecarga:', entidadRecarga);
       throw new BadRequestException({
         message: 'Error al obtener transacciones paginadas por rol',
+        error: error.message,
       });
     }
 
@@ -1908,6 +1951,7 @@ SELECT
     td.NumeroSerieMonedero AS numeroSerieMonedero,
     td.NumeroSerieValidador AS numeroSerieValidador,
     td.ControlTransaccion AS controlTransaccion,
+    td.EsQR AS esQR,
 
     -- Datos del validador
     d.Marca AS marcaValidador,
@@ -1953,6 +1997,7 @@ SELECT
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
     tr.NumeroSerieValidador AS numeroSerieValidador,
     tr.ControlTransaccion AS controlTransaccion,
+    NULL AS esQR,
 
     d.Marca AS marcaValidador,
     d.Modelo AS modeloValidador,
@@ -2041,6 +2086,7 @@ FROM (
       td.NumeroSerieMonedero AS numeroSerieMonedero,
       td.NumeroSerieValidador AS numeroSerieValidador,
       td.ControlTransaccion AS controlTransaccion,
+      td.EsQR AS esQR,
 
       -- Datos del cliente
     c.Id AS idCliente,
@@ -2085,6 +2131,7 @@ FROM (
       tr.NumeroSerieMonedero AS numeroSerieMonedero,
       tr.NumeroSerieValidador AS numeroSerieValidador,
       tr.ControlTransaccion AS controlTransaccion,
+      NULL AS esQR,
 
       -- Datos del cliente
     c.Id AS idCliente,
@@ -2149,6 +2196,11 @@ FROM (
           //Datos por usuario
           const pasajero =
             await this.pasajeroService.findOnePasajeroCorreo(email);
+          
+          if (!pasajero || !pasajero.id) {
+            throw new NotFoundException('Pasajero no encontrado para el usuario');
+          }
+          
           transacciones = await this.transaccionesrecargaRepository.query(
             `
 (
@@ -2164,6 +2216,7 @@ FROM (
       td.NumeroSerieMonedero AS numeroSerieMonedero,
       td.NumeroSerieValidador AS numeroSerieValidador,
       td.ControlTransaccion AS controlTransaccion,
+      td.EsQR AS esQR,
 
       d.Marca AS marcaValidador,
       d.Modelo AS modeloValidador,
@@ -2195,6 +2248,7 @@ FROM (
       tr.NumeroSerieMonedero AS numeroSerieMonedero,
       tr.NumeroSerieValidador AS numeroSerieValidador,
       tr.ControlTransaccion AS controlTransaccion,
+      NULL AS esQR,
 
       d.Marca AS marcaValidador,
       d.Modelo AS modeloValidador,
@@ -2269,6 +2323,7 @@ FROM (
       td.NumeroSerieMonedero AS numeroSerieMonedero,
       td.NumeroSerieValidador AS numeroSerieValidador,
       td.ControlTransaccion AS controlTransaccion,
+      td.EsQR AS esQR,
 
       d.Marca AS marcaValidador,
       d.Modelo AS modeloValidador,
@@ -2314,6 +2369,7 @@ FROM (
       tr.NumeroSerieMonedero AS numeroSerieMonedero,
       tr.NumeroSerieValidador AS numeroSerieValidador,
       tr.ControlTransaccion AS controlTransaccion,
+      NULL AS esQR,
 
       d.Marca AS marcaValidador,
       d.Modelo AS modeloValidador,
@@ -2386,6 +2442,9 @@ FROM (
         latitud: Number(item.latitud),
         longitud: Number(item.longitud),
         idPasajero: Number(item.idPasajero),
+        tipoMonedero: item.origenTabla === 'DEBITO' && item.esQR !== undefined 
+          ? this.transformarEsQR(Number(item.esQR)) 
+          : null,
       }));
 
       //API Response
@@ -2447,6 +2506,7 @@ SELECT
     td.NumeroSerieMonedero AS numeroSerieMonedero,
     td.NumeroSerieValidador AS numeroSerieValidador,
     td.ControlTransaccion AS controlTransaccion,
+    td.EsQR AS esQR,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -2495,6 +2555,7 @@ SELECT
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
     tr.NumeroSerieValidador AS numeroSerieValidador,
     tr.ControlTransaccion AS controlTransaccion,
+    NULL AS esQR,
 
 
     -- Datos del cliente
@@ -2598,6 +2659,7 @@ SELECT
     tr.FHRegistro AS fhRegistro,
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
     tr.NumeroSerieValidador AS numeroSerieValidador,
+    NULL AS esQR,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -2652,6 +2714,7 @@ SELECT
     td.FHRegistro AS fhRegistro,
     td.NumeroSerieMonedero AS numeroSerieMonedero,
     td.NumeroSerieValidador AS numeroSerieValidador,
+    td.EsQR AS esQR,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -2698,6 +2761,7 @@ SELECT
     tr.FHRegistro AS fhRegistro,
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
     tr.NumeroSerieValidador AS numeroSerieValidador,
+    NULL AS esQR,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -2781,6 +2845,7 @@ SELECT
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
     tr.NumeroSerieValidador AS numeroSerieValidador,
     tr.ControlTransaccion AS controlTransaccion,
+    NULL AS esQR,
 
 
     -- Datos del cliente
@@ -2826,6 +2891,9 @@ INNER JOIN Clientes c
         longitudFinal: Number(item.longitudFinal),
         idCliente: Number(item.idCliente),
         idPasajero: Number(item.idPasajero),
+        tipoMonedero: item.origenTabla === 'DEBITO' && item.esQR !== undefined 
+          ? this.transformarEsQR(Number(item.esQR)) 
+          : null,
       }));
       return { data: data };
     } catch (error) {
@@ -2856,6 +2924,7 @@ SELECT
     td.NumeroSerieMonedero AS numeroSerieMonedero,
     td.NumeroSerieValidador AS numeroSerieValidador,
     td.ControlTransaccion AS controlTransaccion,
+    td.EsQR AS esQR,
 
 
     -- Datos del cliente
@@ -2902,6 +2971,9 @@ INNER JOIN Clientes c
         longitudFinal: Number(item.longitudFinal),
         idCliente: Number(item.idCliente),
         idPasajero: Number(item.idPasajero),
+        tipoMonedero: item.origenTabla === 'DEBITO' && item.esQR !== undefined 
+          ? this.transformarEsQR(Number(item.esQR)) 
+          : null,
       }));
       return { data: data };
     } catch (error) {

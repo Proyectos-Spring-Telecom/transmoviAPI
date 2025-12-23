@@ -67,6 +67,9 @@ export class TransaccionesDebito {
   @Column('bigint', { name: 'IdViaje', nullable: true })
   idViaje: number | null;
 
+  @Column('tinyint', { name: 'EsQR', nullable: true, default: 0 })
+  esQR: number | null;
+
   @ManyToOne(() => Viajes, (viajes) => viajes, {
     onDelete: 'NO ACTION',
     onUpdate: 'NO ACTION',

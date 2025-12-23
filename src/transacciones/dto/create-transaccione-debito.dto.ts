@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsBoolean,
   IsInt,
   IsNotEmpty,
   IsNumber,
@@ -47,4 +48,14 @@ export class CreateTransaccioneDebitoDto {
   @IsInt()
   @IsNotEmpty()
   idViaje: number;
+
+  @ApiProperty({
+    example: false,
+    description: 'Indica si la transacción fue realizada mediante QR',
+    required: false,
+    default: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  esQR?: boolean = false;
 }

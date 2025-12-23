@@ -27,8 +27,17 @@ export interface NetpayPaymentResponse {
 }
 
 export interface NetpayCustomerResponse {
-  customerId: string;
-  status: string;
+  id?: string;
+  clientId?: number;
+  customerId?: string;
+  storeIdAdq?: number;
+  name?: string;
+  phone?: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  paymentSources?: any[];
+  status?: string;
   message?: string;
 }
 

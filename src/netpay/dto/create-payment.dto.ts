@@ -9,13 +9,13 @@ import {
 } from 'class-validator';
 
 export class CreatePaymentDto {
-  @ApiProperty({
-    description: 'Token de la tarjeta',
+  @ApiPropertyOptional({
+    description: 'Token de la tarjeta (para pagos con token nuevo)',
     example: 'tok_test_1234567890',
   })
   @IsString()
-  @IsNotEmpty()
-  token: string;
+  @IsOptional()
+  token?: string;
 
   @ApiProperty({
     description: 'Monto del pago',
@@ -70,20 +70,77 @@ export class CreatePaymentDto {
   saveCard?: boolean;
 
   @ApiPropertyOptional({
-    description: 'Reference ID para checkout',
-    example: 'ref_1234567890',
+    description: 'Reference ID para checkout o tarjeta guardada',
+    example: '1222337263222',
   })
   @IsString()
   @IsOptional()
   referenceId?: string;
 
   @ApiPropertyOptional({
-    description: 'Información del dispositivo (para 3DS)',
+    description: 'Session ID (igual al deviceFingerPrint)',
+    example: '1721779181755',
+  })
+  @IsString()
+  @IsOptional()
+  sessionId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Device Fingerprint',
+    example: '1721779181755',
+  })
+  @IsString()
+  @IsOptional()
+  deviceFingerPrint?: string;
+
+  @ApiPropertyOptional({
+    description: 'Información del dispositivo (para 3DS) - formato Netpay',
     example: {
-      deviceFingerprint: 'abc123',
-      userAgent: 'Mozilla/5.0...',
+      deviceChannel: 'Browser',
+      httpBrowserColorDepth: '24',
+      httpBrowserJavaEnabled: 'FALSE',
+      httpBrowserJavaScriptEnabled: 'TRUE',
+      httpBrowserLanguage: 'es',
+      httpBrowserScreenHeight: '687',
+      httpBrowserScreenWidth: '1718',
+      httpBrowserTimeDifference: '360',
     },
   })
   @IsOptional()
   deviceInformation?: any;
+
+  @ApiPropertyOptional({
+    description: 'Datos de facturación del cliente',
+    example: {
+      firstName: 'Jon',
+      lastName: 'Doe',
+      email: 'accept@netpay.com.mx',
+      phone: '8190034544',
+      address: {
+        city: 'Monterrey',
+        country: 'MX',
+        postalCode: '65700',
+        state: 'NL',
+        street1: 'Filósofos 100',
+        street2: 'Tecnologico',
+      },
+      merchantReferenceCode: 'Folio-unico-de-transaccion-13423',
+    },
+  })
+  @IsOptional()
+  billing?: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    address?: {
+      city?: string;
+      country?: string;
+      postalCode?: string;
+      state?: string;
+      street1?: string;
+      street2?: string;
+    };
+    merchantReferenceCode?: string;
+  };
 }
