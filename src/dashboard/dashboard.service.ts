@@ -80,7 +80,6 @@ export class DashboardService {
         totalViajes: Number(item.totalViajes),
       }));
 
-      //console.log(data)
       const kpi1 = data.kpi1?.[0] ?? {};
       const kpi2 = data.kpi2?.[0] ?? {};
 
@@ -111,7 +110,6 @@ export class DashboardService {
       };
 
     } catch (error) {
-      console.log(error)
       if (error instanceof HttpException) {
         throw error;
       }
@@ -272,7 +270,6 @@ export class DashboardService {
       return { kpi1, kpi2, graficaIngresosTotales, graficaPasajerosPorRuta, graficaAscensosVsBoleto, dataGripTop5RutasPorIngresos, velocidadPromedioRuta }
 
     } catch (error) {
-      console.log(error)
       if (error instanceof HttpException) {
         throw error;
       }

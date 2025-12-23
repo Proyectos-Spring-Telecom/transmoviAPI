@@ -8,6 +8,7 @@ import axios, { AxiosInstance } from 'axios';
 import { TokenizeCardDto } from './dto/tokenize-card.dto';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { CreatePaymentDto } from './dto/create-payment.dto';
+import { PaymentSavedCardDto } from './dto/payment-saved-card.dto';
 import { AssignCardDto } from './dto/assign-card.dto';
 import { Confirm3DSDto } from './dto/confirm-3ds.dto';
 import { CancelRefundDto } from './dto/cancel-refund.dto';
@@ -47,33 +48,8 @@ export class NetpayService {
         : 'https://gateway-154.netpaydev.com'; // Sandbox/Desarrollo
     }
     
-    // Validar que la URL base sea correcta para sandbox
-    if (!this.isProduction && !this.baseUrl.includes('gateway-154.netpaydev.com') && !customUrl) {
-      console.warn('⚠️  URL base de sandbox puede ser incorrecta. Debería ser: https://gateway-154.netpaydev.com');
-    }
-    
     this.publicKey = this.configService.get<string>('NETPAY_PUBLIC_KEY') || '';
     this.privateKey = this.configService.get<string>('NETPAY_PRIVATE_KEY') || '';
-
-    // Validar que las llaves estén configuradas
-    if (!this.privateKey) {
-      console.warn('⚠️  NETPAY_PRIVATE_KEY no está configurada');
-    }
-    if (!this.publicKey) {
-      console.warn('⚠️  NETPAY_PUBLIC_KEY no está configurada');
-    }
-
-    // Solo mostrar logs en desarrollo, no en producción
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('🔧 Netpay Service inicializado:', {
-        baseUrl: this.baseUrl,
-        environment: this.isProduction ? 'production' : 'sandbox',
-        hasPublicKey: !!this.publicKey,
-        hasPrivateKey: !!this.privateKey,
-        customUrlProvided: !!customUrl,
-        originalCustomUrl: customUrl,
-      });
-    }
 
     this.httpClient = axios.create({
       baseURL: this.baseUrl,
@@ -90,6 +66,11 @@ export class NetpayService {
    * @param includeUserAgent Si incluir el User-Agent (requerido para v3.5/charges)
    */
   private getAuthHeaders(includeUserAgent: boolean = true): Record<string, string> {
+    // Validar que la private key esté configurada
+    if (!this.privateKey) {
+      throw new BadRequestException('NETPAY_PRIVATE_KEY no está configurada. Verifica las variables de entorno.');
+    }
+
     const headers: Record<string, string> = {
       'Authorization': this.privateKey, // Netpay usa la key directamente, no Bearer
       'Content-Type': 'application/json',
@@ -104,35 +85,32 @@ export class NetpayService {
   }
 
   /**
+   * Obtiene los headers de autenticación para endpoints de reports (refund)
+   * Usa X-Netpay-Apikey en lugar de Authorization
+   */
+  private getReportsAuthHeaders(): Record<string, string> {
+    // Validar que la private key esté configurada
+    if (!this.privateKey) {
+      throw new BadRequestException('NETPAY_PRIVATE_KEY no está configurada. Verifica las variables de entorno.');
+    }
+
+    return {
+      'X-Netpay-Apikey': this.privateKey,
+      'Content-Type': 'application/json',
+      'accept': 'application/json',
+    };
+  }
+
+  /**
    * Maneja errores de la API de Netpay
    */
   private handleError(error: any, context?: string): never {
-    // Log detallado para depuración solo en desarrollo
-    if (process.env.NODE_ENV !== 'production') {
-      console.error(`❌ Error en Netpay${context ? ` (${context})` : ''}:`, {
-        message: error.message,
-        code: error.code,
-        url: error.config?.url,
-        baseURL: error.config?.baseURL,
-        method: error.config?.method,
-        hasResponse: !!error.response,
-        hasRequest: !!error.request,
-      });
-    }
 
       if (error.response) {
       // El servidor respondió con un código de estado de error
       const status = error.response.status;
       const errorData: NetpayErrorResponse = error.response.data;
       
-      if (process.env.NODE_ENV !== 'production') {
-        console.error('📋 Respuesta del servidor:', {
-          status,
-          data: errorData,
-          subErrors: (errorData as any).subErrors,
-          headers: error.response.headers,
-        });
-      }
 
       // Si hay subErrors, incluirlos en el mensaje
       const subErrorsMessage = (errorData as any).subErrors 
@@ -146,14 +124,6 @@ export class NetpayService {
     
     if (error.request) {
       // La petición se hizo pero no se recibió respuesta
-      if (process.env.NODE_ENV !== 'production') {
-        console.error('📡 Detalles de la petición fallida:', {
-          url: `${error.config?.baseURL}${error.config?.url}`,
-          method: error.config?.method,
-          timeout: error.config?.timeout,
-          code: error.code,
-        });
-      }
 
       const errorMessage = error.code === 'ECONNREFUSED'
         ? `No se pudo conectar al servidor de Netpay. Verifica la URL: ${this.baseUrl}`
@@ -264,9 +234,6 @@ export class NetpayService {
     for (const endpoint of possibleEndpoints) {
       for (const authMethod of authMethods) {
         try {
-          if (process.env.NODE_ENV !== 'production') {
-            console.log(`🔄 Intentando tokenización: ${endpoint} con ${authMethod.name}`);
-          }
 
           const response = await this.httpClient.post<NetpayTokenResponse>(
             endpoint,
@@ -277,9 +244,6 @@ export class NetpayService {
             },
           );
           
-          if (process.env.NODE_ENV !== 'production') {
-            console.log(`✅ Tokenización exitosa: ${endpoint} con ${authMethod.name}`);
-          }
           return response.data;
         } catch (error) {
           lastError = error;
@@ -290,24 +254,15 @@ export class NetpayService {
             
             // Si es 401/403, probar siguiente método de auth
             if (status === 401 || status === 403) {
-              if (process.env.NODE_ENV !== 'production') {
-                console.log(`⚠️  Autenticación fallida (${status}), probando siguiente método...`);
-              }
               continue;
             }
             
             // Si es 404, el endpoint no existe, probar siguiente
             if (status === 404) {
-              if (process.env.NODE_ENV !== 'production') {
-                console.log(`⚠️  Endpoint no encontrado (404), probando siguiente...`);
-              }
               break; // Probar siguiente endpoint
             }
             
             // Si es otro error de respuesta (400, 422, etc.), puede ser error de validación
-            if (process.env.NODE_ENV !== 'production') {
-              console.log(`⚠️  Error ${status}:`, error.response.data);
-            }
             
             // Si no es 404, puede ser que el endpoint existe pero hay error de datos
             // Continuar probando otros métodos pero guardar el error
@@ -316,9 +271,6 @@ export class NetpayService {
           
           // Si es timeout o error de conexión, continuar probando
           if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
-            if (process.env.NODE_ENV !== 'production') {
-              console.log(`⚠️  Timeout en ${endpoint}, probando siguiente...`);
-            }
             continue;
           }
         }
@@ -459,10 +411,6 @@ export class NetpayService {
       // URL completa para procesar pagos - usar endpoint v3.5/charges
       const paymentUrl = `${this.baseUrl}/gateway-ecommerce/v3.5/charges`;
 
-      if (process.env.NODE_ENV !== 'production') {
-        console.log(`🔄 Procesando pago con token en: ${paymentUrl}`);
-        console.log('📋 Payload:', JSON.stringify(payload, null, 2));
-      }
 
       // Usar axios directamente con la URL completa
       // Incluir User-Agent header como en el curl de ejemplo
@@ -475,9 +423,6 @@ export class NetpayService {
         },
       );
 
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('✅ Pago procesado exitosamente');
-      }
       return response.data;
     } catch (error) {
       this.handleError(error, 'processPaymentWithToken');
@@ -552,10 +497,6 @@ export class NetpayService {
         ? 'https://gateway.netpay.com.mx/gateway-ecommerce/v4/clients'
         : 'https://gateway-154.netpaydev.com/gateway-ecommerce/v4/clients';
 
-      if (process.env.NODE_ENV !== 'production') {
-        console.log(`🔄 Creando cliente en: ${clientsUrl}`);
-        console.log('📋 Payload:', JSON.stringify(payload, null, 2));
-      }
 
       // Usar axios directamente con la URL completa
       const response = await axios.post<NetpayCustomerResponse>(
@@ -567,9 +508,6 @@ export class NetpayService {
         },
       );
 
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('✅ Cliente creado exitosamente');
-      }
       return response.data;
     } catch (error) {
       this.handleError(error, 'createCustomer');
@@ -616,11 +554,6 @@ export class NetpayService {
         ? `https://gateway.netpay.com.mx/gateway-ecommerce/v3/clients/${clientIdParam}/token`
         : `https://gateway-154.netpaydev.com/gateway-ecommerce/v3/clients/${clientIdParam}/token`;
 
-      if (process.env.NODE_ENV !== 'production') {
-        console.log(`🔄 Asignando tarjeta en: ${assignCardUrl}`);
-        console.log(`📋 Usando ID: ${clientIdParam} (tipo: ${typeof clientIdParam})`);
-        console.log('📋 Payload:', JSON.stringify(payload, null, 2));
-      }
 
       // Usar axios directamente con la URL completa
       const response = await axios.put<NetpayCardResponse>(
@@ -632,9 +565,6 @@ export class NetpayService {
         },
       );
 
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('✅ Tarjeta asignada exitosamente');
-      }
       return response.data;
     } catch (error) {
       this.handleError(error, 'assignCardToCustomer');
@@ -663,11 +593,6 @@ export class NetpayService {
         ? `https://gateway.netpay.com.mx/gateway-ecommerce/v3/clients/${clientIdParam}`
         : `https://gateway-154.netpaydev.com/gateway-ecommerce/v3/clients/${clientIdParam}`;
 
-      if (process.env.NODE_ENV !== 'production') {
-        console.log(`🔄 Consultando cliente en: ${clientUrl}`);
-        console.log(`📋 Usando ID: ${clientIdParam} (tipo: ${typeof clientIdParam})`);
-        console.log(`📋 ID original recibido: ${customerId}`);
-      }
 
       // Usar axios directamente con la URL completa
       const response = await axios.get<NetpayCustomerResponse>(
@@ -678,9 +603,6 @@ export class NetpayService {
         },
       );
 
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('✅ Cliente obtenido exitosamente');
-      }
       return response.data;
     } catch (error) {
       this.handleError(error, 'getCustomer');
@@ -690,21 +612,34 @@ export class NetpayService {
   /**
    * Elimina una tarjeta de un cliente
    * @param customerId ID del cliente
-   * @param cardId ID de la tarjeta
+   * @param tokenCard Token de la tarjeta
    * @returns Confirmación de eliminación
    */
   async deleteCard(
     customerId: string,
-    cardId: string,
+    tokenCard: string,
   ): Promise<{ success: boolean; message: string }> {
     try {
-      await this.httpClient.delete(
-        `/v1/customers/${customerId}/cards/${cardId}`,
-        { headers: this.getAuthHeaders() },
+      // Codificar los parámetros para evitar problemas con caracteres especiales
+      const encodedCustomerId = encodeURIComponent(customerId);
+      const encodedTokenCard = encodeURIComponent(tokenCard);
+      
+      // URL completa para eliminar tarjeta - usar endpoint v3/clients/{clientId}/token/{tokenCard}
+      const deleteUrl = this.isProduction
+        ? `https://gateway.netpay.com.mx/gateway-ecommerce/v3/clients/${encodedCustomerId}/token/${encodedTokenCard}`
+        : `https://gateway-154.netpaydev.com/gateway-ecommerce/v3/clients/${encodedCustomerId}/token/${encodedTokenCard}`;
+
+      // Usar axios directamente con la URL completa
+      await axios.delete(
+        deleteUrl,
+        {
+          headers: this.getAuthHeaders(),
+          timeout: 30000,
+        },
       );
       return { success: true, message: 'Tarjeta eliminada correctamente' };
     } catch (error) {
-      this.handleError(error);
+      this.handleError(error, 'deleteCard');
     }
   }
 
@@ -720,10 +655,10 @@ export class NetpayService {
    * @returns Información de la transacción
    */
   async processPaymentWithSavedCard(
-    createPaymentDto: CreatePaymentDto,
+    paymentSavedCardDto: PaymentSavedCardDto,
   ): Promise<NetpayPaymentResponse> {
     // Para tarjeta guardada, se requiere referenceID según el curl proporcionado
-    if (!createPaymentDto.referenceId) {
+    if (!paymentSavedCardDto.referenceId) {
       throw new BadRequestException(
         'referenceID es requerido para pagos con tarjeta guardada',
       );
@@ -731,55 +666,106 @@ export class NetpayService {
 
     try {
       // Preparar payload según el formato exacto de Netpay v3.5/charges para tarjeta guardada
-      // Orden de campos según el curl proporcionado
+      // Orden exacto según el curl proporcionado (NO incluir token, customerId, cardId)
+      // IMPORTANTE: Para tarjeta guardada solo se usa referenceID, NO token
       const payload: any = {
         transactionType: 'Auth',
-        amount: createPaymentDto.amount,
-        description: createPaymentDto.description,
+        amount: paymentSavedCardDto.amount,
+        description: paymentSavedCardDto.description,
         paymentMethod: 'card',
-        sessionId: createPaymentDto.sessionId || createPaymentDto.deviceFingerPrint || '',
-        deviceFingerPrint: createPaymentDto.deviceFingerPrint || createPaymentDto.sessionId || '',
-        currency: createPaymentDto.currency || 'MXN',
       };
 
-      // Agregar billing si está presente (objeto completo con firstName, lastName, email, phone, address, merchantReferenceCode)
-      if (createPaymentDto.billing) {
-        payload.billing = createPaymentDto.billing;
+      // Agregar sessionId (usar deviceFingerPrint como fallback si no está presente)
+      // Debe ir después de paymentMethod, antes de deviceFingerPrint
+      if (paymentSavedCardDto.sessionId) {
+        payload.sessionId = paymentSavedCardDto.sessionId;
+      } else if (paymentSavedCardDto.deviceFingerPrint) {
+        payload.sessionId = paymentSavedCardDto.deviceFingerPrint;
       }
 
-      // Agregar saveCard (string "true" o "false")
-      payload.saveCard = createPaymentDto.saveCard ? String(createPaymentDto.saveCard) : 'false';
-
-      // Agregar referenceID (requerido para tarjeta guardada - identifica la tarjeta)
-      payload.referenceID = createPaymentDto.referenceId;
-
-      // Agregar deviceInformation si está presente (objeto completo para 3DS 2.0)
-      if (createPaymentDto.deviceInformation) {
-        payload.deviceInformation = createPaymentDto.deviceInformation;
+      // Agregar deviceFingerPrint (usar sessionId como fallback si no está presente)
+      // Debe ir después de sessionId, antes de currency
+      if (paymentSavedCardDto.deviceFingerPrint) {
+        payload.deviceFingerPrint = paymentSavedCardDto.deviceFingerPrint;
+      } else if (paymentSavedCardDto.sessionId) {
+        payload.deviceFingerPrint = paymentSavedCardDto.sessionId;
       }
+
+      // Agregar currency después de deviceFingerPrint
+      payload.currency = paymentSavedCardDto.currency || 'MXN';
+
+      // Agregar billing si está presente (debe ir después de currency, antes de saveCard)
+      if (paymentSavedCardDto.billing && Object.keys(paymentSavedCardDto.billing).length > 0) {
+        payload.billing = paymentSavedCardDto.billing;
+      }
+
+      // Agregar saveCard (string "true" o "false") - debe ir después de billing
+      payload.saveCard = paymentSavedCardDto.saveCard || 'false';
+
+      // Agregar referenceID (requerido para tarjeta guardada) - debe ir después de saveCard
+      // Este es el único campo necesario para identificar la tarjeta guardada
+      payload.referenceID = paymentSavedCardDto.referenceId;
+
+      // Agregar deviceInformation si está presente - debe ir al final
+      if (paymentSavedCardDto.deviceInformation && Object.keys(paymentSavedCardDto.deviceInformation).length > 0) {
+        payload.deviceInformation = paymentSavedCardDto.deviceInformation;
+      }
+
+      // Asegurar que NO se incluya token, customerId, ni cardId en el payload
+      // Eliminar explícitamente estos campos si existen por alguna razón
+      delete payload.token;
+      delete payload.customerId;
+      delete payload.cardId;
+
+      // Crear un nuevo objeto limpio solo con los campos permitidos
+      // Esto asegura que no haya campos adicionales que puedan causar problemas
+      const cleanPayload: any = {
+        transactionType: payload.transactionType,
+        amount: payload.amount,
+        description: payload.description,
+        paymentMethod: payload.paymentMethod,
+      };
+
+      // Agregar source si token está presente (Netpay espera source, no token)
+      if (paymentSavedCardDto.token) {
+        cleanPayload.source = paymentSavedCardDto.token;
+      }
+
+      // Agregar campos opcionales solo si existen y no son null/undefined
+      if (payload.sessionId) cleanPayload.sessionId = payload.sessionId;
+      if (payload.deviceFingerPrint) cleanPayload.deviceFingerPrint = payload.deviceFingerPrint;
+      if (payload.currency) cleanPayload.currency = payload.currency;
+      if (payload.billing) cleanPayload.billing = payload.billing;
+      if (payload.saveCard) cleanPayload.saveCard = payload.saveCard;
+      if (payload.referenceID) cleanPayload.referenceID = payload.referenceID;
+      if (payload.deviceInformation) cleanPayload.deviceInformation = payload.deviceInformation;
+
+      // Limpiar el objeto usando JSON para eliminar cualquier campo undefined/null
+      // Esto asegura que no haya campos adicionales que puedan causar problemas
+      const finalPayload = JSON.parse(JSON.stringify(cleanPayload));
+
+      // Asegurar que NO haya customerId ni cardId (pero token sí puede estar si se proporciona)
+      delete finalPayload.customerId;
+      delete finalPayload.cardId;
 
       // URL completa para procesar pagos - usar endpoint v3.5/charges
       const paymentUrl = `${this.baseUrl}/gateway-ecommerce/v3.5/charges`;
 
-      if (process.env.NODE_ENV !== 'production') {
-        console.log(`🔄 Procesando pago con tarjeta guardada en: ${paymentUrl}`);
-        console.log('📋 Payload:', JSON.stringify(payload, null, 2));
-      }
+      // Obtener headers de autenticación
+      const headers = this.getAuthHeaders(true); // Incluir User-Agent para v3.5/charges
+
 
       // Usar axios directamente con la URL completa
       // Incluir User-Agent header como en el curl de ejemplo
       const response = await axios.post<NetpayPaymentResponse>(
         paymentUrl,
-        payload,
+        finalPayload,
         { 
-          headers: this.getAuthHeaders(true), // Incluir User-Agent para v3.5/charges
+          headers: headers,
           timeout: 30000,
         },
       );
 
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('✅ Pago con tarjeta guardada procesado exitosamente');
-      }
       return response.data;
     } catch (error) {
       this.handleError(error, 'processPaymentWithSavedCard');
@@ -788,6 +774,7 @@ export class NetpayService {
 
   /**
    * Confirma una transacción después de 3D Secure
+   * Usa el endpoint v3.5/charges/{transaccionTokenId}/confirm
    * @param confirm3DSDto Datos de confirmación 3DS
    * @returns Información de la transacción confirmada
    */
@@ -795,41 +782,59 @@ export class NetpayService {
     confirm3DSDto: Confirm3DSDto,
   ): Promise<NetpayPaymentResponse> {
     try {
-      const response = await this.httpClient.post<NetpayPaymentResponse>(
-        '/v1/3ds/confirm',
-        {
-          transactionId: confirm3DSDto.transactionId,
-          referenceId: confirm3DSDto.referenceId,
+      // URL completa para confirmar transacción 3DS
+      // Formato: /v3.5/charges/{transaccionTokenId}/confirm?processorTransactionId={processorTransactionId}
+      const confirmUrl = `${this.baseUrl}/gateway-ecommerce/v3.5/charges/${confirm3DSDto.transaccionTokenId}/confirm?processorTransactionId=${confirm3DSDto.processorTransactionId}`;
+
+
+      // Usar axios directamente con la URL completa
+      const response = await axios.post<NetpayPaymentResponse>(
+        confirmUrl,
+        {}, // Body vacío según el curl proporcionado
+        { 
+          headers: this.getAuthHeaders(false), // No incluir User-Agent para este endpoint
+          timeout: 30000,
         },
-        { headers: this.getAuthHeaders() },
       );
+
       return response.data;
     } catch (error) {
-      this.handleError(error);
+      this.handleError(error, 'confirm3DSPayment');
     }
   }
 
   /**
    * Consulta los detalles de una transacción
-   * @param transactionId ID de la transacción
+   * Usa el endpoint v3/transactions/{transactionTokenId}
+   * @param transactionTokenId Transaction Token ID de la transacción
    * @returns Detalles de la transacción
    */
   async getTransactionDetails(
-    transactionId: string,
+    transactionTokenId: string,
   ): Promise<NetpayTransactionDetailResponse> {
     try {
-      const response = await this.httpClient.get<NetpayTransactionDetailResponse>(
-        `/v1/transactions/${transactionId}`,
-        { headers: this.getAuthHeaders() },
+      // URL completa para consultar transacción - usar endpoint v3/transactions/{transactionTokenId}
+      const transactionUrl = `${this.baseUrl}/gateway-ecommerce/v3/transactions/${transactionTokenId}`;
+
+
+      // Usar axios directamente con la URL completa
+      const response = await axios.get<NetpayTransactionDetailResponse>(
+        transactionUrl,
+        { 
+          headers: this.getAuthHeaders(false), // No incluir User-Agent para este endpoint
+          timeout: 30000,
+        },
       );
+
       return response.data;
     } catch (error) {
-      this.handleError(error);
+      this.handleError(error, 'getTransactionDetails');
     }
   }
 
   /**
    * Cancela o reembolsa una transacción
+   * Usa el endpoint reports-sandbox/v2/transactions/{tokenId}/refund
    * @param cancelRefundDto Datos para cancelar/reembolsar
    * @returns Información de la transacción cancelada/reembolsada
    */
@@ -837,26 +842,40 @@ export class NetpayService {
     cancelRefundDto: CancelRefundDto,
   ): Promise<NetpayTransactionDetailResponse> {
     try {
-      const payload: any = {
-        transactionId: cancelRefundDto.transactionId,
-      };
+      // Construir payload según el formato de Netpay
+      const payload: any = {};
 
       if (cancelRefundDto.amount) {
-        payload.amount = cancelRefundDto.amount;
+        payload.amount = String(cancelRefundDto.amount); // Netpay espera amount como string
       }
 
-      if (cancelRefundDto.reason) {
-        payload.reason = cancelRefundDto.reason;
+      if (cancelRefundDto.motive) {
+        payload.motive = cancelRefundDto.motive;
       }
 
-      const response = await this.httpClient.put<NetpayTransactionDetailResponse>(
-        `/v1/transactions/${cancelRefundDto.transactionId}/refund`,
+      // URL para refund - usar endpoint reports-sandbox/v2/transactions/{tokenId}/refund
+      // En producción sería reports/v2 en lugar de reports-sandbox/v2
+      const reportsBaseUrl = this.isProduction
+        ? 'https://gateway.netpay-api.com/reports'
+        : 'https://gateway.netpay-api.com/reports-sandbox';
+      
+      const refundUrl = `${reportsBaseUrl}/v2/transactions/${cancelRefundDto.tokenId}/refund`;
+
+
+      // Usar axios directamente con la URL completa
+      // Usar headers especiales para reports (X-Netpay-Apikey)
+      const response = await axios.put<NetpayTransactionDetailResponse>(
+        refundUrl,
         payload,
-        { headers: this.getAuthHeaders() },
+        { 
+          headers: this.getReportsAuthHeaders(),
+          timeout: 30000,
+        },
       );
+
       return response.data;
     } catch (error) {
-      this.handleError(error);
+      this.handleError(error, 'cancelOrRefund');
     }
   }
 }

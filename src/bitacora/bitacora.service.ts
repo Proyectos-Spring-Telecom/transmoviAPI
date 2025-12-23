@@ -375,8 +375,6 @@ ORDER BY b.FechaCreacion DESC;
       idUsuario: idUsuario,
       idModulo: idModulo,
     });
-    console.log(FechaActual);
     await this.bitacoraRepository.save(registro);
-    console.log('Registro guardado correctamente en la bitácora: ', registro);
   }
 }

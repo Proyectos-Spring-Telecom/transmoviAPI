@@ -55,6 +55,9 @@ export class Pasajeros {
   @Column("bigint", { name: "IdUsuario", nullable: true })
   idUsuario: number | null;
 
+  @Column("varchar", { name: "CustomerIdNetPay", nullable: true, length: 255 })
+  customerIdNetPay: string | null;
+
   @OneToMany(() => Monederos, (monederos) => monederos.idPasajero2)
   monederos: Monederos[];
 

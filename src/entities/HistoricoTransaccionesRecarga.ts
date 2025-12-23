@@ -62,6 +62,18 @@ export class HistoricoTransaccionesRecarga {
   @Column('bigint', { name: 'IdUsuario', nullable: true })
   idUsuario: number | null;
 
+  @Column('bigint', { name: 'IdMetodoPago', nullable: true })
+  idMetodoPago: number | null;
+
+  @Column('varchar', { name: 'TokenCardNetPay', nullable: true, length: 150 })
+  tokenCardNetPay: string | null;
+
+  @Column('varchar', { name: 'TransactionTokenIdNetPay', nullable: true, length: 150 })
+  transactionTokenIdNetPay: string | null;
+
+  @Column('varchar', { name: 'ReferenceIdNetPay', nullable: true, length: 150 })
+  referenceIdNetPay: string | null;
+
   // -------- RELACIONES --------
 
 }

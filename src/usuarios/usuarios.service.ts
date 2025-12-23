@@ -822,7 +822,7 @@ ORDER BY u.Id DESC
     id: number,
     idUser: string,
     updateUsuarioContrasena: UpdateUsuarioContrasena,
-  ) {
+  ): Promise<ApiCrudResponse> {
     try {
       const usuario = await this.usuarioRepository.findOne({
         where: { id: id },
@@ -841,11 +841,9 @@ ORDER BY u.Id DESC
             usuario.passwordHash,
           ))
         ) {
-          console.log({
-            user: usuario,
+          throw new BadRequestException({
             message: 'Entré a verificar los valores y no son iguales.',
           });
-          throw new BadRequestException('Credenciales inválidas.');
         }
         const hashedPassword = await bcrypt.hash(
           updateUsuarioContrasena.passwordNueva,

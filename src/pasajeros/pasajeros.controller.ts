@@ -20,7 +20,8 @@ import { UpdatePasajeroEstatusDto } from './dto/update-pasajeros-estatus.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
 import { UpdatePasajeroEstadoSolicitudDto } from './dto/update-pasajeros-estado-solicitud.dto';
-import { ApiBearerAuth, ApiTags, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { UpdatePasajeroCustomerIdDto } from './dto/update-pasajero-customer-id.dto';
+import { ApiBearerAuth, ApiTags, ApiConsumes, ApiBody, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import * as multer from 'multer';
 
@@ -148,6 +149,27 @@ export class PasajerosController {
     return this.pasajerosService.updatePasajeroEstatus(
       id,
       updatePasajeroEstatusDto,
+      idUser,
+    );
+  }
+
+  @Patch('customer-netpay/:id')
+  @ApiOperation({ 
+    summary: 'Actualiza el CustomerIdNetPay de un pasajero',
+    description: 'Actualiza el CustomerIdNetPay de Netpay asociado a un pasajero específico.',
+  })
+  @ApiResponse({ status: 200, description: 'CustomerIdNetPay actualizado exitosamente' })
+  @ApiResponse({ status: 404, description: 'Pasajero no encontrado' })
+  @ApiResponse({ status: 400, description: 'Datos inválidos' })
+  updatePasajeroCustomerId(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updatePasajeroCustomerIdDto: UpdatePasajeroCustomerIdDto,
+    @Request() req,
+  ) {
+    const idUser = req.user.userId;
+    return this.pasajerosService.updatePasajeroCustomerId(
+      id,
+      updatePasajeroCustomerIdDto,
       idUser,
     );
   }

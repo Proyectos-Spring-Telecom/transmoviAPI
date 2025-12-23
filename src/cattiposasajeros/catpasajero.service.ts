@@ -64,7 +64,6 @@ export class CatpasajeroService {
       };
       return result;
     } catch (error) {
-      console.log(error)
       //-----Registro en la bitacora----- ERROR
       const querylogger = { createCatpasajeroDto };
       await this.bitacoraLogger.logToBitacora(

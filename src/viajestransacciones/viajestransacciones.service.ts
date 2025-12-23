@@ -63,7 +63,6 @@ export class ViajestransaccionesService {
       };
       return result;
     } catch (error) {
-      console.log(error)
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { createViajestransaccioneDto };
       await this.bitacoraLogger.logToBitacora(
@@ -411,7 +410,6 @@ ORDER BY v.Id DESC;
       };
       return result;
     } catch (error) {
-      console.log(error)
       if (error instanceof HttpException) {
         throw error;
       }

@@ -166,7 +166,6 @@ export class VerificacionesService {
       return result;
     } catch (error) {
       //-----Registro en la bitacora----- ERROR
-      console.log(error); 
       const querylogger = { createVerificacionesDto };
       await this.bitacoraLogger.logToBitacora(
         'Verificaciones',

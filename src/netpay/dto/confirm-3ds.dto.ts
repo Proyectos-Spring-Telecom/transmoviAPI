@@ -3,18 +3,20 @@ import { IsNotEmpty, IsString } from 'class-validator';
 
 export class Confirm3DSDto {
   @ApiProperty({
-    description: 'Transaction ID de la transacción 3DS',
-    example: 'txn_1234567890',
+    description: 'Transaction Token ID de la transacción 3DS (transaccionTokenId)',
+    example: 'transaccionTokenId_1234567890',
+    required: true,
   })
-  @IsString()
-  @IsNotEmpty()
-  transactionId: string;
+  @IsString({ message: 'transaccionTokenId must be a string' })
+  @IsNotEmpty({ message: 'transaccionTokenId should not be empty' })
+  transaccionTokenId: string;
 
   @ApiProperty({
-    description: 'Reference ID del checkout',
-    example: 'ref_1234567890',
+    description: 'Processor Transaction ID (query parameter)',
+    example: 'processorTransactionId',
+    required: true,
   })
-  @IsString()
-  @IsNotEmpty()
-  referenceId: string;
+  @IsString({ message: 'processorTransactionId must be a string' })
+  @IsNotEmpty({ message: 'processorTransactionId should not be empty' })
+  processorTransactionId: string;
 }

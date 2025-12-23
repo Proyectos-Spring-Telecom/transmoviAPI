@@ -1061,7 +1061,6 @@ ORDER BY i.Id DESC;
 
         // ✅ Verificar todos los componentes esten disponibles
         const erroresEstado: string[] = [];
-        console.log(instalacion.idValidador)
         // Verificar validador este disponible
         const validadorEstado = await this.validadoresRepository.findOne({
           where: {

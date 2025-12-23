@@ -28,6 +28,7 @@ import {
   EnumTipoTransaccion,
   EnumTipoTarifa,
   EnumTipoDescuentoTransbordo,
+  EnumMetodoPago,
 } from 'src/common/estatus.enum';
 import {
   transicionarEstado,
@@ -357,9 +358,20 @@ export class TransaccionesService {
         numeroSerieMonedero: createTransaccioneRecargaDto.numeroSerieMonedero,
         numeroSerieValidador: createTransaccioneRecargaDto.numeroSerieValidador,
         idUsuario: idUser, // Guardar el ID del usuario que realiza la recarga
+        idMetodoPago: createTransaccioneRecargaDto.idMetodoPago, // Guardar el método de pago
       });
       newTransaccion.idTipoTransaccion = EnumTipoTransaccion.RECARGA;
       newTransaccion.controlTransaccion = EnumControlTransacciones.PAGADO;
+
+      // Si el método de pago es Tarjeta (3 o 4), guardar los datos de Netpay
+      if (
+        createTransaccioneRecargaDto.idMetodoPago === EnumMetodoPago.TARJETA_CREDITO ||
+        createTransaccioneRecargaDto.idMetodoPago === EnumMetodoPago.TARJETA_DEBITO
+      ) {
+        newTransaccion.tokenCardNetPay = createTransaccioneRecargaDto.tokenCardNetPay || null;
+        newTransaccion.transactionTokenIdNetPay = createTransaccioneRecargaDto.transactionTokenIdNetPay || null;
+        newTransaccion.referenceIdNetPay = createTransaccioneRecargaDto.referenceIdNetPay || null;
+      }
       
 
     
@@ -392,7 +404,6 @@ export class TransaccionesService {
       return result;
     } catch (error) {
       // --- Registro en la bit?cora --- ERROR
-      console.log(JSON.stringify(error)); 
       const querylogger = { createTransaccioneRecargaDto };
       await this.bitacoraLogger.logToBitacora(
         'Transacciones',
@@ -611,12 +622,10 @@ export class TransaccionesService {
           .orderBy('COALESCE(td.fechaHoraInicio, td.fechaHoraFinal, td.fhRegistro)', 'ASC')
           .getMany();
 
-        console.log('Transbordos - Transacciones en rango:', transaccionesEnRango.length, '| NumeroTransbordos:', transaccionesEnRango.map(t => t.numeroTransbordo));
 
         if (transaccionesEnRango.length === 0) {
           // Es la primera transacci?n en ese rango de tiempo (cobro inicial)
           numeroTransbordo = 0;
-          console.log('NumeroTransbordo asignado: 0 (primera transacci?n)');
         } else {
           // Buscamos la transacci?n con numeroTransbordo = 0 (el cobro inicial)
           const cobroInicial = transaccionesEnRango.find((t) => t.numeroTransbordo === 0);
@@ -633,7 +642,6 @@ export class TransaccionesService {
             // Si el tiempo desde el cobro inicial ya pas?, reiniciamos el contador a 0
             if (fechaHoraTransaccion > fechaExpiracionCobroInicial) {
               numeroTransbordo = 0;
-              console.log('NumeroTransbordo asignado: 0 (tiempo expirado)');
             } else {
               // El cobro inicial todav?a est? vigente, continuamos con el consecutivo (1, 2, 3, etc.)
               // Incluimos todos los n?meros de transbordo (incluyendo 0) para calcular correctamente el m?ximo
@@ -649,24 +657,19 @@ export class TransaccionesService {
                 // Si se alcanz? o super? el m?ximo, reiniciamos el contador a 0
                 if (siguienteTransbordo > transbordoPermitido.numeroTransbordos) {
                   numeroTransbordo = 0;
-                  console.log('NumeroTransbordo asignado: 0 (m?ximo alcanzado)');
                 } else {
                   numeroTransbordo = siguienteTransbordo;
-                  console.log('NumeroTransbordo asignado:', numeroTransbordo, '(incrementado desde', maxNumeroTransbordo, ')');
                 }
               } else {
                 numeroTransbordo = 1;
-                console.log('NumeroTransbordo asignado: 1 (primer transbordo despu?s del inicial)');
               }
             }
           } else {
             // No hay cobro inicial (numeroTransbordo = 0) en el rango, empezamos en 0
             numeroTransbordo = 0;
-            console.log('NumeroTransbordo asignado: 0 (no hay cobro inicial en rango)');
           }
         }
         
-        console.log('NumeroTransbordo final:', numeroTransbordo);
 
         // Buscamos el costo del transbordo en DetalleTransbordos y aplicamos el descuento seg?n el tipo
         // Aplicamos el descuento si numeroTransbordo no es null (incluye 0) y hay tipo de descuento configurado
@@ -683,20 +686,16 @@ export class TransaccionesService {
             const tipoDescuentoTransbordo = Number(transbordoPermitido.idTipoDescuento);
             const costoTransbordo = Number(detalleTransbordo.costo);
 
-            console.log('Descuento transbordo - Tipo:', tipoDescuentoTransbordo, '| Enum MONETARIO:', EnumTipoDescuentoTransbordo.MONETARIO, '| Enum PORCENTAJE:', EnumTipoDescuentoTransbordo.PORCENTAJE, '| Costo:', costoTransbordo, '| NumeroTransbordo:', numeroTransbordo, '| TarifaBase:', tarifaBase);
 
             if (tipoDescuentoTransbordo === EnumTipoDescuentoTransbordo.MONETARIO) {
               // Si es monetario, descuento directo del costo del transbordo de la tarifa base
               montoCalculado = tarifaBase - costoTransbordo;
-              console.log('Aplicado descuento MONETARIO:', montoCalculado);
             } else if (tipoDescuentoTransbordo === EnumTipoDescuentoTransbordo.PORCENTAJE) {
               // Si es porcentaje, descuento porcentual calculado de la tarifa base
               // costoTransbordo contiene el porcentaje (ej: 10 = 10%)
               const descuentoPorcentual = (tarifaBase * costoTransbordo) / 100;
               montoCalculado = tarifaBase - descuentoPorcentual;
-              console.log('Aplicado descuento PORCENTAJE - Descuento:', descuentoPorcentual, '| Monto final:', montoCalculado);
             } else {
-              console.log('Tipo de descuento no reconocido:', tipoDescuentoTransbordo, '- No se aplica descuento');
             }
             
             // Asegurar que el monto no sea negativo
@@ -704,9 +703,7 @@ export class TransaccionesService {
               montoCalculado = 0;
             }
             
-            console.log('Monto calculado despu?s del descuento:', montoCalculado);
           } else {
-            console.log('No se encontr? detalle transbordo para nroTransbordo:', numeroTransbordo);
           }
         }
       }
@@ -726,12 +723,10 @@ export class TransaccionesService {
 
           switch (tipoDescuento) {
             case Number(EnumTipoDescuento.PORCENTAJE):
-              console.log('Entro a porcentaje');
               montoConDescuento =
                 montoConDescuento - (montoConDescuento * cantidad) / 100;
               break;
             case EnumTipoDescuento.MONETARIO:
-              console.log('Monetario');
               montoConDescuento = montoConDescuento - cantidad;
               break;
             case EnumTipoDescuento.NULO:
@@ -979,12 +974,10 @@ export class TransaccionesService {
 
           switch (tipoDescuento) {
             case Number(EnumTipoDescuento.PORCENTAJE):
-              console.log('Entro a porcentaje');
               montoConDescuento =
                 montoConDescuento - (montoConDescuento * cantidad) / 100;
               break;
             case EnumTipoDescuento.MONETARIO:
-              console.log('Monetario');
               montoConDescuento = montoConDescuento - cantidad;
               break;
             case EnumTipoDescuento.NULO:
@@ -1177,7 +1170,6 @@ export class TransaccionesService {
         fechaFin = fechaActual
         entidadRecarga = 'TransaccionesRecarga';
         entidadDebito = 'TransaccionesDebito';
-        console.log(fechaInicio, fechaFin, fechaActual, entidadDebito, entidadRecarga, rol);
         transacciones = await this.resolverPorRolDefault(fechaInicio, fechaFin, email, cliente, rol, page, limit, entidadDebito, entidadRecarga);
       } else {
         //Si fechaInicio y fechaFin no son null arroja las transacciones del dia de la tabla HistoricoTransaccionesRecarga y HistoricoTransaccionesDebito
@@ -1186,7 +1178,6 @@ export class TransaccionesService {
         fechaFin = fechaFin?.split("T")[0] ?? fechaActual;
         entidadRecarga = 'HistoricoTransaccionesRecarga';
         entidadDebito = 'HistoricoTransaccionesDebito';
-        console.log(fechaInicio, fechaFin, fechaActual, entidadDebito, entidadRecarga, rol);
         transacciones = await this.resolverPorRolDefault(fechaInicio, fechaFin, email, cliente, rol, page, limit, entidadDebito, entidadRecarga);
       }
 
@@ -1206,7 +1197,6 @@ export class TransaccionesService {
       if (error instanceof HttpException) {
         throw error;
       }
-      console.error('Error en paginado:', error);
       throw new BadRequestException({
         message: 'Error al obtener transacciones paginado.',
         error: error.message,
@@ -1249,6 +1239,7 @@ SELECT
     td.NumeroSerieMonedero AS numeroSerieMonedero,
     td.NumeroSerieValidador AS numeroSerieValidador,
     td.EsQR AS esQR,
+    NULL AS nombreMetodoPago,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -1401,6 +1392,7 @@ SELECT
     td.NumeroSerieMonedero AS numeroSerieMonedero,
     td.NumeroSerieValidador AS numeroSerieValidador,
     td.EsQR AS esQR,
+    NULL AS nombreMetodoPago,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -1453,6 +1445,7 @@ SELECT
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
     tr.NumeroSerieValidador AS numeroSerieValidador,
     NULL AS esQR,
+    COALESCE(cmp.Nombre, 'Efectivo') AS nombreMetodoPago,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -1472,6 +1465,8 @@ SELECT
 FROM ${entidadRecarga} tr
 INNER JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
+LEFT JOIN CatMetodoPago cmp 
+    ON tr.IdMetodoPago = cmp.Id
 LEFT JOIN Validadores d 
     ON tr.NumeroSerieValidador = d.NumeroSerie
 INNER JOIN Monederos m 
@@ -1567,6 +1562,7 @@ SELECT
     td.NumeroSerieMonedero AS numeroSerieMonedero,
     td.NumeroSerieValidador AS numeroSerieValidador,
     td.EsQR AS esQR,
+    NULL AS nombreMetodoPago,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -1620,6 +1616,7 @@ SELECT
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
     tr.NumeroSerieValidador AS numeroSerieValidador,
     NULL AS esQR,
+    COALESCE(cmp.Nombre, 'Efectivo') AS nombreMetodoPago,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -1639,6 +1636,8 @@ SELECT
 FROM ${entidadRecarga} tr
 INNER JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
+LEFT JOIN CatMetodoPago cmp 
+    ON tr.IdMetodoPago = cmp.Id
 LEFT JOIN Validadores d 
     ON tr.NumeroSerieValidador = d.NumeroSerie
 INNER JOIN Monederos m 
@@ -1732,6 +1731,7 @@ SELECT
     td.NumeroSerieMonedero AS numeroSerieMonedero,
     td.NumeroSerieValidador AS numeroSerieValidador,
     td.EsQR AS esQR,
+    NULL AS nombreMetodoPago,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -1784,6 +1784,7 @@ SELECT
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
     tr.NumeroSerieValidador AS numeroSerieValidador,
     NULL AS esQR,
+    COALESCE(cmp.Nombre, 'Efectivo') AS nombreMetodoPago,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -1803,6 +1804,8 @@ SELECT
 FROM ${entidadRecarga} tr
 INNER JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
+LEFT JOIN CatMetodoPago cmp 
+    ON tr.IdMetodoPago = cmp.Id
 LEFT JOIN Validadores d 
     ON tr.NumeroSerieValidador = d.NumeroSerie
 INNER JOIN Monederos m 
@@ -1877,7 +1880,6 @@ AND m.IdCliente IN (${placeholders})   -- ?? aqu? colocas el ID del cliente que 
 
       // Validar que transacciones sea un array
       if (!Array.isArray(transacciones)) {
-        console.error('transacciones no es un array:', transacciones);
         throw new BadRequestException({
           message: 'Error: las transacciones no se obtuvieron correctamente',
         });
@@ -1913,8 +1915,6 @@ AND m.IdCliente IN (${placeholders})   -- ?? aqu? colocas el ID del cliente que 
       if (error instanceof HttpException) {
         throw error;
       }
-      console.error('Error en resolverPorRolDefault:', error);
-      console.error('Rol:', rol, 'EntidadDebito:', entidadDebito, 'EntidadRecarga:', entidadRecarga);
       throw new BadRequestException({
         message: 'Error al obtener transacciones paginadas por rol',
         error: error.message,
@@ -2507,6 +2507,7 @@ SELECT
     td.NumeroSerieValidador AS numeroSerieValidador,
     td.ControlTransaccion AS controlTransaccion,
     td.EsQR AS esQR,
+    NULL AS nombreMetodoPago,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -2556,7 +2557,7 @@ SELECT
     tr.NumeroSerieValidador AS numeroSerieValidador,
     tr.ControlTransaccion AS controlTransaccion,
     NULL AS esQR,
-
+    COALESCE(cmp.Nombre, 'Efectivo') AS nombreMetodoPago,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -2576,6 +2577,8 @@ SELECT
 FROM ${entidadRecarga} tr
 INNER JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
+LEFT JOIN CatMetodoPago cmp 
+    ON tr.IdMetodoPago = cmp.Id
 LEFT JOIN Validadores d 
     ON tr.NumeroSerieValidador = d.NumeroSerie
 INNER JOIN Monederos m 
@@ -2605,26 +2608,33 @@ ORDER BY FHRegistro DESC
       td.Id AS id,
       ctt.Nombre AS tipoTransaccion,
       td.Monto AS monto,
-      td.Latitud AS latitud,
-      td.Longitud AS longitud,
-      td.FechaHora AS fechaHora,
+      NULL AS latitudInicial,
+      NULL AS longitudInicial,
+      td.LatitudFinal AS latitudFinal,
+      td.LongitudFinal AS longitudFinal,
+      NULL AS fechaHoraInicio,
+      td.FechaHoraFinal AS fechaHoraFinal,
       td.FHRegistro AS fhRegistro,
       td.NumeroSerieMonedero AS numeroSerieMonedero,
       td.NumeroSerieValidador AS numeroSerieValidador,
-      td.ControlTransaccion AS controlTransaccion,
+      td.EsQR AS esQR,
+      NULL AS nombreMetodoPago,
 
-      d.Marca AS marcaValidador,
-      d.Modelo AS modeloValidador,
+      -- Datos del cliente
+      c.Id AS idCliente,
+      c.Nombre AS nombreCliente,
+      c.ApellidoPaterno AS apellidoPaternoCliente,
+      c.ApellidoMaterno AS apellidoMaternoCliente,
 
-    -- Datos del dispositivo
-    d.Marca AS marcaDispositivo,
-    d.Modelo AS modeloDispositivo,
+      -- Datos del dispositivo
+      d.Marca AS marcaDispositivo,
+      d.Modelo AS modeloDispositivo,
 
-    -- Pasajero (v?a Monedero)
-    p.Id AS idPasajero,
-    p.Nombre AS nombrePasajero,
-    p.ApellidoPaterno AS apellidoPaternoPasajero,
-    p.ApellidoMaterno AS apellidoMaternoPasajero
+      -- Pasajero (v?a Monedero)
+      p.Id AS idPasajero,
+      p.Nombre AS nombrePasajero,
+      p.ApellidoPaterno AS apellidoPaternoPasajero,
+      p.ApellidoMaterno AS apellidoMaternoPasajero
 
 FROM ${entidadDebito} td
 INNER JOIN CatTiposTransacciones ctt 
@@ -2660,6 +2670,7 @@ SELECT
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
     tr.NumeroSerieValidador AS numeroSerieValidador,
     NULL AS esQR,
+    COALESCE(cmp.Nombre, 'Efectivo') AS nombreMetodoPago,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -2679,6 +2690,8 @@ SELECT
 FROM ${entidadRecarga} tr
 INNER JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
+LEFT JOIN CatMetodoPago cmp 
+    ON tr.IdMetodoPago = cmp.Id
 LEFT JOIN Validadores d 
     ON tr.NumeroSerieValidador = d.NumeroSerie
 INNER JOIN Monederos m 
@@ -2714,7 +2727,9 @@ SELECT
     td.FHRegistro AS fhRegistro,
     td.NumeroSerieMonedero AS numeroSerieMonedero,
     td.NumeroSerieValidador AS numeroSerieValidador,
+    td.ControlTransaccion AS controlTransaccion,
     td.EsQR AS esQR,
+    NULL AS nombreMetodoPago,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -2742,6 +2757,8 @@ SELECT
       ON td.NumeroSerieMonedero = m.NumeroSerie
   LEFT JOIN Pasajeros p 
       ON m.IdPasajero = p.Id
+  INNER JOIN Clientes c
+	ON m.IdCliente = c.Id
     
 -- condiciones
 WHERE DATE(td.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
@@ -2761,7 +2778,9 @@ SELECT
     tr.FHRegistro AS fhRegistro,
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
     tr.NumeroSerieValidador AS numeroSerieValidador,
+    tr.ControlTransaccion AS controlTransaccion,
     NULL AS esQR,
+    COALESCE(cmp.Nombre, 'Efectivo') AS nombreMetodoPago,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -2781,13 +2800,15 @@ SELECT
  FROM ${entidadRecarga} tr
   INNER JOIN CatTiposTransacciones ctt 
       ON tr.IdTipoTransaccion = ctt.Id
+  LEFT JOIN CatMetodoPago cmp 
+      ON tr.IdMetodoPago = cmp.Id
   LEFT JOIN Validadores d 
       ON tr.NumeroSerieValidador = d.NumeroSerie
   INNER JOIN Monederos m 
       ON tr.NumeroSerieMonedero = m.NumeroSerie
   LEFT JOIN Pasajeros p 
       ON m.IdPasajero = p.Id
-INNER JOIN Clientes c
+  INNER JOIN Clientes c
 	ON m.IdCliente = c.Id
     
 -- condiciones
@@ -2823,6 +2844,7 @@ ORDER BY FHRegistro DESC
       }
       throw new BadRequestException({
         message: 'Error al obtener transacciones',
+        error: error?.message || 'Error desconocido',
       });
     }
   }
@@ -3069,10 +3091,12 @@ SELECT
     u.Id AS idUsuarioRecarga,
     u.Nombre AS nombreUsuario,
     u.ApellidoPaterno AS apellidoPaternoUsuario,
-    u.ApellidoMaterno AS apellidoMaternoUsuario
+    u.ApellidoMaterno AS apellidoMaternoUsuario,
+    COALESCE(cmp.Nombre, 'Efectivo') AS nombreMetodoPago
 
 FROM HistoricoTransaccionesRecarga htr
 INNER JOIN CatTiposTransacciones ctt ON htr.IdTipoTransaccion = ctt.Id
+LEFT JOIN CatMetodoPago cmp ON htr.IdMetodoPago = cmp.Id
 INNER JOIN Monederos m ON htr.NumeroSerieMonedero = m.NumeroSerie
 INNER JOIN Clientes c ON m.IdCliente = c.Id
 LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
@@ -3135,10 +3159,12 @@ SELECT
     u.Id AS idUsuarioRecarga,
     u.Nombre AS nombreUsuario,
     u.ApellidoPaterno AS apellidoPaternoUsuario,
-    u.ApellidoMaterno AS apellidoMaternoUsuario
+    u.ApellidoMaterno AS apellidoMaternoUsuario,
+    COALESCE(cmp.Nombre, 'Efectivo') AS nombreMetodoPago
 
 FROM HistoricoTransaccionesRecarga htr
 INNER JOIN CatTiposTransacciones ctt ON htr.IdTipoTransaccion = ctt.Id
+LEFT JOIN CatMetodoPago cmp ON htr.IdMetodoPago = cmp.Id
 INNER JOIN Monederos m ON htr.NumeroSerieMonedero = m.NumeroSerie
 INNER JOIN Clientes c ON m.IdCliente = c.Id
 LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
@@ -3199,10 +3225,12 @@ SELECT
     u.Id AS idUsuarioRecarga,
     u.Nombre AS nombreUsuario,
     u.ApellidoPaterno AS apellidoPaternoUsuario,
-    u.ApellidoMaterno AS apellidoMaternoUsuario
+    u.ApellidoMaterno AS apellidoMaternoUsuario,
+    COALESCE(cmp.Nombre, 'Efectivo') AS nombreMetodoPago
 
 FROM HistoricoTransaccionesRecarga htr
 INNER JOIN CatTiposTransacciones ctt ON htr.IdTipoTransaccion = ctt.Id
+LEFT JOIN CatMetodoPago cmp ON htr.IdMetodoPago = cmp.Id
 INNER JOIN Monederos m ON htr.NumeroSerieMonedero = m.NumeroSerie
 INNER JOIN Clientes c ON m.IdCliente = c.Id
 LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
@@ -3298,10 +3326,12 @@ SELECT
     u.Id AS idUsuarioRecarga,
     u.Nombre AS nombreUsuario,
     u.ApellidoPaterno AS apellidoPaternoUsuario,
-    u.ApellidoMaterno AS apellidoMaternoUsuario
+    u.ApellidoMaterno AS apellidoMaternoUsuario,
+    COALESCE(cmp.Nombre, 'Efectivo') AS nombreMetodoPago
 
 FROM HistoricoTransaccionesRecarga htr
 INNER JOIN CatTiposTransacciones ctt ON htr.IdTipoTransaccion = ctt.Id
+LEFT JOIN CatMetodoPago cmp ON htr.IdMetodoPago = cmp.Id
 INNER JOIN Monederos m ON htr.NumeroSerieMonedero = m.NumeroSerie
 INNER JOIN Clientes c ON m.IdCliente = c.Id
 LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id

@@ -123,3 +123,10 @@ export enum EnumTipoDescuentoTransbordo {
   MONETARIO = 1,
   PORCENTAJE = 2,
 }
+
+export enum EnumMetodoPago {
+  EFECTIVO = 1,
+  TRANSFERENCIA = 2,
+  TARJETA_CREDITO = 3,
+  TARJETA_DEBITO = 4,
+}

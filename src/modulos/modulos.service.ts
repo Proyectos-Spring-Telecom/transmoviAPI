@@ -153,7 +153,6 @@ export class ModulosService {
     } catch (error) {
     if (error instanceof HttpException) throw error;
 
-    console.error('Error interno:', error);
 
     throw new HttpException(
       {

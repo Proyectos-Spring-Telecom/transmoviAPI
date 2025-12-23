@@ -34,7 +34,6 @@ export class TalleresController {
 
   @Get('list')
   findAll(@Req() req:any) {
-    console.log(req.user)
     return this.talleresService.findAll(req);
   }
 

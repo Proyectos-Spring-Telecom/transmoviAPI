@@ -410,7 +410,6 @@ WHERE d.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente
       };
       return result;
     } catch (error) {
-      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }

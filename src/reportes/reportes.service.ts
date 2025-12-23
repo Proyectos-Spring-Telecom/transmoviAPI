@@ -132,15 +132,8 @@ HAVING COUNT(DISTINCT td.Id) > 0
 ORDER BY DATE(td.FHRegistro) DESC, reg.Nombre, r.Nombre, d.Nombre;
       `;
 
-      console.log('=== DEBUG REPORTE RECAUDACIÓN DIARIA POR RUTA ===');
-      console.log('Filtros recibidos:', filtros);
-      console.log('Cliente IDs:', clienteIds);
-      console.log('Parámetros:', parametros);
-      
       const resultados = await this.clienteRepository.query(query, parametros);
       
-      console.log('Resultados obtenidos:', resultados.length);
-      console.log('=== FIN DEBUG ===');
 
       // Formatear resultados
       const data = resultados.map((row: any) => ({
@@ -165,7 +158,6 @@ ORDER BY DATE(td.FHRegistro) DESC, reg.Nombre, r.Nombre, d.Nombre;
         data,
       };
     } catch (error) {
-      console.error('Error en recaudacionDiariaPorRuta:', error);
       if (error instanceof BadRequestException) {
         throw error;
       }
@@ -285,15 +277,8 @@ ORDER BY datos.ingresos DESC, datos.operador ASC;
         parametrosCompletos.push(filtros.idOperador);
       }
 
-      console.log('=== DEBUG RECAUDACIÓN POR OPERADOR ===');
-      console.log('Filtros:', filtros);
-      console.log('Cliente IDs:', clienteIds);
-      console.log('Parámetros completos:', parametrosCompletos);
-      
       const resultados = await this.clienteRepository.query(query, parametrosCompletos);
       
-      console.log('Resultados obtenidos:', resultados.length);
-      console.log('=== FIN DEBUG ===');
 
       // Formatear resultados
       const data = resultados.map((row: any) => {
@@ -316,7 +301,6 @@ ORDER BY datos.ingresos DESC, datos.operador ASC;
         data,
       };
     } catch (error) {
-      console.error('Error en recaudacionPorOperador:', error);
       if (error instanceof BadRequestException) {
         throw error;
       }
@@ -445,15 +429,8 @@ ORDER BY datos.ingresos DESC, datos.numeroEconomico ASC;
         parametrosCompletos.push(filtros.idRuta);
       }
 
-      console.log('=== DEBUG RECAUDACIÓN POR VEHÍCULO ===');
-      console.log('Filtros:', filtros);
-      console.log('Cliente IDs:', clienteIds);
-      console.log('Parámetros completos:', parametrosCompletos);
-      
       const resultados = await this.clienteRepository.query(query, parametrosCompletos);
       
-      console.log('Resultados obtenidos:', resultados.length);
-      console.log('=== FIN DEBUG ===');
 
       // Formatear resultados
       const data = resultados.map((row: any) => ({
@@ -476,7 +453,6 @@ ORDER BY datos.ingresos DESC, datos.numeroEconomico ASC;
         data,
       };
     } catch (error) {
-      console.error('Error en recaudacionPorVehiculo:', error);
       if (error instanceof BadRequestException) {
         throw error;
       }
@@ -590,15 +566,8 @@ ORDER BY datos.ingresos DESC, datos.serieDispositivo ASC;
         parametrosCompletos.push(filtros.idInstalacion);
       }
 
-      console.log('=== DEBUG RECAUDACIÓN POR DISPOSITIVO ===');
-      console.log('Filtros:', filtros);
-      console.log('Cliente IDs:', clienteIds);
-      console.log('Parámetros completos:', parametrosCompletos);
-      
       const resultados = await this.clienteRepository.query(query, parametrosCompletos);
       
-      console.log('Resultados obtenidos:', resultados.length);
-      console.log('=== FIN DEBUG ===');
 
       // Formatear resultados
       const data = resultados.map((row: any) => ({
@@ -622,7 +591,6 @@ ORDER BY datos.ingresos DESC, datos.serieDispositivo ASC;
         data,
       };
     } catch (error) {
-      console.error('Error en recaudacionPorDispositivo:', error);
       if (error instanceof BadRequestException) {
         throw error;
       }

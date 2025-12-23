@@ -1221,14 +1221,12 @@ ORDER BY m.Id DESC;
             estatus: EstatusEnum.INACTIVO,
           });
         } catch (comparisonError) {
-          console.error('Error al comparar QR existente:', comparisonError);
           // Si hay error al comparar, desactivar el anterior y generar uno nuevo
           try {
             await this.qrCodesRepository.update(qrExistente.id, {
               estatus: EstatusEnum.INACTIVO,
             });
           } catch (updateError) {
-            console.error('Error al desactivar QR anterior:', updateError);
           }
         }
       }
@@ -1271,7 +1269,6 @@ ORDER BY m.Id DESC;
       };
     } catch (error) {
       // Log del error para debugging
-      console.error('Error al generar QR:', error);
       
       if (error instanceof HttpException) {
         throw error;

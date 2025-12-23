@@ -162,7 +162,6 @@ export class MantenimientoVehicularService {
       return result;
     } catch (error) {
       //-----Registro en la bitacora----- ERROR
-      console.log(error); 
       const querylogger = { createMantenimientoVehicularDto };
       await this.bitacoraLogger.logToBitacora(
         'MantenimientoVehicular',

@@ -153,7 +153,6 @@ export class AuthService {
         );
       } catch (emailError) {
         // Log del error pero no fallar la creación del pasajero
-        console.error('Error al enviar correo de confirmación:', emailError);
       }
 
       //afiliamos el monedero al pasajero y cambiamos estatus activo
@@ -204,7 +203,6 @@ export class AuthService {
       };
       return result;
     } catch (error) {
-      console.log(JSON.stringify(error));
       if (error instanceof HttpException) {
         throw error;
       }
@@ -338,6 +336,10 @@ FROM DatosUsuario du
 LEFT JOIN LicenciasJSON lj ON lj.IdUsuario = du.IdUsuario;
           `)
 
+      if (!operador || operador.length === 0 || !operador[0]) {
+        throw new NotFoundException('No se encontró información del operador.');
+      }
+
       const payload = {
         id: user.id,
         email: user.userName,
@@ -387,7 +389,6 @@ LEFT JOIN LicenciasJSON lj ON lj.IdUsuario = du.IdUsuario;
   // ========================================
   async signIn(loginAuthDto: LoginAuthDto) {
     try {
-      console.log("HOLA")
       const user = await this.usuariosRepository.findOne({
         relations: ['idRol2', 'idCliente2', 'idCliente2.idPadre2'],
         where: {
@@ -399,7 +400,6 @@ LEFT JOIN LicenciasJSON lj ON lj.IdUsuario = du.IdUsuario;
           },
         },
       });
-      console.log(user);
       if (!user) {
         throw new NotFoundException('No se encontró al usuario.');
       }
@@ -408,10 +408,6 @@ LEFT JOIN LicenciasJSON lj ON lj.IdUsuario = du.IdUsuario;
         !user ||
         !(await bcrypt.compare(loginAuthDto.password, user.passwordHash))
       ) {
-        console.log({
-          user: user,
-          message: 'Entro a verificar los valores y no son iguales',
-        });
         throw new UnauthorizedException('Credenciales invalidas');
       }
 
@@ -504,6 +500,10 @@ SELECT
 FROM DatosUsuario du
 LEFT JOIN LicenciasJSON lj ON lj.IdUsuario = du.IdUsuario;
           `)
+        if (!operador || operador.length === 0 || !operador[0]) {
+          throw new NotFoundException('No se encontró información del operador.');
+        }
+
         const payload = {
           id: user.id,
           email: user.userName,
@@ -532,7 +532,6 @@ LEFT JOIN LicenciasJSON lj ON lj.IdUsuario = du.IdUsuario;
           ultimoLogin: operador[0].ultimoLogin,
           fechaCreacion: operador[0].fechaCreacion,
           fotoPerfil: operador[0].fotoOperador,
-          deviceId: operador[0].deviceId,
           pinExist: pin,
           userName: user.userName,
           Licencias: operador[0].Licencias,
@@ -678,7 +677,7 @@ Muchas gracias por su preferencia.`;
       const token = this.jwtService.sign(payload, {
         expiresIn: `${process.env.JWT_CONFIRMACION}`,
       });
-      const name = `${user.nombre} ${user.apellidoPaterno} ${user.apellidoMaterno}`;
+      const name = `${user.nombre ?? ''} ${user.apellidoPaterno ?? ''} ${user.apellidoMaterno ?? ''}`.trim();
       await this.emailService.sendResetPasswordEmail(
         user.userName,
         name,
@@ -768,7 +767,7 @@ Muchas gracias por su preferencia.`;
       const token = this.jwtService.sign(payload, {
         expiresIn: `${process.env.JWT_CONFIRMACION}`,
       });
-      const name = `${user.nombre} ${user.apellidoPaterno} ${user.apellidoMaterno}`;
+      const name = `${user.nombre ?? ''} ${user.apellidoPaterno ?? ''} ${user.apellidoMaterno ?? ''}`.trim();
       await this.emailService.sendConfirmationEmail(
         user.userName,
         name,

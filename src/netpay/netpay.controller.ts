@@ -12,10 +12,11 @@ import {
   HttpStatus,
   BadRequestException,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiExcludeEndpoint } from '@nestjs/swagger';
 import { NetpayService } from './netpay.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { CreatePaymentDto } from './dto/create-payment.dto';
+import { PaymentSavedCardDto } from './dto/payment-saved-card.dto';
 import { AssignCardDto } from './dto/assign-card.dto';
 import { Confirm3DSDto } from './dto/confirm-3ds.dto';
 import { CancelRefundDto } from './dto/cancel-refund.dto';
@@ -121,16 +122,16 @@ export class NetpayController {
     });
   }
 
-  @Delete('customers/:customerId/cards/:cardId')
+  @Delete('customers/:customerId/cards/:tokenCard')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Elimina una tarjeta de un cliente' })
   @ApiResponse({ status: 200, description: 'Tarjeta eliminada exitosamente' })
   @ApiResponse({ status: 404, description: 'Tarjeta no encontrada' })
   async deleteCard(
     @Param('customerId') customerId: string,
-    @Param('cardId') cardId: string,
+    @Param('tokenCard') tokenCard: string,
   ) {
-    return this.netpayService.deleteCard(customerId, cardId);
+    return this.netpayService.deleteCard(customerId, tokenCard);
   }
 
   @Post('payment/saved-card')
@@ -138,20 +139,18 @@ export class NetpayController {
   @ApiOperation({
     summary: 'Procesa un pago con tarjeta guardada',
     description:
-      'Procesa un pago usando una tarjeta previamente guardada asociada a un cliente. ' +
-      'Requiere customerId y cardId. El cliente debe haber sido creado previamente y tener tarjetas guardadas.',
+      'Procesa un pago usando una tarjeta previamente guardada identificada por referenceID. ' +
+      'Requiere referenceID que identifica la tarjeta guardada. El formato del payload debe coincidir exactamente con Netpay v3.5/charges.',
   })
   @ApiResponse({ status: 200, description: 'Pago procesado exitosamente' })
   @ApiResponse({ status: 400, description: 'Datos inválidos o pago rechazado' })
-  async processPaymentWithSavedCard(@Body() createPaymentDto: CreatePaymentDto) {
-    return this.netpayService.processPaymentWithSavedCard(createPaymentDto);
+  async processPaymentWithSavedCard(@Body() paymentSavedCardDto: PaymentSavedCardDto) {
+    return this.netpayService.processPaymentWithSavedCard(paymentSavedCardDto);
   }
 
   @Post('3ds/confirm')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Confirma una transacción después de 3D Secure' })
-  @ApiResponse({ status: 200, description: 'Transacción confirmada exitosamente' })
-  @ApiResponse({ status: 400, description: 'Datos inválidos' })
+  @ApiExcludeEndpoint()
   async confirm3DSPayment(@Body() confirm3DSDto: Confirm3DSDto) {
     return this.netpayService.confirm3DSPayment(confirm3DSDto);
   }
@@ -164,18 +163,18 @@ export class NetpayController {
     return this.netpayService.getTransactionDetails(transactionId);
   }
 
-  @Put('transactions/:transactionId/refund')
+  @Put('transactions/:tokenId/refund')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Cancela o reembolsa una transacción' })
   @ApiResponse({ status: 200, description: 'Transacción cancelada/reembolsada exitosamente' })
   @ApiResponse({ status: 400, description: 'Datos inválidos' })
   async cancelOrRefund(
-    @Param('transactionId') transactionId: string,
+    @Param('tokenId') tokenId: string,
     @Body() cancelRefundDto: CancelRefundDto,
   ) {
     return this.netpayService.cancelOrRefund({
       ...cancelRefundDto,
-      transactionId,
+      tokenId,
     });
   }
 }

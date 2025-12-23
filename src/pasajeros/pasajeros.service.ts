@@ -29,6 +29,7 @@ import {
 } from 'src/common/estatus.enum';
 import { Monederos } from 'src/entities/Monederos';
 import { UpdatePasajeroEstadoSolicitudDto } from './dto/update-pasajeros-estado-solicitud.dto';
+import { UpdatePasajeroCustomerIdDto } from './dto/update-pasajero-customer-id.dto';
 import { S3Service } from 'src/s3/s3.service';
 
 @Injectable()
@@ -1145,6 +1146,76 @@ GROUP BY p.Id, u.Id, u.UserName, p.Nombre, p.ApellidoPaterno, p.ApellidoMaterno;
       }
       throw new InternalServerErrorException(
         'Ha ocurrido un error durante el proceso de eliminación del pasajero.',
+      );
+    }
+  }
+
+  /**
+   * Actualiza el CustomerIdNetPay de un pasajero
+   * @param id ID del pasajero
+   * @param updatePasajeroCustomerIdDto DTO con el CustomerIdNetPay
+   * @param idUser ID del usuario que realiza la actualización
+   * @returns Respuesta de la actualización
+   */
+  async updatePasajeroCustomerId(
+    id: number,
+    updatePasajeroCustomerIdDto: UpdatePasajeroCustomerIdDto,
+    idUser: number,
+  ): Promise<ApiCrudResponse> {
+    try {
+      const pasajero = await this.pasajeroRepository.findOne({
+        where: { id: id },
+      });
+      if (!pasajero) {
+        throw new NotFoundException(
+          `No se encontró un pasajero con ID: ${id}.`,
+        );
+      }
+
+      const { customerIdNetPay } = updatePasajeroCustomerIdDto;
+      await this.pasajeroRepository.update(id, { customerIdNetPay });
+
+      //-----Registro en la bitacora----- SUCCESS
+      const querylogger = { id, customerIdNetPay };
+      await this.bitacoraLogger.logToBitacora(
+        'Pasajero',
+        `Se ha actualizado el CustomerIdNetPay del pasajero con ID: ${id} a: ${customerIdNetPay}.`,
+        'UPDATE',
+        querylogger,
+        idUser,
+        EnumModulos.PASAJEROS,
+        EstatusEnumBitcora.SUCCESS,
+      );
+
+      //Api response
+      const result: ApiCrudResponse = {
+        status: 'success',
+        message: `El CustomerIdNetPay del pasajero con ID: ${id} ha sido actualizado correctamente.`,
+        data: {
+          id: id,
+          nombre: `${pasajero.nombre} ${pasajero.apellidoPaterno} ` || '',
+        },
+      };
+      return result;
+    } catch (error) {
+      //-----Registro en la bitacora----- ERROR
+      const querylogger = { id, updatePasajeroCustomerIdDto };
+      await this.bitacoraLogger.logToBitacora(
+        'Pasajero',
+        `Error al actualizar el CustomerIdNetPay del pasajero con ID: ${id}.`,
+        'UPDATE',
+        querylogger,
+        idUser,
+        EnumModulos.PASAJEROS,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Ha ocurrido un error durante el proceso de actualización del CustomerIdNetPay del pasajero.',
       );
     }
   }

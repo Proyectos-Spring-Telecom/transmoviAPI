@@ -363,7 +363,6 @@ export class PermisosService {
 
       return permisosAgrupados;
     } catch (error) {
-      console.error('Error al obtener permisos agrupados:', error);
       throw error; // Lanzar el error para manejarlo en la capa superior si es necesario
     }
   }

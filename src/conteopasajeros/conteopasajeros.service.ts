@@ -162,7 +162,6 @@ export class ConteopasajerosService {
         );
       } catch (bitacoraError) {
         // Log del error de bitácora pero no afectar la respuesta
-        console.error('Error al registrar en bitácora:', bitacoraError);
       }
 
       return result;

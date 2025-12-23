@@ -107,7 +107,6 @@ export class IncidentesService {
       return result;
     } catch (error) {
       //-----Registro en la bitacora----- ERROR
-      console.log(error);
       const querylogger = { createIncidentesDto };
       await this.bitacoraLogger.logToBitacora(
         'Incidentes',
