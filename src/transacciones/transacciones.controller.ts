@@ -93,20 +93,20 @@ export class TransaccionesController {
     );
   }
 
-  @Post('recargas/historico')
+  @Post('paginado/recargas')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({
-    summary: 'Obtiene el histórico de recargas paginado',
+    summary: 'Obtiene el listado de recargas paginado',
     description:
-      'Obtiene el histórico de recargas con paginación. Los filtros se aplican según el rol del usuario:\n' +
+      'Obtiene el listado de recargas con paginación. Los filtros se aplican según el rol del usuario:\n' +
       '- SA (rol 1): Todas las recargas\n' +
       '- ADMIN (rol 2): Sus recargas y las de clientes hijos\n' +
       '- Cajero (rol 3): Solo sus recargas\n' +
       '- Pasajero (rol 9): Solo las recargas de sus monederos',
   })
-  @ApiResponse({ status: 200, description: 'Histórico de recargas obtenido exitosamente' })
+  @ApiResponse({ status: 200, description: 'Listado de recargas obtenido exitosamente' })
   @ApiResponse({ status: 400, description: 'Datos inválidos' })
-  async getHistoricoRecargas(
+  async getRecargas(
     @Body() getHistoricoRecargasDto: GetHistoricoRecargasDto,
     @Request() req,
   ): Promise<ApiResponseCommon> {
