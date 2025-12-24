@@ -20,7 +20,7 @@ import {
 import { UsuariosRegiones } from 'src/entities/UsuariosRegiones';
 import { UpdateRutasEstatusDto } from './dto/update-ruta-estatus.dto';
 import { Clientes } from 'src/entities/Clientes';
-import { EnumModulos } from 'src/common/estatus.enum';
+import { EnumModulos, EstatusEnum } from 'src/common/estatus.enum';
 
 @Injectable()
 export class RutasService {
@@ -34,7 +34,7 @@ export class RutasService {
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
-  ) {}
+  ) { }
 
   // ========================================
   // 🔹 CREAR UNA RUTA
@@ -47,18 +47,51 @@ export class RutasService {
   ): Promise<ApiCrudResponse> {
     try {
       let region;
-      const idRegionRuta = createRutaDto.idRegion;
-
+      let idRutaRegreso;
       region = await this.regionesRepository.findOne({
         where: { id: createRutaDto.idRegion },
       });
       if (!region) throw new NotFoundException('Region no encontrada');
 
-      const newRuta = this.rutasRepository.create(createRutaDto);
-      const rutaSave = await this.rutasRepository.save(newRuta);
+      const { estatusRutaRegreso: _, ...bodyRuta } = createRutaDto
+
+      if (createRutaDto.estatusRutaRegreso === 1) {
+        const rutaRegreso = this.rutasRepository.create({
+          nombre: bodyRuta.nombre + ' ' + 'Regreso',
+          puntoInicio: bodyRuta.puntoFin,
+          nombreInicio: bodyRuta.nombreFin,
+          puntoFin: bodyRuta.puntoInicio,
+          nombreFin: bodyRuta.nombreInicio,
+          estatus: EstatusEnum.ACTIVO,
+          idRegion: bodyRuta.idRegionFin === undefined || bodyRuta.idRegionFin === null ? bodyRuta.idRegion : bodyRuta.idRegionFin,
+          idRegionFin: bodyRuta.idRegionFin === null || bodyRuta.idRegionFin === undefined ? null : bodyRuta.idRegion
+        })
+        //const rutaRegresoSave = await this.rutasRepository.save(rutaRegreso);
+        //idRutaRegreso = rutaRegresoSave.id
+
+        console.log('Ruta regreso', rutaRegreso, 'ver id region: ', typeof(bodyRuta.idRegion))
+      } else {
+        idRutaRegreso = null
+      }
+
+
+      const newRuta = this.rutasRepository.create({
+        nombre: bodyRuta.nombre,
+        puntoInicio: bodyRuta.puntoInicio,
+        nombreInicio: bodyRuta.nombreInicio,
+        puntoFin: bodyRuta.puntoFin,
+        nombreFin: bodyRuta.nombreFin,
+        estatus: EstatusEnum.ACTIVO,
+        idRegion: bodyRuta.idRegion,
+        idRegionFin: bodyRuta.idRegionFin || null,
+        IdRutaRegreso: idRutaRegreso
+      });
+      console.log('DTO: ', bodyRuta)
+
+      //const rutaSave = await this.rutasRepository.save(newRuta);
 
       // Registro en la bitácora SUCCESS
-      const querylogger = { createRutaDto };
+      /* const querylogger = { createRutaDto };
       await this.bitacoraLogger.logToBitacora(
         'Rutas',
         `Se creó una ruta con nombre: ${rutaSave.nombre}  y Id ${rutaSave.id}`,
@@ -67,15 +100,18 @@ export class RutasService {
         idUser,
         EnumModulos.RUTAS,
         EstatusEnumBitcora.SUCCESS,
-      );
+      ); 
+      rutaSave.id
+      Ruta ${rutaSave.id} Nombre: ${rutaSave.nombre}
+      */
 
       // API response (con mensajes corregidos)
       const result: ApiCrudResponse = {
         status: 'success',
         message: 'Ruta creada correctamente',
         data: {
-          id: Number(rutaSave.id),
-          nombre: `Ruta ${rutaSave.id} Nombre: ${rutaSave.nombre}`,
+          id: Number(1),
+          nombre: ``,
         },
       };
       return result;

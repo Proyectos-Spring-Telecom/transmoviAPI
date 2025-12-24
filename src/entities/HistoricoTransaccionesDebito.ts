@@ -18,11 +18,11 @@ export class HistoricoTransaccionesDebito {
   @Column('bigint', { name: 'IdTipoTransaccion' })
   idTipoTransaccion: number;
 
-  @Column('tinyint', { name: 'ControlTransaccion', nullable: true, unsigned: true })
-  controlTransaccion: number | null;
-
   @Column('decimal', { name: 'Monto', precision: 10, scale: 2 })
   monto: number;
+
+  @Column('bigint', { name: 'IdControlTransaccion', nullable: true })
+  idControlTransaccion: number | null;
 
   @Column('decimal', { name: 'LatitudInicial', precision: 10, scale: 7, nullable: true })
   latitudInicial: number | null;
@@ -66,6 +66,12 @@ export class HistoricoTransaccionesDebito {
 
   @Column('varchar', { name: 'NumeroSerieDispositivo', length: 100 })
   numeroSerieDispositivo: string;
+
+  @Column('bigint', { name: 'IdViajes', nullable: true })
+  idViajes: number | null;
+
+  @Column('bigint', { name: 'IdUsuario', nullable: true })
+  idUsuario: number | null;
 
   // -------- RELACIONES --------
 

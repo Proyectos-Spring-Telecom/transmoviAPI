@@ -10,6 +10,16 @@ import {
 } from 'class-validator';
 
 export class CreateRutaDto {
+
+  @ApiProperty({
+    description: 'Variable para crear ruta de regreso',
+    example: '0 No generar ruta de regreso, 1 Generar ruta de regreso',
+  })
+  @IsNumber()
+  @IsIn([0, 1], { message: 'Solo puede ser 0 ó 1' })
+  @IsNotEmpty()
+  estatusRutaRegreso: number;
+
   @ApiProperty({
     description: 'Nombre de la ruta',
     example: 'Ruta Centro - Norte',
@@ -78,4 +88,8 @@ export class CreateRutaDto {
   @IsOptional()
   @IsNumber()
   idRegionFin?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  idRutaRegreso?: number | null;
 }

@@ -41,7 +41,7 @@ import { HistoricoTransaccionesDebito } from 'src/entities/HistoricoTransaccione
 import { UpdateTransaccioneDebitoDto } from './dto/update-transaccione-debito.dto';
 import { GetTransaccioneDto } from './dto/get-transacciones.dto';
 import { Viajes } from 'src/entities/Viajes';
-import { calcularDistanciaHastaIndex, snapToRoute } from 'src/utils/recorrido.utils';
+import { calcularDistanciaHastaIndex, calcularDistanciaReal, snapToRoute } from 'src/utils/recorrido.utils';
 
 @Injectable()
 export class TransaccionesService {
@@ -166,6 +166,7 @@ export class TransaccionesService {
     idUser: number,
   ): Promise<ApiCrudResponse> {
     let estado: EstadoTransaccion = EstadoTransaccion.INICIADA;
+    let idUsuario;
 
     try {
       // 1️⃣ Cambiamos estado a VALIDANDO_SALDO
@@ -179,10 +180,38 @@ export class TransaccionesService {
         },
       });
 
+      //controlTransaccion
+
       if (!monedero) {
         estado = EstadoTransaccion.ERROR;
         throw new BadRequestException('Monedero no encontrado');
       }
+
+      const query = `
+SELECT 
+    m.Id AS idMonedero,
+    p.Id AS idPasajero,
+    u.Id AS idUsuarioPasajero,
+    u.Nombre AS nombrePasajero,
+    u.ApellidoMaterno AS apellidoMaterno
+FROM
+    Monederos m
+        INNER JOIN
+    Pasajeros p ON m.IdPasajero = p.Id
+        INNER JOIN
+    Usuarios u ON p.Correo = u.UserName
+WHERE
+    m.NumeroSerie = '${createTransaccioneDebitoDto.numeroSerieMonedero}'
+    `
+      const pasajero = await this.viajesRepository.query(query);
+
+      if (pasajero.length != 0) {
+        const { idUsuarioPasajero } = pasajero[0];
+        idUsuario = idUsuarioPasajero
+      } else {
+        idUsuario = null
+      }
+
 
       // 3️⃣ Calculamos monto final (aquí se pueden aplicar descuentos si existen)
 
@@ -194,7 +223,7 @@ export class TransaccionesService {
         recorridoInterpolar,
         distanciaKm,
         tarifaBase,
-        distanciaBaseKm,
+        DistanciaBaseKm,
         incrementoCadaMetros,
         costoAdicional,
         tipoTarifa
@@ -204,34 +233,14 @@ export class TransaccionesService {
         throw new BadRequestException(`Transacción realizada fuera del viaje o del turno.`)
       }
 
-      //Obtenemos la fecha con desfase de 6 horas
-      const fechaDesfasada = horaDesfasada
-
-      //Creamos el body para crear una transaccion
-      const bodyTransaccionDebito = {
-        idTipoTransaccion: EnumTipoTransaccion.DEBITO,
-        monto: 0,
-        controlTransaccion: null,
-        latitudInicial: createTransaccioneDebitoDto.latitud,
-        longitudInicial: createTransaccioneDebitoDto.longitud,
-        fechaHoraInicio: fechaDesfasada,
-        distanciaInicialKm: null,
-        latitudFinal: null,
-        longitudFinal: null,
-        fechaHoraFinal: null,
-        numeroSerieMonedero: createTransaccioneDebitoDto.numeroSerieMonedero,
-        numeroSerieDispositivo: createTransaccioneDebitoDto.numeroSerieDispositivo,
-
-      }
-
       //Creamos las variables para nuesto flujo de montoTarifa
       const controlTarifaIncremental = EnumControlTarifaIncremental.INICIAL;
 
-      const { montoCalculado, controlTransaccion } = await this.montoTarifa(
+      const { montoCalculado, controlTransaccion, distanciaInicial } = await this.montoTarifa(
         recorridoInterpolar,
         distanciaKm,
         tarifaBase,
-        distanciaBaseKm,
+        DistanciaBaseKm,
         incrementoCadaMetros,
         costoAdicional,
         tipoTarifa,
@@ -241,8 +250,6 @@ export class TransaccionesService {
       );
 
 
-
-      createTransaccioneDebitoDto.controlTransaccion = controlTransaccion;
       let montoConDescuento = montoCalculado;
 
       if (monedero.idTipoPasajero) {
@@ -272,8 +279,9 @@ export class TransaccionesService {
         }
       }
 
-
       let montoFinal = Number(monedero.saldo) - montoConDescuento;
+
+      console.log('Monto Final: ', montoFinal, 'Monedero Saldo: ', monedero.saldo, 'Monto Con Descuento: ', montoConDescuento)
 
       // 4️⃣ Validación de saldo
       if (montoFinal < 0) {
@@ -281,12 +289,24 @@ export class TransaccionesService {
           estado,
           EventoTransaccion.SALDO_INSUFICIENTE,
         );
-        createTransaccioneDebitoDto.idTipoTransaccion =
-          EnumTipoTransaccion.RECHAZO;
+        //Obtenemos la fecha con desfase de 6 horas
+        const { fechaDesfasada } = await horaDesfasada();
 
         // Guardar transacción rechazada
         const newTransaccion = this.transaccionesdebitoRepository.create(
-          createTransaccioneDebitoDto,
+          {
+            idTipoTransaccion: EnumTipoTransaccion.RECHAZO,
+            monto: montoConDescuento,
+            idControlTransaccion: EnumControlTransacciones.ABIERTA,
+            latitudInicial: createTransaccioneDebitoDto.latitud,
+            longitudInicial: createTransaccioneDebitoDto.longitud,
+            fechaHoraInicio: fechaDesfasada,
+            distanciaInicialKm: distanciaInicial,
+            numeroSerieMonedero: createTransaccioneDebitoDto.numeroSerieMonedero,
+            numeroSerieDispositivo: createTransaccioneDebitoDto.numeroSerieDispositivo,
+            idViajes: createTransaccioneDebitoDto.idViaje,
+            idUsuario: idUsuario
+          }
         );
         await this.transaccionesdebitoRepository.save(newTransaccion);
         //se guarda en el historico
@@ -297,7 +317,7 @@ export class TransaccionesService {
           'Transacciones',
           `Transacción de débito RECHAZADA por saldo insuficiente`,
           'CREATE',
-          { createTransaccioneDebitoDto },
+          { newTransaccion },
           idUser,
           EnumModulos.TRANSACCIONES,
           EstatusEnumBitcora.ERROR,
@@ -308,10 +328,29 @@ export class TransaccionesService {
       }
 
       // 5️⃣ Si saldo OK, actualizamos el monedero y estado
-      switch (createTransaccioneDebitoDto.controlTransaccion) {
+
+      //Obtenemos la fecha con desfase de 6 horas
+      const { fechaDesfasada } = await horaDesfasada();
+      //Creamos el body para crear una transaccion
+      const bodyTransaccionDebito = {
+        idTipoTransaccion: EnumTipoTransaccion.DEBITO,
+        monto: montoConDescuento,
+        idControlTransaccion: EnumControlTransacciones.ABIERTA,
+        latitudInicial: createTransaccioneDebitoDto.latitud,
+        longitudInicial: createTransaccioneDebitoDto.longitud,
+        fechaHoraInicio: fechaDesfasada,
+        distanciaInicialKm: distanciaInicial,
+        numeroSerieMonedero: createTransaccioneDebitoDto.numeroSerieMonedero,
+        numeroSerieDispositivo: createTransaccioneDebitoDto.numeroSerieDispositivo,
+        idViajes: createTransaccioneDebitoDto.idViaje,
+        idUsuario: idUsuario
+      }
+
+      switch (controlTransaccion) {
         case EnumControlTransacciones.ABIERTA:
           estado = transicionarEstado(estado, EventoTransaccion.SALDO_OK);
-          createTransaccioneDebitoDto.monto = 0
+          bodyTransaccionDebito.monto = 0
+          bodyTransaccionDebito.idControlTransaccion = EnumControlTransacciones.ABIERTA
           break;
 
         default:
@@ -321,13 +360,14 @@ export class TransaccionesService {
             idUser,
             montoFinal,
           );
-          createTransaccioneDebitoDto.monto = montoConDescuento
+          bodyTransaccionDebito.monto = montoConDescuento
+          bodyTransaccionDebito.idControlTransaccion = EnumControlTransacciones.PAGADO
           break;
       }
 
       // 6️⃣ Guardamos transacción aprobada
       const newTransaccion = this.transaccionesdebitoRepository.create(
-        createTransaccioneDebitoDto,
+        bodyTransaccionDebito,
       );
       newTransaccion.idTipoTransaccion = EnumTipoTransaccion.DEBITO
       const transaccionSave =
@@ -335,7 +375,7 @@ export class TransaccionesService {
       let transaccionSaveHis;
 
       //Se guardara la transaccion en el historico de transacciones solamente cuando controltransaccion sea pagado
-      if (createTransaccioneDebitoDto.controlTransaccion === EnumControlTransacciones.PAGADO) {
+      if (controlTransaccion === EnumControlTransacciones.PAGADO) {
         transaccionSaveHis =
           await this.historicoTransaccionesDebitoRepository.save(newTransaccion);
         // 7️⃣ Bitácora de éxito //controltransaccion pagado----
@@ -343,7 +383,7 @@ export class TransaccionesService {
           'Transacciones',
           `Transacción de débito APROBADA`,
           'CREATE',
-          { createTransaccioneDebitoDto },
+          { bodyTransaccionDebito },
           idUser,
           EnumModulos.TRANSACCIONES,
           EstatusEnumBitcora.SUCCESS,
@@ -367,7 +407,7 @@ export class TransaccionesService {
         'Transacciones',
         `Transacción de débito APROBADA`,
         'CREATE',
-        { createTransaccioneDebitoDto },
+        { bodyTransaccionDebito },
         idUser,
         EnumModulos.TRANSACCIONES,
         EstatusEnumBitcora.SUCCESS,
@@ -452,17 +492,20 @@ WHERE v.Id = ${idViaje}
     distanciaKm: number,
     tarifaBase: number,
     distanciaBaseKm: number,
-    incremento: number,
+    incrementoCadaMetros: number,
     costoAdicional: number,
     tipoTarifa: number,
     latitud: number,
     longitud: number,
     controlTarifaIncremental: number,
+    DistanciaInicialKm?: number
   ) {
     try {
       let montoCalculado;
       let controlTransaccion;
-      console.log('Entro a monto tarifa con tipo de tarifa:', tipoTarifa)
+      let distancia;
+      let distanciaInicial;
+      let metrosBase;
       switch (tipoTarifa) {
         case EnumTipoTarifa.ESTACIONARIA:
           montoCalculado = tarifaBase
@@ -471,20 +514,123 @@ WHERE v.Id = ${idViaje}
           break;
 
         case EnumTipoTarifa.INCREMENTAL:
-          const posicionActual = { lat: latitud, lng: longitud };
-          const { index, distanciaMetros } = snapToRoute(
-            posicionActual,
-            recorridoInterpolar
-          );
-          console.log('El index', index)
-          console.log('Buscamos las cordenadas del index', recorridoInterpolar[index - 1])
-          console.log(index, distanciaMetros)
-          montoCalculado = tarifaBase
-          controlTransaccion = EnumControlTransacciones.ABIERTA
-          console.log('Entro a tarifa incremental con tarifa base:', tarifaBase)
+          if (controlTarifaIncremental === EnumControlTarifaIncremental.FINAL) {
+            //Cuando se cierre la tarifa
+            //Creamos el arreglo de la posicion enviada por el dispositivo
+            const posicionActual = { lat: latitud, lng: longitud };
+
+            //Buscamos el punto mas que se encuentre nuestro recorrido con snapToRoute
+            const { index, distanciaMetros } = await snapToRoute(
+              posicionActual,
+              recorridoInterpolar
+            );
+
+            //Calculamos la distancia en metros
+            //tomamos el penultimo punto mas cercano a la posicion actual
+            const indexSeguro = Math.max(index - 1, 0);
+            
+            //Tomamos del inicio de la ruta hasta el penultimo punto mas cercano
+            const metrosRecorridos = await calcularDistanciaHastaIndex(
+              recorridoInterpolar,
+              indexSeguro
+            );
+
+            //Creamos el arreglo del penultimo punto a la posicion actual
+            const punto = [indexSeguro === 0 ? recorridoInterpolar[index] : recorridoInterpolar[index - 1], posicionActual];
+            //Calculamos la distancia del penultimo punto a la posicion actual con la funcion calcularDistanciaReal
+            let ultimoIndex = await calcularDistanciaReal(punto);
+            //Si la distancia pasa mas de 150 metros solo se queda en 150 metros sino toma la calculada en calcularDistanciaReal
+            ultimoIndex = ultimoIndex > 150 ? 150 : ultimoIndex
+            //Sumamos para obtener el total de distancia desde el inicio de la ruta hasta la posicion actual
+            //Para esos sumamos las distacias del unicio de la ruta al penultimo punto + la distancia del penultimo punto a la posicion actual
+            //Redondeamos el valor a enteros
+            distanciaInicial = Math.round(metrosRecorridos + ultimoIndex)
+            //Obtenemos la distacia restante para verificar el monto que se le hara al monedero
+            //Para restamos la distancia obtenida en distanciaInicial y le restamos DistanciaInicialKm que es la distancia que se realizo la primer transaccion
+            if (!DistanciaInicialKm) {
+              DistanciaInicialKm = 0
+            }
+            distancia = Math.round(distanciaInicial - DistanciaInicialKm)
+            //Convertimos la distanciaBaseKm a metros
+            metrosBase = (distanciaBaseKm * 1000)
+            //generamos la logica para calcular el monto
+            //Si la distancia (que es la distancia restante) es menor a la distanciaBaseKm el monto es la tarifa base
+            //Si la distancia (que es la distancia restante) es mayor a la distanciaBaseKm el monto es la distancia (que es la distancia restante) - distanciaBaseKm / incrementoCadaMetros * costoAdicional + tarifaBase
+            montoCalculado = distancia <= metrosBase ? tarifaBase : (tarifaBase + (Math.trunc((distancia - metrosBase) / (incrementoCadaMetros))) * costoAdicional);
+            controlTransaccion = EnumControlTransacciones.PAGADO
+            console.log(`Penultimo punto: ${indexSeguro}, Cordenadas del Penultimo punto: ${recorridoInterpolar[indexSeguro]},
+              Punto Mas cercano a la posicion recibida: ${index}, Distancia del punto mas cercano a la posicion recibida: ${distanciaMetros},
+              Distacia en metros del inicio de la ruta al penultimo punto: ${metrosRecorridos},
+              La distancia en metros del penultimo punto al posicion actual: ${ultimoIndex},
+              Distancia desde el inicio de la ruta a la posicion actual: ${distanciaInicial},
+              Distancia total de la ruta en metros: ${(distanciaKm * 1000)},
+              Distancia de la posicion inicial a la posicion actual: ${distancia},
+              Distancia base en km: ${distanciaBaseKm},
+              Distancia base en metros: ${metrosBase},
+              Distancia en metros para el incremento: ${incrementoCadaMetros},
+              Costo adicional por cada incremente: ${costoAdicional},
+              Monto con el calculo: ${montoCalculado}
+              `);
+          } else {
+            //Cuando se abre la tarifa
+
+            //Creamos el arreglo de la posicion enviada por el dispositivo
+            const posicionActual = { lat: latitud, lng: longitud };
+
+            //Buscamos el punto mas que se encuentre nuestro recorrido con snapToRoute
+            const { index, distanciaMetros } = await snapToRoute(
+              posicionActual,
+              recorridoInterpolar
+            );
+
+            //Calculamos la distancia en metros
+            //tomamos el penultimo punto mas cercano a la posicion actual
+            const indexSeguro = Math.max(index - 1, 0);
+            //Tomamos del inicio de la ruta hasta el penultimo punto mas cercano
+            const metrosRecorridos = await calcularDistanciaHastaIndex(
+              recorridoInterpolar,
+              indexSeguro
+            );
+
+            //Creamos el arreglo del penultimo punto a la posicion actual
+            const punto = [indexSeguro === 0 ? recorridoInterpolar[index] : recorridoInterpolar[index - 1], posicionActual];
+            //Calculamos la distancia del penultimo punto a la posicion actual con la funcion calcularDistanciaReal
+            let ultimoIndex = await calcularDistanciaReal(punto);
+            //Si la distancia pasa mas de 150 metros solo se queda en 150 metros sino toma la calculada en calcularDistanciaReal
+            ultimoIndex = ultimoIndex > 150 ? 150 : ultimoIndex
+            //Sumamos para obtener el total de distancia desde el inicio de la ruta hasta la posicion actual
+            //Para esos sumamos las distacias del unicio de la ruta al penultimo punto + la distancia del penultimo punto a la posicion actual
+            //Redondeamos el valor a enteros
+            distanciaInicial = Math.round(metrosRecorridos + ultimoIndex)
+            //Obtenemos la distacia restante para verificar el monto que maximo que debe tener el monedero
+            //Para eso distanciaKm lo convertimos en metros que el total de recorrido que tiene nuestra ruta
+            //y le restamos la distanciaInicial anteriormente calculada
+            distancia = Math.round((distanciaKm * 1000) - distanciaInicial);
+            //Convertimos la distanciaBaseKm a metros
+            metrosBase = (distanciaBaseKm * 1000);
+            //generamos la logica para calcular el monto
+            //Si la distancia (que es la distancia restante) es menor a la distanciaBaseKm el monto es la tarifa base
+            //Si la distancia (que es la distancia restante) es mayor a la distanciaBaseKm el monto es la distancia (que es la distancia restante) - distanciaBaseKm / incrementoCadaMetros * costoAdicional + tarifaBase
+            montoCalculado = distancia <= metrosBase ? tarifaBase : (tarifaBase + (Math.trunc((distancia - metrosBase) / (incrementoCadaMetros))) * costoAdicional);
+            //montoCalculado = tarifaBase;
+            controlTransaccion = EnumControlTransacciones.ABIERTA;
+            console.log(`Penultimo punto: ${indexSeguro}, Cordenadas del Penultimo punto: ${recorridoInterpolar[indexSeguro]},
+              Punto Mas cercano a la posicion recibida: ${index}, Distancia del punto mas cercano a la posicion recibida: ${distanciaMetros},
+              Distacia en metros del inicio de la ruta al penultimo punto: ${metrosRecorridos},
+              La distancia en metros del penultimo punto al posicion actual: ${ultimoIndex},
+              Distancia desde el inicio de la ruta a la posicion actual: ${distanciaInicial},
+              Distancia total de la ruta en metros: ${(distanciaKm * 1000)},
+              Distancia de la posicion inicial a la posicion actual: ${distancia},
+              Distancia base en km: ${distanciaBaseKm},
+              Distancia base en metros: ${metrosBase},
+              Distancia en metros para el incremento: ${incrementoCadaMetros},
+              Costo adicional por cada incremente: ${costoAdicional},
+              Monto con el calculo: ${montoCalculado}
+              `);
+          }
           break;
       }
-      return { montoCalculado, controlTransaccion }
+      return { montoCalculado, controlTransaccion, distanciaInicial, }
     } catch (error) {
       console.log({ 'TransaccionesDebito': error })
       if (error instanceof HttpException) throw error;
@@ -502,6 +648,8 @@ WHERE v.Id = ${idViaje}
   ): Promise<ApiCrudResponse> {
     try {
       //Buscamos el monedero
+      console.log('Entro a update transaccion')
+      let idUsuario;
       const monedero = await this.monederoRepository.findOne({
         where: {
           numeroSerie: updateTransaccioneDebitoDto.numeroSerieMonedero,
@@ -512,8 +660,82 @@ WHERE v.Id = ${idViaje}
         throw new BadRequestException('Monedero no encontrado');
       }
 
+      const query = `
+SELECT 
+    m.Id AS idMonedero,
+    p.Id AS idPasajero,
+    u.Id AS idUsuarioPasajero,
+    u.Nombre AS nombrePasajero,
+    u.ApellidoMaterno AS apellidoMaterno
+FROM
+    Monederos m
+        INNER JOIN
+    Pasajeros p ON m.IdPasajero = p.Id
+        INNER JOIN
+    Usuarios u ON p.Correo = u.UserName
+WHERE
+    m.NumeroSerie = '${updateTransaccioneDebitoDto.numeroSerieMonedero}'
+    `
+      const pasajero = await this.viajesRepository.query(query);
+
+      console.log('Buscamos si el monedero esta relacionado a un usuario', pasajero[0]);
+
+      if (pasajero.length != 0) {
+        const { idUsuarioPasajero } = pasajero[0];
+        idUsuario = idUsuarioPasajero
+      } else {
+        idUsuario = null
+      }
+
       // 3️⃣ Calculamos monto final (aquí se pueden aplicar descuentos si existen)
-      let montoConDescuento = Number(updateTransaccioneDebitoDto.monto);
+      //Obtenemos los datos del viajes, obtenemos el derrotero, tarifa
+      const viajeData = await this.findTarifa(updateTransaccioneDebitoDto.idViaje)
+      const {
+        estatusTurno,
+        estatusViaje,
+        recorridoInterpolar,
+        distanciaKm,
+        tarifaBase,
+        DistanciaBaseKm,
+        incrementoCadaMetros,
+        costoAdicional,
+        tipoTarifa
+      } = viajeData[0]
+      //console.log(...viajeData)
+      if (!estatusTurno || !estatusViaje) {
+        throw new BadRequestException(`Transacción realizada fuera del viaje o del turno.`)
+      }
+
+      const transaccionFind =
+        await this.transaccionesdebitoRepository.findOne({
+          where: {
+            id: updateTransaccioneDebitoDto.idTransaccionDebito
+          }
+        });
+
+      if (!transaccionFind) {
+        throw new NotFoundException('La transacción no existe');
+      }
+      console.log(transaccionFind);
+
+      //Creamos las variables para nuesto flujo de montoTarifa
+      const controlTarifaIncremental = EnumControlTarifaIncremental.FINAL;
+
+      const { montoCalculado, controlTransaccion, distanciaInicial } = await this.montoTarifa(
+        recorridoInterpolar,
+        distanciaKm,
+        tarifaBase,
+        DistanciaBaseKm,
+        incrementoCadaMetros,
+        costoAdicional,
+        tipoTarifa,
+        Number(updateTransaccioneDebitoDto.latitud),
+        Number(updateTransaccioneDebitoDto.longitud),
+        controlTarifaIncremental,
+        transaccionFind.distanciaInicialKm || 0,
+      );
+
+      let montoConDescuento = montoCalculado;
 
       if (monedero.idTipoPasajero) {
         const tipoPasajero = await this.CatTiposPasajerosRepository.findOne({
@@ -546,20 +768,26 @@ WHERE v.Id = ${idViaje}
 
       // 4️⃣ Validación de saldo
       if (montoFinal < 0) {
-        updateTransaccioneDebitoDto.idTipoTransaccion =
-          EnumTipoTransaccion.RECHAZO;
 
         // Guardar transacción rechazada
-        const updateTransaccion = this.transaccionesdebitoRepository.create({
-          idTipoTransaccion: EnumTipoTransaccion.RECHAZO,
-          monto: montoFinal,
-          controlTransaccion: EnumControlTransacciones.PAGADO,
-          latitudFinal: updateTransaccioneDebitoDto.latitudFinal,
-          longitudFinal: updateTransaccioneDebitoDto.longitudFinal,
-          fechaHoraFinal: updateTransaccioneDebitoDto.fechaHoraFinal,
-          numeroSerieMonedero: updateTransaccioneDebitoDto.numeroSerieMonedero,
-          numeroSerieDispositivo: updateTransaccioneDebitoDto.numeroSerieDispositivo
-        }
+        //Obtenemos la fecha con desfase de 6 horas
+        const { fechaDesfasada } = await horaDesfasada();
+
+        // Guardar transacción rechazada
+        const updateTransaccion = this.transaccionesdebitoRepository.create(
+          {
+            idTipoTransaccion: EnumTipoTransaccion.RECHAZO,
+            monto: montoConDescuento,
+            idControlTransaccion: EnumControlTransacciones.PAGADO,
+            latitudFinal: updateTransaccioneDebitoDto.latitud,
+            longitudFinal: updateTransaccioneDebitoDto.longitud,
+            fechaHoraFinal: fechaDesfasada,
+            distanciaInicialKm: distanciaInicial,
+            numeroSerieMonedero: updateTransaccioneDebitoDto.numeroSerieMonedero,
+            numeroSerieDispositivo: updateTransaccioneDebitoDto.numeroSerieDispositivo,
+            idViajes: updateTransaccioneDebitoDto.idViaje,
+            idUsuario: idUsuario
+          }
         );
         await this.transaccionesdebitoRepository.save(updateTransaccion);
         //se guarda en el historico
@@ -588,18 +816,26 @@ WHERE v.Id = ${idViaje}
       );
 
       // 6️⃣ Guardamos transacción aprobada
+
+      //Obtenemos la fecha con desfase de 6 horas
+      const { fechaDesfasada } = await horaDesfasada();
+      const updateTransaccion =
+      {
+        idTipoTransaccion: EnumTipoTransaccion.DEBITO,
+        monto: montoConDescuento,
+        idControlTransaccion: EnumControlTransacciones.PAGADO,
+        latitudFinal: updateTransaccioneDebitoDto.latitud,
+        longitudFinal: updateTransaccioneDebitoDto.longitud,
+        fechaHoraFinal: fechaDesfasada,
+        distanciaInicialKm: distanciaInicial,
+        numeroSerieMonedero: updateTransaccioneDebitoDto.numeroSerieMonedero,
+        numeroSerieDispositivo: updateTransaccioneDebitoDto.numeroSerieDispositivo,
+        idViajes: updateTransaccioneDebitoDto.idViaje,
+        idUsuario: idUsuario
+      }
       await this.transaccionesdebitoRepository.update(
         updateTransaccioneDebitoDto.idTransaccionDebito,
-        {
-          idTipoTransaccion: EnumTipoTransaccion.DEBITO,
-          monto: montoConDescuento,
-          controlTransaccion: EnumControlTransacciones.PAGADO,
-          latitudFinal: updateTransaccioneDebitoDto.latitudFinal,
-          longitudFinal: updateTransaccioneDebitoDto.longitudFinal,
-          fechaHoraFinal: updateTransaccioneDebitoDto.fechaHoraFinal,
-          numeroSerieMonedero: updateTransaccioneDebitoDto.numeroSerieMonedero,
-          numeroSerieDispositivo: updateTransaccioneDebitoDto.numeroSerieDispositivo
-        }
+        updateTransaccion
       );
       const transaccionSave =
         await this.transaccionesdebitoRepository.findOne({
@@ -631,7 +867,7 @@ WHERE v.Id = ${idViaje}
       const querylogger = { updateTransaccioneDebitoDto };
       await this.bitacoraLogger.logToBitacora(
         'Transacciones',
-        `Se realizo una transaccion de tipo ${updateTransaccioneDebitoDto.idTipoTransaccion}`,
+        `Se realizo una transaccion de tipo ${updateTransaccioneDebitoDto}`,
         'CREATE',
         querylogger,
         idUser,
@@ -644,7 +880,7 @@ WHERE v.Id = ${idViaje}
         throw error;
       }
       throw new InternalServerErrorException(
-        `Error generar la transaccion de tipo ${updateTransaccioneDebitoDto.idTipoTransaccion}`,
+        `Error generar la transaccion de tipo ${updateTransaccioneDebitoDto.idTransaccionDebito}`,
       );
     }
   }
@@ -2648,7 +2884,7 @@ WHERE c.Id = ?   -- 👈 filtro por cliente
   `, [cliente]
           );
           break;
-          
+
         case 9:
           //Datos por usuario
           const pasajero =
