@@ -68,4 +68,7 @@ export class Rutas {
   @ManyToOne(() => Regiones, { nullable: true })
   @JoinColumn([{ name: "IdRegionFin", referencedColumnName: "id" }])
   idRegionFin2: Regiones | null;
+
+  @Column('bigint', { name: 'IdRutaRegreso', nullable: true })
+  IdRutaRegreso: number | null;
 }

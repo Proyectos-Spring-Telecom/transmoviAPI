@@ -9,8 +9,8 @@ import {
 import { applySchema } from 'src/common/apply-schema.decorator';
 
 @applySchema
-@Index('FK_TransaccionesDebito_CatTiposTransacciones_idx', ['idTipoTransaccion'], )
-@Index('FK_TransaccionesDebito_NumeroSerieMonedero_idx', ['numeroSerieMonedero'], )
+@Index('FK_TransaccionesDebito_CatTiposTransacciones_idx', ['idTipoTransaccion'],)
+@Index('FK_TransaccionesDebito_NumeroSerieMonedero_idx', ['numeroSerieMonedero'],)
 @Index('FK_TransaccionesDebito_NumeroSerieDispositivo_idx', ['numeroSerieDispositivo'],)
 @Entity('TransaccionesDebito')
 export class TransaccionesDebito {
@@ -23,8 +23,8 @@ export class TransaccionesDebito {
   @Column('decimal', { name: 'Monto', precision: 10, scale: 2 })
   monto: number;
 
-  @Column('tinyint', { name: 'ControlTransaccion', unsigned: true })
-  controlTransaccion: number;
+  @Column('bigint', { name: 'IdControlTransaccion', nullable: true })
+  idControlTransaccion: number | null;
 
   @Column('decimal', { name: 'LatitudInicial', precision: 10, scale: 7, nullable: true })
   latitudInicial: number | null;
@@ -44,7 +44,7 @@ export class TransaccionesDebito {
   @Column('decimal', { name: 'LongitudFinal', precision: 10, scale: 7, nullable: true })
   longitudFinal: number | null;
 
-  @Column('datetime', { name: 'FechaHoraFinal' })
+  @Column('datetime', { name: 'FechaHoraFinal', nullable: true })
   fechaHoraFinal: Date;
 
   @Column('datetime', {
@@ -58,5 +58,11 @@ export class TransaccionesDebito {
 
   @Column('varchar', { name: 'NumeroSerieDispositivo', length: 100 })
   numeroSerieDispositivo: string;
+
+  @Column('bigint', { name: 'IdViajes', nullable: true })
+  idViajes: number | null;
+
+  @Column('bigint', { name: 'IdUsuario', nullable: true })
+  idUsuario: number | null;
 
 }
