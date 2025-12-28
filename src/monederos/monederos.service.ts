@@ -214,6 +214,7 @@ SELECT
     p.ApellidoPaterno AS pasajeroApellidoPaterno,
     p.ApellidoMaterno AS pasajeroApellidoMaterno,
     CONCAT(p.Nombre, ' ', p.ApellidoPaterno, ' ', p.ApellidoMaterno) AS nombreCompletoPasajero,
+    p.CustomerIdNetPay AS customerId,
 
     c.Id AS idClienteMonederos,
     c.Nombre AS clienteNombre,
@@ -272,6 +273,7 @@ SELECT
     p.ApellidoPaterno AS pasajeroApellidoPaterno,
     p.ApellidoMaterno AS pasajeroApellidoMaterno,
     CONCAT(p.Nombre, ' ', p.ApellidoPaterno, ' ', p.ApellidoMaterno) AS nombreCompletoPasajero,
+    p.CustomerIdNetPay AS customerId,
 
     c.Id AS idClienteMonederos,
     c.Nombre AS clienteNombre,
@@ -332,6 +334,7 @@ SELECT
     p.ApellidoPaterno AS pasajeroApellidoPaterno,
     p.ApellidoMaterno AS pasajeroApellidoMaterno,
     CONCAT(p.Nombre, ' ', p.ApellidoPaterno, ' ', p.ApellidoMaterno) AS nombreCompletoPasajero,
+    p.CustomerIdNetPay AS customerId,
 
     c.Id AS idClienteMonederos,
     c.Nombre AS clienteNombre,
@@ -480,6 +483,7 @@ SELECT
     p.ApellidoPaterno AS pasajeroApellidoPaterno,
     p.ApellidoMaterno AS pasajeroApellidoMaterno,
     CONCAT(p.Nombre, ' ', p.ApellidoPaterno, ' ', p.ApellidoMaterno) AS nombreCompletoPasajero,
+    p.CustomerIdNetPay AS customerId,
 
     c.Id AS idCliente,
     c.Nombre AS clienteNombre,
@@ -520,6 +524,7 @@ SELECT
     p.ApellidoPaterno AS pasajeroApellidoPaterno,
     p.ApellidoMaterno AS pasajeroApellidoMaterno,
     CONCAT(p.Nombre, ' ', p.ApellidoPaterno, ' ', p.ApellidoMaterno) AS nombreCompletoPasajero,
+    p.CustomerIdNetPay AS customerId,
 
     c.Id AS idCliente,
     c.Nombre AS clienteNombre,
@@ -561,6 +566,7 @@ SELECT
     p.ApellidoPaterno AS pasajeroApellidoPaterno,
     p.ApellidoMaterno AS pasajeroApellidoMaterno,
     CONCAT(p.Nombre, ' ', p.ApellidoPaterno, ' ', p.ApellidoMaterno) AS nombreCompletoPasajero,
+    p.CustomerIdNetPay AS customerId,
 
     c.Id AS idCliente,
     c.Nombre AS clienteNombre,
@@ -615,6 +621,7 @@ ORDER BY m.Id DESC;
     try {
       const monedero = await this.monederoRepository.findOne({
         where: { id: id },
+        relations: ['idPasajero2'],
       });
       if (!monedero) {
         throw new NotFoundException(
@@ -630,6 +637,7 @@ ORDER BY m.Id DESC;
         idPasajero: Number(monedero.idPasajero),
         idCliente: Number(monedero.idCliente),
         tipoMonedero: monedero.esVirtual === 1 ? 'virtual' : 'fisico',
+        customerId: monedero.idPasajero2?.customerIdNetPay || null,
       };
       return { data: monederoResult };
     } catch (error) {
@@ -649,6 +657,7 @@ ORDER BY m.Id DESC;
     try {
       const monedero = await this.monederoRepository.findOne({
         where: { numeroSerie: NumeroSerie },
+        relations: ['idPasajero2'],
       });
       if (!monedero) {
         throw new NotFoundException(
@@ -663,6 +672,7 @@ ORDER BY m.Id DESC;
         idPasajero: Number(monedero.idPasajero),
         idCliente: Number(monedero.idCliente),
         tipoMonedero: monedero.esVirtual === 1 ? 'virtual' : 'fisico',
+        customerId: monedero.idPasajero2?.customerIdNetPay || null,
       };
       return { data: monederoResult };
     } catch (error) {
