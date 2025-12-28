@@ -65,6 +65,16 @@ export class CreateTransbordoDto {
   @IsPositive({ message: 'El ID del cliente debe ser positivo' })
   idCliente: number;
 
+  @ApiPropertyOptional({
+    description: 'ID del tipo de descuento aplicable al transbordo',
+    example: 1,
+    type: Number,
+  })
+  @IsOptional()
+  @IsInt({ message: 'El ID del tipo de descuento debe ser un número entero' })
+  @IsPositive({ message: 'El ID del tipo de descuento debe ser positivo' })
+  idTipoDescuento?: number;
+
   @ApiProperty({
     description: 'Detalles de los transbordos (costos por cada número de transbordo)',
     type: [CreateDetalleTransbordoDto],

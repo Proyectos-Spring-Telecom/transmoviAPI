@@ -88,6 +88,7 @@ export class TransbordosService {
         tiempo: createTransbordoDto.tiempo,
         numeroTransbordos: createTransbordoDto.numeroTransbordos,
         idCliente: createTransbordoDto.idCliente,
+        idTipoDescuento: createTransbordoDto.idTipoDescuento || null,
       });
 
       const transbordoGuardado = await queryRunner.manager.save(nuevoTransbordo);
@@ -187,6 +188,7 @@ export class TransbordosService {
         SELECT 
           tp.Id,
           tp.IdCliente,
+          tp.IdTipoDescuento,
           tp.Nombre,
           tp.Tiempo,
           tp.NumeroTransbordos,
@@ -201,7 +203,7 @@ export class TransbordosService {
         INNER JOIN Clientes c ON tp.IdCliente = c.Id
         LEFT JOIN DetalleTransbordos dt ON tp.Id = dt.IdTransbordo
         WHERE tp.IdCliente IN (${placeholders})
-        GROUP BY tp.Id, tp.IdCliente, tp.Nombre, tp.Tiempo, tp.NumeroTransbordos, c.Nombre
+        GROUP BY tp.Id, tp.IdCliente, tp.IdTipoDescuento, tp.Nombre, tp.Tiempo, tp.NumeroTransbordos, c.Nombre
         ORDER BY tp.Id DESC
         LIMIT ? OFFSET ?
       `;
@@ -220,6 +222,7 @@ export class TransbordosService {
       const formattedData = data.map((item: any) => ({
         id: Number(item.Id),
         idCliente: Number(item.IdCliente),
+        idTipoDescuento: item.IdTipoDescuento ? Number(item.IdTipoDescuento) : null,
         nombreCliente: item.NombreCliente,
         nombre: item.Nombre,
         tiempo: item.Tiempo ? Number(item.Tiempo) : null,
@@ -309,6 +312,7 @@ export class TransbordosService {
           tiempo: transbordo.tiempo,
           numeroTransbordos: transbordo.numeroTransbordos,
           idCliente: transbordo.idCliente,
+          idTipoDescuento: transbordo.idTipoDescuento,
           nombreCliente: transbordo.idClienteTransbordo?.nombre,
           detalles: transbordo.detalleTransbordos.map(detalle => ({
             id: Number(detalle.id),
@@ -442,6 +446,9 @@ export class TransbordosService {
       }
       if (updateTransbordoDto.idCliente !== undefined) {
         datosActualizacion.idCliente = updateTransbordoDto.idCliente;
+      }
+      if (updateTransbordoDto.idTipoDescuento !== undefined) {
+        datosActualizacion.idTipoDescuento = updateTransbordoDto.idTipoDescuento || null;
       }
 
       if (Object.keys(datosActualizacion).length > 0) {
