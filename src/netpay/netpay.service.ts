@@ -4,7 +4,10 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import axios, { AxiosInstance } from 'axios';
+import { Pasajeros } from 'src/entities/Pasajeros';
 import { TokenizeCardDto } from './dto/tokenize-card.dto';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { CreatePaymentDto } from './dto/create-payment.dto';
@@ -32,7 +35,11 @@ export class NetpayService {
   private readonly isProduction: boolean;
   private readonly httpClient: AxiosInstance;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    @InjectRepository(Pasajeros)
+    private readonly pasajeroRepository: Repository<Pasajeros>,
+  ) {
     this.isProduction = this.configService.get<string>('NETPAY_ENVIRONMENT') === 'production';
     
     // Permitir URL personalizada o usar defaults
@@ -521,7 +528,26 @@ export class NetpayService {
         },
       );
 
-      return response.data;
+      const customerResponse = response.data;
+
+      // Si se proporcionó idPasajero, actualizar el pasajero con el customerId
+      if (createCustomerDto.idPasajero && customerResponse?.id) {
+        try {
+          const customerId = customerResponse.id || customerResponse.customerId;
+          
+          if (customerId) {
+            await this.pasajeroRepository.update(createCustomerDto.idPasajero, {
+              customerIdNetPay: customerId,
+            });
+          }
+        } catch (updateError) {
+          // Si falla la actualización del pasajero, no fallar la creación del customer
+          // Solo registrar el error (puedes agregar logging aquí si es necesario)
+          console.error('[NETPAY] Error al actualizar customerIdNetPay del pasajero:', updateError);
+        }
+      }
+
+      return customerResponse;
     } catch (error) {
       this.handleError(error, 'createCustomer');
     }

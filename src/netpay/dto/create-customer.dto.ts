@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsEmail, IsOptional } from 'class-validator';
+import { IsNotEmpty, IsString, IsEmail, IsOptional, IsInt } from 'class-validator';
 
 export class CreateCustomerDto {
   @ApiProperty({
@@ -49,4 +49,13 @@ export class CreateCustomerDto {
   @IsString()
   @IsOptional()
   identifier?: string;
+
+  @ApiPropertyOptional({
+    description: 'ID del pasajero al que se asociará el customerIdNetPay después de crear el customer',
+    example: 1,
+    type: Number,
+  })
+  @IsOptional()
+  @IsInt({ message: 'El idPasajero debe ser un número entero' })
+  idPasajero?: number;
 }
