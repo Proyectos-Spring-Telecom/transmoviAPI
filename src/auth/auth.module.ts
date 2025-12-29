@@ -13,6 +13,8 @@ import { BitacoraModule } from 'src/bitacora/bitacora.module';
 import { CodigoAutenticacion } from 'src/entities/CodigoAutenticacion';
 import { MonederosModule } from 'src/monederos/monederos.module';
 import { PasajerosModule } from 'src/pasajeros/pasajeros.module';
+import { NetpayModule } from 'src/netpay/netpay.module';
+import { Pasajeros } from 'src/entities/Pasajeros';
 
 @Module({
   imports: [
@@ -20,6 +22,7 @@ import { PasajerosModule } from 'src/pasajeros/pasajeros.module';
     BitacoraModule,
     MonederosModule,
     PasajerosModule,
+    NetpayModule,
     ConfigModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -29,7 +32,7 @@ import { PasajerosModule } from 'src/pasajeros/pasajeros.module';
         signOptions: { expiresIn: config.get<string>('JWT_EXPIRES_IN') },
       }),
     }),
-    TypeOrmModule.forFeature([Usuarios, UsuariosPermisos, CodigoAutenticacion]),
+    TypeOrmModule.forFeature([Usuarios, UsuariosPermisos, CodigoAutenticacion, Pasajeros]),
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],

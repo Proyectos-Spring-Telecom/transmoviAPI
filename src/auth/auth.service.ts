@@ -27,6 +27,8 @@ import { PasajerosService } from 'src/pasajeros/pasajeros.service';
 import { CodigoPasajeroAutenticacion } from './dto/login-autenticacion.dto';
 import { number } from 'joi';
 import { Licencias } from 'src/entities/Licencias';
+import { NetpayService } from 'src/netpay/netpay.service';
+import { Pasajeros } from 'src/entities/Pasajeros';
 
 @Injectable()
 export class AuthService {
@@ -37,11 +39,14 @@ export class AuthService {
     private permisosRepository: Repository<UsuariosPermisos>,
     @InjectRepository(CodigoAutenticacion)
     private codigoAutenticacioRepository: Repository<CodigoAutenticacion>,
+    @InjectRepository(Pasajeros)
+    private readonly pasajeroRepository: Repository<Pasajeros>,
     private readonly jwtService: JwtService,
     private readonly emailService: MailService,
     private readonly bitacoraLogger: BitacoraLoggerService,
     private readonly monederoService: MonederosService,
     private readonly pasajeroService: PasajerosService,
+    private readonly netpayService: NetpayService,
   ) { }
 
   // ========================================
@@ -125,6 +130,118 @@ export class AuthService {
         bodyPasajero,
         userSave.id,
       );
+
+      // Crear customer en NetPay si el pasajero tiene correo
+      console.log('[AUTH] Verificando si se debe crear customer en NetPay...');
+      console.log('[AUTH] createAltaPasajaroDto.correo:', createAltaPasajaroDto.correo);
+      console.log('[AUTH] pasajero.data?.id:', pasajero.data?.id);
+      
+      if (createAltaPasajaroDto.correo && pasajero.data?.id) {
+        try {
+          console.log('[AUTH] Entrando al bloque de creación de customer en NetPay');
+          
+          // Combinar apellidos para lastName
+          const lastName = createAltaPasajaroDto.apellidoMaterno
+            ? `${createAltaPasajaroDto.apellidoPaterno} ${createAltaPasajaroDto.apellidoMaterno}`
+            : createAltaPasajaroDto.apellidoPaterno;
+
+          // Generar número aleatorio de 10 dígitos para identifier
+          const randomIdentifier = Math.floor(1000000000 + Math.random() * 9000000000).toString();
+
+          console.log('[AUTH] Creando customer en NetPay con datos:', {
+            firstName: createAltaPasajaroDto.nombre,
+            lastName,
+            email: createAltaPasajaroDto.correo,
+            phone: createAltaPasajaroDto.telefono,
+            identifier: randomIdentifier,
+          });
+
+          const customerResponse = await this.netpayService.createCustomer({
+            firstName: createAltaPasajaroDto.nombre,
+            lastName: lastName,
+            email: createAltaPasajaroDto.correo,
+            phone: createAltaPasajaroDto.telefono || undefined,
+            identifier: randomIdentifier,
+          });
+
+          console.log('[AUTH] Respuesta completa de NetPay:', JSON.stringify(customerResponse, null, 2));
+          
+          // El customerId viene en el campo 'id' de la respuesta de NetPay
+          const customerId = customerResponse?.id || customerResponse?.customerId;
+          
+          console.log('[AUTH] customerId extraído:', customerId);
+          console.log('[AUTH] pasajero.data.id:', pasajero.data.id);
+          console.log('[AUTH] userSave.id:', userSave.id);
+          
+          if (customerId) {
+            const updateData = {
+              customerIdNetPay: customerId,
+              idUsuario: userSave.id,
+            };
+            
+            console.log('[AUTH] Datos a actualizar en pasajero:', updateData);
+            
+            const updateResult = await this.pasajeroRepository.update(pasajero.data.id, updateData);
+            
+            console.log('[AUTH] Resultado de update:', updateResult);
+            
+            // Verificar que se actualizó correctamente
+            const pasajeroActualizado = await this.pasajeroRepository.findOne({
+              where: { id: pasajero.data.id },
+            });
+            
+            console.log('[AUTH] Pasajero después de actualizar:', {
+              id: pasajeroActualizado?.id,
+              idUsuario: pasajeroActualizado?.idUsuario,
+              customerIdNetPay: pasajeroActualizado?.customerIdNetPay,
+            });
+
+            // Registro en la bitácora SUCCESS
+            await this.bitacoraLogger.logToBitacora(
+              'Pasajeros',
+              `Se creó el customer en NetPay para el pasajero con ID: ${pasajero.data.id}, customerId: ${customerId}, idUsuario: ${userSave.id}`,
+              'CREATE',
+              { pasajeroId: pasajero.data.id, customerId, idUsuario: userSave.id, updateResult },
+              Number(userSave.id),
+              21, // EnumModulos.PASAJEROS
+              EstatusEnumBitcora.SUCCESS,
+            );
+          } else {
+            console.error('[AUTH] ERROR: No se obtuvo customerId de la respuesta de NetPay');
+            console.error('[AUTH] Respuesta completa:', JSON.stringify(customerResponse, null, 2));
+            
+            await this.bitacoraLogger.logToBitacora(
+              'Pasajeros',
+              `Se creó el customer en NetPay pero no se obtuvo el customerId. Respuesta: ${JSON.stringify(customerResponse)}`,
+              'CREATE',
+              { pasajeroId: pasajero.data.id, customerResponse },
+              Number(userSave.id),
+              21,
+              EstatusEnumBitcora.ERROR,
+              'No se obtuvo customerId de la respuesta de NetPay',
+            );
+          }
+        } catch (netpayError) {
+          console.error('[AUTH] Error al crear customer en NetPay:', netpayError);
+          // Si falla la creación en NetPay, no fallar la creación del pasajero
+          // Solo registrar el error en la bitácora
+          await this.bitacoraLogger.logToBitacora(
+            'Pasajeros',
+            `Error al crear customer en NetPay para el pasajero con ID: ${pasajero.data.id}. El pasajero fue creado correctamente.`,
+            'CREATE',
+            { pasajeroId: pasajero.data.id, error: netpayError.message },
+            Number(userSave.id),
+            21,
+            EstatusEnumBitcora.ERROR,
+            netpayError.message,
+          );
+        }
+      } else {
+        console.log('[AUTH] No se creará customer en NetPay porque:', {
+          tieneCorreo: !!createAltaPasajaroDto.correo,
+          tienePasajeroId: !!pasajero.data?.id,
+        });
+      }
 
       //armamos el payload para el token
       const payload = {

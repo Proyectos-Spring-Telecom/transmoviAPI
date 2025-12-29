@@ -10,12 +10,14 @@ import { Usuarios } from 'src/entities/Usuarios';
 import { UsuariosPermisos } from 'src/entities/UsuariosPermisos';
 import { Monederos } from 'src/entities/Monederos';
 import { S3Module } from 'src/s3/s3.module';
+import { NetpayModule } from 'src/netpay/netpay.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Pasajeros, Clientes, Usuarios, UsuariosPermisos, Monederos]),
     BitacoraModule,
     S3Module,
+    NetpayModule,
   ],
   controllers: [PasajerosController],
   providers: [PasajerosService],

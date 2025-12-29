@@ -48,8 +48,22 @@ export class NetpayService {
         : 'https://gateway-154.netpaydev.com'; // Sandbox/Desarrollo
     }
     
-    this.publicKey = this.configService.get<string>('NETPAY_PUBLIC_KEY') || '';
-    this.privateKey = this.configService.get<string>('NETPAY_PRIVATE_KEY') || '';
+    // Obtener y validar las API keys
+    this.publicKey = (this.configService.get<string>('NETPAY_PUBLIC_KEY') || '').trim();
+    this.privateKey = (this.configService.get<string>('NETPAY_PRIVATE_KEY') || '').trim();
+
+    // Validar que las API keys estén configuradas
+    if (!this.publicKey || this.publicKey === '') {
+      throw new BadRequestException(
+        'NETPAY_PUBLIC_KEY no está configurada o está vacía. Por favor, verifica tu archivo .env y asegúrate de que NETPAY_PUBLIC_KEY tenga un valor válido.',
+      );
+    }
+
+    if (!this.privateKey || this.privateKey === '') {
+      throw new BadRequestException(
+        'NETPAY_PRIVATE_KEY no está configurada o está vacía. Por favor, verifica tu archivo .env y asegúrate de que NETPAY_PRIVATE_KEY tenga un valor válido.',
+      );
+    }
 
     this.httpClient = axios.create({
       baseURL: this.baseUrl,
@@ -109,17 +123,16 @@ export class NetpayService {
       if (error.response) {
       // El servidor respondió con un código de estado de error
       const status = error.response.status;
-      const errorData: NetpayErrorResponse = error.response.data;
+      const errorData: NetpayErrorResponse | undefined = error.response.data;
       
 
       // Si hay subErrors, incluirlos en el mensaje
-      const subErrorsMessage = (errorData as any).subErrors 
+      const subErrorsMessage = errorData && (errorData as any).subErrors 
         ? `\nErrores de validación: ${JSON.stringify((errorData as any).subErrors, null, 2)}`
         : '';
 
-      throw new BadRequestException(
-        (errorData.message || `Error en la petición a Netpay (${status})`) + subErrorsMessage,
-      );
+      const errorMessage = errorData?.message || `Error en la petición a Netpay (${status})`;
+      throw new BadRequestException(errorMessage + subErrorsMessage);
     }
     
     if (error.request) {

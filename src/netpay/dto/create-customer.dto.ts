@@ -43,8 +43,8 @@ export class CreateCustomerDto {
   token?: string;
 
   @ApiPropertyOptional({
-    description: 'Identificador único del cliente en tu sistema',
-    example: 'id-cliente-12',
+    description: 'Identificador único del cliente en tu sistema. Si no se proporciona, se generará automáticamente un número aleatorio de 10 dígitos.',
+    example: '1234567890',
   })
   @IsString()
   @IsOptional()
