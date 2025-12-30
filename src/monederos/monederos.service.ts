@@ -233,8 +233,6 @@ LEFT JOIN Usuarios u ON p.IdUsuario = u.Id
 INNER JOIN Clientes c ON m.IdCliente = c.Id
 LEFT JOIN CatTiposPasajeros ct ON m.IdTipoPasajero = ct.Id
 
-
-
 ORDER BY m.Id DESC
 LIMIT ? OFFSET ?;
             `,
@@ -259,6 +257,13 @@ INNER JOIN Clientes c ON m.IdCliente = c.Id
           // Consulta de datos paginados Usuario Pasajero
           const pasajero =
             await this.pasajerosService.findOnePasajeroCorreo(email);
+          
+          if (!pasajero) {
+            monederos = [];
+            totalResult = [{ total: 0 }];
+            break;
+          }
+          
           monederos = await this.monederoRepository.query(
             `
 SELECT 
@@ -298,7 +303,6 @@ INNER JOIN Clientes c ON m.IdCliente = c.Id
 LEFT JOIN CatTiposPasajeros ct ON m.IdTipoPasajero = ct.Id
 
 WHERE p.Id = ?
-AND m.Estatus = 1
 
 ORDER BY m.Id DESC
 LIMIT ? OFFSET ?;
@@ -316,7 +320,6 @@ LEFT JOIN Usuarios u ON p.IdUsuario = u.Id
 INNER JOIN Clientes c ON m.IdCliente = c.Id
 
 WHERE p.Id = ?
-AND m.Estatus = 1
   `,
             [pasajero.id],
           );
@@ -325,6 +328,7 @@ AND m.Estatus = 1
         default:
           // Consulta de datos paginados resto Usuario
           const { ids, placeholders } = await this.clienteHijos(cliente);
+          
           monederos = await this.monederoRepository.query(
             `
 SELECT 
@@ -363,7 +367,7 @@ LEFT JOIN Usuarios u ON p.IdUsuario = u.Id
 INNER JOIN Clientes c ON m.IdCliente = c.Id
 LEFT JOIN CatTiposPasajeros ct ON m.IdTipoPasajero = ct.Id
 
-WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+WHERE c.Id IN (${placeholders})
 
 ORDER BY m.Id DESC
 LIMIT ? OFFSET ?;
@@ -379,7 +383,7 @@ FROM Monederos m
 LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
 LEFT JOIN Usuarios u ON p.IdUsuario = u.Id
 INNER JOIN Clientes c ON m.IdCliente = c.Id
-WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+WHERE c.Id IN (${placeholders})
 
   `,
             [...ids],
@@ -528,6 +532,12 @@ ORDER BY m.Id DESC;
         case 9:
           const pasajero =
             await this.pasajerosService.findOnePasajeroCorreo(email);
+          
+          if (!pasajero) {
+            monederos = [];
+            break;
+          }
+          
           monederos = await this.monederoRepository.query(
             `
 SELECT 
@@ -561,9 +571,7 @@ LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
 LEFT JOIN Usuarios u ON p.IdUsuario = u.Id
 INNER JOIN Clientes c ON m.IdCliente = c.Id
 
-WHERE m.Estatus = 1 -- estatus activo
-AND c.Estatus = 1
-AND p.Id = ?
+WHERE p.Id = ?
 
 ORDER BY m.Id DESC;
 
@@ -574,6 +582,7 @@ ORDER BY m.Id DESC;
 
         default:
           const { ids, placeholders } = await this.clienteHijos(cliente);
+          
           monederos = await this.monederoRepository.query(
             `
 SELECT 

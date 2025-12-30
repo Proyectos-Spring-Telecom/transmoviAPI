@@ -1443,6 +1443,17 @@ export class TransaccionesService {
     fechaFin?: string
   ) {
     try {
+      console.log('[paginado] Inicio - Parámetros recibidos:', {
+        idUser,
+        email,
+        cliente,
+        rol,
+        page,
+        limit,
+        fechaInicio,
+        fechaFin,
+      });
+
       //Declaramos las variables para el consumo del api
       let entidadRecarga;
       let entidadDebito;
@@ -1457,12 +1468,15 @@ export class TransaccionesService {
       // Solo la fecha del momento
       const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())}`;
 
+      console.log('[paginado] Fecha actual calculada:', fechaActual);
+
       //Si fechaInicio y fechaFin son null arroja las transacciones del dia de la tabla TransaccionesRecarga y TransaccionesDebito
       if (!fechaInicio && !fechaFin) {
         fechaInicio = fechaActual
         fechaFin = fechaActual
         entidadRecarga = 'TransaccionesRecarga';
         entidadDebito = 'TransaccionesDebito';
+        console.log('[paginado] Sin fechas - usando tablas actuales:', { entidadRecarga, entidadDebito, fechaInicio, fechaFin });
         transacciones = await this.resolverPorRolDefault(fechaInicio, fechaFin, email, cliente, rol, page, limit, entidadDebito, entidadRecarga);
       } else {
         //Si fechaInicio y fechaFin no son null arroja las transacciones del dia de la tabla HistoricoTransaccionesRecarga y HistoricoTransaccionesDebito
@@ -1471,8 +1485,15 @@ export class TransaccionesService {
         fechaFin = fechaFin?.split("T")[0] ?? fechaActual;
         entidadRecarga = 'HistoricoTransaccionesRecarga';
         entidadDebito = 'HistoricoTransaccionesDebito';
+        console.log('[paginado] Con fechas - usando tablas históricas:', { entidadRecarga, entidadDebito, fechaInicio, fechaFin });
         transacciones = await this.resolverPorRolDefault(fechaInicio, fechaFin, email, cliente, rol, page, limit, entidadDebito, entidadRecarga);
       }
+
+      console.log('[paginado] Resultado de resolverPorRolDefault:', {
+        tieneData: !!transacciones?.data,
+        cantidadData: Array.isArray(transacciones?.data) ? transacciones.data.length : 'no es array',
+        total: transacciones?.total,
+      });
 
       const { data, total } = transacciones
 
@@ -1485,8 +1506,19 @@ export class TransaccionesService {
           lastPage: Math.ceil(total / limit),
         },
       };
+      console.log('[paginado] Respuesta final preparada:', {
+        cantidadData: Array.isArray(data) ? data.length : 'no es array',
+        total,
+        page,
+        lastPage: Math.ceil(total / limit),
+      });
       return result;
     } catch (error) {
+      console.error('[paginado] ERROR:', {
+        message: error.message,
+        stack: error.stack,
+        error: error,
+      });
       if (error instanceof HttpException) {
         throw error;
       }
@@ -1509,11 +1541,26 @@ export class TransaccionesService {
     entidadRecarga: string
   ) {
     try {
+      console.log('[resolverPorRolDefault] Inicio - Parámetros:', {
+        fechaInicio,
+        fechaFin,
+        email,
+        cliente,
+        rol,
+        page,
+        limit,
+        entidadDebito,
+        entidadRecarga,
+      });
+
       let totalResult;
       let transacciones;
       const offset = (page - 1) * limit;
+      console.log('[resolverPorRolDefault] Offset calculado:', offset);
+      
       switch (rol) {
         case 1:
+          console.log('[resolverPorRolDefault] Caso 1 (Super Admin) - Ejecutando query de transacciones');
           transacciones = await this.transaccionesrecargaRepository.query(
             `
 SELECT * FROM (
@@ -1552,15 +1599,15 @@ SELECT
     p.ApellidoMaterno AS apellidoMaternoPasajero
 
 FROM ${entidadDebito} td
-INNER JOIN CatTiposTransacciones ctt 
+LEFT JOIN CatTiposTransacciones ctt 
     ON td.IdTipoTransaccion = ctt.Id
 LEFT JOIN Validadores d 
     ON td.NumeroSerieValidador = d.NumeroSerie
-INNER JOIN Monederos m 
+LEFT JOIN Monederos m 
     ON td.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
     ON m.IdPasajero = p.Id
-INNER JOIN Clientes c
+LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
     
 -- condiciones
@@ -1601,15 +1648,15 @@ SELECT
     p.ApellidoMaterno AS apellidoMaternoPasajero
 
 FROM ${entidadRecarga} tr
-INNER JOIN CatTiposTransacciones ctt 
+LEFT JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
 LEFT JOIN Validadores  d 
     ON tr.NumeroSerieValidador = d.NumeroSerie
-INNER JOIN Monederos m 
+LEFT JOIN Monederos m 
     ON tr.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
     ON m.IdPasajero = p.Id
-INNER JOIN Clientes c
+LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
     
 -- condiciones
@@ -1619,23 +1666,28 @@ ORDER BY fhRegistro DESC
 LIMIT ${limit} OFFSET ${offset};
         `,
           );
+          console.log('[resolverPorRolDefault] Caso 1 - Query transacciones ejecutado:', {
+            esArray: Array.isArray(transacciones),
+            cantidad: Array.isArray(transacciones) ? transacciones.length : 'no es array',
+          });
 
           // Query para total (sin paginaci?n)
+          console.log('[resolverPorRolDefault] Caso 1 - Ejecutando query de total');
           totalResult = await this.transaccionesrecargaRepository.query(
             `
 SELECT COUNT(*) AS total
 FROM (
     SELECT td.Id
-    FROM TransaccionesDebito td
-INNER JOIN CatTiposTransacciones ctt 
+    FROM ${entidadDebito} td
+LEFT JOIN CatTiposTransacciones ctt 
     ON td.IdTipoTransaccion = ctt.Id
 LEFT JOIN Validadores d 
     ON td.NumeroSerieValidador = d.NumeroSerie
-INNER JOIN Monederos m 
+LEFT JOIN Monederos m 
     ON td.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
     ON m.IdPasajero = p.Id
-INNER JOIN Clientes c
+LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
     
 -- condiciones
@@ -1644,16 +1696,16 @@ WHERE DATE(td.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
     UNION ALL
 
     SELECT tr.Id
-    FROM TransaccionesRecarga tr
-INNER JOIN CatTiposTransacciones ctt 
+    FROM ${entidadRecarga} tr
+LEFT JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
 LEFT JOIN Validadores d 
     ON tr.NumeroSerieValidador = d.NumeroSerie
-INNER JOIN Monederos m 
+LEFT JOIN Monederos m 
     ON tr.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
     ON m.IdPasajero = p.Id
-INNER JOIN Clientes c
+LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
     
 -- condiciones
@@ -1662,6 +1714,10 @@ WHERE DATE(tr.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
 		
   `,
           );
+          console.log('[resolverPorRolDefault] Caso 1 - Query total ejecutado:', {
+            resultado: totalResult,
+            total: totalResult?.[0]?.total,
+          });
           break;
 
         case 3:
@@ -1705,20 +1761,20 @@ SELECT
     p.ApellidoMaterno AS apellidoMaternoPasajero
 
 FROM ${entidadDebito} td
-INNER JOIN CatTiposTransacciones ctt 
+LEFT JOIN CatTiposTransacciones ctt 
     ON td.IdTipoTransaccion = ctt.Id
 LEFT JOIN Validadores d 
     ON td.NumeroSerieValidador = d.NumeroSerie
-INNER JOIN Monederos m 
+LEFT JOIN Monederos m 
     ON td.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
     ON m.IdPasajero = p.Id
-INNER JOIN Clientes c
+LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
     
 -- condiciones
 WHERE DATE(td.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
-AND m.IdCliente = ?
+AND (m.IdCliente = ${cliente} OR m.IdCliente IS NULL)
 
 
 UNION ALL
@@ -1756,75 +1812,79 @@ SELECT
     p.ApellidoMaterno AS apellidoMaternoPasajero
 
 FROM ${entidadRecarga} tr
-INNER JOIN CatTiposTransacciones ctt 
+LEFT JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
 LEFT JOIN CatMetodoPago cmp 
     ON tr.IdMetodoPago = cmp.Id
 LEFT JOIN Validadores d 
     ON tr.NumeroSerieValidador = d.NumeroSerie
-INNER JOIN Monederos m 
+LEFT JOIN Monederos m 
     ON tr.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
     ON m.IdPasajero = p.Id
-INNER JOIN Clientes c
+LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
     
 -- condiciones
 WHERE DATE(tr.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
-AND m.IdCliente = ?
+AND (m.IdCliente = ${cliente} OR m.IdCliente IS NULL)
 ) AS todas_transacciones
 ORDER BY fhRegistro DESC
 LIMIT ${limit} OFFSET ${offset};
         `,
-            [cliente, cliente],
           );
+          console.log('[resolverPorRolDefault] Caso 3 - Query transacciones ejecutado:', {
+            esArray: Array.isArray(transacciones),
+            cantidad: Array.isArray(transacciones) ? transacciones.length : 'no es array',
+            cliente,
+          });
 
           // Query para total (sin paginaci?n)
+          console.log('[resolverPorRolDefault] Caso 3 - Ejecutando query de total');
           totalResult = await this.transaccionesrecargaRepository.query(
             `
 SELECT COUNT(*) AS total
 FROM (
     SELECT td.Id
-    FROM TransaccionesDebito td
-INNER JOIN CatTiposTransacciones ctt 
+    FROM ${entidadDebito} td
+LEFT JOIN CatTiposTransacciones ctt 
     ON td.IdTipoTransaccion = ctt.Id
 LEFT JOIN Validadores d 
     ON td.NumeroSerieValidador = d.NumeroSerie
-INNER JOIN Monederos m 
+LEFT JOIN Monederos m 
     ON td.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
     ON m.IdPasajero = p.Id
-INNER JOIN Clientes c
+LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
     
 -- condiciones
 WHERE DATE(td.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
-AND m.IdCliente = ?
+AND (m.IdCliente = ${cliente} OR m.IdCliente IS NULL)
 
     UNION ALL
 
     SELECT tr.Id
-    FROM TransaccionesRecarga tr
-INNER JOIN CatTiposTransacciones ctt 
+    FROM ${entidadRecarga} tr
+LEFT JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
 LEFT JOIN Validadores d 
     ON tr.NumeroSerieValidador = d.NumeroSerie
-INNER JOIN Monederos m 
+LEFT JOIN Monederos m 
     ON tr.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
     ON m.IdPasajero = p.Id
-INNER JOIN Clientes c
+LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
     
 -- condiciones
 WHERE DATE(tr.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
-AND m.IdCliente = ?
+AND (m.IdCliente = ${cliente} OR m.IdCliente IS NULL)
 
 
 ) AS todas;
 
   `,
-            [cliente, cliente],
           );
           break;
 
@@ -1875,15 +1935,15 @@ SELECT
     p.ApellidoMaterno AS apellidoMaternoPasajero
 
 FROM ${entidadDebito} td
-INNER JOIN CatTiposTransacciones ctt 
+LEFT JOIN CatTiposTransacciones ctt 
     ON td.IdTipoTransaccion = ctt.Id
 LEFT JOIN Validadores d 
     ON td.NumeroSerieValidador = d.NumeroSerie
-INNER JOIN Monederos m 
+LEFT JOIN Monederos m 
     ON td.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
     ON m.IdPasajero = p.Id
-INNER JOIN Clientes c
+LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
     
 -- condiciones
@@ -1927,17 +1987,17 @@ SELECT
     p.ApellidoMaterno AS apellidoMaternoPasajero
 
 FROM ${entidadRecarga} tr
-INNER JOIN CatTiposTransacciones ctt 
+LEFT JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
 LEFT JOIN CatMetodoPago cmp 
     ON tr.IdMetodoPago = cmp.Id
 LEFT JOIN Validadores d 
     ON tr.NumeroSerieValidador = d.NumeroSerie
-INNER JOIN Monederos m 
+LEFT JOIN Monederos m 
     ON tr.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
     ON m.IdPasajero = p.Id
-INNER JOIN Clientes c
+LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
     
 -- condiciones
@@ -1950,23 +2010,29 @@ LIMIT ${limit} OFFSET ${offset};
         `,
             [Number(pasajero.id), Number(pasajero.id)],
           );
+          console.log('[resolverPorRolDefault] Caso 9 - Query transacciones ejecutado:', {
+            esArray: Array.isArray(transacciones),
+            cantidad: Array.isArray(transacciones) ? transacciones.length : 'no es array',
+            pasajeroId: pasajero.id,
+          });
 
           // Query para total (sin paginaci?n)
+          console.log('[resolverPorRolDefault] Caso 9 - Ejecutando query de total');
           totalResult = await this.transaccionesrecargaRepository.query(
             `
 SELECT COUNT(*) AS total
 FROM (
     SELECT td.Id
     FROM ${entidadDebito} td
-INNER JOIN CatTiposTransacciones ctt 
+LEFT JOIN CatTiposTransacciones ctt 
     ON td.IdTipoTransaccion = ctt.Id
 LEFT JOIN Validadores d 
     ON td.NumeroSerieValidador = d.NumeroSerie
-INNER JOIN Monederos m 
+LEFT JOIN Monederos m 
     ON td.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
     ON m.IdPasajero = p.Id
-INNER JOIN Clientes c
+LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
     
 -- condiciones
@@ -1978,15 +2044,15 @@ AND p.Id = ?
 
     SELECT tr.Id
     FROM ${entidadRecarga} tr
-INNER JOIN CatTiposTransacciones ctt 
+LEFT JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
 LEFT JOIN Validadores d 
     ON tr.NumeroSerieValidador = d.NumeroSerie
-INNER JOIN Monederos m 
+LEFT JOIN Monederos m 
     ON tr.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
     ON m.IdPasajero = p.Id
-INNER JOIN Clientes c
+LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
     
 -- condiciones
@@ -2044,15 +2110,15 @@ SELECT
     p.ApellidoMaterno AS apellidoMaternoPasajero
 
 FROM ${entidadDebito} td
-INNER JOIN CatTiposTransacciones ctt 
+LEFT JOIN CatTiposTransacciones ctt 
     ON td.IdTipoTransaccion = ctt.Id
 LEFT JOIN Validadores d 
     ON td.NumeroSerieValidador = d.NumeroSerie
-INNER JOIN Monederos m 
+LEFT JOIN Monederos m 
     ON td.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
     ON m.IdPasajero = p.Id
-INNER JOIN Clientes c
+LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
     
 -- condiciones
@@ -2095,17 +2161,17 @@ SELECT
     p.ApellidoMaterno AS apellidoMaternoPasajero
 
 FROM ${entidadRecarga} tr
-INNER JOIN CatTiposTransacciones ctt 
+LEFT JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
 LEFT JOIN CatMetodoPago cmp 
     ON tr.IdMetodoPago = cmp.Id
 LEFT JOIN Validadores d 
     ON tr.NumeroSerieValidador = d.NumeroSerie
-INNER JOIN Monederos m 
+LEFT JOIN Monederos m 
     ON tr.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
     ON m.IdPasajero = p.Id
-INNER JOIN Clientes c
+LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
     
 -- condiciones
@@ -2125,16 +2191,16 @@ LIMIT ? OFFSET ?;
 SELECT COUNT(*) AS total
 FROM (
     SELECT td.Id
-    FROM TransaccionesDebito td
-INNER JOIN CatTiposTransacciones ctt 
+    FROM ${entidadDebito} td
+LEFT JOIN CatTiposTransacciones ctt 
     ON td.IdTipoTransaccion = ctt.Id
 LEFT JOIN Validadores d 
     ON td.NumeroSerieValidador = d.NumeroSerie
-INNER JOIN Monederos m 
+LEFT JOIN Monederos m 
     ON td.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
     ON m.IdPasajero = p.Id
-INNER JOIN Clientes c
+LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
     
 -- condiciones
@@ -2144,16 +2210,16 @@ AND m.IdCliente IN (${placeholders})   -- ?? aqu? colocas el ID del cliente que 
     UNION ALL
 
     SELECT tr.Id
-    FROM TransaccionesRecarga tr
-INNER JOIN CatTiposTransacciones ctt 
+    FROM ${entidadRecarga} tr
+LEFT JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
 LEFT JOIN Validadores d 
     ON tr.NumeroSerieValidador = d.NumeroSerie
-INNER JOIN Monederos m 
+LEFT JOIN Monederos m 
     ON tr.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
     ON m.IdPasajero = p.Id
-INNER JOIN Clientes c
+LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
     
 -- condiciones
@@ -2166,18 +2232,35 @@ AND m.IdCliente IN (${placeholders})   -- ?? aqu? colocas el ID del cliente que 
   `,
             [...ids, ...ids],
           );
+          console.log('[resolverPorRolDefault] Caso 2/8/10 - Query total ejecutado:', {
+            resultado: totalResult,
+            total: totalResult?.[0]?.total,
+          });
           break;
       }
 
+      console.log('[resolverPorRolDefault] Procesando resultados:', {
+        totalResult,
+        totalResultLength: totalResult?.length,
+        transaccionesEsArray: Array.isArray(transacciones),
+        transaccionesLength: Array.isArray(transacciones) ? transacciones.length : 'no es array',
+      });
+
       const total = Number(totalResult[0]?.total || 0);
+      console.log('[resolverPorRolDefault] Total calculado:', total);
 
       // Validar que transacciones sea un array
       if (!Array.isArray(transacciones)) {
+        console.error('[resolverPorRolDefault] ERROR: transacciones no es un array:', {
+          tipo: typeof transacciones,
+          valor: transacciones,
+        });
         throw new BadRequestException({
           message: 'Error: las transacciones no se obtuvieron correctamente',
         });
       }
 
+      console.log('[resolverPorRolDefault] Transformando datos - cantidad de transacciones:', transacciones.length);
       // ?? Transformaci?n de datos (ids ? number, nombreCompleto)
       const data = transacciones.map((item) => ({
         ...item,
@@ -2185,14 +2268,22 @@ AND m.IdCliente IN (${placeholders})   -- ?? aqu? colocas el ID del cliente que 
         monto: Number(item.monto),
         latitudInicial: item.latitudInicial ? Number(item.latitudInicial) : null,
         longitudInicial: item.longitudInicial ? Number(item.longitudInicial) : null,
-        latitudFinal: Number(item.latitudFinal),
-        longitudFinal: Number(item.longitudFinal),
-        idCliente: Number(item.idCliente),
-        idPasajero: Number(item.idPasajero),
+        latitudFinal: item.latitudFinal ? Number(item.latitudFinal) : null,
+        longitudFinal: item.longitudFinal ? Number(item.longitudFinal) : null,
+        idCliente: item.idCliente ? Number(item.idCliente) : null,
+        idPasajero: item.idPasajero ? Number(item.idPasajero) : null,
         tipoMonedero: item.origenTabla === 'DEBITO' && item.esQR !== undefined 
           ? this.transformarEsQR(Number(item.esQR)) 
           : null,
       }));
+
+      console.log('[resolverPorRolDefault] Datos transformados - cantidad:', data.length);
+      console.log('[resolverPorRolDefault] Retornando resultado:', {
+        dataLength: data.length,
+        total,
+        page,
+        lastPage: Math.ceil(total / limit),
+      });
 
       //API Response
       const result: ApiResponseCommon = {
@@ -2205,6 +2296,18 @@ AND m.IdCliente IN (${placeholders})   -- ?? aqu? colocas el ID del cliente que 
       };
       return { data, total };
     } catch (error) {
+      console.error('[resolverPorRolDefault] ERROR:', {
+        message: error.message,
+        stack: error.stack,
+        error: error,
+        rol,
+        cliente,
+        email,
+        fechaInicio,
+        fechaFin,
+        entidadDebito,
+        entidadRecarga,
+      });
       if (error instanceof HttpException) {
         throw error;
       }
@@ -2820,15 +2923,15 @@ SELECT
     p.ApellidoMaterno AS apellidoMaternoPasajero
 
 FROM ${entidadDebito} td
-INNER JOIN CatTiposTransacciones ctt 
+LEFT JOIN CatTiposTransacciones ctt 
     ON td.IdTipoTransaccion = ctt.Id
 LEFT JOIN Validadores d 
     ON td.NumeroSerieValidador = d.NumeroSerie
-INNER JOIN Monederos m 
+LEFT JOIN Monederos m 
     ON td.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
     ON m.IdPasajero = p.Id
-INNER JOIN Clientes c
+LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
     
 -- condiciones
@@ -2868,17 +2971,17 @@ SELECT
     p.ApellidoMaterno AS apellidoMaternoPasajero
 
 FROM ${entidadRecarga} tr
-INNER JOIN CatTiposTransacciones ctt 
+LEFT JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
 LEFT JOIN CatMetodoPago cmp 
     ON tr.IdMetodoPago = cmp.Id
 LEFT JOIN Validadores d 
     ON tr.NumeroSerieValidador = d.NumeroSerie
-INNER JOIN Monederos m 
+LEFT JOIN Monederos m 
     ON tr.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
     ON m.IdPasajero = p.Id
-INNER JOIN Clientes c
+LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
     
 -- condiciones
@@ -2930,15 +3033,15 @@ ORDER BY FHRegistro DESC
       p.ApellidoMaterno AS apellidoMaternoPasajero
 
 FROM ${entidadDebito} td
-INNER JOIN CatTiposTransacciones ctt 
+LEFT JOIN CatTiposTransacciones ctt 
     ON td.IdTipoTransaccion = ctt.Id
 LEFT JOIN Validadores d 
     ON td.NumeroSerieValidador = d.NumeroSerie
-INNER JOIN Monederos m 
+LEFT JOIN Monederos m 
     ON td.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
     ON m.IdPasajero = p.Id
-INNER JOIN Clientes c
+LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
     
 -- condiciones
@@ -2981,17 +3084,17 @@ SELECT
     p.ApellidoMaterno AS apellidoMaternoPasajero
 
 FROM ${entidadRecarga} tr
-INNER JOIN CatTiposTransacciones ctt 
+LEFT JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
 LEFT JOIN CatMetodoPago cmp 
     ON tr.IdMetodoPago = cmp.Id
 LEFT JOIN Validadores d 
     ON tr.NumeroSerieValidador = d.NumeroSerie
-INNER JOIN Monederos m 
+LEFT JOIN Monederos m 
     ON tr.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
     ON m.IdPasajero = p.Id
-INNER JOIN Clientes c
+LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
     
 -- condiciones
@@ -3318,32 +3421,81 @@ INNER JOIN Clientes c
     getHistoricoRecargasDto: GetHistoricoRecargasDto,
   ): Promise<ApiResponseCommon> {
     try {
+      console.log('[getHistoricoRecargasPaginado] Inicio - Parámetros:', {
+        idUser,
+        email,
+        cliente,
+        rol,
+        dto: getHistoricoRecargasDto,
+      });
+
       const { page, limit, fechaInicio, fechaFin } = getHistoricoRecargasDto;
       const offset = (page - 1) * limit;
+
+      // Determinar qué tablas usar según las fechas
+      // Si no hay fechas o las fechas incluyen hoy, usar ambas tablas (actual + histórico)
+      // Si las fechas son solo pasadas, usar solo histórico
+      function pad(n: number) {
+        return n < 10 ? '0' + n : n;
+      }
+      const ahora = new Date();
+      const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas
+      const fechaDesfasada = new Date(ahora.getTime() + desfaseMs);
+      const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())}`;
 
       // Construir condición de fechas (separadas para cada tabla)
       // Usar FHRegistro para el filtro de fechas
       let fechaCondition = ''; // Para casos 1, 2, 3 (solo HistoricoTransaccionesRecarga)
-      let fechaConditionHistorico = ''; // Para caso 9 - tabla HistoricoTransaccionesRecarga
-      let fechaConditionActivo = ''; // Para caso 9 - tabla TransaccionesRecarga
+      let fechaConditionHistorico = ''; // Para tabla HistoricoTransaccionesRecarga
+      let fechaConditionActivo = ''; // Para tabla TransaccionesRecarga
       const queryParams: any[] = [];
 
-      if (fechaInicio && fechaFin) {
-        fechaCondition = 'AND DATE(htr.FHRegistro) BETWEEN ? AND ?';
-        fechaConditionHistorico = 'AND DATE(htr.FHRegistro) BETWEEN ? AND ?';
-        fechaConditionActivo = 'AND DATE(tr.FHRegistro) BETWEEN ? AND ?';
-        queryParams.push(fechaInicio, fechaFin);
-      } else if (fechaInicio) {
-        fechaCondition = 'AND DATE(htr.FHRegistro) >= ?';
-        fechaConditionHistorico = 'AND DATE(htr.FHRegistro) >= ?';
-        fechaConditionActivo = 'AND DATE(tr.FHRegistro) >= ?';
-        queryParams.push(fechaInicio);
-      } else if (fechaFin) {
-        fechaCondition = 'AND DATE(htr.FHRegistro) <= ?';
-        fechaConditionHistorico = 'AND DATE(htr.FHRegistro) <= ?';
-        fechaConditionActivo = 'AND DATE(tr.FHRegistro) <= ?';
-        queryParams.push(fechaFin);
+      let usarTablaActual = false;
+      let usarTablaHistorico = true;
+      
+      if (!fechaInicio && !fechaFin) {
+        // Sin fechas = usar ambas tablas (actual + histórico del día de hoy)
+        // Esto asegura que se muestren todas las recargas del día actual
+        usarTablaActual = true;
+        usarTablaHistorico = true;
+        // Agregar condición para histórico: solo del día de hoy
+        fechaConditionHistorico = `AND DATE(htr.FHRegistro) = '${fechaActual}'`;
+        fechaConditionActivo = `AND DATE(tr.FHRegistro) = '${fechaActual}'`;
+      } else {
+        // Con fechas: si incluyen hoy, usar ambas tablas
+        const fechaInicioComparar = fechaInicio?.split("T")[0] ?? fechaActual;
+        const fechaFinComparar = fechaFin?.split("T")[0] ?? fechaActual;
+        usarTablaActual = fechaFinComparar >= fechaActual || fechaInicioComparar <= fechaActual;
+        usarTablaHistorico = true; // Siempre consultar histórico si hay fechas
+        
+        // Construir condiciones de fechas
+        if (fechaInicio && fechaFin) {
+          fechaCondition = 'AND DATE(htr.FHRegistro) BETWEEN ? AND ?';
+          fechaConditionHistorico = 'AND DATE(htr.FHRegistro) BETWEEN ? AND ?';
+          fechaConditionActivo = 'AND DATE(tr.FHRegistro) BETWEEN ? AND ?';
+          queryParams.push(fechaInicio, fechaFin);
+        } else if (fechaInicio) {
+          fechaCondition = 'AND DATE(htr.FHRegistro) >= ?';
+          fechaConditionHistorico = 'AND DATE(htr.FHRegistro) >= ?';
+          fechaConditionActivo = 'AND DATE(tr.FHRegistro) >= ?';
+          queryParams.push(fechaInicio);
+        } else if (fechaFin) {
+          fechaCondition = 'AND DATE(htr.FHRegistro) <= ?';
+          fechaConditionHistorico = 'AND DATE(htr.FHRegistro) <= ?';
+          fechaConditionActivo = 'AND DATE(tr.FHRegistro) <= ?';
+          queryParams.push(fechaFin);
+        }
       }
+
+      console.log('[getHistoricoRecargasPaginado] Configuración de tablas:', {
+        usarTablaActual,
+        usarTablaHistorico,
+        fechaActual,
+        fechaInicio,
+        fechaFin,
+        fechaConditionHistorico,
+        fechaConditionActivo,
+      });
 
       let recargas: any[];
       let totalResult: any[];
@@ -3351,8 +3503,12 @@ INNER JOIN Clientes c
       switch (rol) {
         case 1:
           // SA = Todas las recargas
-          recargas = await this.historicoTransaccionesRecargaRepository.query(
-            `
+          console.log('[getHistoricoRecargasPaginado] Caso 1 - Ejecutando query');
+          if (usarTablaActual && usarTablaHistorico) {
+            // Consultar ambas tablas con UNION ALL
+            recargas = await this.historicoTransaccionesRecargaRepository.query(
+              `
+SELECT * FROM (
 SELECT 
     htr.Id AS id,
     htr.IdTipoTransaccion AS idTipoTransaccion,
@@ -3388,10 +3544,195 @@ SELECT
     COALESCE(cmp.Nombre, 'Efectivo') AS nombreMetodoPago
 
 FROM HistoricoTransaccionesRecarga htr
-INNER JOIN CatTiposTransacciones ctt ON htr.IdTipoTransaccion = ctt.Id
+LEFT JOIN CatTiposTransacciones ctt ON htr.IdTipoTransaccion = ctt.Id
 LEFT JOIN CatMetodoPago cmp ON htr.IdMetodoPago = cmp.Id
-INNER JOIN Monederos m ON htr.NumeroSerieMonedero = m.NumeroSerie
-INNER JOIN Clientes c ON m.IdCliente = c.Id
+LEFT JOIN Monederos m ON htr.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Clientes c ON m.IdCliente = c.Id
+LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
+LEFT JOIN Usuarios u ON htr.IdUsuario = u.Id
+WHERE 1=1
+${fechaConditionHistorico}
+
+UNION ALL
+
+SELECT 
+    tr.Id AS id,
+    tr.IdTipoTransaccion AS idTipoTransaccion,
+    ctt.Nombre AS tipoTransaccion,
+    NULL AS controlTransaccion,
+    tr.Monto AS monto,
+    tr.LatitudFinal AS latitudFinal,
+    tr.LongitudFinal AS longitudFinal,
+    tr.FechaHoraFinal AS fechaHoraFinal,
+    tr.FHRegistro AS fhRegistro,
+    tr.NumeroSerieMonedero AS numeroSerieMonedero,
+    tr.NumeroSerieValidador AS numeroSerieValidador,
+    NULL AS idUsuario,
+    
+    -- Datos del cliente
+    c.Id AS idCliente,
+    c.Nombre AS nombreCliente,
+    c.ApellidoPaterno AS apellidoPaternoCliente,
+    c.ApellidoMaterno AS apellidoMaternoCliente,
+    
+    -- Datos del monedero y pasajero
+    m.Id AS idMonedero,
+    p.Id AS idPasajero,
+    p.Nombre AS nombrePasajero,
+    p.ApellidoPaterno AS apellidoPaternoPasajero,
+    p.ApellidoMaterno AS apellidoMaternoPasajero,
+    
+    -- Datos del usuario que realizó la recarga
+    NULL AS idUsuarioRecarga,
+    NULL AS nombreUsuario,
+    NULL AS apellidoPaternoUsuario,
+    NULL AS apellidoMaternoUsuario,
+    COALESCE(cmp.Nombre, 'Efectivo') AS nombreMetodoPago
+
+FROM TransaccionesRecarga tr
+LEFT JOIN CatTiposTransacciones ctt ON tr.IdTipoTransaccion = ctt.Id
+LEFT JOIN CatMetodoPago cmp ON tr.IdMetodoPago = cmp.Id
+LEFT JOIN Monederos m ON tr.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Clientes c ON m.IdCliente = c.Id
+LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
+WHERE 1=1
+${fechaConditionActivo}
+) AS todas_recargas
+ORDER BY fhRegistro DESC
+LIMIT ? OFFSET ?;
+            `,
+              [...queryParams, ...queryParams, limit, offset],
+            );
+
+            totalResult = await this.historicoTransaccionesRecargaRepository.query(
+              `
+SELECT COUNT(*) AS total
+FROM (
+SELECT htr.Id
+FROM HistoricoTransaccionesRecarga htr
+LEFT JOIN Monederos m ON htr.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Clientes c ON m.IdCliente = c.Id
+WHERE 1=1
+${fechaConditionHistorico}
+
+UNION ALL
+
+SELECT tr.Id
+FROM TransaccionesRecarga tr
+LEFT JOIN Monederos m ON tr.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Clientes c ON m.IdCliente = c.Id
+WHERE 1=1
+${fechaConditionActivo}
+) AS todas;
+            `,
+              [...queryParams, ...queryParams],
+            );
+          } else if (usarTablaActual) {
+            // Solo tabla actual
+            recargas = await this.historicoTransaccionesRecargaRepository.query(
+              `
+SELECT 
+    tr.Id AS id,
+    tr.IdTipoTransaccion AS idTipoTransaccion,
+    ctt.Nombre AS tipoTransaccion,
+    NULL AS controlTransaccion,
+    tr.Monto AS monto,
+    tr.LatitudFinal AS latitudFinal,
+    tr.LongitudFinal AS longitudFinal,
+    tr.FechaHoraFinal AS fechaHoraFinal,
+    tr.FHRegistro AS fhRegistro,
+    tr.NumeroSerieMonedero AS numeroSerieMonedero,
+    tr.NumeroSerieValidador AS numeroSerieValidador,
+    NULL AS idUsuario,
+    
+    -- Datos del cliente
+    c.Id AS idCliente,
+    c.Nombre AS nombreCliente,
+    c.ApellidoPaterno AS apellidoPaternoCliente,
+    c.ApellidoMaterno AS apellidoMaternoCliente,
+    
+    -- Datos del monedero y pasajero
+    m.Id AS idMonedero,
+    p.Id AS idPasajero,
+    p.Nombre AS nombrePasajero,
+    p.ApellidoPaterno AS apellidoPaternoPasajero,
+    p.ApellidoMaterno AS apellidoMaternoPasajero,
+    
+    -- Datos del usuario que realizó la recarga
+    NULL AS idUsuarioRecarga,
+    NULL AS nombreUsuario,
+    NULL AS apellidoPaternoUsuario,
+    NULL AS apellidoMaternoUsuario,
+    COALESCE(cmp.Nombre, 'Efectivo') AS nombreMetodoPago
+
+FROM TransaccionesRecarga tr
+LEFT JOIN CatTiposTransacciones ctt ON tr.IdTipoTransaccion = ctt.Id
+LEFT JOIN CatMetodoPago cmp ON tr.IdMetodoPago = cmp.Id
+LEFT JOIN Monederos m ON tr.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Clientes c ON m.IdCliente = c.Id
+LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
+WHERE 1=1
+${fechaConditionActivo}
+ORDER BY tr.FHRegistro DESC
+LIMIT ? OFFSET ?;
+            `,
+              [...queryParams, limit, offset],
+            );
+
+            totalResult = await this.historicoTransaccionesRecargaRepository.query(
+              `
+SELECT COUNT(*) AS total
+FROM TransaccionesRecarga tr
+LEFT JOIN Monederos m ON tr.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Clientes c ON m.IdCliente = c.Id
+WHERE 1=1
+${fechaConditionActivo};
+            `,
+              queryParams,
+            );
+          } else {
+            // Solo histórico
+            recargas = await this.historicoTransaccionesRecargaRepository.query(
+              `
+SELECT 
+    htr.Id AS id,
+    htr.IdTipoTransaccion AS idTipoTransaccion,
+    ctt.Nombre AS tipoTransaccion,
+    htr.ControlTransaccion AS controlTransaccion,
+    htr.Monto AS monto,
+    htr.LatitudFinal AS latitudFinal,
+    htr.LongitudFinal AS longitudFinal,
+    htr.FechaHoraFinal AS fechaHoraFinal,
+    htr.FHRegistro AS fhRegistro,
+    htr.NumeroSerieMonedero AS numeroSerieMonedero,
+    htr.NumeroSerieValidador AS numeroSerieValidador,
+    htr.IdUsuario AS idUsuario,
+    
+    -- Datos del cliente
+    c.Id AS idCliente,
+    c.Nombre AS nombreCliente,
+    c.ApellidoPaterno AS apellidoPaternoCliente,
+    c.ApellidoMaterno AS apellidoMaternoCliente,
+    
+    -- Datos del monedero y pasajero
+    m.Id AS idMonedero,
+    p.Id AS idPasajero,
+    p.Nombre AS nombrePasajero,
+    p.ApellidoPaterno AS apellidoPaternoPasajero,
+    p.ApellidoMaterno AS apellidoMaternoPasajero,
+    
+    -- Datos del usuario que realizó la recarga
+    u.Id AS idUsuarioRecarga,
+    u.Nombre AS nombreUsuario,
+    u.ApellidoPaterno AS apellidoPaternoUsuario,
+    u.ApellidoMaterno AS apellidoMaternoUsuario,
+    COALESCE(cmp.Nombre, 'Efectivo') AS nombreMetodoPago
+
+FROM HistoricoTransaccionesRecarga htr
+LEFT JOIN CatTiposTransacciones ctt ON htr.IdTipoTransaccion = ctt.Id
+LEFT JOIN CatMetodoPago cmp ON htr.IdMetodoPago = cmp.Id
+LEFT JOIN Monederos m ON htr.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Clientes c ON m.IdCliente = c.Id
 LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
 LEFT JOIN Usuarios u ON htr.IdUsuario = u.Id
 WHERE 1=1
@@ -3399,28 +3740,37 @@ ${fechaCondition}
 ORDER BY htr.FechaHoraFinal DESC
 LIMIT ? OFFSET ?;
             `,
-            [...queryParams, limit, offset],
-          );
+              [...queryParams, limit, offset],
+            );
 
-          totalResult = await this.historicoTransaccionesRecargaRepository.query(
-            `
+            totalResult = await this.historicoTransaccionesRecargaRepository.query(
+              `
 SELECT COUNT(*) AS total
 FROM HistoricoTransaccionesRecarga htr
-INNER JOIN Monederos m ON htr.NumeroSerieMonedero = m.NumeroSerie
-INNER JOIN Clientes c ON m.IdCliente = c.Id
+LEFT JOIN Monederos m ON htr.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Clientes c ON m.IdCliente = c.Id
 WHERE 1=1
 ${fechaCondition};
             `,
-            queryParams,
-          );
+              queryParams,
+            );
+          }
+          console.log('[getHistoricoRecargasPaginado] Caso 1 - Resultado:', {
+            cantidad: Array.isArray(recargas) ? recargas.length : 'no es array',
+            total: totalResult?.[0]?.total,
+          });
           break;
 
         case 2:
           // ADMIN = Sus recargas y las de clientes hijos
+          console.log('[getHistoricoRecargasPaginado] Caso 2 - Ejecutando query');
           const { ids, placeholders } = await this.clienteHijos(cliente);
           
-          recargas = await this.historicoTransaccionesRecargaRepository.query(
-            `
+          if (usarTablaActual && usarTablaHistorico) {
+            // Consultar ambas tablas con UNION ALL
+            recargas = await this.historicoTransaccionesRecargaRepository.query(
+              `
+SELECT * FROM (
 SELECT 
     htr.Id AS id,
     htr.IdTipoTransaccion AS idTipoTransaccion,
@@ -3456,10 +3806,195 @@ SELECT
     COALESCE(cmp.Nombre, 'Efectivo') AS nombreMetodoPago
 
 FROM HistoricoTransaccionesRecarga htr
-INNER JOIN CatTiposTransacciones ctt ON htr.IdTipoTransaccion = ctt.Id
+LEFT JOIN CatTiposTransacciones ctt ON htr.IdTipoTransaccion = ctt.Id
 LEFT JOIN CatMetodoPago cmp ON htr.IdMetodoPago = cmp.Id
-INNER JOIN Monederos m ON htr.NumeroSerieMonedero = m.NumeroSerie
-INNER JOIN Clientes c ON m.IdCliente = c.Id
+LEFT JOIN Monederos m ON htr.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Clientes c ON m.IdCliente = c.Id
+LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
+LEFT JOIN Usuarios u ON htr.IdUsuario = u.Id
+WHERE (m.IdCliente IN (${placeholders}) OR m.IdCliente IS NULL)
+${fechaConditionHistorico}
+
+UNION ALL
+
+SELECT 
+    tr.Id AS id,
+    tr.IdTipoTransaccion AS idTipoTransaccion,
+    ctt.Nombre AS tipoTransaccion,
+    NULL AS controlTransaccion,
+    tr.Monto AS monto,
+    tr.LatitudFinal AS latitudFinal,
+    tr.LongitudFinal AS longitudFinal,
+    tr.FechaHoraFinal AS fechaHoraFinal,
+    tr.FHRegistro AS fhRegistro,
+    tr.NumeroSerieMonedero AS numeroSerieMonedero,
+    tr.NumeroSerieValidador AS numeroSerieValidador,
+    NULL AS idUsuario,
+    
+    -- Datos del cliente
+    c.Id AS idCliente,
+    c.Nombre AS nombreCliente,
+    c.ApellidoPaterno AS apellidoPaternoCliente,
+    c.ApellidoMaterno AS apellidoMaternoCliente,
+    
+    -- Datos del monedero y pasajero
+    m.Id AS idMonedero,
+    p.Id AS idPasajero,
+    p.Nombre AS nombrePasajero,
+    p.ApellidoPaterno AS apellidoPaternoPasajero,
+    p.ApellidoMaterno AS apellidoMaternoPasajero,
+    
+    -- Datos del usuario que realizó la recarga
+    NULL AS idUsuarioRecarga,
+    NULL AS nombreUsuario,
+    NULL AS apellidoPaternoUsuario,
+    NULL AS apellidoMaternoUsuario,
+    COALESCE(cmp.Nombre, 'Efectivo') AS nombreMetodoPago
+
+FROM TransaccionesRecarga tr
+LEFT JOIN CatTiposTransacciones ctt ON tr.IdTipoTransaccion = ctt.Id
+LEFT JOIN CatMetodoPago cmp ON tr.IdMetodoPago = cmp.Id
+LEFT JOIN Monederos m ON tr.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Clientes c ON m.IdCliente = c.Id
+LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
+WHERE m.IdCliente IN (${placeholders})
+${fechaConditionActivo}
+) AS todas_recargas
+ORDER BY fhRegistro DESC
+LIMIT ? OFFSET ?;
+            `,
+              [...ids, ...ids, ...queryParams, ...queryParams, limit, offset],
+            );
+
+            totalResult = await this.historicoTransaccionesRecargaRepository.query(
+              `
+SELECT COUNT(*) AS total
+FROM (
+SELECT htr.Id
+FROM HistoricoTransaccionesRecarga htr
+LEFT JOIN Monederos m ON htr.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Clientes c ON m.IdCliente = c.Id
+WHERE (m.IdCliente IN (${placeholders}) OR m.IdCliente IS NULL)
+${fechaConditionHistorico}
+
+UNION ALL
+
+SELECT tr.Id
+FROM TransaccionesRecarga tr
+LEFT JOIN Monederos m ON tr.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Clientes c ON m.IdCliente = c.Id
+WHERE m.IdCliente IN (${placeholders})
+${fechaConditionActivo}
+) AS todas;
+            `,
+              [...ids, ...ids, ...queryParams, ...queryParams],
+            );
+          } else if (usarTablaActual) {
+            // Solo tabla actual
+            recargas = await this.historicoTransaccionesRecargaRepository.query(
+              `
+SELECT 
+    tr.Id AS id,
+    tr.IdTipoTransaccion AS idTipoTransaccion,
+    ctt.Nombre AS tipoTransaccion,
+    NULL AS controlTransaccion,
+    tr.Monto AS monto,
+    tr.LatitudFinal AS latitudFinal,
+    tr.LongitudFinal AS longitudFinal,
+    tr.FechaHoraFinal AS fechaHoraFinal,
+    tr.FHRegistro AS fhRegistro,
+    tr.NumeroSerieMonedero AS numeroSerieMonedero,
+    tr.NumeroSerieValidador AS numeroSerieValidador,
+    NULL AS idUsuario,
+    
+    -- Datos del cliente
+    c.Id AS idCliente,
+    c.Nombre AS nombreCliente,
+    c.ApellidoPaterno AS apellidoPaternoCliente,
+    c.ApellidoMaterno AS apellidoMaternoCliente,
+    
+    -- Datos del monedero y pasajero
+    m.Id AS idMonedero,
+    p.Id AS idPasajero,
+    p.Nombre AS nombrePasajero,
+    p.ApellidoPaterno AS apellidoPaternoPasajero,
+    p.ApellidoMaterno AS apellidoMaternoPasajero,
+    
+    -- Datos del usuario que realizó la recarga
+    NULL AS idUsuarioRecarga,
+    NULL AS nombreUsuario,
+    NULL AS apellidoPaternoUsuario,
+    NULL AS apellidoMaternoUsuario,
+    COALESCE(cmp.Nombre, 'Efectivo') AS nombreMetodoPago
+
+FROM TransaccionesRecarga tr
+LEFT JOIN CatTiposTransacciones ctt ON tr.IdTipoTransaccion = ctt.Id
+LEFT JOIN CatMetodoPago cmp ON tr.IdMetodoPago = cmp.Id
+LEFT JOIN Monederos m ON tr.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Clientes c ON m.IdCliente = c.Id
+LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
+WHERE m.IdCliente IN (${placeholders})
+${fechaConditionActivo}
+ORDER BY tr.FHRegistro DESC
+LIMIT ? OFFSET ?;
+            `,
+              [...ids, ...queryParams, limit, offset],
+            );
+
+            totalResult = await this.historicoTransaccionesRecargaRepository.query(
+              `
+SELECT COUNT(*) AS total
+FROM TransaccionesRecarga tr
+LEFT JOIN Monederos m ON tr.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Clientes c ON m.IdCliente = c.Id
+WHERE m.IdCliente IN (${placeholders})
+${fechaConditionActivo};
+            `,
+              [...ids, ...queryParams],
+            );
+          } else {
+            // Solo histórico
+            recargas = await this.historicoTransaccionesRecargaRepository.query(
+              `
+SELECT 
+    htr.Id AS id,
+    htr.IdTipoTransaccion AS idTipoTransaccion,
+    ctt.Nombre AS tipoTransaccion,
+    htr.ControlTransaccion AS controlTransaccion,
+    htr.Monto AS monto,
+    htr.LatitudFinal AS latitudFinal,
+    htr.LongitudFinal AS longitudFinal,
+    htr.FechaHoraFinal AS fechaHoraFinal,
+    htr.FHRegistro AS fhRegistro,
+    htr.NumeroSerieMonedero AS numeroSerieMonedero,
+    htr.NumeroSerieValidador AS numeroSerieValidador,
+    htr.IdUsuario AS idUsuario,
+    
+    -- Datos del cliente
+    c.Id AS idCliente,
+    c.Nombre AS nombreCliente,
+    c.ApellidoPaterno AS apellidoPaternoCliente,
+    c.ApellidoMaterno AS apellidoMaternoCliente,
+    
+    -- Datos del monedero y pasajero
+    m.Id AS idMonedero,
+    p.Id AS idPasajero,
+    p.Nombre AS nombrePasajero,
+    p.ApellidoPaterno AS apellidoPaternoPasajero,
+    p.ApellidoMaterno AS apellidoMaternoPasajero,
+    
+    -- Datos del usuario que realizó la recarga
+    u.Id AS idUsuarioRecarga,
+    u.Nombre AS nombreUsuario,
+    u.ApellidoPaterno AS apellidoPaternoUsuario,
+    u.ApellidoMaterno AS apellidoMaternoUsuario,
+    COALESCE(cmp.Nombre, 'Efectivo') AS nombreMetodoPago
+
+FROM HistoricoTransaccionesRecarga htr
+LEFT JOIN CatTiposTransacciones ctt ON htr.IdTipoTransaccion = ctt.Id
+LEFT JOIN CatMetodoPago cmp ON htr.IdMetodoPago = cmp.Id
+LEFT JOIN Monederos m ON htr.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Clientes c ON m.IdCliente = c.Id
 LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
 LEFT JOIN Usuarios u ON htr.IdUsuario = u.Id
 WHERE m.IdCliente IN (${placeholders})
@@ -3467,26 +4002,43 @@ ${fechaCondition}
 ORDER BY htr.FechaHoraFinal DESC
 LIMIT ? OFFSET ?;
             `,
-            [...ids, ...queryParams, limit, offset],
-          );
+              [...ids, ...queryParams, limit, offset],
+            );
 
-          totalResult = await this.historicoTransaccionesRecargaRepository.query(
-            `
+            totalResult = await this.historicoTransaccionesRecargaRepository.query(
+              `
 SELECT COUNT(*) AS total
 FROM HistoricoTransaccionesRecarga htr
-INNER JOIN Monederos m ON htr.NumeroSerieMonedero = m.NumeroSerie
-INNER JOIN Clientes c ON m.IdCliente = c.Id
+LEFT JOIN Monederos m ON htr.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Clientes c ON m.IdCliente = c.Id
 WHERE m.IdCliente IN (${placeholders})
 ${fechaCondition};
             `,
-            [...ids, ...queryParams],
-          );
+              [...ids, ...queryParams],
+            );
+          }
+          console.log('[getHistoricoRecargasPaginado] Caso 2 - Resultado:', {
+            cantidad: Array.isArray(recargas) ? recargas.length : 'no es array',
+            total: totalResult?.[0]?.total,
+          });
           break;
 
         case 3:
-          // Cajero = Solo sus recargas (por IdUsuario)
-          recargas = await this.historicoTransaccionesRecargaRepository.query(
-            `
+          // Cajero = Solo sus recargas (por IdUsuario) Y filtrar por clientes hijos
+          console.log('[getHistoricoRecargasPaginado] Caso 3 - Ejecutando query, idUser:', idUser, 'cliente:', cliente);
+          const { ids: idsCajero, placeholders: placeholdersCajero } = await this.clienteHijos(cliente);
+          console.log('[getHistoricoRecargasPaginado] Caso 3 - Clientes hijos obtenidos:', {
+            ids: idsCajero,
+            placeholders: placeholdersCajero,
+            cantidad: idsCajero?.length,
+          });
+          
+          if (usarTablaActual && usarTablaHistorico) {
+            // Consultar ambas tablas con UNION ALL
+            // Nota: TransaccionesRecarga no tiene IdUsuario, así que solo consultamos histórico cuando hay IdUsuario
+            recargas = await this.historicoTransaccionesRecargaRepository.query(
+              `
+SELECT * FROM (
 SELECT 
     htr.Id AS id,
     htr.IdTipoTransaccion AS idTipoTransaccion,
@@ -3522,29 +4074,103 @@ SELECT
     COALESCE(cmp.Nombre, 'Efectivo') AS nombreMetodoPago
 
 FROM HistoricoTransaccionesRecarga htr
-INNER JOIN CatTiposTransacciones ctt ON htr.IdTipoTransaccion = ctt.Id
+LEFT JOIN CatTiposTransacciones ctt ON htr.IdTipoTransaccion = ctt.Id
 LEFT JOIN CatMetodoPago cmp ON htr.IdMetodoPago = cmp.Id
-INNER JOIN Monederos m ON htr.NumeroSerieMonedero = m.NumeroSerie
-INNER JOIN Clientes c ON m.IdCliente = c.Id
+LEFT JOIN Monederos m ON htr.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Clientes c ON m.IdCliente = c.Id
 LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
 LEFT JOIN Usuarios u ON htr.IdUsuario = u.Id
-WHERE htr.IdUsuario = ?
+WHERE htr.IdUsuario = ? AND (m.IdCliente IN (${placeholdersCajero}) OR m.IdCliente IS NULL)
+${fechaConditionHistorico}
+) AS todas_recargas
+ORDER BY fhRegistro DESC
+LIMIT ? OFFSET ?;
+            `,
+              [idUser, ...idsCajero, ...queryParams, limit, offset],
+            );
+
+            totalResult = await this.historicoTransaccionesRecargaRepository.query(
+              `
+SELECT COUNT(*) AS total
+FROM HistoricoTransaccionesRecarga htr
+LEFT JOIN Monederos m ON htr.NumeroSerieMonedero = m.NumeroSerie
+WHERE htr.IdUsuario = ? AND (m.IdCliente IN (${placeholdersCajero}) OR m.IdCliente IS NULL)
+${fechaConditionHistorico};
+            `,
+              [idUser, ...idsCajero, ...queryParams],
+            );
+          } else if (usarTablaActual) {
+            // Solo tabla actual - pero TransaccionesRecarga no tiene IdUsuario, así que no hay recargas del cajero en tabla actual
+            recargas = [];
+            totalResult = [{ total: 0 }];
+          } else {
+            // Solo histórico
+            recargas = await this.historicoTransaccionesRecargaRepository.query(
+              `
+SELECT 
+    htr.Id AS id,
+    htr.IdTipoTransaccion AS idTipoTransaccion,
+    ctt.Nombre AS tipoTransaccion,
+    htr.ControlTransaccion AS controlTransaccion,
+    htr.Monto AS monto,
+    htr.LatitudFinal AS latitudFinal,
+    htr.LongitudFinal AS longitudFinal,
+    htr.FechaHoraFinal AS fechaHoraFinal,
+    htr.FHRegistro AS fhRegistro,
+    htr.NumeroSerieMonedero AS numeroSerieMonedero,
+    htr.NumeroSerieValidador AS numeroSerieValidador,
+    htr.IdUsuario AS idUsuario,
+    
+    -- Datos del cliente
+    c.Id AS idCliente,
+    c.Nombre AS nombreCliente,
+    c.ApellidoPaterno AS apellidoPaternoCliente,
+    c.ApellidoMaterno AS apellidoMaternoCliente,
+    
+    -- Datos del monedero y pasajero
+    m.Id AS idMonedero,
+    p.Id AS idPasajero,
+    p.Nombre AS nombrePasajero,
+    p.ApellidoPaterno AS apellidoPaternoPasajero,
+    p.ApellidoMaterno AS apellidoMaternoPasajero,
+    
+    -- Datos del usuario que realizó la recarga
+    u.Id AS idUsuarioRecarga,
+    u.Nombre AS nombreUsuario,
+    u.ApellidoPaterno AS apellidoPaternoUsuario,
+    u.ApellidoMaterno AS apellidoMaternoUsuario,
+    COALESCE(cmp.Nombre, 'Efectivo') AS nombreMetodoPago
+
+FROM HistoricoTransaccionesRecarga htr
+LEFT JOIN CatTiposTransacciones ctt ON htr.IdTipoTransaccion = ctt.Id
+LEFT JOIN CatMetodoPago cmp ON htr.IdMetodoPago = cmp.Id
+LEFT JOIN Monederos m ON htr.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Clientes c ON m.IdCliente = c.Id
+LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
+LEFT JOIN Usuarios u ON htr.IdUsuario = u.Id
+WHERE htr.IdUsuario = ? AND (m.IdCliente IN (${placeholdersCajero}) OR m.IdCliente IS NULL)
 ${fechaCondition}
 ORDER BY htr.FechaHoraFinal DESC
 LIMIT ? OFFSET ?;
             `,
-            [idUser, ...queryParams, limit, offset],
-          );
+              [idUser, ...idsCajero, ...queryParams, limit, offset],
+            );
 
-          totalResult = await this.historicoTransaccionesRecargaRepository.query(
-            `
+            totalResult = await this.historicoTransaccionesRecargaRepository.query(
+              `
 SELECT COUNT(*) AS total
 FROM HistoricoTransaccionesRecarga htr
-WHERE htr.IdUsuario = ?
+LEFT JOIN Monederos m ON htr.NumeroSerieMonedero = m.NumeroSerie
+WHERE htr.IdUsuario = ? AND (m.IdCliente IN (${placeholdersCajero}) OR m.IdCliente IS NULL)
 ${fechaCondition};
             `,
-            [idUser, ...queryParams],
-          );
+              [idUser, ...idsCajero, ...queryParams],
+            );
+          }
+          console.log('[getHistoricoRecargasPaginado] Caso 3 - Resultado:', {
+            cantidad: Array.isArray(recargas) ? recargas.length : 'no es array',
+            total: totalResult?.[0]?.total,
+          });
           break;
 
         case 9:
@@ -3580,10 +4206,18 @@ ${fechaCondition};
           }
           
           // Buscar recargas solo en HistoricoTransaccionesRecarga
-          // Filtrar por: IdUsuario del usuario Y idCliente del usuario (solo las recargas que él realizó en su cliente)
-          // Para pasajero: solo mostrar las recargas donde IdUsuario = idUser AND m.IdCliente = cliente
-          const condicionesWhereHistorico = `htr.IdUsuario = ? AND m.IdCliente = ?`;
-          const paramsWhere = [idUser, cliente, ...queryParams];
+          // Filtrar por: IdUsuario del usuario Y clientes hijos (solo las recargas que él realizó en su cliente y clientes hijos)
+          // Para pasajero: solo mostrar las recargas donde IdUsuario = idUser AND m.IdCliente IN (clientes hijos)
+          console.log('[getHistoricoRecargasPaginado] Caso 9 - Obteniendo clientes hijos para cliente:', cliente);
+          const { ids: idsPasajero, placeholders: placeholdersPasajero } = await this.clienteHijos(cliente);
+          console.log('[getHistoricoRecargasPaginado] Caso 9 - Clientes hijos obtenidos:', {
+            ids: idsPasajero,
+            placeholders: placeholdersPasajero,
+            cantidad: idsPasajero?.length,
+          });
+          
+          const condicionesWhereHistorico = `htr.IdUsuario = ? AND (m.IdCliente IN (${placeholdersPasajero}) OR m.IdCliente IS NULL)`;
+          const paramsWhere = [idUser, ...idsPasajero, ...queryParams];
           
           // Obtener recargas del histórico con paginación
           recargas = await this.historicoTransaccionesRecargaRepository.query(
@@ -3623,10 +4257,10 @@ SELECT
     COALESCE(cmp.Nombre, 'Efectivo') AS nombreMetodoPago
 
 FROM HistoricoTransaccionesRecarga htr
-INNER JOIN CatTiposTransacciones ctt ON htr.IdTipoTransaccion = ctt.Id
+LEFT JOIN CatTiposTransacciones ctt ON htr.IdTipoTransaccion = ctt.Id
 LEFT JOIN CatMetodoPago cmp ON htr.IdMetodoPago = cmp.Id
-INNER JOIN Monederos m ON htr.NumeroSerieMonedero = m.NumeroSerie
-INNER JOIN Clientes c ON m.IdCliente = c.Id
+LEFT JOIN Monederos m ON htr.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Clientes c ON m.IdCliente = c.Id
 LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
 LEFT JOIN Usuarios u ON htr.IdUsuario = u.Id
 WHERE ${condicionesWhereHistorico}
@@ -3638,36 +4272,62 @@ LIMIT ? OFFSET ?;
           );
 
           // Query para total
+          console.log('[getHistoricoRecargasPaginado] Caso 9 - Ejecutando query de total');
           totalResult = await this.historicoTransaccionesRecargaRepository.query(
             `
 SELECT COUNT(*) AS total
 FROM HistoricoTransaccionesRecarga htr
-INNER JOIN Monederos m ON htr.NumeroSerieMonedero = m.NumeroSerie
-WHERE ${condicionesWhereHistorico}
+LEFT JOIN Monederos m ON htr.NumeroSerieMonedero = m.NumeroSerie
+WHERE htr.IdUsuario = ? AND (m.IdCliente IN (${placeholdersPasajero}) OR m.IdCliente IS NULL)
 ${fechaConditionHistorico};
             `,
             paramsWhere,
           );
+          console.log('[getHistoricoRecargasPaginado] Caso 9 - Resultado:', {
+            cantidad: Array.isArray(recargas) ? recargas.length : 'no es array',
+            total: totalResult?.[0]?.total,
+          });
           break;
 
         default:
           throw new BadRequestException('Rol no válido para consultar histórico de recargas');
       }
 
+      console.log('[getHistoricoRecargasPaginado] Procesando resultados:', {
+        recargasEsArray: Array.isArray(recargas),
+        recargasLength: Array.isArray(recargas) ? recargas.length : 'no es array',
+        totalResult,
+        total: totalResult?.[0]?.total,
+      });
+
       const total = Number(totalResult[0]?.total || 0);
+      console.log('[getHistoricoRecargasPaginado] Total calculado:', total);
+
+      // Validar que recargas sea un array
+      if (!Array.isArray(recargas)) {
+        console.error('[getHistoricoRecargasPaginado] ERROR: recargas no es un array:', {
+          tipo: typeof recargas,
+          valor: recargas,
+        });
+        throw new BadRequestException({
+          message: 'Error: las recargas no se obtuvieron correctamente',
+        });
+      }
 
       // Convertir BigInt a Number
       const data = recargas.map((item) => ({
         ...item,
         id: Number(item.id),
-        idTipoTransaccion: Number(item.idTipoTransaccion),
+        idTipoTransaccion: item.idTipoTransaccion ? Number(item.idTipoTransaccion) : null,
         monto: Number(item.monto),
-        idCliente: Number(item.idCliente),
+        idCliente: item.idCliente ? Number(item.idCliente) : null,
         idMonedero: item.idMonedero ? Number(item.idMonedero) : null,
         idPasajero: item.idPasajero ? Number(item.idPasajero) : null,
         idUsuario: item.idUsuario ? Number(item.idUsuario) : null,
         idUsuarioRecarga: item.idUsuarioRecarga ? Number(item.idUsuarioRecarga) : null,
       }));
+
+      console.log('[getHistoricoRecargasPaginado] Datos transformados - cantidad:', data.length);
 
       const result: ApiResponseCommon = {
         data: data,
@@ -3678,13 +4338,30 @@ ${fechaConditionHistorico};
         },
       };
 
+      console.log('[getHistoricoRecargasPaginado] Respuesta final:', {
+        cantidadData: data.length,
+        total,
+        page,
+        lastPage: Math.ceil(total / limit),
+      });
+
       return result;
     } catch (error) {
+      console.error('[getHistoricoRecargasPaginado] ERROR:', {
+        message: error.message,
+        stack: error.stack,
+        error: error,
+        rol,
+        cliente,
+        email,
+        dto: getHistoricoRecargasDto,
+      });
       if (error instanceof HttpException) {
         throw error;
       }
       throw new BadRequestException({
         message: 'Error al obtener histórico de recargas',
+        error: error.message,
       });
     }
   }

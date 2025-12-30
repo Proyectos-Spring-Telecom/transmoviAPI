@@ -1,7 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsDateString, IsInt, IsNotEmpty, IsOptional } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class GetHistoricoRecargasDto {
+  @Type(() => Number)
   @IsInt()
   @IsNotEmpty({ message: 'La página es obligatoria' })
   @ApiProperty({
@@ -11,6 +13,7 @@ export class GetHistoricoRecargasDto {
   })
   page: number;
 
+  @Type(() => Number)
   @IsInt()
   @IsNotEmpty({ message: 'El límite es obligatorio' })
   @ApiProperty({

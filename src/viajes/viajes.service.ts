@@ -228,14 +228,14 @@ export class ViajesService {
       // Cerrar todos los conteos de pasajeros activos relacionados con este viaje
       try {
         const conteosCerrados = await this.conteoPasajerosRepository.update(
-          {
-            idViaje: id,
-            estatus: EstatusConteo.ACTIVO,
-          },
-          {
-            estatus: EstatusConteo.INACTIVO,
-          },
-        );
+        {
+          idViaje: id,
+          estatus: EstatusConteo.ACTIVO,
+        },
+        {
+          estatus: EstatusConteo.INACTIVO,
+        },
+      );
 
         // Registrar en bitácora si se cerraron conteos
         if (conteosCerrados.affected && conteosCerrados.affected > 0) {

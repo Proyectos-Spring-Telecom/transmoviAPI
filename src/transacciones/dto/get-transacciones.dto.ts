@@ -1,8 +1,10 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { IsDateString, IsInt, IsNotEmpty, IsOptional } from "class-validator";
+import { Type } from "class-transformer";
 
 
 export class GetTransaccioneDto {
+    @Type(() => Number)
     @IsInt()
     @IsNotEmpty({ message: 'La página es obligatoria' })
     @ApiProperty({
@@ -12,6 +14,7 @@ export class GetTransaccioneDto {
     })
     page: number;
 
+    @Type(() => Number)
     @IsInt()
     @IsNotEmpty({ message: 'El límite es obligatorio' })
     @ApiProperty({
@@ -26,7 +29,7 @@ export class GetTransaccioneDto {
         example: '2025-09-12',
         required: false,
     })
-    @IsDateString({}, { message: 'El fin debe estar en formato ISO8601' })
+    @IsDateString({}, { message: 'La fecha de inicio debe estar en formato ISO8601' })
     @IsOptional()
     fechaInicio?: string;
 
