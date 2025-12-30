@@ -13,6 +13,7 @@ import { AuthModule } from 'src/auth/auth.module';
 import { Clientes } from 'src/entities/Clientes';
 import { UsuariosZonas } from 'src/entities/UsuariosZonas';
 import { Validadores } from 'src/entities/Validadores';
+import { S3Module } from 'src/s3/s3.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Usuarios, UsuariosPermisos, Clientes, Validadores, UsuariosZonas]),
@@ -20,7 +21,8 @@ import { Validadores } from 'src/entities/Validadores';
     ClientesModule,
     PermisosModule,
     MailModule,
-    AuthModule
+    AuthModule,
+    S3Module,
   ],
   controllers: [UsuariosController],
   providers: [UsuariosService],

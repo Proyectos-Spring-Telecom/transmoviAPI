@@ -10,7 +10,11 @@ import {
   UseGuards,
   ParseIntPipe,
   Request,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import * as multer from 'multer';
 import { UsuariosService } from './usuarios.service';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
 import { UpdateUsuarioDto } from './dto/update-usuario.dto';
@@ -22,6 +26,8 @@ import {
   ApiResponse,
   ApiTags,
   ApiBearerAuth,
+  ApiConsumes,
+  ApiBody,
 } from '@nestjs/swagger';
 import { ApiCrudResponse } from 'src/common/ApiResponse';
 import { UpdateUsuarioOperadorDto } from './dto/update-usuario-operador.dto';
@@ -223,6 +229,60 @@ export class UsuariosController {
       updateUsuarioEstatusDto,
       idUser,
     );
+  }
+
+  @Post('foto-perfil')
+  @UseInterceptors(
+    FileInterceptor('foto', {
+      storage: multer.memoryStorage(),
+      limits: { fileSize: 10 * 1024 * 1024 }, // máximo 10 MB
+      fileFilter: (req, file, cb) => {
+        const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+        if (file && !allowedTypes.includes(file.mimetype)) {
+          return cb(
+            new Error('Solo se permiten imágenes PNG, JPG o JPEG'),
+            false,
+          );
+        }
+        cb(null, true);
+      },
+    }),
+  )
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary: 'Subir o actualizar foto de perfil del usuario',
+    description: 'Sube una nueva foto de perfil para el usuario autenticado. Si el usuario ya tiene una foto, se reemplazará automáticamente.',
+  })
+  @ApiBody({
+    description: 'Archivo de imagen (PNG, JPG o JPEG)',
+    schema: {
+      type: 'object',
+      properties: {
+        foto: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Foto de perfil actualizada exitosamente',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Archivo inválido o no proporcionado',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Usuario no encontrado',
+  })
+  async uploadFotoPerfil(
+    @UploadedFile() fotoFile: Express.Multer.File,
+    @Request() req,
+  ): Promise<ApiCrudResponse> {
+    const idUser = req.user.userId;
+    return await this.usuariosService.uploadFotoPerfil(fotoFile, idUser);
   }
 
   // ========================================

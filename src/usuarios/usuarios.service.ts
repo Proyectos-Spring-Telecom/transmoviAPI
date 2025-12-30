@@ -29,6 +29,7 @@ import { Clientes } from 'src/entities/Clientes';
 import { EnumModulos, EstatusEnum } from 'src/common/estatus.enum';
 import { Validadores } from 'src/entities/Validadores';
 import { UpdateUsuarioValidadorDto } from './dto/update-usuario-validador.dto';
+import { S3Service } from 'src/s3/s3.service';
 
 @Injectable()
 export class UsuariosService {
@@ -45,6 +46,7 @@ export class UsuariosService {
     private readonly clienteRepository: Repository<Clientes>,
     private readonly emailService: MailService,
     private readonly jwtService: JwtService,
+    private readonly s3Service: S3Service,
   ) { }
 
   //funcion para obtener los clientes hijos
@@ -1194,6 +1196,114 @@ ORDER BY u.Id DESC
       }
       throw new InternalServerErrorException({
         message: 'Hubo un problema al intentar eliminar el usuario.',
+        error: error.message,
+      });
+    }
+  }
+
+  async uploadFotoPerfil(
+    file: Express.Multer.File,
+    idUser: number,
+  ): Promise<ApiCrudResponse> {
+    try {
+      // Validar que el archivo existe
+      if (!file) {
+        throw new BadRequestException('Archivo requerido');
+      }
+
+      // Validar que solo sean imágenes
+      const allowedMimeTypes = ['image/png', 'image/jpg', 'image/jpeg'];
+      if (!allowedMimeTypes.includes(file.mimetype)) {
+        throw new BadRequestException('Solo se permiten imágenes PNG, JPG o JPEG');
+      }
+
+      // Buscar el usuario por el ID del token
+      const usuario = await this.usuarioRepository.findOne({
+        where: { id: idUser },
+      });
+
+      if (!usuario) {
+        throw new NotFoundException('Usuario no encontrado');
+      }
+
+      // Si el usuario ya tiene una foto, eliminar la anterior de S3
+      if (usuario.fotoPerfil) {
+        try {
+          await this.s3Service.deleteFile(
+            usuario.fotoPerfil,
+            idUser,
+            EnumModulos.USUARIOS,
+          );
+        } catch (error) {
+          // No fallar si no se puede eliminar la foto anterior
+          console.warn('Error al eliminar foto anterior:', error);
+        }
+      }
+
+      // Subir la nueva foto a S3 en la carpeta "Usuarios"
+      const uploadResult = await this.s3Service.uploadFile(
+        file,
+        'Usuarios',
+        idUser,
+        EnumModulos.USUARIOS,
+      );
+
+      // Actualizar el campo fotoPerfil en la base de datos
+      await this.usuarioRepository.update(idUser, {
+        fotoPerfil: uploadResult.url,
+      });
+
+      // Obtener el usuario actualizado
+      const usuarioActualizado = await this.usuarioRepository.findOne({
+        where: { id: idUser },
+      });
+
+      if (!usuarioActualizado) {
+        throw new NotFoundException('Usuario no encontrado después de la actualización');
+      }
+
+      //-----Registro en la bitacora----- SUCCESS
+      const querylogger = {
+        data: `UPDATE Usuarios SET FotoPerfil = '${uploadResult.url}' WHERE Id = ${idUser}`,
+      };
+      await this.bitacoraLogger.logToBitacora(
+        'Usuarios',
+        `Se actualizó la foto de perfil del usuario con ID: ${idUser}`,
+        'UPDATE',
+        querylogger,
+        idUser,
+        EnumModulos.USUARIOS,
+        EstatusEnumBitcora.SUCCESS,
+      );
+
+      return {
+        status: 'success',
+        message: 'Foto de perfil actualizada exitosamente',
+        data: {
+          id: usuarioActualizado.id,
+          nombre: `${usuarioActualizado.nombre || ''} ${usuarioActualizado.apellidoPaterno || ''}`.trim() || 'Usuario',
+        },
+      };
+    } catch (error) {
+      //-----Registro en la bitacora----- ERROR
+      const querylogger = {
+        data: `UPDATE Usuarios SET FotoPerfil = ? WHERE Id = ${idUser}`,
+      };
+      await this.bitacoraLogger.logToBitacora(
+        'Usuarios',
+        `Error al actualizar la foto de perfil del usuario con ID: ${idUser}`,
+        'UPDATE',
+        querylogger,
+        idUser,
+        EnumModulos.USUARIOS,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Hubo un problema al intentar subir la foto de perfil.',
         error: error.message,
       });
     }
