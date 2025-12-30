@@ -7,7 +7,7 @@ import { throwError } from 'rxjs';
 
 @Injectable()
 export class DireccionesService {
-  private readonly apiUrl: string = 'https://api.copomex.com/query/info_cp';
+  private readonly apiUrl: string = 'https://api.tau.com.mx/dipomex/v1/codigo_postal';
   private readonly apiKey: string = '56d7a6da1c873c83c818f89e4b0f37fba8c63c36';
 
   constructor(
@@ -17,15 +17,17 @@ export class DireccionesService {
 
   async findByCodigoPostal(cp: string): Promise<any> {
     try {
-      // La API de Copomex espera el token como parámetro en la URL
-      const url = `${this.apiUrl}?cp=${cp}&token=${this.apiKey}`;
+      // La API de tau.com.mx espera el token como header APIKEY
+      const url = `${this.apiUrl}?cp=${cp}`;
 
       console.log('[DIRECCIONES] URL:', url);
       console.log('[DIRECCIONES] API Key presente:', !!this.apiKey);
       console.log('[DIRECCIONES] Código postal:', cp);
 
       const response = await firstValueFrom(
-        this.httpService.get<any>(url).pipe(
+        this.httpService.get<any>(url, {
+          headers: { 'APIKEY': this.apiKey },
+        }).pipe(
           map(response => response.data),
           catchError(error => {
             console.error('[DIRECCIONES] Error completo:', {
@@ -37,7 +39,6 @@ export class DireccionesService {
             });
 
             const errorMessage =
-              error.response?.data?.error_message ||
               error.response?.data?.message ||
               error.response?.data?.error ||
               error.response?.data?.error_description ||
