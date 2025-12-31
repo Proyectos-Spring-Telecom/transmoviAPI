@@ -872,6 +872,7 @@ SELECT
     u.Id AS idUsuario,
     u.UserName AS CorreoUsuario,
     CONCAT(p.Nombre, ' ', p.ApellidoPaterno, ' ', IFNULL(p.ApellidoMaterno, '')) AS NombreCompleto,
+    p.CustomerIdNetPay AS customerIdNetPay,
     GROUP_CONCAT(DISTINCT m.NumeroSerie ORDER BY m.NumeroSerie SEPARATOR ', ') AS Monederos,
     SUM(m.Saldo) AS SaldoTotal,
     GROUP_CONCAT(DISTINCT ctp.Nombre ORDER BY ctp.Nombre SEPARATOR ', ') AS NombreTipoPasajero,
