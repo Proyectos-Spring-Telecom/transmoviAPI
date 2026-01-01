@@ -533,6 +533,10 @@ export class TransbordosService {
    * Eliminar un transbordo y sus detalles (cascade)
    */
   async remove(id: number, idUser: number): Promise<ApiCrudResponse> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
       const transbordo = await this.transbordosRepository.findOne({
         where: { id },
@@ -544,8 +548,15 @@ export class TransbordosService {
 
       const nombreTransbordo = transbordo.nombre || '';
 
-      // El cascade se encarga de eliminar los detalles
-      await this.transbordosRepository.delete(id);
+      // Primero eliminamos los detalles asociados
+      await queryRunner.manager.delete(DetalleTransbordos, {
+        idTransbordo: id,
+      });
+
+      // Luego eliminamos el transbordo
+      await queryRunner.manager.delete(TransbordosPermitidos, { id });
+
+      await queryRunner.commitTransaction();
 
       // Registro en la bitácora SUCCESS
       await this.bitacoraLogger.logToBitacora(
@@ -569,6 +580,8 @@ export class TransbordosService {
       };
       return result;
     } catch (error) {
+      await queryRunner.rollbackTransaction();
+
       // Registro en la bitácora ERROR
       await this.bitacoraLogger.logToBitacora(
         'TransbordosPermitidos',
@@ -589,6 +602,8 @@ export class TransbordosService {
         message: `Error al eliminar Transbordo con ID ${id}`,
         error: error.message,
       });
+    } finally {
+      await queryRunner.release();
     }
   }
 
