@@ -10,6 +10,7 @@ import {
   UseGuards,
   Request,
   ParseIntPipe,
+  Query,
 } from '@nestjs/common';
 import { MonederosService } from './monederos.service';
 import { CreateMonederoDto } from './dto/create-monedero.dto';
@@ -19,7 +20,7 @@ import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
 import { UpdateMonederoCatPasajeroDto } from './dto/update-monedero-catpasajero.dto';
 import { UpdateMonederoExtravioDto } from './dto/update-monedero-extravio.dto';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 
 @ApiTags('Monederos')
 @ApiBearerAuth('bearer-token')
@@ -74,6 +75,52 @@ export class MonederosController {
     @Request() req,
   ) {
     return this.monederosService.findOneMonederoBySerie(numeroSerie);
+  }
+
+  @Get('paginados/activos')
+  @ApiOperation({ 
+    summary: 'Obtener monederos activos paginados',
+    description: 'Obtiene una lista paginada de monederos con estatus activo (estatus = 1). El resultado se filtra según el rol del usuario.'
+  })
+  @ApiQuery({
+    name: 'page',
+    type: Number,
+    description: 'Número de página',
+    example: 1,
+    required: true,
+  })
+  @ApiQuery({
+    name: 'limit',
+    type: Number,
+    description: 'Cantidad de registros por página',
+    example: 20,
+    required: true,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de monederos activos obtenida exitosamente',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'No autorizado',
+  })
+  findAllMonederosActivos(
+    @Query('page', ParseIntPipe) page: number,
+    @Query('limit', ParseIntPipe) limit: number,
+    @Request() req,
+  ): Promise<ApiResponseCommon> {
+    const idUser = req.user.userId;
+    const email = req.user.email;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+    return this.monederosService.findAllPagMonederosActivos(
+      +idUser,
+      email,
+      +cliente,
+      +rol,
+      page,
+      limit,
+    );
   }
 
   @Get(':page/:limit')

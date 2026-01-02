@@ -166,7 +166,6 @@ export class PasajerosService {
         monederos = await this.monederosRepository.findOne({
           where: {
             numeroSerie: numeroSerieMonedero,
-            estatus: 1,
           },
         });
 
@@ -176,10 +175,22 @@ export class PasajerosService {
           );
         }
 
+        // Validar que el monedero no esté asignado a otro pasajero
         if (monederos.idPasajero) {
-          throw new BadRequestException(
-            `El monedero con número de serie ${numeroSerieMonedero} está asociado a un pasajero.`,
-          );
+          // Verificar que el pasajero asociado realmente existe
+          const pasajeroAsociado = await this.pasajeroRepository.findOne({
+            where: { id: monederos.idPasajero },
+          });
+          
+          if (pasajeroAsociado) {
+            throw new BadRequestException(
+              `El monedero con número de serie ${numeroSerieMonedero} ya está asignado al pasajero ${pasajeroAsociado.nombre} ${pasajeroAsociado.apellidoPaterno} (ID: ${pasajeroAsociado.id}).`,
+            );
+          } else {
+            throw new BadRequestException(
+              `El monedero con número de serie ${numeroSerieMonedero} está asociado a un pasajero que no existe en el sistema.`,
+            );
+          }
         }
       }
 
@@ -360,6 +371,20 @@ export class PasajerosService {
       if (!monederos) {
         throw new InternalServerErrorException(
           'Error: El monedero no fue creado o encontrado correctamente.',
+        );
+      }
+
+      // Validar que el pasajero no tenga ya otro monedero activo
+      const monederoExistente = await this.monederosRepository.findOne({
+        where: {
+          idPasajero: pasajeroSave.id,
+          estatus: EstatusEnum.ACTIVO,
+        },
+      });
+
+      if (monederoExistente && monederoExistente.id !== monederos.id) {
+        throw new BadRequestException(
+          `El pasajero ${pasajeroSave.nombre} ${pasajeroSave.apellidoPaterno} (ID: ${pasajeroSave.id}) ya tiene un monedero activo asignado (Número de serie: ${monederoExistente.numeroSerie}, ID: ${monederoExistente.id}). Un pasajero no puede tener dos monederos activos.`,
         );
       }
 

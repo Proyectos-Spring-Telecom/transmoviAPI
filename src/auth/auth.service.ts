@@ -59,10 +59,22 @@ export class AuthService {
         createAltaPasajaroDto.numeroSerieMonedero,
       );
 
+      // Validar que el monedero no esté asignado a otro pasajero
       if (monederos.data.idPasajero) {
-        throw new BadRequestException(
-          `El monedero con numero de serie ${createAltaPasajaroDto.numeroSerieMonedero} esta ligado a un pasajero`,
-        );
+        // Verificar que el pasajero asociado realmente existe
+        const pasajeroAsociado = await this.pasajeroRepository.findOne({
+          where: { id: monederos.data.idPasajero },
+        });
+        
+        if (pasajeroAsociado) {
+          throw new BadRequestException(
+            `El monedero con número de serie ${createAltaPasajaroDto.numeroSerieMonedero} ya está asignado al pasajero ${pasajeroAsociado.nombre} ${pasajeroAsociado.apellidoPaterno} (ID: ${pasajeroAsociado.id}).`,
+          );
+        } else {
+          throw new BadRequestException(
+            `El monedero con número de serie ${createAltaPasajaroDto.numeroSerieMonedero} está asociado a un pasajero que no existe en el sistema.`,
+          );
+        }
       }
 
       const existUsuario = await this.usuariosRepository.findOne({

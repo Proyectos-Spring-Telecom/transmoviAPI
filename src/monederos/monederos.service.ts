@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   HttpException,
   Injectable,
   InternalServerErrorException,
@@ -421,6 +422,257 @@ WHERE c.Id IN (${placeholders})
       }
       throw new InternalServerErrorException(
         'Hubo un error al obtener el listado de monederos.',
+      );
+    }
+  }
+
+  // ========================================
+  // 🔹 OBTENER PAGINADO DE MONEDEROS ACTIVOS
+  // ========================================
+  async findAllPagMonederosActivos(
+    idUser: number,
+    email: string,
+    cliente: number,
+    rol: number,
+    page: number,
+    limit: number,
+  ): Promise<ApiResponseCommon> {
+    try {
+      const offset = (page - 1) * limit;
+      let totalResult;
+      let monederos;
+      switch (rol) {
+        case 1:
+          // Consulta de datos paginados Usuario SuperAdministrador - Solo activos
+          monederos = await this.monederoRepository.query(
+            `
+SELECT 
+    m.Id AS id,
+    m.NumeroSerie AS numeroSerie,
+    m.Saldo AS saldo,
+    m.FechaActivacion AS fechaActivacion,
+    m.FechaCreacion AS fechaCreacion,
+    m.FechaActualizacion AS fechaActualizacion,
+    m.Estatus AS estatus,
+    m.IdPasajero AS idPasajero,
+    m.IdCliente AS idCliente,
+    m.EsVirtual AS esVirtual,
+    m.IdCard AS idCard,
+
+    p.Id AS idPasajeroMonederos,
+    p.Nombre AS pasajeroNombre,
+    p.ApellidoPaterno AS pasajeroApellidoPaterno,
+    p.ApellidoMaterno AS pasajeroApellidoMaterno,
+    CONCAT(p.Nombre, ' ', p.ApellidoPaterno, ' ', p.ApellidoMaterno) AS nombreCompletoPasajero,
+    p.CustomerIdNetPay AS customerId,
+    u.Telefono AS telefonoUsuario,
+    u.UserName AS correoUsuario,
+
+    c.Id AS idClienteMonederos,
+    c.Nombre AS clienteNombre,
+    c.ApellidoPaterno AS clienteApellidoPaterno,
+    c.ApellidoMaterno AS clienteApellidoMaterno,
+    CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente,
+
+    ct.Nombre AS nombreTipoPasajero
+
+FROM Monederos m
+LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
+LEFT JOIN Usuarios u ON p.IdUsuario = u.Id
+INNER JOIN Clientes c ON m.IdCliente = c.Id
+LEFT JOIN CatTiposPasajeros ct ON m.IdTipoPasajero = ct.Id
+
+WHERE m.Estatus = 1
+
+ORDER BY m.Id DESC
+LIMIT ? OFFSET ?;
+            `,
+            [limit, offset],
+          );
+
+          totalResult = await this.monederoRepository.query(
+            `
+  SELECT COUNT(*) AS total
+FROM Monederos m
+LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
+LEFT JOIN Usuarios u ON p.IdUsuario = u.Id
+INNER JOIN Clientes c ON m.IdCliente = c.Id
+
+WHERE m.Estatus = 1
+
+  `,
+          );
+          break;
+
+        case 9:
+          // Consulta de datos paginados Usuario Pasajero - Solo activos
+          const pasajero =
+            await this.pasajerosService.findOnePasajeroCorreo(email);
+          
+          if (!pasajero) {
+            monederos = [];
+            totalResult = [{ total: 0 }];
+            break;
+          }
+          
+          monederos = await this.monederoRepository.query(
+            `
+SELECT 
+    m.Id AS id,
+    m.NumeroSerie AS numeroSerie,
+    m.Saldo AS saldo,
+    m.FechaActivacion AS fechaActivacion,
+    m.FechaCreacion AS fechaCreacion,
+    m.FechaActualizacion AS fechaActualizacion,
+    m.Estatus AS estatus,
+    m.IdPasajero AS idPasajero,
+    m.IdCliente AS idCliente,
+    m.EsVirtual AS esVirtual,
+    m.IdCard AS idCard,
+
+    p.Id AS idPasajeroMonederos,
+    p.Nombre AS pasajeroNombre,
+    p.ApellidoPaterno AS pasajeroApellidoPaterno,
+    p.ApellidoMaterno AS pasajeroApellidoMaterno,
+    CONCAT(p.Nombre, ' ', p.ApellidoPaterno, ' ', p.ApellidoMaterno) AS nombreCompletoPasajero,
+    p.CustomerIdNetPay AS customerId,
+    u.Telefono AS telefonoUsuario,
+    u.UserName AS correoUsuario,
+
+    c.Id AS idClienteMonederos,
+    c.Nombre AS clienteNombre,
+    c.ApellidoPaterno AS clienteApellidoPaterno,
+    c.ApellidoMaterno AS clienteApellidoMaterno,
+    CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente,
+
+    ct.Nombre AS nombreTipoPasajero
+
+FROM Monederos m
+LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
+LEFT JOIN Usuarios u ON p.IdUsuario = u.Id
+INNER JOIN Clientes c ON m.IdCliente = c.Id
+LEFT JOIN CatTiposPasajeros ct ON m.IdTipoPasajero = ct.Id
+
+WHERE p.Id = ? AND m.Estatus = 1
+
+ORDER BY m.Id DESC
+LIMIT ? OFFSET ?;
+
+            `,
+            [pasajero.id, limit, offset],
+          );
+
+          totalResult = await this.monederoRepository.query(
+            `
+  SELECT COUNT(*) AS total
+FROM Monederos m
+LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
+LEFT JOIN Usuarios u ON p.IdUsuario = u.Id
+INNER JOIN Clientes c ON m.IdCliente = c.Id
+
+WHERE p.Id = ? AND m.Estatus = 1
+  `,
+            [pasajero.id],
+          );
+          break;
+
+        default:
+          // Consulta de datos paginados resto Usuario - Solo activos
+          const { ids, placeholders } = await this.clienteHijos(cliente);
+          
+          monederos = await this.monederoRepository.query(
+            `
+SELECT 
+    m.Id AS id,
+    m.NumeroSerie AS numeroSerie,
+    m.Saldo AS saldo,
+    m.FechaActivacion AS fechaActivacion,
+    m.FechaCreacion AS fechaCreacion,
+    m.FechaActualizacion AS fechaActualizacion,
+    m.Estatus AS estatus,
+    m.IdPasajero AS idPasajero,
+    m.IdCliente AS idCliente,
+    m.EsVirtual AS esVirtual,
+    m.IdCard AS idCard,
+
+    p.Id AS idPasajeroMonederos,
+    p.Nombre AS pasajeroNombre,
+    p.ApellidoPaterno AS pasajeroApellidoPaterno,
+    p.ApellidoMaterno AS pasajeroApellidoMaterno,
+    CONCAT(p.Nombre, ' ', p.ApellidoPaterno, ' ', p.ApellidoMaterno) AS nombreCompletoPasajero,
+    p.CustomerIdNetPay AS customerId,
+    u.Telefono AS telefonoUsuario,
+    u.UserName AS correoUsuario,
+
+    c.Id AS idClienteMonederos,
+    c.Nombre AS clienteNombre,
+    c.ApellidoPaterno AS clienteApellidoPaterno,
+    c.ApellidoMaterno AS clienteApellidoMaterno,
+    CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente,
+
+    ct.Nombre AS nombreTipoPasajero
+
+FROM Monederos m
+LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
+LEFT JOIN Usuarios u ON p.IdUsuario = u.Id
+INNER JOIN Clientes c ON m.IdCliente = c.Id
+LEFT JOIN CatTiposPasajeros ct ON m.IdTipoPasajero = ct.Id
+
+WHERE c.Id IN (${placeholders}) AND m.Estatus = 1
+
+ORDER BY m.Id DESC
+LIMIT ? OFFSET ?;
+
+            `,
+            [...ids, limit, offset],
+          );
+
+          totalResult = await this.monederoRepository.query(
+            `
+  SELECT COUNT(*) AS total
+FROM Monederos m
+LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
+LEFT JOIN Usuarios u ON p.IdUsuario = u.Id
+INNER JOIN Clientes c ON m.IdCliente = c.Id
+WHERE c.Id IN (${placeholders}) AND m.Estatus = 1
+
+  `,
+            [...ids],
+          );
+          break;
+      }
+
+      const data = monederos.map((item) => ({
+        ...item,
+        id: Number(item.id),
+        saldo: Number(item.saldo),
+        idPasajero: Number(item.idPasajero),
+        idCliente: Number(item.idCliente),
+        idPasajeroMonedero: Number(item.idPasajeroMonederos),
+        idClienteMonedero: Number(item.idClienteMonedero),
+        tipoMonedero: item.esVirtual === 1 ? 'virtual' : 'fisico',
+        idCard: item.idCard || null,
+        customerIdNetPay: item.customerId || null,
+      }));
+
+      const total = Number(totalResult[0]?.total || 0);
+
+      //APi response
+      const result: ApiResponseCommon = {
+        data: data,
+        paginated: {
+          total: total,
+          page,
+          lastPage: Math.ceil(total / limit),
+        },
+      };
+      return result;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Hubo un error al obtener el listado de monederos activos.',
       );
     }
   }
@@ -967,6 +1219,50 @@ ORDER BY m.Id DESC;
         throw new NotFoundException(
           `El monedero con ID: ${id} no fue encontrado.`,
         );
+      }
+
+      // Validar que si se intenta asignar un idPasajero, el monedero no esté ya asignado a otro pasajero
+      if (updateMonederoDto.idPasajero !== undefined) {
+        // Si el monedero ya tiene un idPasajero y es diferente al que se intenta asignar
+        if (monedero.idPasajero && monedero.idPasajero !== updateMonederoDto.idPasajero) {
+          const pasajeroAsociado = await this.pasajeroRepository.findOne({
+            where: { id: monedero.idPasajero },
+          });
+          
+          if (pasajeroAsociado) {
+            throw new BadRequestException(
+              `El monedero con número de serie ${monedero.numeroSerie} ya está asignado al pasajero ${pasajeroAsociado.nombre} ${pasajeroAsociado.apellidoPaterno} (ID: ${pasajeroAsociado.id}).`,
+            );
+          } else {
+            throw new BadRequestException(
+              `El monedero con número de serie ${monedero.numeroSerie} está asociado a un pasajero que no existe en el sistema.`,
+            );
+          }
+        }
+
+        // Validar que el pasajero no tenga ya otro monedero activo
+        const monederoExistente = await this.monederoRepository.findOne({
+          where: {
+            idPasajero: updateMonederoDto.idPasajero,
+            estatus: EstatusEnum.ACTIVO,
+          },
+        });
+
+        if (monederoExistente && monederoExistente.id !== id) {
+          const pasajero = await this.pasajeroRepository.findOne({
+            where: { id: updateMonederoDto.idPasajero },
+          });
+          
+          if (pasajero) {
+            throw new BadRequestException(
+              `El pasajero ${pasajero.nombre} ${pasajero.apellidoPaterno} (ID: ${pasajero.id}) ya tiene un monedero activo asignado (Número de serie: ${monederoExistente.numeroSerie}, ID: ${monederoExistente.id}). Un pasajero no puede tener dos monederos activos.`,
+            );
+          } else {
+            throw new BadRequestException(
+              `El pasajero con ID ${updateMonederoDto.idPasajero} no existe en el sistema.`,
+            );
+          }
+        }
       }
 
       //Actualizamos monedero
