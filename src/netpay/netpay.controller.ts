@@ -12,7 +12,7 @@ import {
   HttpStatus,
   BadRequestException,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiExcludeEndpoint } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiExcludeEndpoint, ApiQuery } from '@nestjs/swagger';
 import { NetpayService } from './netpay.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { CreatePaymentDto } from './dto/create-payment.dto';
@@ -86,6 +86,24 @@ export class NetpayController {
       throw new BadRequestException('El parámetro customerId es requerido');
     }
     return this.netpayService.getCustomer(customerId);
+  }
+
+  @Get('datos-tarjeta')
+  @ApiOperation({ 
+    summary: 'Obtiene datos de tarjeta y direcciones por CustomerIdNetPay',
+    description: 'Obtiene los datos de tarjeta y direcciones asociadas filtrados por CustomerIdNetPay.',
+  })
+  @ApiQuery({
+    name: 'customerIdNetPay',
+    type: String,
+    description: 'ID del cliente en Netpay (CustomerIdNetPay)',
+    example: '123456789',
+    required: true,
+  })
+  @ApiResponse({ status: 200, description: 'Datos de tarjeta y direcciones obtenidos exitosamente' })
+  @ApiResponse({ status: 400, description: 'Parámetro customerIdNetPay requerido' })
+  async getDatosTarjetaByCustomerId(@Query('customerIdNetPay') customerIdNetPay: string) {
+    return this.netpayService.getDatosTarjetaByCustomerId(customerIdNetPay);
   }
 
   @Put('customers/:customerId/token')

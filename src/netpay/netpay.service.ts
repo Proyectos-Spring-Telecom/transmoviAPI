@@ -8,6 +8,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import axios, { AxiosInstance } from 'axios';
 import { Pasajeros } from 'src/entities/Pasajeros';
+import { DatosTarjeta } from 'src/entities/DatosTarjeta';
+import { DireccionesTarjeta } from 'src/entities/DireccionesTarjeta';
 import { TokenizeCardDto } from './dto/tokenize-card.dto';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { CreatePaymentDto } from './dto/create-payment.dto';
@@ -39,6 +41,10 @@ export class NetpayService {
     private readonly configService: ConfigService,
     @InjectRepository(Pasajeros)
     private readonly pasajeroRepository: Repository<Pasajeros>,
+    @InjectRepository(DatosTarjeta)
+    private readonly datosTarjetaRepository: Repository<DatosTarjeta>,
+    @InjectRepository(DireccionesTarjeta)
+    private readonly direccionesTarjetaRepository: Repository<DireccionesTarjeta>,
   ) {
     this.isProduction = this.configService.get<string>('NETPAY_ENVIRONMENT') === 'production';
     
@@ -606,6 +612,83 @@ export class NetpayService {
         payload.cvv2 = assignCardDto.cvv2;
       }
 
+      // Guardar datos en las entidades DatosTarjeta y DireccionesTarjeta
+      let direccionData: DireccionesTarjeta | null = null;
+      let datosTarjetaData: DatosTarjeta | null = null;
+      let nuevaDireccion: DireccionesTarjeta | null = null;
+      
+      // Verificar si vienen datos de dirección y datos personales en el body
+      const tieneDatosBody = assignCardDto.direccion && 
+                             (assignCardDto.nombre || assignCardDto.apellidoPaterno || assignCardDto.apellidoMaterno);
+      
+      // Si vienen datos en el body, ignorar idDireccion y guardar nuevos datos
+      // Si solo viene idDireccion (sin datos en body), buscar y usar datos existentes
+      if (assignCardDto.idDireccion && !tieneDatosBody) {
+        // Buscar la dirección existente
+        direccionData = await this.direccionesTarjetaRepository.findOne({
+          where: { id: assignCardDto.idDireccion },
+          relations: ['idDatosTarjeta2'],
+        });
+        
+        if (!direccionData) {
+          throw new BadRequestException(
+            `No se encontró la dirección con ID ${assignCardDto.idDireccion}`,
+          );
+        }
+
+        // Si la dirección tiene un idDatosTarjeta, buscar los datos relacionados
+        if (direccionData.idDatosTarjeta) {
+          datosTarjetaData = await this.datosTarjetaRepository.findOne({
+            where: { id: direccionData.idDatosTarjeta },
+          });
+        }
+      } else if (tieneDatosBody) {
+        // Si vienen datos en el body, crear/actualizar DatosTarjeta y DireccionesTarjeta
+        // Buscar si ya existe un DatosTarjeta con el customerIdNetPay
+        datosTarjetaData = await this.datosTarjetaRepository.findOne({
+          where: { customerIdNetPay: assignCardDto.customerId },
+        });
+
+        if (datosTarjetaData) {
+          // Actualizar datos existentes
+          datosTarjetaData.nombre = assignCardDto.nombre || datosTarjetaData.nombre;
+          datosTarjetaData.apellidoPaterno = assignCardDto.apellidoPaterno || datosTarjetaData.apellidoPaterno;
+          datosTarjetaData.apellidoMaterno = assignCardDto.apellidoMaterno || datosTarjetaData.apellidoMaterno;
+          datosTarjetaData.email = assignCardDto.email || datosTarjetaData.email;
+          datosTarjetaData.telefono = assignCardDto.telefono || datosTarjetaData.telefono;
+          datosTarjetaData.tokenCard = assignCardDto.token;
+          datosTarjetaData.customerIdNetPay = assignCardDto.customerId;
+          await this.datosTarjetaRepository.save(datosTarjetaData);
+        } else {
+          // Crear nuevo DatosTarjeta
+          datosTarjetaData = this.datosTarjetaRepository.create({
+            nombre: assignCardDto.nombre || null,
+            apellidoPaterno: assignCardDto.apellidoPaterno || null,
+            apellidoMaterno: assignCardDto.apellidoMaterno || null,
+            email: assignCardDto.email || null,
+            telefono: assignCardDto.telefono || null,
+            customerIdNetPay: assignCardDto.customerId,
+            estatus: 1,
+          });
+          datosTarjetaData = await this.datosTarjetaRepository.save(datosTarjetaData);
+        }
+
+        // Crear nueva dirección si viene en el body
+        if (assignCardDto.direccion) {
+          nuevaDireccion = this.direccionesTarjetaRepository.create({
+            ciudad: assignCardDto.direccion.ciudad || null,
+            pais: assignCardDto.direccion.pais || 'MX',
+            cp: assignCardDto.direccion.CP || null,
+            estado: assignCardDto.direccion.estado || null,
+            calle: assignCardDto.direccion.calle || null,
+            calleEsquina: assignCardDto.direccion.calleEsquina || null,
+            idDatosTarjeta: datosTarjetaData.id,
+            estatus: 1,
+          });
+          nuevaDireccion = await this.direccionesTarjetaRepository.save(nuevaDireccion);
+        }
+      }
+
       // URL completa para asignar tarjeta - usar endpoint v3/clients/{clientId}/token
       // El endpoint acepta tanto número como string según el tipo de ID
       const assignCardUrl = this.isProduction
@@ -623,6 +706,12 @@ export class NetpayService {
         },
       );
 
+      // Después de una respuesta exitosa, actualizar tokenCard en DatosTarjeta si existe
+      if (response.data && datosTarjetaData) {
+        datosTarjetaData.tokenCard = assignCardDto.token;
+        await this.datosTarjetaRepository.save(datosTarjetaData);
+      }
+
       return response.data;
     } catch (error) {
       this.handleError(error, 'assignCardToCustomer');
@@ -630,11 +719,72 @@ export class NetpayService {
   }
 
   /**
+   * Obtiene los datos de tarjeta y direcciones asociadas por CustomerIdNetPay
+   * @param customerIdNetPay ID del cliente en Netpay
+   * @returns Datos de tarjeta con sus direcciones asociadas
+   */
+  async getDatosTarjetaByCustomerId(customerIdNetPay: string): Promise<any> {
+    try {
+      if (!customerIdNetPay) {
+        throw new BadRequestException('El parámetro customerIdNetPay es requerido');
+      }
+
+      // Buscar datos de tarjeta por CustomerIdNetPay
+      const datosTarjeta = await this.datosTarjetaRepository.find({
+        where: { customerIdNetPay: customerIdNetPay },
+        relations: ['direccionesTarjeta'],
+        order: { id: 'DESC' },
+      });
+
+      if (!datosTarjeta || datosTarjeta.length === 0) {
+        return {
+          datosTarjeta: [],
+          direcciones: [],
+        };
+      }
+
+      // Formatear la respuesta
+      const resultado = datosTarjeta.map((dato) => ({
+        id: dato.id,
+        nombre: dato.nombre,
+        apellidoPaterno: dato.apellidoPaterno,
+        apellidoMaterno: dato.apellidoMaterno,
+        email: dato.email,
+        telefono: dato.telefono,
+        customerIdNetPay: dato.customerIdNetPay,
+        tokenCard: dato.tokenCard,
+        estatus: dato.estatus,
+        direcciones: dato.direccionesTarjeta?.map((dir) => ({
+          id: dir.id,
+          ciudad: dir.ciudad,
+          pais: dir.pais,
+          CP: dir.cp,
+          estado: dir.estado,
+          calle: dir.calle,
+          calleEsquina: dir.calleEsquina,
+          estatus: dir.estatus,
+        })) || [],
+      }));
+
+      return {
+        datosTarjeta: resultado,
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Error al obtener los datos de tarjeta: ${error.message}`,
+      );
+    }
+  }
+
+  /**
    * Consulta información de un cliente
    * @param customerId ID del cliente (puede ser id string o clientId número)
-   * @returns Información del cliente
+   * @returns Información del cliente con datos de tarjeta y direcciones
    */
-  async getCustomer(customerId: string): Promise<NetpayCustomerResponse> {
+  async getCustomer(customerId: string): Promise<any> {
     try {
       // Netpay puede usar tanto el id (string) como el clientId (número)
       // Intentar primero con el clientId como número, si no es válido, usar como string
@@ -661,7 +811,57 @@ export class NetpayService {
         },
       );
 
-      return response.data;
+      // Buscar datos relacionados en DatosTarjeta y DireccionesTarjeta
+      const datosTarjeta = await this.datosTarjetaRepository.find({
+        where: { customerIdNetPay: customerId },
+        relations: ['direccionesTarjeta'],
+        order: { id: 'DESC' },
+      });
+
+      // Formatear el arreglo de datos de tarjeta con direcciones
+      const datosTarjetaArray = datosTarjeta.map((dato) => {
+        // Si tiene direcciones, crear un objeto por cada dirección
+        if (dato.direccionesTarjeta && dato.direccionesTarjeta.length > 0) {
+          return dato.direccionesTarjeta.map((direccion) => ({
+            idDireccion: Number(direccion.id),
+            nombre: dato.nombre,
+            apellidos: dato.apellidoMaterno 
+              ? `${dato.apellidoPaterno || ''} ${dato.apellidoMaterno}`.trim()
+              : dato.apellidoPaterno || null,
+            telefono: dato.telefono,
+            email: dato.email,
+            ciudad: direccion.ciudad,
+            pais: direccion.pais,
+            CP: direccion.cp,
+            estado: direccion.estado,
+            calle: direccion.calle,
+            calleEsquina: direccion.calleEsquina,
+          }));
+        } else {
+          // Si no tiene direcciones, crear un objeto solo con los datos personales
+          return [{
+            idDireccion: null,
+            nombre: dato.nombre,
+            apellidos: dato.apellidoMaterno 
+              ? `${dato.apellidoPaterno || ''} ${dato.apellidoMaterno}`.trim()
+              : dato.apellidoPaterno || null,
+            telefono: dato.telefono,
+            email: dato.email,
+            ciudad: null,
+            pais: null,
+            CP: null,
+            estado: null,
+            calle: null,
+            calleEsquina: null,
+          }];
+        }
+      }).flat(); // Aplanar el arreglo de arreglos
+
+      // Combinar la respuesta de Netpay con los datos de tarjeta
+      return {
+        ...response.data,
+        datosTarjeta: datosTarjetaArray,
+      };
     } catch (error) {
       this.handleError(error, 'getCustomer');
     }

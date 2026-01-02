@@ -1632,6 +1632,7 @@ SELECT
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
     tr.NumeroSerieValidador AS numeroSerieValidador,
     NULL AS esQR,
+    NULL AS nombreMetodoPago,
 
     -- Datos del cliente
     c.Id AS idCliente,

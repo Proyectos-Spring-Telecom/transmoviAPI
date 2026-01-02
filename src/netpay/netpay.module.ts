@@ -4,11 +4,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { NetpayService } from './netpay.service';
 import { NetpayController } from './netpay.controller';
 import { Pasajeros } from 'src/entities/Pasajeros';
+import { DatosTarjeta } from 'src/entities/DatosTarjeta';
+import { DireccionesTarjeta } from 'src/entities/DireccionesTarjeta';
 
 @Module({
   imports: [
     ConfigModule,
-    TypeOrmModule.forFeature([Pasajeros]),
+    TypeOrmModule.forFeature([Pasajeros, DatosTarjeta, DireccionesTarjeta]),
   ],
   controllers: [NetpayController],
   providers: [NetpayService],
