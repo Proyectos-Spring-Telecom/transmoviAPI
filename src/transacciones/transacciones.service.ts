@@ -528,7 +528,7 @@ WHERE v.Id = ${idViaje}
             //Calculamos la distancia en metros
             //tomamos el penultimo punto mas cercano a la posicion actual
             const indexSeguro = Math.max(index - 1, 0);
-            
+
             //Tomamos del inicio de la ruta hasta el penultimo punto mas cercano
             const metrosRecorridos = await calcularDistanciaHastaIndex(
               recorridoInterpolar,
@@ -991,9 +991,9 @@ WHERE
           transacciones = await this.transaccionesrecargaRepository.query(
             `
 SELECT 
-    'DEBITO' AS origenTabla,        -- 👈 de qué tabla viene
+    'DEBITO' AS origenTabla,
     td.Id AS id,
-    ctt.Nombre AS tipoTransaccion,  -- 👈 tipo según el catálogo (RECARGA, DEBITO o RECHAZADO)
+    ctt.Nombre AS tipoTransaccion,
     td.Monto AS monto,
     td.LatitudFinal AS latitudFinal,
     td.LongitudFinal AS longitudFinal,
@@ -1002,12 +1002,17 @@ SELECT
     td.NumeroSerieMonedero AS numeroSerieMonedero,
     td.NumeroSerieDispositivo AS numeroSerieDispositivo,
 
+    -- Estatus de la transacción (solo aplica a débito)
+    cte.Nombre AS estatusTransaccion,
+    
+    -- Método de pago (solo aplica a recarga)
+    NULL AS metodoPago,
+
     -- Datos del cliente
     c.Id AS idCliente,
     c.Nombre AS nombreCliente,
     c.ApellidoPaterno AS apellidoPaternoCliente,
     c.ApellidoMaterno AS apellidoMaternoCliente,
-    
 
     -- Datos del dispositivo
     d.Marca AS marcaDispositivo,
@@ -1017,11 +1022,20 @@ SELECT
     p.Id AS idPasajero,
     p.Nombre AS nombrePasajero,
     p.ApellidoPaterno AS apellidoPaternoPasajero,
-    p.ApellidoMaterno AS apellidoMaternoPasajero
+    p.ApellidoMaterno AS apellidoMaternoPasajero,
+
+    -- Usuario que realizó la transacción
+    u.Id AS idUsuario,
+    u.Nombre AS nombreUsuario,
+
+    -- Viaje asociado (solo aplica a débito)
+    td.IdViajes AS idViaje
 
 FROM ${entidadDebito} td
 INNER JOIN CatTiposTransacciones ctt 
     ON td.IdTipoTransaccion = ctt.Id
+LEFT JOIN CatTransaccionEstatus cte 
+    ON td.IdControlTransaccion = cte.Id
 LEFT JOIN Dispositivos d 
     ON td.NumeroSerieDispositivo = d.NumeroSerie
 INNER JOIN Monederos m 
@@ -1029,18 +1043,20 @@ INNER JOIN Monederos m
 LEFT JOIN Pasajeros p 
     ON m.IdPasajero = p.Id
 INNER JOIN Clientes c
-	ON m.IdCliente = c.Id
-    
--- condiciones
+    ON m.IdCliente = c.Id
+LEFT JOIN Usuarios u
+    ON td.IdUsuario = u.Id
+
 WHERE td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
 
 
 UNION ALL
 
+
 SELECT 
-    'RECARGA' AS origenTabla,       -- 👈 solo indica de qué tabla proviene
+    'RECARGA' AS origenTabla,
     tr.Id AS id,
-    ctt.Nombre AS tipoTransaccion,  -- 👈 valor real del tipo
+    ctt.Nombre AS tipoTransaccion,
     tr.Monto AS monto,
     tr.LatitudFinal AS latitudFinal,
     tr.LongitudFinal AS longitudFinal,
@@ -1049,24 +1065,40 @@ SELECT
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
     tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
 
+    -- Estatus de la transacción (no aplica a recarga)
+    NULL AS estatusTransaccion,
+    
+    -- Método de pago
+    cmp.Nombre AS metodoPago,
+
     -- Datos del cliente
     c.Id AS idCliente,
     c.Nombre AS nombreCliente,
     c.ApellidoPaterno AS apellidoPaternoCliente,
     c.ApellidoMaterno AS apellidoMaternoCliente,
-    
 
+    -- Datos del dispositivo
     d.Marca AS marcaDispositivo,
     d.Modelo AS modeloDispositivo,
 
+    -- Pasajero (vía Monedero)
     p.Id AS idPasajero,
     p.Nombre AS nombrePasajero,
     p.ApellidoPaterno AS apellidoPaternoPasajero,
-    p.ApellidoMaterno AS apellidoMaternoPasajero
+    p.ApellidoMaterno AS apellidoMaternoPasajero,
+
+    -- Usuario que realizó la transacción
+    u.Id AS idUsuario,
+    u.Nombre AS nombreUsuario,
+
+    -- Viaje asociado (no aplica a recarga)
+    NULL AS idViaje
 
 FROM ${entidadRecarga} tr
 INNER JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
+LEFT JOIN CatMetodoPago cmp 
+    ON tr.IdMetodoPago = cmp.Id
 LEFT JOIN Dispositivos d 
     ON tr.NumeroSerieDispositivo = d.NumeroSerie
 INNER JOIN Monederos m 
@@ -1074,12 +1106,13 @@ INNER JOIN Monederos m
 LEFT JOIN Pasajeros p 
     ON m.IdPasajero = p.Id
 INNER JOIN Clientes c
-	ON m.IdCliente = c.Id
-    
--- condiciones
+    ON m.IdCliente = c.Id
+LEFT JOIN Usuarios u
+    ON tr.IdUsuario = u.Id
+
 WHERE tr.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
 
-ORDER BY FechaHoraFinal DESC
+ORDER BY fechaHoraFinal DESC
   LIMIT ? OFFSET ?;
         `,
             [limit, offset],

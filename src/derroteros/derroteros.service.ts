@@ -22,12 +22,15 @@ import { UsuariosRegiones } from 'src/entities/UsuariosRegiones';
 import { UpdateDerroterosEstatusDto } from './dto/update-derrotero-estatus.dto';
 import { Clientes } from 'src/entities/Clientes';
 import { EnumModulos } from 'src/common/estatus.enum';
+import { Tarifas } from 'src/entities/Tarifas';
 
 @Injectable()
 export class DerroterosService {
   constructor(
     @InjectRepository(Rutas)
     private readonly rutasRepository: Repository<Rutas>,
+    @InjectRepository(Tarifas)
+    private readonly tarifasRepository: Repository<Tarifas>,
     @InjectRepository(UsuariosRegiones)
     private readonly usuariosregionesRepository: Repository<UsuariosRegiones>,
     @InjectRepository(Derroteros)
@@ -44,7 +47,17 @@ export class DerroterosService {
     createDerroteroDto: CreateDerroteroDto,
   ) {
     try {
-      const { recorridoDetallado: puntos, crearDerroteroRegreso } = createDerroteroDto;
+      const {
+        recorridoDetallado: puntos,
+        crearDerroteroRegreso,
+        // Campos de tarifa
+        tarifaBase,
+        distanciaBaseKm,
+        incrementoCadaMetros,
+        costoAdicional,
+        tipoTarifa,
+        estatusTarifa,
+      } = createDerroteroDto;
 
       // ========================================
       // 🔹 VALIDAR QUE LA RUTA EXISTA
@@ -57,8 +70,23 @@ export class DerroterosService {
         throw new NotFoundException('Ruta no encontrada');
       }
 
-      const { crearDerroteroRegreso: _, ...bodyDerrotero } = createDerroteroDto;
+      // ========================================
+      // 🔹 SEPARAR DATOS DEL DERROTERO
+      // ========================================
+      const {
+        crearDerroteroRegreso: _,
+        tarifaBase: _tb,
+        distanciaBaseKm: _dbk,
+        incrementoCadaMetros: _icm,
+        costoAdicional: _ca,
+        tipoTarifa: _tt,
+        estatusTarifa: _et,
+        ...bodyDerrotero
+      } = createDerroteroDto;
 
+      // ========================================
+      // 🔹 CREAR DERROTERO PRINCIPAL
+      // ========================================
       const newDerrotero = this.derroterosRepository.create(bodyDerrotero);
 
       const { recorridoDetallado, distanciaKm } =
@@ -69,12 +97,38 @@ export class DerroterosService {
       const derroteroSave = await this.derroterosRepository.save(newDerrotero);
 
       // ========================================
-      // 🔹 CREAR DERROTERO DE REGRESO (SI SE SOLICITA)
+      // 🔹 CREAR TARIFA PRINCIPAL
+      // ========================================
+      const newTarifa = this.tarifasRepository.create({
+        tarifaBase,
+        distanciaBaseKm: distanciaBaseKm,
+        incrementoCadaMetros: incrementoCadaMetros,
+        costoAdicional: costoAdicional,
+        tipoTarifa,
+        estatus: estatusTarifa ?? 1,
+        idDerrotero: derroteroSave.id,
+      })
+
+      const tarifaSave = await this.tarifasRepository.save(newTarifa);
+
+      await this.bitacoraLogger.logToBitacora(
+        'Tarifas',
+        `Se creó tarifa con ID: ${tarifaSave.id} para derrotero ID: ${derroteroSave.id}`,
+        'CREATE',
+        { tarifa: tarifaSave },
+        idUser,
+        EnumModulos.DERROTEROS,
+        EstatusEnumBitcora.SUCCESS,
+      );
+
+      // ========================================
+      // 🔹 CREAR DERROTERO Y TARIFA DE REGRESO (SI APLICA)
       // ========================================
       let derroteroRegresoSave;
+      let tarifaRegresoSave;
 
-      // Solo crea si: 1) El usuario lo solicita Y 2) La ruta tiene ruta de regreso
       if (crearDerroteroRegreso === 1 && ruta.idRutaRegreso) {
+        // Invertir puntos
         const puntosRegreso = [...puntos].reverse();
 
         const {
@@ -82,6 +136,7 @@ export class DerroterosService {
           distanciaKm: distanciaRegreso
         } = await generarRecorridoDetallado(puntosRegreso as any);
 
+        // Crear derrotero de regreso
         const derroteroRegreso = this.derroterosRepository.create({
           nombre: `${bodyDerrotero.nombre} Regreso`,
           puntoInicio: bodyDerrotero.puntoFin,
@@ -105,8 +160,34 @@ export class DerroterosService {
           EnumModulos.DERROTEROS,
           EstatusEnumBitcora.SUCCESS,
         );
+
+        // Crear tarifa de regreso
+        const tarifaRegreso = this.tarifasRepository.create({
+          tarifaBase,
+          distanciaBaseKm: distanciaBaseKm,
+          incrementoCadaMetros: incrementoCadaMetros,
+          costoAdicional: costoAdicional,
+          tipoTarifa,
+          estatus: estatusTarifa ?? 1,
+          idDerrotero: derroteroRegresoSave.id,
+        });
+
+        tarifaRegresoSave = await this.tarifasRepository.save(tarifaRegreso);
+
+        await this.bitacoraLogger.logToBitacora(
+          'Tarifas',
+          `Se creó tarifa de regreso con ID: ${tarifaRegresoSave.id} para derrotero ID: ${derroteroRegresoSave.id}`,
+          'CREATE',
+          { tarifaRegreso: tarifaRegresoSave },
+          idUser,
+          EnumModulos.TARIFAS,
+          EstatusEnumBitcora.SUCCESS,
+        );
       }
 
+      // ========================================
+      // 🔹 BITÁCORA - DERROTERO PRINCIPAL
+      // ========================================
       await this.bitacoraLogger.logToBitacora(
         'Derroteros',
         `Se creó un derrotero con nombre: ${derroteroSave.nombre} y Id: ${derroteroSave.id}`,
@@ -117,12 +198,14 @@ export class DerroterosService {
         EstatusEnumBitcora.SUCCESS,
       );
 
-
+      // ========================================
+      // 🔹 API RESPONSE
+      // ========================================
       const result = {
         status: 'success',
         message: derroteroRegresoSave
-          ? 'Se creó correctamente derrotero y derrotero de regreso'
-          : 'Se creó correctamente derrotero',
+          ? 'Se creó correctamente derrotero, tarifa, derrotero de regreso y tarifa de regreso'
+          : 'Se creó correctamente derrotero y tarifa',
         data: {
           derroteroPrincipal: {
             id: Number(derroteroSave.id),
@@ -131,6 +214,13 @@ export class DerroterosService {
             estatus: derroteroSave.estatus,
             idRuta: Number(derroteroSave.idRuta),
           },
+          tarifaPrincipal: {
+            id: Number(tarifaSave.id),
+            tarifaBase: Number(tarifaSave.tarifaBase),
+            tipoTarifa: tarifaSave.tipoTarifa,
+            estatus: tarifaSave.estatus,
+            idDerrotero: Number(tarifaSave.idDerrotero),
+          },
           ...(derroteroRegresoSave && {
             derroteroRegreso: {
               id: Number(derroteroRegresoSave.id),
@@ -138,6 +228,15 @@ export class DerroterosService {
               distanciaKm: Number(derroteroRegresoSave.distanciaKm),
               estatus: derroteroRegresoSave.estatus,
               idRuta: Number(derroteroRegresoSave.idRuta),
+            },
+          }),
+          ...(tarifaRegresoSave && {
+            tarifaRegreso: {
+              id: Number(tarifaRegresoSave.id),
+              tarifaBase: Number(tarifaRegresoSave.tarifaBase),
+              tipoTarifa: tarifaRegresoSave.tipoTarifa,
+              estatus: tarifaRegresoSave.estatus,
+              idDerrotero: Number(tarifaRegresoSave.idDerrotero),
             },
           }),
         },

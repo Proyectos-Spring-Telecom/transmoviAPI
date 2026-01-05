@@ -14,7 +14,7 @@ import {
   IsArray,
   ValidateNested,
 } from 'class-validator';
-import { Type, Transform } from 'class-transformer';
+import { Type } from 'class-transformer';
 
 class PuntoDto {
   @IsNumber()
@@ -25,6 +25,9 @@ class PuntoDto {
 }
 
 export class CreateDerroteroDto {
+  // ========================================
+  // 🔹 CAMPOS DEL DERROTERO
+  // ========================================
   @ApiProperty({
     description: 'Variable para crear derrotero de regreso (0 = No generar, 1 = Generar)',
     example: 0,
@@ -104,4 +107,61 @@ export class CreateDerroteroDto {
   @IsPositive({ message: 'El ID de la ruta debe ser un número positivo' })
   @Type(() => Number)
   idRuta: number;
+
+  // ========================================
+  // 🔹 CAMPOS DE LA TARIFA
+  // ========================================
+  @ApiProperty({
+    example: 35.5,
+    description: 'Tarifa base en pesos',
+  })
+  @IsNotEmpty({ message: 'La tarifa base es obligatoria' })
+  @IsNumber({}, { message: 'La tarifa base debe ser numérica' })
+  tarifaBase: number;
+
+  @ApiPropertyOptional({
+    example: 5.0,
+    description: 'Distancia base en kilómetros',
+  })
+  @IsOptional()
+  @IsNumber({}, { message: 'La distancia base debe ser numérica' })
+  @Min(0, { message: 'La distancia base no puede ser negativa' })
+  distanciaBaseKm?: number;
+
+  @ApiPropertyOptional({
+    example: 500,
+    description: 'Número de metros después de los cuales se aplica el costo adicional',
+  })
+  @IsOptional()
+  @IsInt({ message: 'El incremento debe ser un número entero' })
+  @Min(1, { message: 'El incremento debe ser mayor a 0' })
+  incrementoCadaMetros?: number;
+
+  @ApiPropertyOptional({
+    example: 2.5,
+    description: 'Costo adicional aplicado cada X metros',
+  })
+  @IsOptional()
+  @IsNumber({}, { message: 'El costo adicional debe ser numérico' })
+  @Min(0, { message: 'El costo adicional no puede ser negativo' })
+  costoAdicional?: number;
+
+  @ApiProperty({
+    example: 1,
+    description: 'Tipo de tarifa (0 = plana, 1 = incrementable)',
+  })
+  @IsNotEmpty({ message: 'El tipo de tarifa es obligatorio' })
+  @IsInt({ message: 'El tipoTarifa debe ser un número entero' })
+  @IsIn([0, 1], { message: 'Solo puede ser 0 ó 1' })
+  tipoTarifa: number;
+
+  @ApiPropertyOptional({
+    example: 1,
+    description: 'Estatus de la tarifa (0 = inactivo, 1 = activo)',
+    default: 1,
+  })
+  @IsOptional()
+  @IsInt({ message: 'El estatus de tarifa debe ser un número entero' })
+  @IsIn([0, 1], { message: 'El estatus de tarifa solo puede ser 0 o 1' })
+  estatusTarifa?: number = 1;
 }

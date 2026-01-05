@@ -46,8 +46,8 @@ export class TarifasService {
     createTarifaDto: CreateTarifaDto,
   ): Promise<ApiCrudResponse> {
     try {
-      let derrotero;
-      derrotero = await this.derroterosRepository.findOne({
+      
+      const derrotero = await this.derroterosRepository.findOne({
         where: { id: createTarifaDto.idDerrotero },
       });
       if (!derrotero)
