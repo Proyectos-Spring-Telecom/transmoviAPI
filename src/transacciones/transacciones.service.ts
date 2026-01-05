@@ -1032,22 +1032,22 @@ SELECT
     td.IdViajes AS idViaje
 
 FROM ${entidadDebito} td
-INNER JOIN CatTiposTransacciones ctt 
+LEFT JOIN CatTiposTransacciones ctt 
     ON td.IdTipoTransaccion = ctt.Id
 LEFT JOIN CatTransaccionEstatus cte 
     ON td.IdControlTransaccion = cte.Id
 LEFT JOIN Dispositivos d 
     ON td.NumeroSerieDispositivo = d.NumeroSerie
-INNER JOIN Monederos m 
+LEFT JOIN Monederos m 
     ON td.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
     ON m.IdPasajero = p.Id
-INNER JOIN Clientes c
+LEFT JOIN Clientes c
     ON m.IdCliente = c.Id
 LEFT JOIN Usuarios u
     ON td.IdUsuario = u.Id
 
-WHERE td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
+WHERE td.FHRegistro BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
 
 
 UNION ALL
@@ -1095,22 +1095,22 @@ SELECT
     NULL AS idViaje
 
 FROM ${entidadRecarga} tr
-INNER JOIN CatTiposTransacciones ctt 
+LEFT JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
 LEFT JOIN CatMetodoPago cmp 
     ON tr.IdMetodoPago = cmp.Id
 LEFT JOIN Dispositivos d 
     ON tr.NumeroSerieDispositivo = d.NumeroSerie
-INNER JOIN Monederos m 
+LEFT JOIN Monederos m 
     ON tr.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
     ON m.IdPasajero = p.Id
-INNER JOIN Clientes c
+LEFT JOIN Clientes c
     ON m.IdCliente = c.Id
 LEFT JOIN Usuarios u
     ON tr.IdUsuario = u.Id
 
-WHERE tr.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
+WHERE tr.FHRegistro BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
 
 ORDER BY fechaHoraFinal DESC
   LIMIT ? OFFSET ?;
@@ -1124,38 +1124,46 @@ ORDER BY fechaHoraFinal DESC
 SELECT COUNT(*) AS total
 FROM (
     SELECT td.Id
-    FROM TransaccionesDebito td
-INNER JOIN CatTiposTransacciones ctt 
+    FROM ${entidadDebito} td
+LEFT JOIN CatTiposTransacciones ctt 
     ON td.IdTipoTransaccion = ctt.Id
+LEFT JOIN CatTransaccionEstatus cte 
+    ON td.IdControlTransaccion = cte.Id
 LEFT JOIN Dispositivos d 
     ON td.NumeroSerieDispositivo = d.NumeroSerie
-INNER JOIN Monederos m 
+LEFT JOIN Monederos m 
     ON td.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
     ON m.IdPasajero = p.Id
-INNER JOIN Clientes c
-	ON m.IdCliente = c.Id
+LEFT JOIN Clientes c
+    ON m.IdCliente = c.Id
+LEFT JOIN Usuarios u
+    ON td.IdUsuario = u.Id
     
 -- condiciones
-WHERE td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
+WHERE td.FHRegistro BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
 
     UNION ALL
 
     SELECT tr.Id
-    FROM TransaccionesRecarga tr
-INNER JOIN CatTiposTransacciones ctt 
+    FROM ${entidadRecarga} tr
+LEFT JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
+LEFT JOIN CatMetodoPago cmp 
+    ON tr.IdMetodoPago = cmp.Id
 LEFT JOIN Dispositivos d 
     ON tr.NumeroSerieDispositivo = d.NumeroSerie
-INNER JOIN Monederos m 
+LEFT JOIN Monederos m 
     ON tr.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
     ON m.IdPasajero = p.Id
-INNER JOIN Clientes c
-	ON m.IdCliente = c.Id
+LEFT JOIN Clientes c
+    ON m.IdCliente = c.Id
+LEFT JOIN Usuarios u
+    ON tr.IdUsuario = u.Id
     
 -- condiciones
-WHERE tr.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
+WHERE tr.FHRegistro BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
 ) AS todas;
 		
   `,
@@ -1197,16 +1205,20 @@ SELECT
     p.ApellidoMaterno AS apellidoMaternoPasajero
 
 FROM ${entidadDebito} td
-INNER JOIN CatTiposTransacciones ctt 
+LEFT JOIN CatTiposTransacciones ctt 
     ON td.IdTipoTransaccion = ctt.Id
+LEFT JOIN CatTransaccionEstatus cte 
+    ON td.IdControlTransaccion = cte.Id
 LEFT JOIN Dispositivos d 
     ON td.NumeroSerieDispositivo = d.NumeroSerie
-INNER JOIN Monederos m 
+LEFT JOIN Monederos m 
     ON td.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
     ON m.IdPasajero = p.Id
-INNER JOIN Clientes c
-	ON m.IdCliente = c.Id
+LEFT JOIN Clientes c
+    ON m.IdCliente = c.Id
+LEFT JOIN Usuarios u
+    ON td.IdUsuario = u.Id
     
 -- condiciones
 WHERE td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
@@ -1243,16 +1255,20 @@ SELECT
     p.ApellidoMaterno AS apellidoMaternoPasajero
 
 FROM ${entidadRecarga} tr
-INNER JOIN CatTiposTransacciones ctt 
+LEFT JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
+LEFT JOIN CatMetodoPago cmp 
+    ON tr.IdMetodoPago = cmp.Id
 LEFT JOIN Dispositivos d 
     ON tr.NumeroSerieDispositivo = d.NumeroSerie
-INNER JOIN Monederos m 
+LEFT JOIN Monederos m 
     ON tr.NumeroSerieMonedero = m.NumeroSerie
 LEFT JOIN Pasajeros p 
     ON m.IdPasajero = p.Id
-INNER JOIN Clientes c
-	ON m.IdCliente = c.Id
+LEFT JOIN Clientes c
+    ON m.IdCliente = c.Id
+LEFT JOIN Usuarios u
+    ON tr.IdUsuario = u.Id
     
 -- condiciones
 WHERE tr.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
