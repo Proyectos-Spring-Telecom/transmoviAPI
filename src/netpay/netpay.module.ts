@@ -6,11 +6,12 @@ import { NetpayController } from './netpay.controller';
 import { Pasajeros } from 'src/entities/Pasajeros';
 import { DatosTarjeta } from 'src/entities/DatosTarjeta';
 import { DireccionesTarjeta } from 'src/entities/DireccionesTarjeta';
+import { TokenDirecciones } from 'src/entities/TokenDirecciones';
 
 @Module({
   imports: [
     ConfigModule,
-    TypeOrmModule.forFeature([Pasajeros, DatosTarjeta, DireccionesTarjeta]),
+    TypeOrmModule.forFeature([Pasajeros, DatosTarjeta, DireccionesTarjeta, TokenDirecciones]),
   ],
   controllers: [NetpayController],
   providers: [NetpayService],

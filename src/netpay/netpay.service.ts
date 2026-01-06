@@ -10,6 +10,7 @@ import axios, { AxiosInstance } from 'axios';
 import { Pasajeros } from 'src/entities/Pasajeros';
 import { DatosTarjeta } from 'src/entities/DatosTarjeta';
 import { DireccionesTarjeta } from 'src/entities/DireccionesTarjeta';
+import { TokenDirecciones } from 'src/entities/TokenDirecciones';
 import { TokenizeCardDto } from './dto/tokenize-card.dto';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { CreatePaymentDto } from './dto/create-payment.dto';
@@ -45,6 +46,8 @@ export class NetpayService {
     private readonly datosTarjetaRepository: Repository<DatosTarjeta>,
     @InjectRepository(DireccionesTarjeta)
     private readonly direccionesTarjetaRepository: Repository<DireccionesTarjeta>,
+    @InjectRepository(TokenDirecciones)
+    private readonly tokenDireccionesRepository: Repository<TokenDirecciones>,
   ) {
     this.isProduction = this.configService.get<string>('NETPAY_ENVIRONMENT') === 'production';
     
@@ -612,81 +615,50 @@ export class NetpayService {
         payload.cvv2 = assignCardDto.cvv2;
       }
 
-      // Guardar datos en las entidades DatosTarjeta y DireccionesTarjeta
-      let direccionData: DireccionesTarjeta | null = null;
-      let datosTarjetaData: DatosTarjeta | null = null;
-      let nuevaDireccion: DireccionesTarjeta | null = null;
-      
-      // Verificar si vienen datos de dirección y datos personales en el body
-      const tieneDatosBody = assignCardDto.direccion && 
-                             (assignCardDto.nombre || assignCardDto.apellidoPaterno || assignCardDto.apellidoMaterno);
-      
-      // Si vienen datos en el body, ignorar idDireccion y guardar nuevos datos
-      // Si solo viene idDireccion (sin datos en body), buscar y usar datos existentes
-      if (assignCardDto.idDireccion && !tieneDatosBody) {
-        // Buscar la dirección existente
-        direccionData = await this.direccionesTarjetaRepository.findOne({
+      let idDireccionFinal: number | null = null;
+
+      // Si viene idDireccion, solo verificar que existe (NO crear nada)
+      if (assignCardDto.idDireccion) {
+        // Verificar que la dirección existe
+        const direccionExistente = await this.direccionesTarjetaRepository.findOne({
           where: { id: assignCardDto.idDireccion },
-          relations: ['idDatosTarjeta2'],
         });
-        
-        if (!direccionData) {
+
+        if (!direccionExistente) {
           throw new BadRequestException(
             `No se encontró la dirección con ID ${assignCardDto.idDireccion}`,
           );
         }
 
-        // Si la dirección tiene un idDatosTarjeta, buscar los datos relacionados
-        if (direccionData.idDatosTarjeta) {
-          datosTarjetaData = await this.datosTarjetaRepository.findOne({
-            where: { id: direccionData.idDatosTarjeta },
-          });
-        }
-      } else if (tieneDatosBody) {
-        // Si vienen datos en el body, crear/actualizar DatosTarjeta y DireccionesTarjeta
-        // Buscar si ya existe un DatosTarjeta con el customerIdNetPay
-        datosTarjetaData = await this.datosTarjetaRepository.findOne({
-          where: { customerIdNetPay: assignCardDto.customerId },
+        idDireccionFinal = assignCardDto.idDireccion;
+      } 
+      // Si NO viene idDireccion pero hay datos personales Y dirección, crear los registros
+      else if (assignCardDto.direccion && (assignCardDto.nombre || assignCardDto.apellidoPaterno || assignCardDto.apellidoMaterno)) {
+        // Crear nuevo DatosTarjeta con los datos personales
+        const datosTarjetaData = this.datosTarjetaRepository.create({
+          nombre: assignCardDto.nombre || null,
+          apellidoPaterno: assignCardDto.apellidoPaterno || null,
+          apellidoMaterno: assignCardDto.apellidoMaterno || null,
+          email: assignCardDto.email || null,
+          telefono: assignCardDto.telefono || null,
+          customerIdNetPay: assignCardDto.customerId,
+          estatus: 1,
         });
+        const datosTarjetaGuardado = await this.datosTarjetaRepository.save(datosTarjetaData);
 
-        if (datosTarjetaData) {
-          // Actualizar datos existentes
-          datosTarjetaData.nombre = assignCardDto.nombre || datosTarjetaData.nombre;
-          datosTarjetaData.apellidoPaterno = assignCardDto.apellidoPaterno || datosTarjetaData.apellidoPaterno;
-          datosTarjetaData.apellidoMaterno = assignCardDto.apellidoMaterno || datosTarjetaData.apellidoMaterno;
-          datosTarjetaData.email = assignCardDto.email || datosTarjetaData.email;
-          datosTarjetaData.telefono = assignCardDto.telefono || datosTarjetaData.telefono;
-          datosTarjetaData.tokenCard = assignCardDto.token;
-          datosTarjetaData.customerIdNetPay = assignCardDto.customerId;
-          await this.datosTarjetaRepository.save(datosTarjetaData);
-        } else {
-          // Crear nuevo DatosTarjeta
-          datosTarjetaData = this.datosTarjetaRepository.create({
-            nombre: assignCardDto.nombre || null,
-            apellidoPaterno: assignCardDto.apellidoPaterno || null,
-            apellidoMaterno: assignCardDto.apellidoMaterno || null,
-            email: assignCardDto.email || null,
-            telefono: assignCardDto.telefono || null,
-            customerIdNetPay: assignCardDto.customerId,
-            estatus: 1,
-          });
-          datosTarjetaData = await this.datosTarjetaRepository.save(datosTarjetaData);
-        }
-
-        // Crear nueva dirección si viene en el body
-        if (assignCardDto.direccion) {
-          nuevaDireccion = this.direccionesTarjetaRepository.create({
-            ciudad: assignCardDto.direccion.ciudad || null,
-            pais: assignCardDto.direccion.pais || 'MX',
-            cp: assignCardDto.direccion.CP || null,
-            estado: assignCardDto.direccion.estado || null,
-            calle: assignCardDto.direccion.calle || null,
-            calleEsquina: assignCardDto.direccion.calleEsquina || null,
-            idDatosTarjeta: datosTarjetaData.id,
-            estatus: 1,
-          });
-          nuevaDireccion = await this.direccionesTarjetaRepository.save(nuevaDireccion);
-        }
+        // Crear nueva dirección vinculada al DatosTarjeta recién creado
+        const nuevaDireccion = this.direccionesTarjetaRepository.create({
+          ciudad: assignCardDto.direccion.ciudad || null,
+          pais: assignCardDto.direccion.pais || 'MX',
+          cp: assignCardDto.direccion.CP || null,
+          estado: assignCardDto.direccion.estado || null,
+          calle: assignCardDto.direccion.calle || null,
+          calleEsquina: assignCardDto.direccion.calleEsquina || null,
+          idDatosTarjeta: datosTarjetaGuardado.id,
+          estatus: 1,
+        });
+        const direccionGuardada = await this.direccionesTarjetaRepository.save(nuevaDireccion);
+        idDireccionFinal = direccionGuardada.id;
       }
 
       // URL completa para asignar tarjeta - usar endpoint v3/clients/{clientId}/token
@@ -694,7 +666,6 @@ export class NetpayService {
       const assignCardUrl = this.isProduction
         ? `https://gateway.netpay.com.mx/gateway-ecommerce/v3/clients/${clientIdParam}/token`
         : `https://gateway-154.netpaydev.com/gateway-ecommerce/v3/clients/${clientIdParam}/token`;
-
 
       // Usar axios directamente con la URL completa
       const response = await axios.put<NetpayCardResponse>(
@@ -706,10 +677,13 @@ export class NetpayService {
         },
       );
 
-      // Después de una respuesta exitosa, actualizar tokenCard en DatosTarjeta si existe
-      if (response.data && datosTarjetaData) {
-        datosTarjetaData.tokenCard = assignCardDto.token;
-        await this.datosTarjetaRepository.save(datosTarjetaData);
+      // Después de una respuesta exitosa, crear relación en TokenDirecciones
+      if (response.data && idDireccionFinal) {
+        const tokenDireccion = this.tokenDireccionesRepository.create({
+          idDireccion: idDireccionFinal,
+          tokenCard: assignCardDto.token,
+        });
+        await this.tokenDireccionesRepository.save(tokenDireccion);
       }
 
       return response.data;
