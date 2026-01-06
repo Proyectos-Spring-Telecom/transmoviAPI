@@ -53,7 +53,7 @@ export class MailService {
                     <tr>
                         <td style="background-color: #002136; color: #FFFFFF; padding: 1rem; ">
                             <a href="#">
-                                <img src="https://transmovi.s3.us-east-2.amazonaws.com/logos/transmovi.png" alt="logo"
+                                <img src="https://transmovi.s3.us-east-2.amazonaws.com/logos/Logo_QMT_final.png" alt="logo"
                                     style="height: 95px;">
                             </a>
                         </td>
@@ -66,7 +66,7 @@ export class MailService {
                             </h5>
                             <p
                                 style="color: #002136; font-family: 'Open Sans', sans-serif; font-size: 16px; text-align: center; margin-top: -30px;">
-                                Gracias por registrarte en <strong>Transmovi.</strong></p>
+                                Gracias por registrarte en <strong>QMT Systems.</strong></p>
                             <p style="font-size:16px; color:#002136; margin:15px 0 25px 0;">Para confirmar tu cuenta,
                                 utiliza el siguiente código de verificación:</p>
                             <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center">
@@ -111,9 +111,9 @@ export class MailService {
                                 electrónico a contacto@transmovi.mx</p>
                             <p style="margin: 0; font-size: 13px; font-family: 'Open Sans', sans-serif;">Atentamente,
                             </p>
-                            <p style="margin: 0; font-size: 13px; font-family: 'Open Sans', sans-serif;">© Transmovi</p>
+                            <p style="margin: 0; font-size: 13px; font-family: 'Open Sans', sans-serif;">© QMT Systems</p>
                             <br>
-                            <p style="margin: 0; font-size: 9px; font-family: 'Open Sans', sans-serif;">Transmovi, Av.
+                            <p style="margin: 0; font-size: 9px; font-family: 'Open Sans', sans-serif;">QMT Systems, Av.
                                 Independencia Manzana #016, Col. Centro, 50000 Toluca de Lerdo, México.
                                 RFC:QSY240515579</p>
                             <!-- Redes sociales y más -->
@@ -156,7 +156,7 @@ export class MailService {
                     <tr>
                         <td  style="background-color: #002136; color: #FFFFFF; padding: 1rem; ">
                             <a href="#">
-                                <img src="https://transmovi.s3.us-east-2.amazonaws.com/logos/transmovi.png" alt="logo" style="height: 95px;">
+                                <img src="https://transmovi.s3.us-east-2.amazonaws.com/logos/Logo_QMT_final.png" alt="logo" style="height: 95px;">
                             </a>
                         </td>
                     </tr>
@@ -190,7 +190,7 @@ export class MailService {
                         <td  style="padding: 0 2rem; "><br>
                             <p style="margin: 0; font-size: 16px; font-family: 'Open Sans', sans-serif;"><strong>Nota: </strong>Recibes este correo electrónico porque has solicitado restablecer tu contraseña. Si no estas seguro/a de por qué estás recibiendo esto ignoralo.</p>
                             <p >Atentamente,</p>
-                            <p style="margin-top: -10px;"><strong>Transmovi</strong></p>
+                            <p style="margin-top: -10px;"><strong>QMT Systems</strong></p>
                         <br>
                         </td>
                     </tr>
@@ -204,9 +204,9 @@ export class MailService {
                                 preguntas, siempre nos complace poder ayudarle. Comuníquese con nosotros enviándonos un correo
                                 electrónico a contacto@transmovi.mx</p>
                             <p style="margin: 0; font-size: 13px; font-family: 'Open Sans', sans-serif;">Atentamente,</p>
-                            <p style="margin: 0; font-size: 13px; font-family: 'Open Sans', sans-serif;">© Transmovi</p>
+                            <p style="margin: 0; font-size: 13px; font-family: 'Open Sans', sans-serif;">© QMT Systems</p>
                             <br>
-                            <p style="margin: 0; font-size: 9px; font-family: 'Open Sans', sans-serif;">Transmovi, Av. Independencia Manzana #016, Col. Centro, 50000 Toluca de Lerdo, México. 
+                            <p style="margin: 0; font-size: 9px; font-family: 'Open Sans', sans-serif;">QMT Systems, Av. Independencia Manzana #016, Col. Centro, 50000 Toluca de Lerdo, México. 
                                 RFC:QSY240515579</p>
                             <!-- Redes sociales y más -->
                         </td>
