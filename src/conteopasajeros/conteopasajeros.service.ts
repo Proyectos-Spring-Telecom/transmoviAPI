@@ -1023,11 +1023,14 @@ WHERE cp.FechaHora BETWEEN '${fechaInicio}TT00:00:00' AND '${fechaFin}T23:59:00'
   // ========================================
   async update(updateConteoPasajerosDto: UpdateConteoPasajerosDto, idUser: number) {
     try {
-      // Buscar el conteo activo por numeroSerieContador
+      // Buscar el conteo activo por numeroSerieContador (el más reciente)
       const conteoPasajero = await this.conteopasajeroRepository.findOne({
         where: {
           numeroSerieContador: updateConteoPasajerosDto.numeroSerieContador,
           estatus: EstatusConteo.ACTIVO,
+        },
+        order: {
+          fechaHora: 'DESC', // Obtener el más reciente
         },
       });
 
@@ -1074,17 +1077,17 @@ WHERE cp.FechaHora BETWEEN '${fechaInicio}TT00:00:00' AND '${fechaFin}T23:59:00'
       // Calcular la diferencia
       const nuevaDiferencia = nuevasEntradas - nuevasSalidas;
 
-      // Actualizar los datos
-      const updateResult = await this.conteopasajeroRepository.update(conteoPasajero.id, {
-        entradas: nuevasEntradas,
-        salidas: nuevasSalidas,
-        diferencia: nuevaDiferencia,
-      });
+      // Actualizar los datos usando save() para asegurar que se actualice correctamente
+      conteoPasajero.entradas = nuevasEntradas;
+      conteoPasajero.salidas = nuevasSalidas;
+      conteoPasajero.diferencia = nuevaDiferencia;
 
-      // Verificar que se actualizó al menos un registro
-      if (updateResult.affected === 0) {
+      const conteoActualizado = await this.conteopasajeroRepository.save(conteoPasajero);
+
+      // Verificar que se actualizó correctamente
+      if (!conteoActualizado || !conteoActualizado.id) {
         throw new InternalServerErrorException(
-          'No se pudo actualizar el registro de ConteoPasajero. No se afectaron registros.'
+          'No se pudo actualizar el registro de ConteoPasajero.'
         );
       }
 
