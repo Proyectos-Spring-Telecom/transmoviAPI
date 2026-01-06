@@ -88,6 +88,7 @@ export class CreateTransaccioneRecargaDto {
     example: 1,
     description: 'Método de pago: 1 (Efectivo), 2 (Transferencia), 3 (Tarjeta de crédito), 4 (Tarjeta de débito)',
     enum: EnumMetodoPago,
+    required: true,
   })
   @IsEnum(EnumMetodoPago, {
     message: 'El método de pago debe ser: 1 (Efectivo), 2 (Transferencia), 3 (Tarjeta de crédito), 4 (Tarjeta de débito)',

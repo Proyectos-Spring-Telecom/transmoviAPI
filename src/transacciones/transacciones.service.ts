@@ -543,6 +543,11 @@ export class TransaccionesService {
     idUser: number,
   ): Promise<ApiCrudResponse> {
     try {
+      // Validar que idMetodoPago sea obligatorio
+      if (!createTransaccioneRecargaDto.idMetodoPago) {
+        throw new BadRequestException('El campo idMetodoPago es obligatorio para crear una recarga.');
+      }
+
       //Buscamos el monedero
       const monedero = await this.monederosService.findOneMonederoBySerie(
         createTransaccioneRecargaDto.numeroSerieMonedero,
