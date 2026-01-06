@@ -1,10 +1,8 @@
 import {
-  ForbiddenException,
   HttpException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { CreateConteoPasajerosDto } from './dto/create-conteopasajero.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -36,31 +34,33 @@ export class ConteopasajerosService {
   // 🔹 CREAR DATOS DE CONTEOPASAJEROS
   // ========================================
   async create(
+    idUser: number,
+    cliente: number,
+    rol: number,
     createConteopasajeroDto: CreateConteoPasajerosDto,
   ): Promise<ApiCrudResponse> {
     try {
+      //Buscamos que exista el bluevoxs
+      const bluevox = await this.bluevoxsRepository.findOne({ where: { numeroSerie: createConteopasajeroDto.numeroSerieBlueVox } });
+
+      if (!bluevox) {
+        throw new NotFoundException('No se encontró el número de serie de Bluevox.')
+      }
       const newConteoPasajero = await this.conteopasajeroRepository.create(
         createConteopasajeroDto,
       );
       const conteoPasajeroSave = await this.conteopasajeroRepository.save(newConteoPasajero);
 
-      const bluevox = await this.bluevoxsRepository.findOne({ where: { numeroSerie: createConteopasajeroDto.numeroSerieBlueVox } })
-
-      if (bluevox) {
-
-        const usuario = await this.usuariosRepository.findOne({ where: { idCliente: bluevox.idCliente, idRol: 2 } })
-        // Registro en la bitácora SUCCESS
-        const querylogger = { createConteopasajeroDto };
-        await this.bitacoraLogger.logToBitacora(
-          'ConteoPasajeros',
-          `Se creó un ConteoPasajeros con Numero de serie BlueVoxs: ${createConteopasajeroDto.numeroSerieBlueVox}`,
-          'CREATE',
-          querylogger,
-          usuario?.id || 1,
-          EnumModulos.CONTEOPASAJEROS,
-          EstatusEnumBitcora.SUCCESS,
-        );
-      }
+      const querylogger = { createConteopasajeroDto };
+      await this.bitacoraLogger.logToBitacora(
+        'ConteoPasajeros',
+        `Se creó un ConteoPasajeros con Numero de serie BlueVoxs: ${createConteopasajeroDto.numeroSerieBlueVox}`,
+        'CREATE',
+        querylogger,
+        idUser,
+        EnumModulos.CONTEOPASAJEROS,
+        EstatusEnumBitcora.SUCCESS,
+      );
 
 
       const result: ApiCrudResponse = {
@@ -73,6 +73,20 @@ export class ConteopasajerosService {
       };
       return result;
     } catch (error) {
+      const querylogger = { createConteopasajeroDto };
+      await this.bitacoraLogger.logToBitacora(
+        'ConteoPasajeros',
+        `Se creó un ConteoPasajeros con Numero de serie BlueVoxs: ${createConteopasajeroDto.numeroSerieBlueVox}`,
+        'CREATE',
+        querylogger,
+        idUser,
+        EnumModulos.CONTEOPASAJEROS,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
+      if (error instanceof HttpException) {
+        throw error;
+      }
       throw new InternalServerErrorException({
         message: 'Error al crear ConteoPasajeros',
         error: error.message,
@@ -897,7 +911,12 @@ WHERE cp.FechaHora BETWEEN '${fechaInicio}TT00:00:00' AND '${fechaFin}T23:59:00'
   // ========================================
   // 🔹 ACTUALIZAR CONTEOPASAJERO
   // ========================================
-  async update(id: number, updateConteoPasajerosDto: UpdateConteoPasajerosDto) {
+  async update(
+    id: number,
+    idUser: number,
+    cliente: number,
+    rol: number,
+    updateConteoPasajerosDto: UpdateConteoPasajerosDto) {
     try {
       const conteoPasajero = await this.conteopasajeroRepository.findOne({
         where:
@@ -908,21 +927,16 @@ WHERE cp.FechaHora BETWEEN '${fechaInicio}TT00:00:00' AND '${fechaFin}T23:59:00'
       //Actualizamos los datos de conteopasajeros
       await this.conteopasajeroRepository.update(id, updateConteoPasajerosDto);
 
-      const bluevox = await this.bluevoxsRepository.findOne({ where: { numeroSerie: conteoPasajero.numeroSerieBlueVox } });
-      if (bluevox) {
-        const usuario = await this.usuariosRepository.findOne({ where: { idCliente: bluevox.idCliente, idRol: 2 } })
-        // Registro en la bitácora SUCCESS
-        const querylogger = { updateConteoPasajerosDto };
-        await this.bitacoraLogger.logToBitacora(
-          'ConteoPasajeros',
-          `Se actualizo un ConteoPasajeros con ID ${id}, Numero de serie BlueVoxs: ${conteoPasajero.numeroSerieBlueVox}`,
-          'UPDATE',
-          querylogger,
-          usuario?.id || 1,
-          EnumModulos.CONTEOPASAJEROS,
-          EstatusEnumBitcora.SUCCESS,
-        );
-      };
+      const querylogger = { updateConteoPasajerosDto };
+      await this.bitacoraLogger.logToBitacora(
+        'ConteoPasajeros',
+        `Se actualizo un ConteoPasajeros con ID ${id}, Numero de serie BlueVoxs: ${conteoPasajero.numeroSerieBlueVox}`,
+        'UPDATE',
+        querylogger,
+        idUser,
+        EnumModulos.CONTEOPASAJEROS,
+        EstatusEnumBitcora.SUCCESS,
+      );
 
       // API response
       const result: ApiCrudResponse = {
@@ -935,6 +949,17 @@ WHERE cp.FechaHora BETWEEN '${fechaInicio}TT00:00:00' AND '${fechaFin}T23:59:00'
       };
       return result;
     } catch (error) {
+      const querylogger = { updateConteoPasajerosDto };
+      await this.bitacoraLogger.logToBitacora(
+        'ConteoPasajeros',
+        `Se actualizo un ConteoPasajeros con ID ${id}.`,
+        'UPDATE',
+        querylogger,
+        idUser,
+        EnumModulos.CONTEOPASAJEROS,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
       if (error instanceof HttpException) {
         throw error;
       }
