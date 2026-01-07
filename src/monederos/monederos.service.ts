@@ -58,13 +58,26 @@ export class MonederosService {
     idUser: number,
   ): Promise<ApiCrudResponse> {
     try {
-      const monedero = await this.monederoRepository.findOne({
+      // Validar que el numeroSerie no esté duplicado
+      const monederoPorSerie = await this.monederoRepository.findOne({
         where: { numeroSerie: createMonederoDto.numeroSerie },
       });
-      if (monedero) {
-        throw new NotFoundException(
-          `El monedero con número de serie: ${createMonederoDto.numeroSerie} está registrado.`,
+      if (monederoPorSerie) {
+        throw new BadRequestException(
+          `El número de serie "${createMonederoDto.numeroSerie}" ya está registrado. Por favor, use un número de serie diferente.`,
         );
+      }
+
+      // Validar que el idCard no esté duplicado (solo si se proporciona)
+      if (createMonederoDto.idCard) {
+        const monederoPorIdCard = await this.monederoRepository.findOne({
+          where: { idCard: createMonederoDto.idCard },
+        });
+        if (monederoPorIdCard) {
+          throw new BadRequestException(
+            `El ID de tarjeta "${createMonederoDto.idCard}" ya está registrado. Por favor, use un ID de tarjeta diferente.`,
+          );
+        }
       }
 
       //Agregamos la fecha actual
@@ -1220,6 +1233,33 @@ ORDER BY m.Id DESC;
         throw new NotFoundException(
           `El monedero con ID: ${id} no fue encontrado.`,
         );
+      }
+
+      // Validar que el numeroSerie no esté duplicado (solo si se está actualizando)
+      if (updateMonederoDto.numeroSerie !== undefined && updateMonederoDto.numeroSerie !== monedero.numeroSerie) {
+        const monederoPorSerie = await this.monederoRepository.findOne({
+          where: { numeroSerie: updateMonederoDto.numeroSerie },
+        });
+        if (monederoPorSerie && monederoPorSerie.id !== id) {
+          throw new BadRequestException(
+            `El número de serie "${updateMonederoDto.numeroSerie}" ya está registrado en otro monedero. Por favor, use un número de serie diferente.`,
+          );
+        }
+      }
+
+      // Validar que el idCard no esté duplicado (solo si se está actualizando y se proporciona)
+      if (updateMonederoDto.idCard !== undefined && updateMonederoDto.idCard !== null) {
+        // Solo validar si el idCard es diferente al actual o si el monedero actual no tiene idCard
+        if (updateMonederoDto.idCard !== monedero.idCard) {
+          const monederoPorIdCard = await this.monederoRepository.findOne({
+            where: { idCard: updateMonederoDto.idCard },
+          });
+          if (monederoPorIdCard && monederoPorIdCard.id !== id) {
+            throw new BadRequestException(
+              `El ID de tarjeta "${updateMonederoDto.idCard}" ya está registrado en otro monedero. Por favor, use un ID de tarjeta diferente.`,
+            );
+          }
+        }
       }
 
       // Validar que si se intenta asignar un idPasajero, el monedero no esté ya asignado a otro pasajero
