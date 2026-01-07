@@ -22,6 +22,7 @@ import { Turnos } from 'src/entities/Turnos';
 import { ConteoPasajeros } from 'src/entities/ConteoPasajeros';
 import { Instalaciones } from 'src/entities/Instalaciones';
 import { Contadores } from 'src/entities/Contadores';
+import { InstalacionContadores } from 'src/entities/InstalacionContadores';
 import { UpdateViajeDto } from './dto/update-viaje.dto';
 
 @Injectable()
@@ -40,6 +41,8 @@ export class ViajesService {
     private readonly instalacionesRepository: Repository<Instalaciones>,
     @InjectRepository(Contadores)
     private readonly contadoresRepository: Repository<Contadores>,
+    @InjectRepository(InstalacionContadores)
+    private readonly instalacionContadoresRepository: Repository<InstalacionContadores>,
   ) { }
   // ========================================
   // 🔹 CREAR UN VIAJE
@@ -116,28 +119,31 @@ export class ViajesService {
         if (turno && turno.idInstalacion2) {
           const instalacion = turno.idInstalacion2;
           
-          // Obtener el contador relacionado con la instalación
-          const contador = await this.contadoresRepository.findOne({
+          // Obtener los contadores relacionados con la instalación
+          const instalacionContadores = await this.instalacionContadoresRepository.find({
             where: {
-              id: instalacion.idContador,
-              idCliente: cliente,
+              idInstalacion: instalacion.id,
               estatus: 1,
             },
+            relations: ['contador'],
           });
 
-          if (contador) {
-            // Crear el conteoPasajeros
-            const dataToCreate: any = {
-              numeroSerieContador: contador.numeroSerie,
-              idViaje: viajeSave.id,
-              diferencia: 0,
-              entradas: 0,
-              salidas: 0,
-              estatus: EstatusConteo.ACTIVO,
-            };
+          // Crear conteoPasajeros para cada contador de la instalación
+          for (const ic of instalacionContadores) {
+            const contador = ic.contador;
+            if (contador && contador.idCliente === cliente && contador.estatus === 1) {
+              const dataToCreate: any = {
+                numeroSerieContador: contador.numeroSerie,
+                idViaje: viajeSave.id,
+                diferencia: 0,
+                entradas: 0,
+                salidas: 0,
+                estatus: EstatusConteo.ACTIVO,
+              };
 
-            const newConteoPasajero = this.conteoPasajerosRepository.create(dataToCreate);
-            await this.conteoPasajerosRepository.save(newConteoPasajero);
+              const newConteoPasajero = this.conteoPasajerosRepository.create(dataToCreate);
+              await this.conteoPasajerosRepository.save(newConteoPasajero);
+            }
           }
         }
       } catch (conteoError) {
@@ -372,9 +378,12 @@ SELECT
   ins.IdValidador AS idValidador,
   -- Validador
   d.NumeroSerie AS numeroSerieValidador,
-  ins.IdContador AS idContador,
-  -- Contador
-  bv.NumeroSerie AS numeroSerieContador,
+  -- Contadores (agregados)
+  GROUP_CONCAT(DISTINCT bv.Id ORDER BY bv.Id SEPARATOR ',') AS idContadores,
+  GROUP_CONCAT(DISTINCT bv.NumeroSerie ORDER BY bv.Id SEPARATOR ', ') AS numeroSerieContadores,
+  -- Mantener compatibilidad (primer contador)
+  MIN(bv.Id) AS idContador,
+  MIN(bv.NumeroSerie) AS numeroSerieContador,
   ins.IdVehiculo AS idVehiculo,
   -- Vehículo
   vhl.Placa AS placaVehiculo,
@@ -414,7 +423,8 @@ JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
 JOIN Validadores d ON ins.IdCliente = d.IdCliente AND ins.IdValidador = d.Id
 
 -- Contador
-JOIN Contadores bv ON ins.IdCliente = bv.IdCliente AND ins.IdContador = bv.Id
+JOIN InstalacionContadores ic ON ins.Id = ic.IdInstalacion AND ic.Estatus = 1
+JOIN Contadores bv ON ic.IdContador = bv.Id
 
 -- Vehículo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
@@ -436,6 +446,12 @@ LEFT JOIN Zonas regFin ON r.IdZonaFin = regFin.Id
         WHERE v.Estatus = 1
         AND c.Id = ?
         AND c.Estatus = 1
+
+GROUP BY v.Id, v.Inicio, v.Fin, v.Estatus, c.Id, c.Nombre, c.ApellidoPaterno, c.ApellidoMaterno,
+         t.Id, t.Inicio, t.IdInstalacion, ins.IdValidador, d.NumeroSerie, ins.IdVehiculo, vhl.Placa,
+         o.Id, o.IdUsuario, u.Nombre, u.ApellidoPaterno, u.ApellidoMaterno,
+         der.Id, der.Nombre, der.PuntoInicio, der.PuntoFin, der.DistanciaKm,
+         r.Id, r.Nombre, r.IdZona, regInicio.Nombre, r.IdZonaFin, regFin.Nombre
 
 ORDER BY v.Id DESC
 
@@ -468,9 +484,12 @@ SELECT
   ins.IdDispositivo AS idDispositivo,
   -- Dispositivo
   d.NumeroSerie AS numeroSerieValidador,
-  ins.IdContador AS idContador,
-  -- Contador
-  c.NumeroSerie AS numeroSerieContador,
+  -- Contadores (agregados)
+  GROUP_CONCAT(DISTINCT c.Id ORDER BY c.Id SEPARATOR ',') AS idContadores,
+  GROUP_CONCAT(DISTINCT c.NumeroSerie ORDER BY c.Id SEPARATOR ', ') AS numeroSerieContadores,
+  -- Mantener compatibilidad (primer contador)
+  MIN(c.Id) AS idContador,
+  MIN(c.NumeroSerie) AS numeroSerieContador,
   ins.IdVehiculo AS idVehiculo,
   -- Vehículo
   vhl.Placa AS placaVehiculo,
@@ -506,7 +525,8 @@ JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
 JOIN Validadores d ON ins.IdCliente = d.IdCliente AND ins.IdValidador = d.Id
-JOIN Contadores c ON ins.IdCliente = c.IdCliente AND ins.IdContador = c.Id
+JOIN InstalacionContadores ic ON ins.Id = ic.IdInstalacion AND ic.Estatus = 1
+JOIN Contadores c ON ic.IdContador = c.Id
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -518,6 +538,12 @@ LEFT JOIN Zonas regFin ON r.IdZonaFin = regFin.Id
         WHERE v.Estatus = 1
         AND c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
         AND c.Estatus = 1
+
+GROUP BY v.Id, v.Inicio, v.Fin, v.Estatus, c.Id, c.Nombre, c.ApellidoPaterno, c.ApellidoMaterno,
+         t.Id, t.Inicio, t.IdInstalacion, ins.IdValidador, d.NumeroSerie, ins.IdVehiculo, vhl.Placa,
+         o.Id, o.IdUsuario, u.Nombre, u.ApellidoPaterno, u.ApellidoMaterno,
+         der.Id, der.Nombre, der.PuntoInicio, der.PuntoFin, der.DistanciaKm,
+         r.Id, r.Nombre, r.IdZona, regInicio.Nombre, r.IdZonaFin, regFin.Nombre
 
 ORDER BY v.Id DESC
 
@@ -557,9 +583,12 @@ SELECT
   ins.IdValidador AS idValidador,
   -- Validador
   d.NumeroSerie AS numeroSerieValidador,
-  ins.IdContador AS idContador,
-  -- Contador
-  bv.NumeroSerie AS numeroSerieContador,
+  -- Contadores (agregados)
+  GROUP_CONCAT(DISTINCT bv.Id ORDER BY bv.Id SEPARATOR ',') AS idContadores,
+  GROUP_CONCAT(DISTINCT bv.NumeroSerie ORDER BY bv.Id SEPARATOR ', ') AS numeroSerieContadores,
+  -- Mantener compatibilidad (primer contador)
+  MIN(bv.Id) AS idContador,
+  MIN(bv.NumeroSerie) AS numeroSerieContador,
   ins.IdVehiculo AS idVehiculo,
   -- Vehículo
   vhl.Placa AS placaVehiculo,
@@ -600,7 +629,8 @@ JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
 JOIN Validadores d ON ins.IdCliente = d.IdCliente AND ins.IdValidador = d.Id
 
 -- Contador
-JOIN Contadores bv ON ins.IdCliente = bv.IdCliente AND ins.IdContador = bv.Id
+JOIN InstalacionContadores ic ON ins.Id = ic.IdInstalacion AND ic.Estatus = 1
+JOIN Contadores bv ON ic.IdContador = bv.Id
 
 -- Vehículo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
@@ -619,6 +649,12 @@ LEFT JOIN Zonas regInicio ON r.IdZona = regInicio.Id
 -- Zona de fin
 LEFT JOIN Zonas regFin ON r.IdZonaFin = regFin.Id
 WHERE c.Estatus = 1
+
+GROUP BY v.Id, v.Inicio, v.Fin, v.Estatus, c.Id, c.Nombre, c.ApellidoPaterno, c.ApellidoMaterno,
+         t.Id, t.Inicio, t.IdInstalacion, ins.IdValidador, d.NumeroSerie, ins.IdVehiculo, vhl.Placa,
+         o.Id, o.IdUsuario, u.Nombre, u.ApellidoPaterno, u.ApellidoMaterno,
+         der.Id, der.Nombre, der.PuntoInicio, der.PuntoFin, der.DistanciaKm,
+         r.Id, r.Nombre, r.IdZona, regInicio.Nombre, r.IdZonaFin, regFin.Nombre
 
 ORDER BY v.Id DESC;
             `,
@@ -643,7 +679,11 @@ ORDER BY v.Id DESC;
         idTurno: Number(item.idTurno),
         idInstalacion: Number(item.idInstalacion),
         idValidador: Number(item.idValidador),
-        idContador: Number(item.idContador),
+        idContadores: item.idContadores ? item.idContadores.split(',').map(id => Number(id)) : [],
+        numeroSerieContadores: item.numeroSerieContadores ? item.numeroSerieContadores.split(', ') : [],
+        // Mantener compatibilidad (primer contador)
+        idContador: item.idContador ? Number(item.idContador) : (item.idContadores ? Number(item.idContadores.split(',')[0]) : null),
+        numeroSerieContador: item.numeroSerieContador || (item.numeroSerieContadores ? item.numeroSerieContadores.split(', ')[0] : null),
         idVehiculo: Number(item.idVehiculo),
         idOperador: Number(item.idOperador),
         idUsuario: Number(item.idUsuario),
@@ -704,9 +744,12 @@ SELECT
   ins.IdDispositivo AS idDispositivo,
   -- Dispositivo
   d.NumeroSerie AS numeroSerieValidador,
-  ins.IdContador AS idContador,
-  -- Contador
-  c.NumeroSerie AS numeroSerieContador,
+  -- Contadores (agregados)
+  GROUP_CONCAT(DISTINCT c.Id ORDER BY c.Id SEPARATOR ',') AS idContadores,
+  GROUP_CONCAT(DISTINCT c.NumeroSerie ORDER BY c.Id SEPARATOR ', ') AS numeroSerieContadores,
+  -- Mantener compatibilidad (primer contador)
+  MIN(c.Id) AS idContador,
+  MIN(c.NumeroSerie) AS numeroSerieContador,
   ins.IdVehiculo AS idVehiculo,
   -- Vehículo
   vhl.Placa AS placaVehiculo,
@@ -742,7 +785,8 @@ JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
 JOIN Validadores d ON ins.IdCliente = d.IdCliente AND ins.IdValidador = d.Id
-JOIN Contadores c ON ins.IdCliente = c.IdCliente AND ins.IdContador = c.Id
+JOIN InstalacionContadores ic ON ins.Id = ic.IdInstalacion AND ic.Estatus = 1
+JOIN Contadores c ON ic.IdContador = c.Id
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -753,6 +797,12 @@ LEFT JOIN Zonas regFin ON r.IdZonaFin = regFin.Id
 
        
         AND c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+
+GROUP BY v.Id, v.Inicio, v.Fin, v.Estatus, c.Id, c.Nombre, c.ApellidoPaterno, c.ApellidoMaterno,
+         t.Id, t.Inicio, t.IdInstalacion, ins.IdValidador, d.NumeroSerie, ins.IdVehiculo, vhl.Placa,
+         o.Id, o.IdUsuario, u.Nombre, u.ApellidoPaterno, u.ApellidoMaterno,
+         der.Id, der.Nombre, der.PuntoInicio, der.PuntoFin, der.DistanciaKm,
+         r.Id, r.Nombre, r.IdZona, regInicio.Nombre, r.IdZonaFin, regFin.Nombre
 
 ORDER BY v.Id DESC
 
@@ -771,7 +821,8 @@ JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
 JOIN Validadores d ON ins.IdCliente = d.IdCliente AND ins.IdValidador = d.Id
-JOIN Contadores c ON ins.IdCliente = c.IdCliente AND ins.IdContador = c.Id
+JOIN InstalacionContadores ic ON ins.Id = ic.IdInstalacion AND ic.Estatus = 1
+JOIN Contadores c ON ic.IdContador = c.Id
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -816,9 +867,12 @@ SELECT
   ins.IdValidador AS idValidador,
   -- Validador
   d.NumeroSerie AS numeroSerieValidador,
-  ins.IdContador AS idContador,
-  -- Contador
-  bv.NumeroSerie AS numeroSerieContador,
+  -- Contadores (agregados)
+  GROUP_CONCAT(DISTINCT bv.Id ORDER BY bv.Id SEPARATOR ',') AS idContadores,
+  GROUP_CONCAT(DISTINCT bv.NumeroSerie ORDER BY bv.Id SEPARATOR ', ') AS numeroSerieContadores,
+  -- Mantener compatibilidad (primer contador)
+  MIN(bv.Id) AS idContador,
+  MIN(bv.NumeroSerie) AS numeroSerieContador,
   ins.IdVehiculo AS idVehiculo,
   -- Vehículo
   vhl.Placa AS placaVehiculo,
@@ -858,7 +912,8 @@ JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
 JOIN Validadores d ON ins.IdCliente = d.IdCliente AND ins.IdValidador = d.Id
 
 -- Contador
-JOIN Contadores bv ON ins.IdCliente = bv.IdCliente AND ins.IdContador = bv.Id
+JOIN InstalacionContadores ic ON ins.Id = ic.IdInstalacion AND ic.Estatus = 1
+JOIN Contadores bv ON ic.IdContador = bv.Id
 
 -- Vehículo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
@@ -880,6 +935,12 @@ LEFT JOIN Zonas regFin ON r.IdZonaFin = regFin.Id
        
         AND c.Id = ?
 
+GROUP BY v.Id, v.Inicio, v.Fin, v.Estatus, c.Id, c.Nombre, c.ApellidoPaterno, c.ApellidoMaterno,
+         t.Id, t.Inicio, t.IdInstalacion, ins.IdValidador, d.NumeroSerie, ins.IdVehiculo, vhl.Placa,
+         o.Id, o.IdUsuario, u.Nombre, u.ApellidoPaterno, u.ApellidoMaterno,
+         der.Id, der.Nombre, der.PuntoInicio, der.PuntoFin, der.DistanciaKm,
+         r.Id, r.Nombre, r.IdZona, regInicio.Nombre, r.IdZonaFin, regFin.Nombre
+
 ORDER BY v.Id DESC
 
   LIMIT ? OFFSET ?;
@@ -896,7 +957,8 @@ JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
 JOIN Validadores d ON ins.IdCliente = d.IdCliente AND ins.IdValidador = d.Id
-JOIN Contadores bv ON ins.IdCliente = bv.IdCliente AND ins.IdContador = bv.Id
+JOIN InstalacionContadores ic ON ins.Id = ic.IdInstalacion AND ic.Estatus = 1
+JOIN Contadores bv ON ic.IdContador = bv.Id
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -951,9 +1013,12 @@ SELECT
   ins.IdValidador AS idValidador,
   -- Validador
   d.NumeroSerie AS numeroSerieValidador,
-  ins.IdContador AS idContador,
-  -- Contador
-  bv.NumeroSerie AS numeroSerieContador,
+  -- Contadores (agregados)
+  GROUP_CONCAT(DISTINCT bv.Id ORDER BY bv.Id SEPARATOR ',') AS idContadores,
+  GROUP_CONCAT(DISTINCT bv.NumeroSerie ORDER BY bv.Id SEPARATOR ', ') AS numeroSerieContadores,
+  -- Mantener compatibilidad (primer contador)
+  MIN(bv.Id) AS idContador,
+  MIN(bv.NumeroSerie) AS numeroSerieContador,
   ins.IdVehiculo AS idVehiculo,
   -- Vehículo
   vhl.Placa AS placaVehiculo,
@@ -993,7 +1058,8 @@ JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
 JOIN Validadores d ON ins.IdCliente = d.IdCliente AND ins.IdValidador = d.Id
 
 -- Contador
-JOIN Contadores bv ON ins.IdCliente = bv.IdCliente AND ins.IdContador = bv.Id
+JOIN InstalacionContadores ic ON ins.Id = ic.IdInstalacion AND ic.Estatus = 1
+JOIN Contadores bv ON ic.IdContador = bv.Id
 
 -- Vehículo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
@@ -1012,7 +1078,13 @@ LEFT JOIN Zonas regInicio ON r.IdZona = regInicio.Id
 -- Zona de fin
 LEFT JOIN Zonas regFin ON r.IdZonaFin = regFin.Id
 
-        
+GROUP BY v.Id, v.Inicio, v.Fin, v.Estatus,
+         c.Id, c.Nombre, c.ApellidoPaterno, c.ApellidoMaterno,
+         t.Id, t.Inicio, t.IdInstalacion,
+         ins.IdValidador, d.NumeroSerie, ins.IdVehiculo, vhl.Placa,
+         o.Id, o.IdUsuario, u.Nombre, u.ApellidoPaterno, u.ApellidoMaterno,
+         der.Id, der.Nombre, der.PuntoInicio, der.PuntoFin, der.DistanciaKm,
+         r.Id, r.Nombre, r.IdZona, regInicio.Nombre, r.IdZonaFin, regFin.Nombre
 
 ORDER BY v.Id DESC
 LIMIT ? OFFSET ?;
@@ -1054,7 +1126,11 @@ LIMIT ? OFFSET ?;
         idTurno: Number(item.idTurno),
         idInstalacion: Number(item.idInstalacion),
         idValidador: Number(item.idValidador),
-        idContador: Number(item.idContador),
+        idContadores: item.idContadores ? item.idContadores.split(',').map(id => Number(id)) : [],
+        numeroSerieContadores: item.numeroSerieContadores ? item.numeroSerieContadores.split(', ') : [],
+        // Mantener compatibilidad (primer contador)
+        idContador: item.idContador ? Number(item.idContador) : (item.idContadores ? Number(item.idContadores.split(',')[0]) : null),
+        numeroSerieContador: item.numeroSerieContador || (item.numeroSerieContadores ? item.numeroSerieContadores.split(', ')[0] : null),
         idVehiculo: Number(item.idVehiculo),
         idOperador: Number(item.idOperador),
         idUsuario: Number(item.idUsuario),
@@ -1117,9 +1193,12 @@ SELECT
   ins.IdValidador AS idValidador,
   -- Validador
   d.NumeroSerie AS numeroSerieValidador,
-  ins.IdContador AS idContador,
-  -- Contador
-  bv.NumeroSerie AS numeroSerieContador,
+  -- Contadores (agregados)
+  GROUP_CONCAT(DISTINCT bv.Id ORDER BY bv.Id SEPARATOR ',') AS idContadores,
+  GROUP_CONCAT(DISTINCT bv.NumeroSerie ORDER BY bv.Id SEPARATOR ', ') AS numeroSerieContadores,
+  -- Mantener compatibilidad (primer contador)
+  MIN(bv.Id) AS idContador,
+  MIN(bv.NumeroSerie) AS numeroSerieContador,
   ins.IdVehiculo AS idVehiculo,
   -- Vehículo
   vhl.Placa AS placaVehiculo,
@@ -1165,7 +1244,8 @@ JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
 JOIN Validadores d ON ins.IdCliente = d.IdCliente AND ins.IdValidador = d.Id
 
 -- Contador
-JOIN Contadores bv ON ins.IdCliente = bv.IdCliente AND ins.IdContador = bv.Id
+JOIN InstalacionContadores ic ON ins.Id = ic.IdInstalacion AND ic.Estatus = 1
+JOIN Contadores bv ON ic.IdContador = bv.Id
 
 -- Vehículo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
@@ -1223,9 +1303,12 @@ SELECT
   ins.IdValidador AS idValidador,
   -- Validador
   d.NumeroSerie AS numeroSerieValidador,
-  ins.IdContador AS idContador,
-  -- Contador
-  bv.NumeroSerie AS numeroSerieContador,
+  -- Contadores (agregados)
+  GROUP_CONCAT(DISTINCT bv.Id ORDER BY bv.Id SEPARATOR ',') AS idContadores,
+  GROUP_CONCAT(DISTINCT bv.NumeroSerie ORDER BY bv.Id SEPARATOR ', ') AS numeroSerieContadores,
+  -- Mantener compatibilidad (primer contador)
+  MIN(bv.Id) AS idContador,
+  MIN(bv.NumeroSerie) AS numeroSerieContador,
   ins.IdVehiculo AS idVehiculo,
   -- Vehículo
   vhl.Placa AS placaVehiculo,
@@ -1266,7 +1349,8 @@ JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
 JOIN Validadores d ON ins.IdCliente = d.IdCliente AND ins.IdValidador = d.Id
 
 -- Contador
-JOIN Contadores bv ON ins.IdCliente = bv.IdCliente AND ins.IdContador = bv.Id
+JOIN InstalacionContadores ic ON ins.Id = ic.IdInstalacion AND ic.Estatus = 1
+JOIN Contadores bv ON ic.IdContador = bv.Id
 
 -- Vehículo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id

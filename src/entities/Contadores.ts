@@ -9,7 +9,7 @@ import {
 } from 'typeorm';
 import { Clientes } from './Clientes';
 import { ConteoPasajeros } from './ConteoPasajeros';
-import { Instalaciones } from './Instalaciones';
+import { InstalacionContadores } from './InstalacionContadores';
 import { applySchema } from 'src/common/apply-schema.decorator';
 
 @applySchema
@@ -64,7 +64,7 @@ export class Contadores {
   )
   conteoPasajeros: ConteoPasajeros[];
 
-  @OneToMany(() => Instalaciones, (instalaciones) => instalaciones.contadores)
-  instalaciones: Instalaciones[];
+  @OneToMany(() => InstalacionContadores, (instalacionContadores) => instalacionContadores.contador)
+  instalacionContadores: InstalacionContadores[];
 }
 

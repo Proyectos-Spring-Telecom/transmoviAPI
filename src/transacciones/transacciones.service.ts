@@ -1571,9 +1571,9 @@ export class TransaccionesService {
             `
 SELECT * FROM (
 SELECT 
-    'DEBITO' AS origenTabla,        -- ?? de qu? tabla viene
+    'DEBITO' AS origenTabla,
     td.Id AS id,
-    ctt.Nombre AS tipoTransaccion,  -- ?? tipo seg?n el cat?logo (RECARGA, DEBITO o RECHAZADO)
+    ctt.Nombre AS tipoTransaccion,
     td.Monto AS monto,
     td.LatitudInicial AS latitudInicial,
     td.LongitudInicial AS longitudInicial,
@@ -1586,24 +1586,16 @@ SELECT
     td.NumeroSerieValidador AS numeroSerieValidador,
     td.EsQR AS esQR,
     NULL AS nombreMetodoPago,
-
-    -- Datos del cliente
     c.Id AS idCliente,
     c.Nombre AS nombreCliente,
     c.ApellidoPaterno AS apellidoPaternoCliente,
     c.ApellidoMaterno AS apellidoMaternoCliente,
-    
-
-    -- Datos del dispositivo
     d.Marca AS marcaDispositivo,
     d.Modelo AS modeloDispositivo,
-
-    -- Pasajero (v?a Monedero)
     p.Id AS idPasajero,
     p.Nombre AS nombrePasajero,
     p.ApellidoPaterno AS apellidoPaternoPasajero,
     p.ApellidoMaterno AS apellidoMaternoPasajero
-
 FROM ${entidadDebito} td
 LEFT JOIN CatTiposTransacciones ctt 
     ON td.IdTipoTransaccion = ctt.Id
@@ -1615,17 +1607,12 @@ LEFT JOIN Pasajeros p
     ON m.IdPasajero = p.Id
 LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
-    
--- condiciones
-WHERE DATE(td.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
-
-
+WHERE DATE(td.FHRegistro) BETWEEN ? AND ?
 UNION ALL
-
 SELECT 
-    'RECARGA' AS origenTabla,       -- ?? solo indica de qu? tabla proviene
+    'RECARGA' AS origenTabla,
     tr.Id AS id,
-    ctt.Nombre AS tipoTransaccion,  -- ?? valor real del tipo
+    ctt.Nombre AS tipoTransaccion,
     tr.Monto AS monto,
     NULL AS latitudInicial,
     NULL AS longitudInicial,
@@ -1638,26 +1625,20 @@ SELECT
     tr.NumeroSerieValidador AS numeroSerieValidador,
     NULL AS esQR,
     NULL AS nombreMetodoPago,
-
-    -- Datos del cliente
     c.Id AS idCliente,
     c.Nombre AS nombreCliente,
     c.ApellidoPaterno AS apellidoPaternoCliente,
     c.ApellidoMaterno AS apellidoMaternoCliente,
-    
-
     d.Marca AS marcaDispositivo,
     d.Modelo AS modeloDispositivo,
-
     p.Id AS idPasajero,
     p.Nombre AS nombrePasajero,
     p.ApellidoPaterno AS apellidoPaternoPasajero,
     p.ApellidoMaterno AS apellidoMaternoPasajero
-
 FROM ${entidadRecarga} tr
 LEFT JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
-LEFT JOIN Validadores  d 
+LEFT JOIN Validadores d 
     ON tr.NumeroSerieValidador = d.NumeroSerie
 LEFT JOIN Monederos m 
     ON tr.NumeroSerieMonedero = m.NumeroSerie
@@ -1665,20 +1646,19 @@ LEFT JOIN Pasajeros p
     ON m.IdPasajero = p.Id
 LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
-    
--- condiciones
-WHERE DATE(tr.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
+WHERE DATE(tr.FHRegistro) BETWEEN ? AND ?
 ) AS todas_transacciones
-ORDER BY fhRegistro DESC
-LIMIT ${limit} OFFSET ${offset};
+ORDER BY todas_transacciones.fhRegistro DESC
+LIMIT ? OFFSET ?;
         `,
+            [fechaInicio, fechaFin, fechaInicio, fechaFin, Number(limit), Number(offset)],
           );
           console.log('[resolverPorRolDefault] Caso 1 - Query transacciones ejecutado:', {
             esArray: Array.isArray(transacciones),
             cantidad: Array.isArray(transacciones) ? transacciones.length : 'no es array',
           });
 
-          // Query para total (sin paginaci?n)
+          // Query para total (sin paginación)
           console.log('[resolverPorRolDefault] Caso 1 - Ejecutando query de total');
           totalResult = await this.transaccionesrecargaRepository.query(
             `
@@ -1696,12 +1676,8 @@ LEFT JOIN Pasajeros p
     ON m.IdPasajero = p.Id
 LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
-    
--- condiciones
-WHERE DATE(td.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
-
+WHERE DATE(td.FHRegistro) BETWEEN ? AND ?
     UNION ALL
-
     SELECT tr.Id
     FROM ${entidadRecarga} tr
 LEFT JOIN CatTiposTransacciones ctt 
@@ -1714,12 +1690,10 @@ LEFT JOIN Pasajeros p
     ON m.IdPasajero = p.Id
 LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
-    
--- condiciones
-WHERE DATE(tr.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
+WHERE DATE(tr.FHRegistro) BETWEEN ? AND ?
 ) AS todas;
-		
   `,
+            [fechaInicio, fechaFin, fechaInicio, fechaFin],
           );
           console.log('[resolverPorRolDefault] Caso 1 - Query total ejecutado:', {
             resultado: totalResult,
@@ -1734,9 +1708,9 @@ WHERE DATE(tr.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
             `
 SELECT * FROM (
 SELECT 
-    'DEBITO' AS origenTabla,        -- ?? de qu? tabla viene
+    'DEBITO' AS origenTabla,
     td.Id AS id,
-    ctt.Nombre AS tipoTransaccion,  -- ?? tipo seg?n el cat?logo (RECARGA, DEBITO o RECHAZADO)
+    ctt.Nombre AS tipoTransaccion,
     td.Monto AS monto,
     td.LatitudInicial AS latitudInicial,
     td.LongitudInicial AS longitudInicial,
@@ -1749,24 +1723,16 @@ SELECT
     td.NumeroSerieValidador AS numeroSerieValidador,
     td.EsQR AS esQR,
     NULL AS nombreMetodoPago,
-
-    -- Datos del cliente
     c.Id AS idCliente,
     c.Nombre AS nombreCliente,
     c.ApellidoPaterno AS apellidoPaternoCliente,
     c.ApellidoMaterno AS apellidoMaternoCliente,
-    
-
-    -- Datos del dispositivo
     d.Marca AS marcaDispositivo,
     d.Modelo AS modeloDispositivo,
-
-    -- Pasajero (v?a Monedero)
     p.Id AS idPasajero,
     p.Nombre AS nombrePasajero,
     p.ApellidoPaterno AS apellidoPaternoPasajero,
     p.ApellidoMaterno AS apellidoMaternoPasajero
-
 FROM ${entidadDebito} td
 LEFT JOIN CatTiposTransacciones ctt 
     ON td.IdTipoTransaccion = ctt.Id
@@ -1778,18 +1744,13 @@ LEFT JOIN Pasajeros p
     ON m.IdPasajero = p.Id
 LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
-    
--- condiciones
-WHERE DATE(td.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
-AND (m.IdCliente = ${cliente} OR m.IdCliente IS NULL)
-
-
+WHERE DATE(td.FHRegistro) BETWEEN ? AND ?
+AND (m.IdCliente = ? OR m.IdCliente IS NULL)
 UNION ALL
-
 SELECT 
-    'RECARGA' AS origenTabla,       -- ?? solo indica de qu? tabla proviene
+    'RECARGA' AS origenTabla,
     tr.Id AS id,
-    ctt.Nombre AS tipoTransaccion,  -- ?? valor real del tipo
+    ctt.Nombre AS tipoTransaccion,
     tr.Monto AS monto,
     NULL AS latitudInicial,
     NULL AS longitudInicial,
@@ -1802,22 +1763,16 @@ SELECT
     tr.NumeroSerieValidador AS numeroSerieValidador,
     NULL AS esQR,
     COALESCE(cmp.Nombre, 'Efectivo') AS nombreMetodoPago,
-
-    -- Datos del cliente
     c.Id AS idCliente,
     c.Nombre AS nombreCliente,
     c.ApellidoPaterno AS apellidoPaternoCliente,
     c.ApellidoMaterno AS apellidoMaternoCliente,
-    
-
     d.Marca AS marcaDispositivo,
     d.Modelo AS modeloDispositivo,
-
     p.Id AS idPasajero,
     p.Nombre AS nombrePasajero,
     p.ApellidoPaterno AS apellidoPaternoPasajero,
     p.ApellidoMaterno AS apellidoMaternoPasajero
-
 FROM ${entidadRecarga} tr
 LEFT JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
@@ -1831,14 +1786,13 @@ LEFT JOIN Pasajeros p
     ON m.IdPasajero = p.Id
 LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
-    
--- condiciones
-WHERE DATE(tr.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
-AND (m.IdCliente = ${cliente} OR m.IdCliente IS NULL)
+WHERE DATE(tr.FHRegistro) BETWEEN ? AND ?
+AND (m.IdCliente = ? OR m.IdCliente IS NULL)
 ) AS todas_transacciones
-ORDER BY fhRegistro DESC
-LIMIT ${limit} OFFSET ${offset};
+ORDER BY todas_transacciones.fhRegistro DESC
+LIMIT ? OFFSET ?;
         `,
+            [fechaInicio, fechaFin, Number(cliente), fechaInicio, fechaFin, Number(cliente), Number(limit), Number(offset)],
           );
           console.log('[resolverPorRolDefault] Caso 3 - Query transacciones ejecutado:', {
             esArray: Array.isArray(transacciones),
@@ -1846,7 +1800,7 @@ LIMIT ${limit} OFFSET ${offset};
             cliente,
           });
 
-          // Query para total (sin paginaci?n)
+          // Query para total (sin paginación)
           console.log('[resolverPorRolDefault] Caso 3 - Ejecutando query de total');
           totalResult = await this.transaccionesrecargaRepository.query(
             `
@@ -1864,13 +1818,9 @@ LEFT JOIN Pasajeros p
     ON m.IdPasajero = p.Id
 LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
-    
--- condiciones
-WHERE DATE(td.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
-AND (m.IdCliente = ${cliente} OR m.IdCliente IS NULL)
-
+WHERE DATE(td.FHRegistro) BETWEEN ? AND ?
+AND (m.IdCliente = ? OR m.IdCliente IS NULL)
     UNION ALL
-
     SELECT tr.Id
     FROM ${entidadRecarga} tr
 LEFT JOIN CatTiposTransacciones ctt 
@@ -1883,20 +1833,17 @@ LEFT JOIN Pasajeros p
     ON m.IdPasajero = p.Id
 LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
-    
--- condiciones
-WHERE DATE(tr.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
-AND (m.IdCliente = ${cliente} OR m.IdCliente IS NULL)
-
-
+WHERE DATE(tr.FHRegistro) BETWEEN ? AND ?
+AND (m.IdCliente = ? OR m.IdCliente IS NULL)
 ) AS todas;
-
   `,
+            [fechaInicio, fechaFin, Number(cliente), fechaInicio, fechaFin, Number(cliente)],
           );
           break;
 
         case 9:
           //Datos por usuario
+          console.log('[resolverPorRolDefault] Caso 9 - Buscando pasajero con email:', email);
           const pasajero =
             await this.pasajeroService.findOnePasajeroCorreo(email);
           
@@ -1904,13 +1851,37 @@ AND (m.IdCliente = ${cliente} OR m.IdCliente IS NULL)
             throw new NotFoundException('Pasajero no encontrado para el usuario');
           }
           
+          console.log('[resolverPorRolDefault] Caso 9 - Pasajero encontrado:', { id: pasajero.id, email: pasajero.correo });
+          
+          // Validar parámetros
+          if (!fechaInicio || !fechaFin) {
+            throw new BadRequestException('Las fechas de inicio y fin son requeridas');
+          }
+          if (!entidadDebito || !entidadRecarga) {
+            throw new BadRequestException('Las entidades de débito y recarga son requeridas');
+          }
+          
+          const pasajeroId = Number(pasajero.id);
+          const limitNum = Number(limit);
+          const offsetNum = Number(offset);
+          
+          console.log('[resolverPorRolDefault] Caso 9 - Ejecutando query con parámetros:', {
+            fechaInicio,
+            fechaFin,
+            pasajeroId,
+            limit: limitNum,
+            offset: offsetNum,
+            entidadDebito,
+            entidadRecarga,
+          });
+          
           transacciones = await this.transaccionesrecargaRepository.query(
             `
 SELECT * FROM (
 SELECT 
-    'DEBITO' AS origenTabla,        -- ?? de qu? tabla viene
+    'DEBITO' AS origenTabla,
     td.Id AS id,
-    ctt.Nombre AS tipoTransaccion,  -- ?? tipo seg?n el cat?logo (RECARGA, DEBITO o RECHAZADO)
+    ctt.Nombre AS tipoTransaccion,
     td.Monto AS monto,
     td.LatitudInicial AS latitudInicial,
     td.LongitudInicial AS longitudInicial,
@@ -1923,24 +1894,16 @@ SELECT
     td.NumeroSerieValidador AS numeroSerieValidador,
     td.EsQR AS esQR,
     NULL AS nombreMetodoPago,
-
-    -- Datos del cliente
     c.Id AS idCliente,
     c.Nombre AS nombreCliente,
     c.ApellidoPaterno AS apellidoPaternoCliente,
     c.ApellidoMaterno AS apellidoMaternoCliente,
-    
-
-    -- Datos del dispositivo
     d.Marca AS marcaDispositivo,
     d.Modelo AS modeloDispositivo,
-
-    -- Pasajero (v?a Monedero)
     p.Id AS idPasajero,
     p.Nombre AS nombrePasajero,
     p.ApellidoPaterno AS apellidoPaternoPasajero,
     p.ApellidoMaterno AS apellidoMaternoPasajero
-
 FROM ${entidadDebito} td
 LEFT JOIN CatTiposTransacciones ctt 
     ON td.IdTipoTransaccion = ctt.Id
@@ -1952,19 +1915,14 @@ LEFT JOIN Pasajeros p
     ON m.IdPasajero = p.Id
 LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
-    
--- condiciones
-WHERE DATE(td.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
+WHERE DATE(td.FHRegistro) BETWEEN ? AND ?
 AND m.Estatus = 1
 AND p.Id = ?
-
-
 UNION ALL
-
 SELECT 
-    'RECARGA' AS origenTabla,       -- ?? solo indica de qu? tabla proviene
+    'RECARGA' AS origenTabla,
     tr.Id AS id,
-    ctt.Nombre AS tipoTransaccion,  -- ?? valor real del tipo
+    ctt.Nombre AS tipoTransaccion,
     tr.Monto AS monto,
     NULL AS latitudInicial,
     NULL AS longitudInicial,
@@ -1977,22 +1935,16 @@ SELECT
     tr.NumeroSerieValidador AS numeroSerieValidador,
     NULL AS esQR,
     COALESCE(cmp.Nombre, 'Efectivo') AS nombreMetodoPago,
-
-    -- Datos del cliente
     c.Id AS idCliente,
     c.Nombre AS nombreCliente,
     c.ApellidoPaterno AS apellidoPaternoCliente,
     c.ApellidoMaterno AS apellidoMaternoCliente,
-    
-
     d.Marca AS marcaDispositivo,
     d.Modelo AS modeloDispositivo,
-
     p.Id AS idPasajero,
     p.Nombre AS nombrePasajero,
     p.ApellidoPaterno AS apellidoPaternoPasajero,
     p.ApellidoMaterno AS apellidoMaternoPasajero
-
 FROM ${entidadRecarga} tr
 LEFT JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
@@ -2006,16 +1958,14 @@ LEFT JOIN Pasajeros p
     ON m.IdPasajero = p.Id
 LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
-    
--- condiciones
-WHERE DATE(tr.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
+WHERE DATE(tr.FHRegistro) BETWEEN ? AND ?
 AND m.Estatus = 1
 AND p.Id = ?
 ) AS todas_transacciones
-ORDER BY fhRegistro DESC
-LIMIT ${limit} OFFSET ${offset};
+ORDER BY todas_transacciones.fhRegistro DESC
+LIMIT ? OFFSET ?;
         `,
-            [Number(pasajero.id), Number(pasajero.id)],
+            [fechaInicio, fechaFin, pasajeroId, fechaInicio, fechaFin, pasajeroId, limitNum, offsetNum],
           );
           console.log('[resolverPorRolDefault] Caso 9 - Query transacciones ejecutado:', {
             esArray: Array.isArray(transacciones),
@@ -2043,10 +1993,9 @@ LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
     
 -- condiciones
-WHERE DATE(td.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
+WHERE DATE(td.FHRegistro) BETWEEN ? AND ?
 AND m.Estatus = 1
 AND p.Id = ?
-
     UNION ALL
 
     SELECT tr.Id
@@ -2063,14 +2012,13 @@ LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
     
 -- condiciones
-WHERE DATE(tr.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
+WHERE DATE(tr.FHRegistro) BETWEEN ? AND ?
 AND m.Estatus = 1
 AND p.Id = ?
-
 ) AS todas;
 
   `,
-            [Number(pasajero.id), Number(pasajero.id)], // <-- Aqu? debe ir como segundo argumento de query()
+            [fechaInicio, fechaFin, Number(pasajero.id), fechaInicio, fechaFin, Number(pasajero.id)],
           );
 
           break;
@@ -2083,9 +2031,9 @@ AND p.Id = ?
           transacciones = await this.transaccionesrecargaRepository.query(
             `
 SELECT 
-    'DEBITO' AS origenTabla,        -- ?? de qu? tabla viene
+    'DEBITO' AS origenTabla,
     td.Id AS id,
-    ctt.Nombre AS tipoTransaccion,  -- ?? tipo seg?n el cat?logo (RECARGA, DEBITO o RECHAZADO)
+    ctt.Nombre AS tipoTransaccion,
     td.Monto AS monto,
     td.LatitudInicial AS latitudInicial,
     td.LongitudInicial AS longitudInicial,
@@ -2098,24 +2046,16 @@ SELECT
     td.NumeroSerieValidador AS numeroSerieValidador,
     td.EsQR AS esQR,
     NULL AS nombreMetodoPago,
-
-    -- Datos del cliente
     c.Id AS idCliente,
     c.Nombre AS nombreCliente,
     c.ApellidoPaterno AS apellidoPaternoCliente,
     c.ApellidoMaterno AS apellidoMaternoCliente,
-    
-
-    -- Datos del dispositivo
     d.Marca AS marcaDispositivo,
     d.Modelo AS modeloDispositivo,
-
-    -- Pasajero (v?a Monedero)
     p.Id AS idPasajero,
     p.Nombre AS nombrePasajero,
     p.ApellidoPaterno AS apellidoPaternoPasajero,
     p.ApellidoMaterno AS apellidoMaternoPasajero
-
 FROM ${entidadDebito} td
 LEFT JOIN CatTiposTransacciones ctt 
     ON td.IdTipoTransaccion = ctt.Id
@@ -2127,18 +2067,13 @@ LEFT JOIN Pasajeros p
     ON m.IdPasajero = p.Id
 LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
-    
--- condiciones
-WHERE DATE(td.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
-AND m.IdCliente IN (${placeholders})   -- ?? aqu? colocas el ID del cliente que quieres consultar
-
-
+WHERE DATE(td.FHRegistro) BETWEEN ? AND ?
+AND m.IdCliente IN (${placeholders})
 UNION ALL
-
 SELECT 
-    'RECARGA' AS origenTabla,       -- ?? solo indica de qu? tabla proviene
+    'RECARGA' AS origenTabla,
     tr.Id AS id,
-    ctt.Nombre AS tipoTransaccion,  -- ?? valor real del tipo
+    ctt.Nombre AS tipoTransaccion,
     tr.Monto AS monto,
     NULL AS latitudInicial,
     NULL AS longitudInicial,
@@ -2151,22 +2086,16 @@ SELECT
     tr.NumeroSerieValidador AS numeroSerieValidador,
     NULL AS esQR,
     COALESCE(cmp.Nombre, 'Efectivo') AS nombreMetodoPago,
-
-    -- Datos del cliente
     c.Id AS idCliente,
     c.Nombre AS nombreCliente,
     c.ApellidoPaterno AS apellidoPaternoCliente,
     c.ApellidoMaterno AS apellidoMaternoCliente,
-    
-
     d.Marca AS marcaDispositivo,
     d.Modelo AS modeloDispositivo,
-
     p.Id AS idPasajero,
     p.Nombre AS nombrePasajero,
     p.ApellidoPaterno AS apellidoPaternoPasajero,
     p.ApellidoMaterno AS apellidoMaternoPasajero
-
 FROM ${entidadRecarga} tr
 LEFT JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
@@ -2180,19 +2109,15 @@ LEFT JOIN Pasajeros p
     ON m.IdPasajero = p.Id
 LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
-    
--- condiciones
-WHERE DATE(tr.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
-AND m.IdCliente IN (${placeholders})   -- ?? aqu? colocas el ID del cliente que quieres consultar
-
+WHERE DATE(tr.FHRegistro) BETWEEN ? AND ?
+AND m.IdCliente IN (${placeholders})
 ORDER BY FHRegistro DESC
 LIMIT ? OFFSET ?;
-
         `,
-            [...ids, ...ids, limit, offset],
+            [fechaInicio, fechaFin, ...ids, fechaInicio, fechaFin, ...ids, Number(limit), Number(offset)],
           );
 
-          // Query para total (sin paginaci?n)
+          // Query para total (sin paginación)
           totalResult = await this.transaccionesrecargaRepository.query(
             `
 SELECT COUNT(*) AS total
@@ -2209,13 +2134,9 @@ LEFT JOIN Pasajeros p
     ON m.IdPasajero = p.Id
 LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
-    
--- condiciones
-WHERE DATE(td.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
-AND m.IdCliente IN (${placeholders})   -- ?? aqu? colocas el ID del cliente que quieres consultar
-
+WHERE DATE(td.FHRegistro) BETWEEN ? AND ?
+AND m.IdCliente IN (${placeholders})
     UNION ALL
-
     SELECT tr.Id
     FROM ${entidadRecarga} tr
 LEFT JOIN CatTiposTransacciones ctt 
@@ -2228,16 +2149,11 @@ LEFT JOIN Pasajeros p
     ON m.IdPasajero = p.Id
 LEFT JOIN Clientes c
 	ON m.IdCliente = c.Id
-    
--- condiciones
-WHERE DATE(tr.FHRegistro) BETWEEN '${fechaInicio}' AND '${fechaFin}'
-AND m.IdCliente IN (${placeholders})   -- ?? aqu? colocas el ID del cliente que quieres consultar
-
-
+WHERE DATE(tr.FHRegistro) BETWEEN ? AND ?
+AND m.IdCliente IN (${placeholders})
 ) AS todas;
-
   `,
-            [...ids, ...ids],
+            [fechaInicio, fechaFin, ...ids, fechaInicio, fechaFin, ...ids],
           );
           console.log('[resolverPorRolDefault] Caso 2/8/10 - Query total ejecutado:', {
             resultado: totalResult,
@@ -2321,6 +2237,7 @@ AND m.IdCliente IN (${placeholders})   -- ?? aqu? colocas el ID del cliente que 
       throw new BadRequestException({
         message: 'Error al obtener transacciones paginadas por rol',
         error: error.message,
+        details: error.stack,
       });
     }
 

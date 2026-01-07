@@ -7,7 +7,6 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
 } from "typeorm";
-import { Contadores } from "./Contadores";
 import { Clientes } from "./Clientes";
 import { Validadores } from "./Validadores";
 import { Vehiculos } from "./Vehiculos";
@@ -18,6 +17,7 @@ import { MantenimientoVehicular } from "./MantenimientoVehicular";
 import { MantenimientoKilometraje } from "./MantenimientoKilometraje";
 import { MantenimientoCombustible } from "./MantenimientoCombustible";
 import { Incidentes } from "./Incidentes";
+import { InstalacionContadores } from "./InstalacionContadores";
 import { applySchema } from "src/common/apply-schema.decorator";
 
 @applySchema
@@ -26,7 +26,6 @@ import { applySchema } from "src/common/apply-schema.decorator";
   ["idValidador", "idCliente"],
   {}
 )
-@Index("IX_Instalaciones_IdCliente_IdContador", ["idContador", "idCliente"], {})
 @Index("IX_Instalaciones_IdCliente_IdVehiculo", ["idVehiculo", "idCliente"], {})
 @Index("FK_Instalaciones_Clientes", ["idCliente"], {})
 @Entity("Instalaciones")
@@ -52,24 +51,11 @@ export class Instalaciones {
   @Column("bigint", { name: "IdValidador" })
   idValidador: number;
 
-  @Column("bigint", { name: "IdContador" })
-  idContador: number;
-
   @Column("bigint", { name: "IdVehiculo" })
   idVehiculo: number;
 
   @Column("bigint", { name: "IdCliente" })
   idCliente: number;
-
-  @ManyToOne(() => Contadores, (contadores) => contadores.instalaciones, {
-    onDelete: "NO ACTION",
-    onUpdate: "NO ACTION",
-  })
-  @JoinColumn([
-    { name: "IdCliente", referencedColumnName: "idCliente" },
-    { name: "IdContador", referencedColumnName: "id" },
-  ])
-  contadores: Contadores;
 
   @ManyToOne(() => Clientes, (clientes) => clientes.instalaciones, {
     onDelete: "NO ACTION",
@@ -121,4 +107,7 @@ export class Instalaciones {
 
   @OneToMany(() => Incidentes, (incidentes) => incidentes.instalacion)
   incidentes: Incidentes[];
+
+  @OneToMany(() => InstalacionContadores, (instalacionContadores) => instalacionContadores.instalacion)
+  instalacionContadores: InstalacionContadores[];
 }

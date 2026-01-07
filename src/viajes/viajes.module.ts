@@ -9,9 +9,10 @@ import { Turnos } from 'src/entities/Turnos';
 import { ConteoPasajeros } from 'src/entities/ConteoPasajeros';
 import { Instalaciones } from 'src/entities/Instalaciones';
 import { Contadores } from 'src/entities/Contadores';
+import { InstalacionContadores } from 'src/entities/InstalacionContadores';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Viajes, Clientes, Turnos, ConteoPasajeros, Instalaciones, Contadores]), BitacoraModule],
+  imports: [TypeOrmModule.forFeature([Viajes, Clientes, Turnos, ConteoPasajeros, Instalaciones, Contadores, InstalacionContadores]), BitacoraModule],
   controllers: [ViajesController],
   providers: [ViajesService],
 })

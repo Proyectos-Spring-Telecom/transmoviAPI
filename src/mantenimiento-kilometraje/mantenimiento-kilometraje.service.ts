@@ -265,11 +265,22 @@ WHERE c.Id IN (${placeholders})
           marca: item.instalacion.validadores.marca,
           modelo: item.instalacion.validadores.modelo,
         } : null,
-        instalacionContador: item.instalacion?.contadores ? {
-          id: Number(item.instalacion.contadores.id),
-          numeroSerie: item.instalacion.contadores.numeroSerie,
-          marca: item.instalacion.contadores.marca,
-          modelo: item.instalacion.contadores.modelo,
+        instalacionContadores: item.instalacion?.instalacionContadores && item.instalacion.instalacionContadores.length > 0
+          ? item.instalacion.instalacionContadores
+              .filter(ic => ic.contador && ic.estatus === 1)
+              .map(ic => ({
+                id: Number(ic.contador.id),
+                numeroSerie: ic.contador.numeroSerie,
+                marca: ic.contador.marca,
+                modelo: ic.contador.modelo,
+              }))
+          : [],
+        // Mantener compatibilidad con código antiguo (primer contador)
+        instalacionContador: item.instalacion?.instalacionContadores && item.instalacion.instalacionContadores.length > 0 && item.instalacion.instalacionContadores[0]?.contador ? {
+          id: Number(item.instalacion.instalacionContadores[0].contador.id),
+          numeroSerie: item.instalacion.instalacionContadores[0].contador.numeroSerie,
+          marca: item.instalacion.instalacionContadores[0].contador.marca,
+          modelo: item.instalacion.instalacionContadores[0].contador.modelo,
         } : null,
         instalacionVehiculo: item.instalacion?.vehiculos ? {
           id: Number(item.instalacion.vehiculos.id),
@@ -317,7 +328,7 @@ WHERE c.Id IN (${placeholders})
     try {
       const mantenimiento = await this.mantenimientoKilometrajeRepository.findOne({
         where: { id: id },
-        relations: ['instalacion', 'instalacion.validadores', 'instalacion.contadores', 'instalacion.vehiculos', 'instalacion.idCliente2'],
+        relations: ['instalacion', 'instalacion.validadores', 'instalacion.instalacionContadores', 'instalacion.instalacionContadores.contador', 'instalacion.vehiculos', 'instalacion.idCliente2'],
       });
       if (!mantenimiento) {
         throw new NotFoundException('Mantenimiento por kilometraje no encontrado');
@@ -346,11 +357,22 @@ WHERE c.Id IN (${placeholders})
               marca: mantenimiento.instalacion.validadores.marca,
               modelo: mantenimiento.instalacion.validadores.modelo,
             } : null,
-            instalacionContador: mantenimiento.instalacion?.contadores ? {
-              id: Number(mantenimiento.instalacion.contadores.id),
-              numeroSerie: mantenimiento.instalacion.contadores.numeroSerie,
-              marca: mantenimiento.instalacion.contadores.marca,
-              modelo: mantenimiento.instalacion.contadores.modelo,
+            instalacionContadores: mantenimiento.instalacion?.instalacionContadores && mantenimiento.instalacion.instalacionContadores.length > 0
+              ? mantenimiento.instalacion.instalacionContadores
+                  .filter(ic => ic.contador && ic.estatus === 1)
+                  .map(ic => ({
+                    id: Number(ic.contador.id),
+                    numeroSerie: ic.contador.numeroSerie,
+                    marca: ic.contador.marca,
+                    modelo: ic.contador.modelo,
+                  }))
+              : [],
+            // Mantener compatibilidad con código antiguo (primer contador)
+            instalacionContador: mantenimiento.instalacion?.instalacionContadores && mantenimiento.instalacion.instalacionContadores.length > 0 && mantenimiento.instalacion.instalacionContadores[0]?.contador ? {
+              id: Number(mantenimiento.instalacion.instalacionContadores[0].contador.id),
+              numeroSerie: mantenimiento.instalacion.instalacionContadores[0].contador.numeroSerie,
+              marca: mantenimiento.instalacion.instalacionContadores[0].contador.marca,
+              modelo: mantenimiento.instalacion.instalacionContadores[0].contador.modelo,
             } : null,
             instalacionVehiculo: mantenimiento.instalacion?.vehiculos ? {
               id: Number(mantenimiento.instalacion.vehiculos.id),

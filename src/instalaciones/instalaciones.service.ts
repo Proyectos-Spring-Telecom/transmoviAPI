@@ -24,6 +24,7 @@ import { Vehiculos } from 'src/entities/Vehiculos';
 import { Clientes } from 'src/entities/Clientes';
 import { HistoricoInstalaciones } from 'src/entities/historico-instalaciones';
 import { HistoricoinstalacionesService } from 'src/historicoinstalaciones/historicoinstalaciones.service';
+import { InstalacionContadores } from 'src/entities/InstalacionContadores';
 import { EnumModulos, EstadoComponente, EstatusEnum } from 'src/common/estatus.enum';
 
 @Injectable()
@@ -41,6 +42,8 @@ export class InstalacionesService {
     private readonly usuariosinstalacionesRepository: Repository<UsuariosInstalaciones>,
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
+    @InjectRepository(InstalacionContadores)
+    private readonly instalacionContadoresRepository: Repository<InstalacionContadores>,
     private readonly bitacoraLogger: BitacoraLoggerService,
     private readonly historicoinstalacionesService: HistoricoinstalacionesService,
   ) { }
@@ -73,15 +76,17 @@ export class InstalacionesService {
         );
       }
 
-      // Verificar Contador CON relaciones
-      const contadorEnUso = await this.instalacionesRepository.findOne({
-        where: { idContador: createInstalacioneDto.idContador, estatus: 1 },
-        relations: ['contadores'],
-      });
-      if (contadorEnUso) {
-        errores.push(
-          ` Contador ${contadorEnUso.contadores.numeroSerie} ya está en uso.`,
-        );
+      // Verificar Contadores CON relaciones
+      for (const idContador of createInstalacioneDto.idContadores) {
+        const contadorEnUso = await this.instalacionContadoresRepository.findOne({
+          where: { idContador: idContador, estatus: 1 },
+          relations: ['contador'],
+        });
+        if (contadorEnUso) {
+          errores.push(
+            ` Contador ${contadorEnUso.contador.numeroSerie} ya está en uso.`,
+          );
+        }
       }
 
       // Verificar Vehículo CON relaciones
@@ -153,10 +158,18 @@ export class InstalacionesService {
         createInstalacioneDto.idValidador,
         body,
       );
-      await this.contadoresRepository.update(
-        createInstalacioneDto.idContador,
-        body,
-      );
+      
+      // Crear registros en InstalacionContadores para cada contador
+      for (const idContador of createInstalacioneDto.idContadores) {
+        await this.contadoresRepository.update(idContador, body);
+        const instalacionContador = this.instalacionContadoresRepository.create({
+          idInstalacion: instalacionSave.id,
+          idContador: idContador,
+          estatus: 1,
+        });
+        await this.instalacionContadoresRepository.save(instalacionContador);
+      }
+      
       await this.vehiculosRepository.update(
         createInstalacioneDto.idVehiculo,
         body,
@@ -174,23 +187,24 @@ export class InstalacionesService {
         EstatusEnumBitcora.SUCCESS,
       );
 
-      //Registro historico
+      //Registro historico (usando el primer contador para compatibilidad)
       await this.historicoinstalacionesService.createHistorico(
         instalacionSave.id,
         instalacionSave.idValidador,
-        instalacionSave.idContador,
+        createInstalacioneDto.idContadores[0] || 0,
         instalacionSave.idVehiculo,
         instalacionSave.idCliente,
         idUser,
       );
 
       // API response (con mensajes corregidos)
+      const contadoresStr = createInstalacioneDto.idContadores.join(', ');
       const result: ApiCrudResponse = {
         status: 'success',
         message: 'La instalación ha sido creada correctamente.',
         data: {
           id: Number(instalacionSave.id),
-          nombre: `Instalación ${instalacionSave.id} registrada con los siguientes detalles: Validador: ${instalacionSave.idValidador}, Contador: ${instalacionSave.idContador}, Vehículo: ${instalacionSave.idVehiculo}.`, // ✅ Mejorado
+          nombre: `Instalación ${instalacionSave.id} registrada con los siguientes detalles: Validador: ${instalacionSave.idValidador}, Contadores: ${contadoresStr}, Vehículo: ${instalacionSave.idVehiculo}.`, // ✅ Mejorado
         },
       };
 
@@ -269,11 +283,11 @@ SELECT
   d.Marca AS marcaValidador,
   d.Modelo AS modeloValidador,
 
-  -- Contador
-  i.IdContador AS idContador,
-  b.NumeroSerie AS numeroSerieContador,
-  b.Marca AS marcaContador,
-  b.Modelo AS modeloContador,
+  -- Contadores (agregados)
+  GROUP_CONCAT(DISTINCT b.Id ORDER BY b.Id SEPARATOR ',') AS idContadores,
+  GROUP_CONCAT(DISTINCT b.NumeroSerie ORDER BY b.Id SEPARATOR ', ') AS numeroSerieContadores,
+  GROUP_CONCAT(DISTINCT b.Marca ORDER BY b.Id SEPARATOR ', ') AS marcaContadores,
+  GROUP_CONCAT(DISTINCT b.Modelo ORDER BY b.Id SEPARATOR ', ') AS modeloContadores,
 
   -- Vehículo
   i.IdVehiculo AS idVehiculo,
@@ -291,12 +305,18 @@ SELECT
 
 FROM Instalaciones i
 INNER JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN Contadores b ON i.IdContador = b.Id AND i.IdCliente = b.IdCliente
+INNER JOIN InstalacionContadores ic ON i.Id = ic.IdInstalacion AND ic.Estatus = 1
+INNER JOIN Contadores b ON ic.IdContador = b.Id
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
 WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
   
+
+GROUP BY i.Id, i.FechaCreacion, i.FechaActualizacion, i.Estatus,
+         i.IdValidador, d.NumeroSerie, d.Marca, d.Modelo,
+         i.IdVehiculo, v.Marca, v.Modelo, v.Placa, v.NumeroEconomico,
+         i.IdCliente, c.Nombre, c.ApellidoPaterno, c.ApellidoMaterno, c.Estatus
 
 ORDER BY i.Id DESC
 LIMIT ? OFFSET ?;
@@ -307,10 +327,11 @@ LIMIT ? OFFSET ?;
   private async consultarTotalInstalacionesPaginados(cliente: number) {
     const { ids, placeholders } = await this.clienteHijos(cliente);
     const query = `  
-  SELECT COUNT(*) AS total
+  SELECT COUNT(DISTINCT i.Id) AS total
   FROM Instalaciones i
 INNER JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN Contadores b ON i.IdContador = b.Id AND i.IdCliente = b.IdCliente
+INNER JOIN InstalacionContadores ic ON i.Id = ic.IdInstalacion AND ic.Estatus = 1
+INNER JOIN Contadores b ON ic.IdContador = b.Id
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -352,11 +373,11 @@ SELECT
   d.Marca AS marcaValidador,
   d.Modelo AS modeloValidador,
 
-  -- Contador
-  i.IdContador AS idContador,
-  b.NumeroSerie AS numeroSerieContador,
-  b.Marca AS marcaContador,
-  b.Modelo AS modeloContador,
+  -- Contadores (agregados)
+  GROUP_CONCAT(DISTINCT b.Id ORDER BY b.Id SEPARATOR ',') AS idContadores,
+  GROUP_CONCAT(DISTINCT b.NumeroSerie ORDER BY b.Id SEPARATOR ', ') AS numeroSerieContadores,
+  GROUP_CONCAT(DISTINCT b.Marca ORDER BY b.Id SEPARATOR ', ') AS marcaContadores,
+  GROUP_CONCAT(DISTINCT b.Modelo ORDER BY b.Id SEPARATOR ', ') AS modeloContadores,
 
   -- Vehículo
   i.IdVehiculo AS idVehiculo,
@@ -374,12 +395,15 @@ SELECT
 
 FROM Instalaciones i
 INNER JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN Contadores b ON i.IdContador = b.Id AND i.IdCliente = b.IdCliente
+INNER JOIN InstalacionContadores ic ON i.Id = ic.IdInstalacion AND ic.Estatus = 1
+INNER JOIN Contadores b ON ic.IdContador = b.Id
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
-
-  
+GROUP BY i.Id, i.FechaCreacion, i.FechaActualizacion, i.Estatus,
+         i.IdValidador, d.NumeroSerie, d.Marca, d.Modelo,
+         i.IdVehiculo, v.Marca, v.Modelo, v.Placa, v.NumeroEconomico,
+         i.IdCliente, c.Nombre, c.ApellidoPaterno, c.ApellidoMaterno, c.Estatus
 
 ORDER BY i.Id DESC
   LIMIT ? OFFSET ?;
@@ -390,10 +414,11 @@ ORDER BY i.Id DESC
           // Query para total (sin paginación)
           totalResult = await this.instalacionesRepository.query(
             `
-  SELECT COUNT(*) AS total
+  SELECT COUNT(DISTINCT i.Id) AS total
   FROM Instalaciones i
 INNER JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN Contadores b ON i.IdContador = b.Id AND i.IdCliente = b.IdCliente
+INNER JOIN InstalacionContadores ic ON i.Id = ic.IdInstalacion AND ic.Estatus = 1
+INNER JOIN Contadores b ON ic.IdContador = b.Id
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -468,11 +493,11 @@ SELECT
   d.Marca AS marcaValidador,
   d.Modelo AS modeloValidador,
   
-  -- Contador
-  i.IdContador AS idContador,
-  b.NumeroSerie AS numeroSerieContador,
-  b.Marca AS marcaContador,
-  b.Modelo AS modeloContador,
+  -- Contadores (agregados)
+  GROUP_CONCAT(DISTINCT b.Id ORDER BY b.Id SEPARATOR ',') AS idContadores,
+  GROUP_CONCAT(DISTINCT b.NumeroSerie ORDER BY b.Id SEPARATOR ', ') AS numeroSerieContadores,
+  GROUP_CONCAT(DISTINCT b.Marca ORDER BY b.Id SEPARATOR ', ') AS marcaContadores,
+  GROUP_CONCAT(DISTINCT b.Modelo ORDER BY b.Id SEPARATOR ', ') AS modeloContadores,
   
   -- Vehículo
   i.IdVehiculo AS idVehiculo,
@@ -491,12 +516,18 @@ SELECT
 FROM UsuariosInstalaciones ui
 INNER JOIN Instalaciones i ON ui.IdInstalacion = i.Id
 INNER JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN Contadores b ON i.IdContador = b.Id AND i.IdCliente = b.IdCliente
+INNER JOIN InstalacionContadores ic ON i.Id = ic.IdInstalacion AND ic.Estatus = 1
+INNER JOIN Contadores b ON ic.IdContador = b.Id
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
 WHERE ui.IdUsuario = ?
   AND ui.Estatus = 1
+
+GROUP BY i.Id, i.FechaCreacion, i.FechaActualizacion, i.Estatus,
+         i.IdValidador, d.NumeroSerie, d.Marca, d.Modelo,
+         i.IdVehiculo, v.Marca, v.Modelo, v.Placa, v.NumeroEconomico,
+         i.IdCliente, c.Nombre, c.ApellidoPaterno, c.ApellidoMaterno, c.Estatus
 
 ORDER BY i.Id DESC
   LIMIT ? OFFSET ?;
@@ -507,11 +538,12 @@ ORDER BY i.Id DESC
           // Query para total (sin paginación)
           totalResult = await this.instalacionesRepository.query(
             `
-    SELECT COUNT(*) AS total
+    SELECT COUNT(DISTINCT i.Id) AS total
   FROM UsuariosInstalaciones ui
 INNER JOIN Instalaciones i ON ui.IdInstalacion = i.Id
 INNER JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN Contadores b ON i.IdContador = b.Id AND i.IdCliente = b.IdCliente
+INNER JOIN InstalacionContadores ic ON i.Id = ic.IdInstalacion AND ic.Estatus = 1
+INNER JOIN Contadores b ON ic.IdContador = b.Id
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 	WHERE ui.IdUsuario = ?
@@ -524,12 +556,20 @@ INNER JOIN Clientes c ON i.IdCliente = c.Id
 
       const total = Number(totalResult[0]?.total || 0);
 
-      // 🔥 Transformación de datos (ids → number, nombreCompleto)
+      // 🔥 Transformación de datos (ids → number, contadores como array)
       const data = instalaciones.map((item) => ({
         ...item,
         id: Number(item.id),
         idValidador: Number(item.idValidador),
-        idContador: Number(item.idContador),
+        idContadores: item.idContadores ? item.idContadores.split(',').map(id => Number(id)) : [],
+        numeroSerieContadores: item.numeroSerieContadores ? item.numeroSerieContadores.split(', ') : [],
+        marcaContadores: item.marcaContadores ? item.marcaContadores.split(', ') : [],
+        modeloContadores: item.modeloContadores ? item.modeloContadores.split(', ') : [],
+        // Mantener compatibilidad con código antiguo (primer contador)
+        idContador: item.idContadores ? Number(item.idContadores.split(',')[0]) : null,
+        numeroSerieContador: item.numeroSerieContadores ? item.numeroSerieContadores.split(', ')[0] : null,
+        marcaContador: item.marcaContadores ? item.marcaContadores.split(', ')[0] : null,
+        modeloContador: item.modeloContadores ? item.modeloContadores.split(', ')[0] : null,
         idVehiculo: Number(item.idVehiculo),
         idCliente: Number(item.idCliente),
       }));
@@ -1028,15 +1068,24 @@ ORDER BY i.Id DESC;
           );
         }
 
-        // Verificar Contador CON relaciones
-        const contadorEnUso = await this.instalacionesRepository.findOne({
-          where: { idContador: instalacion.idContador, estatus: 1 },
-          relations: ['contadores'],
+        // Obtener contadores de la instalación una sola vez para reutilizar
+        const contadoresInstalacion = await this.instalacionContadoresRepository.find({
+          where: { idInstalacion: instalacion.id, estatus: 1 },
+          relations: ['contador'],
         });
-        if (contadorEnUso) {
-          errores.push(
-            `Contador "${contadorEnUso.contadores.numeroSerie}" ya está en uso`,
-          );
+        
+        // Verificar Contadores CON relaciones
+        for (const ic of contadoresInstalacion) {
+          if (ic.idContador === null) continue;
+          const contadorEnUso = await this.instalacionContadoresRepository.findOne({
+            where: { idContador: ic.idContador, estatus: 1 },
+            relations: ['contador', 'instalacion'],
+          });
+          if (contadorEnUso && contadorEnUso.idInstalacion !== instalacion.id) {
+            errores.push(
+              `Contador "${contadorEnUso.contador.numeroSerie}" ya está en uso`,
+            );
+          }
         }
 
         // Verificar Vehículo CON relaciones
@@ -1075,14 +1124,17 @@ ORDER BY i.Id DESC;
           );
         }
 
-        // Verificar Contador este disponible
-        const contadorEstado = await this.contadoresRepository.findOne({
-          where: { id: instalacion.idContador, estatus: 1, estadoActual: 1 },
-        });
-        if (!contadorEstado) {
-          erroresEstado.push(
-            `Contador "${instalacion.idContador}" su estado actual, no esta disponible`,
-          );
+        // Verificar Contadores estén disponibles (reutilizar contadoresInstalacion ya obtenidos)
+        for (const ic of contadoresInstalacion) {
+          if (ic.idContador === null) continue;
+          const contadorEstado = await this.contadoresRepository.findOne({
+            where: { id: ic.idContador, estatus: 1, estadoActual: 1 },
+          });
+          if (!contadorEstado) {
+            erroresEstado.push(
+              `Contador "${ic.contador.numeroSerie}" su estado actual, no esta disponible`,
+            );
+          }
         }
 
         // Verificar Vehículo este disponible
@@ -1110,7 +1162,12 @@ ORDER BY i.Id DESC;
           instalacion.idValidador,
           body,
         );
-        await this.contadoresRepository.update(instalacion.idContador, body);
+        // Actualizar todos los contadores de la instalación (reutilizar contadoresInstalacion ya obtenidos)
+        for (const ic of contadoresInstalacion) {
+          if (ic.idContador !== null) {
+            await this.contadoresRepository.update(ic.idContador, body);
+          }
+        }
         await this.vehiculosRepository.update(instalacion.idVehiculo, body);
       } else if (estatus === 0) {
         // Desactivar instalación → activar componentes a 1(Disponible)
@@ -1119,7 +1176,15 @@ ORDER BY i.Id DESC;
           instalacion.idValidador,
           body,
         );
-        await this.contadoresRepository.update(instalacion.idContador, body);
+        // Actualizar todos los contadores de la instalación
+        const contadoresInstalacion = await this.instalacionContadoresRepository.find({
+          where: { idInstalacion: instalacion.id, estatus: 1 },
+        });
+        for (const ic of contadoresInstalacion) {
+          if (ic.idContador !== null) {
+            await this.contadoresRepository.update(ic.idContador, body);
+          }
+        }
         await this.vehiculosRepository.update(instalacion.idVehiculo, body);
       }
 
@@ -1137,6 +1202,15 @@ ORDER BY i.Id DESC;
         EstatusEnumBitcora.SUCCESS,
       );
 
+      // Obtener contadores para el mensaje
+      const contadoresInstalacion = await this.instalacionContadoresRepository.find({
+        where: { idInstalacion: instalacion.id, estatus: 1 },
+      });
+      const idContadores = contadoresInstalacion
+        .filter(ic => ic.idContador !== null)
+        .map(ic => ic.idContador)
+        .join(', ');
+
       //Api response
       const result: ApiCrudResponse = {
         status: 'success',
@@ -1146,7 +1220,7 @@ ORDER BY i.Id DESC;
         data: {
           id: id,
           nombre:
-            `${instalacion.id} validador:${instalacion.idValidador} contador: ${instalacion.idContador} vehiculo: ${instalacion.idVehiculo}` ||
+            `${instalacion.id} validador:${instalacion.idValidador} contadores: ${idContadores} vehiculo: ${instalacion.idVehiculo}` ||
             '',
         },
       };
@@ -1215,20 +1289,48 @@ ORDER BY i.Id DESC;
       }
 
       //verificamos que exista el contadores a actualizar
-      if (updateInstalacioneDto.estatusContadorAnterior) {
-        //Actualizamos el estado del contadores anterior
-        await this.contadoresRepository.update(instalacion.idContador, {
-          estadoActual: updateInstalacioneDto.estatusContadorAnterior,
+      if (updateInstalacioneDto.idContadores && updateInstalacioneDto.idContadores.length > 0) {
+        // Obtener contadores actuales de la instalación
+        const contadoresActuales = await this.instalacionContadoresRepository.find({
+          where: { idInstalacion: id, estatus: 1 },
         });
-        //Actualizamos el estado del contadores nuevo a asignado
-        await this.contadoresRepository.update(
-          Number(updateInstalacioneDto.idContador),
-          { estadoActual: EstadoComponente.ASIGNADO },
-        );
-        //Actualizamos el contadores en la instalacion
-        await this.instalacionesRepository.update(id, {
-          idContador: updateInstalacioneDto.idContador,
-        });
+
+        // Si hay contadores anteriores a actualizar
+        if (updateInstalacioneDto.idContadoresAnteriores && updateInstalacioneDto.idContadoresAnteriores.length > 0) {
+          // Actualizar estado de contadores anteriores
+          for (const idContadorAnterior of updateInstalacioneDto.idContadoresAnteriores) {
+            await this.contadoresRepository.update(idContadorAnterior, {
+              estadoActual: updateInstalacioneDto.estatusContadoresAnteriores || EstadoComponente.DISPONIBLE,
+            });
+            // Desactivar relación anterior
+            await this.instalacionContadoresRepository.update(
+              { idInstalacion: id, idContador: idContadorAnterior },
+              { estatus: 0 },
+            );
+          }
+        }
+
+        // Agregar nuevos contadores
+        for (const idContador of updateInstalacioneDto.idContadores) {
+          // Verificar si ya existe la relación
+          const existeRelacion = await this.instalacionContadoresRepository.findOne({
+            where: { idInstalacion: id, idContador: idContador, estatus: 1 },
+          });
+
+          if (!existeRelacion) {
+            // Actualizar estado del contador nuevo a asignado
+            await this.contadoresRepository.update(idContador, {
+              estadoActual: EstadoComponente.ASIGNADO,
+            });
+            // Crear nueva relación
+            const nuevaRelacion = this.instalacionContadoresRepository.create({
+              idInstalacion: id,
+              idContador: idContador,
+              estatus: 1,
+            });
+            await this.instalacionContadoresRepository.save(nuevaRelacion);
+          }
+        }
       }
 
       const instalacionActualizada = await this.instalacionesRepository.findOne(
@@ -1249,10 +1351,20 @@ ORDER BY i.Id DESC;
         EstatusEnumBitcora.SUCCESS,
       );
 
+      // Obtener contadores actuales
+      const contadoresActuales = await this.instalacionContadoresRepository.find({
+        where: { idInstalacion: id, estatus: 1 },
+        relations: ['contador'],
+      });
+      const idContadores = contadoresActuales
+        .filter(ic => ic.idContador !== null)
+        .map(ic => ic.idContador as number);
+      const primerContador = idContadores[0] || null;
+
       const body = {
         idInstalacion: id,
         idValidador: instalacion.idValidador,
-        idContador: instalacion.idContador,
+        idContador: primerContador ?? undefined, // Para compatibilidad con histórico
         idVehiculo: instalacion.idVehiculo,
         idCliente: instalacion.idCliente,
       };
@@ -1262,7 +1374,7 @@ ORDER BY i.Id DESC;
       await this.historicoinstalacionesService.updateHistorico(
         body,
         Number(instalacionActualizada?.idValidador),
-        Number(instalacionActualizada?.idContador),
+        primerContador ?? 0,
         Number(instalacionActualizada?.idVehiculo),
         Number(instalacionActualizada?.idCliente),
         idUser,
@@ -1276,7 +1388,7 @@ ORDER BY i.Id DESC;
         data: {
           id: id,
           nombre:
-            `Instalación ${instalacion.id} asociada a Validador: ${instalacion.idValidador}, Contador: ${instalacion.idContador} y Vehículo: ${instalacion.idVehiculo}.` ||
+            `Instalación ${instalacion.id} asociada a Validador: ${instalacion.idValidador}, Contadores: ${idContadores.join(', ')} y Vehículo: ${instalacion.idVehiculo}.` ||
             '',
         },
       };
@@ -1333,7 +1445,15 @@ ORDER BY i.Id DESC;
       // Desactivar instalación → activar componentes
       const body = { estadoActual: EstadoComponente.DISPONIBLE };
       await this.validadoresRepository.update(instalacion.idValidador, body);
-      await this.contadoresRepository.update(instalacion.idContador, body);
+      // Actualizar todos los contadores de la instalación
+      const contadoresInstalacion = await this.instalacionContadoresRepository.find({
+        where: { idInstalacion: instalacion.id, estatus: 1 },
+      });
+      for (const ic of contadoresInstalacion) {
+        if (ic.idContador !== null) {
+          await this.contadoresRepository.update(ic.idContador, body);
+        }
+      }
       await this.vehiculosRepository.update(instalacion.idVehiculo, body);
 
       //-----Registro en la bitacora----- SUCCESS
@@ -1348,6 +1468,12 @@ ORDER BY i.Id DESC;
         EstatusEnumBitcora.SUCCESS,
       );
 
+      // Usar los contadores ya obtenidos para el mensaje
+      const idContadores = contadoresInstalacion
+        .filter(ic => ic.idContador !== null)
+        .map(ic => ic.idContador)
+        .join(', ');
+
       //Api response
       const result: ApiCrudResponse = {
         status: 'success',
@@ -1355,7 +1481,7 @@ ORDER BY i.Id DESC;
         data: {
           id: id,
           nombre:
-            `${instalacion.id} validador:${instalacion.idValidador} contador: ${instalacion.idContador} vehiculo: ${instalacion.idVehiculo}` ||
+            `${instalacion.id} validador:${instalacion.idValidador} contadores: ${idContadores} vehiculo: ${instalacion.idVehiculo}` ||
             '',
         },
       };

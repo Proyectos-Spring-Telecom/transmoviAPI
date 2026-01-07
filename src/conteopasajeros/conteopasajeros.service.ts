@@ -17,6 +17,7 @@ import { Clientes } from 'src/entities/Clientes';
 import { Contadores } from 'src/entities/Contadores';
 import { Viajes } from 'src/entities/Viajes';
 import { Instalaciones } from 'src/entities/Instalaciones';
+import { InstalacionContadores } from 'src/entities/InstalacionContadores';
 import { Turnos } from 'src/entities/Turnos';
 import { UpdateConteoPasajerosDto } from './dto/update-conteopasajero.dto';
 import { EnumModulos, EstatusConteo } from 'src/common/estatus.enum';
@@ -36,6 +37,8 @@ export class ConteopasajerosService {
     private readonly viajesRepository: Repository<Viajes>,
     @InjectRepository(Instalaciones)
     private readonly instalacionesRepository: Repository<Instalaciones>,
+    @InjectRepository(InstalacionContadores)
+    private readonly instalacionContadoresRepository: Repository<InstalacionContadores>,
     @InjectRepository(Turnos)
     private readonly turnosRepository: Repository<Turnos>,
     private readonly bitacoraLogger: BitacoraLoggerService,
@@ -60,15 +63,25 @@ export class ConteopasajerosService {
         );
       }
 
-      // Obtener la instalación relacionada con el contador
-      const instalacion = await this.instalacionesRepository.findOne({
+      // Obtener la instalación relacionada con el contador a través de InstalacionContadores
+      const instalacionContador = await this.instalacionContadoresRepository.findOne({
         where: {
           idContador: contador.id,
-          idCliente: contador.idCliente,
-          estatus: 1, // Solo instalaciones activas
+          estatus: 1,
         },
+        relations: ['instalacion'],
       });
-      if (!instalacion) {
+      
+      if (!instalacionContador || !instalacionContador.instalacion) {
+        throw new NotFoundException(
+          `No se encontró una instalación activa para el contador con número de serie '${createConteopasajeroDto.numeroSerieContador}'.`
+        );
+      }
+      
+      const instalacion = instalacionContador.instalacion;
+      
+      // Verificar que la instalación esté activa y pertenezca al cliente
+      if (instalacion.estatus !== 1 || instalacion.idCliente !== contador.idCliente) {
         throw new NotFoundException(
           `No se encontró una instalación activa para el contador con número de serie '${createConteopasajeroDto.numeroSerieContador}'.`
         );

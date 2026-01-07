@@ -18,6 +18,7 @@ import { Repository } from 'typeorm';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import { UpdateContadoresEstatusDto } from './dto/update-contadores-estatus.dto';
 import { Instalaciones } from 'src/entities/Instalaciones';
+import { InstalacionContadores } from 'src/entities/InstalacionContadores';
 import { Clientes } from 'src/entities/Clientes';
 import { UpdateContadoresEstadoDto } from './dto/update-contadores.estado.dto';
 import { EstadoComponente, EstatusEnum } from 'src/common/estatus.enum';
@@ -29,6 +30,8 @@ export class ContadoresService {
     private readonly contadoresRepository: Repository<Contadores>,
     @InjectRepository(Instalaciones)
     private readonly instalacionesRepository: Repository<Instalaciones>,
+    @InjectRepository(InstalacionContadores)
+    private readonly instalacionContadoresRepository: Repository<InstalacionContadores>,
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
@@ -137,16 +140,17 @@ SELECT
   c.Estatus AS estatus,
   c.IdCliente AS idCliente,
   CASE 
-    WHEN i.Id IS NOT NULL THEN 1
+    WHEN ic.Id IS NOT NULL THEN 1
     ELSE 0
   END AS enUso
 FROM Contadores c
-LEFT JOIN Instalaciones i ON c.Id = i.IdContador AND i.Estatus = 1
+LEFT JOIN InstalacionContadores ic ON c.Id = ic.IdContador AND ic.Estatus = 1
+LEFT JOIN Instalaciones i ON ic.IdInstalacion = i.Id AND i.Estatus = 1
 WHERE c.IdCliente = ?
   AND c.Estatus = 1
   AND (
     c.EstadoActual = ? -- DISPONIBLE
-    OR i.Id IS NOT NULL -- En uso (asignado a instalación activa)
+    OR ic.Id IS NOT NULL -- En uso (asignado a instalación activa)
   )
 ORDER BY 
   enUso DESC, -- Primero los que están en uso
@@ -564,8 +568,8 @@ ORDER BY b.Id DESC;
 
       //logica si estatus es 0
       if (estatus === 0) {
-        //buscamos que no este asiganada a una instalacion
-        const contadorInstalacion = await this.instalacionesRepository.findOne({
+        //buscamos que no este asignado a una instalacion
+        const contadorInstalacion = await this.instalacionContadoresRepository.findOne({
           where: { idContador: contador.id, estatus: 1 },
         });
         if (contadorInstalacion)
@@ -645,8 +649,8 @@ ORDER BY b.Id DESC;
       if (!contador)
         throw new NotFoundException(`No se encontró un Contador con ID: ${id}.`);
 
-      //buscamos que no este asiganada a una instalacion
-      const contadorInstalacion = await this.instalacionesRepository.findOne({
+      //buscamos que no este asignado a una instalacion
+      const contadorInstalacion = await this.instalacionContadoresRepository.findOne({
         where: { idContador: contador.id, estatus: 1 },
       });
       if (contadorInstalacion)
@@ -723,8 +727,8 @@ ORDER BY b.Id DESC;
       if (!contador)
         throw new NotFoundException(`No se encontró un Contador con ID: ${id}.`);
 
-      //buscamos que no este asiganada a una instalacion
-      const contadorInstalacion = await this.instalacionesRepository.findOne({
+      //buscamos que no este asignado a una instalacion
+      const contadorInstalacion = await this.instalacionContadoresRepository.findOne({
         where: { idContador: contador.id, estatus: 1 },
       });
       if (contadorInstalacion)

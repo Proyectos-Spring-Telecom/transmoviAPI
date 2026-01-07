@@ -108,6 +108,7 @@ export class MonederosService {
         fechaHoraFinal: fechaActual,
         numeroSerieMonedero: monederoSave.numeroSerie,
         numeroSerieValidador: null,
+        idMetodoPago:1
       });
       const transaccionSave =
         await this.transaccionesrecargaRepository.save(newTransaccion);
