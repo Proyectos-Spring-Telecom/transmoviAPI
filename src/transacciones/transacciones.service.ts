@@ -940,7 +940,6 @@ WHERE
         fechaFin = fechaActual
         entidadRecarga = 'TransaccionesRecarga';
         entidadDebito = 'TransaccionesDebito';
-        console.log(fechaInicio, fechaFin, fechaActual, entidadDebito, entidadRecarga, rol);
         transacciones = await this.resolverPorRolDefault(fechaInicio, fechaFin, email, cliente, rol, page, limit, entidadDebito, entidadRecarga);
       } else {
         //Si fechaInicio y fechaFin no son null arroja las transacciones del dia de la tabla HistoricoTransaccionesRecarga y HistoricoTransaccionesDebito
@@ -949,7 +948,6 @@ WHERE
         fechaFin = fechaFin?.split("T")[0] ?? fechaActual;
         entidadRecarga = 'HistoricoTransaccionesRecarga';
         entidadDebito = 'HistoricoTransaccionesDebito';
-        console.log(fechaInicio, fechaFin, fechaActual, entidadDebito, entidadRecarga, rol);
         transacciones = await this.resolverPorRolDefault(fechaInicio, fechaFin, email, cliente, rol, page, limit, entidadDebito, entidadRecarga);
       }
 
@@ -1019,6 +1017,10 @@ SELECT * FROM (
       td.IdTipoTransaccion AS idTipoTransaccion,
       ctt.Nombre AS tipoTransaccion,
       td.Monto AS monto,
+      td.LatitudInicial AS latitudInicial,
+      td.LongitudInicial AS longitudInicial,
+      td.FechaHoraInicio AS fechaHoraInicio,
+      td.DistanciaInicialKm AS distanciaInicialKm,
       td.LatitudFinal AS latitudFinal,
       td.LongitudFinal AS longitudFinal,
       td.FechaHoraFinal AS fechaHoraFinal,
@@ -1061,6 +1063,10 @@ SELECT * FROM (
       tr.IdTipoTransaccion AS idTipoTransaccion,
       ctt.Nombre AS tipoTransaccion,
       tr.Monto AS monto,
+      NULL AS latitudInicial,
+      NULL AS longitudInicial,
+      NULL AS fechaHoraInicio,
+      NULL AS distanciaInicialKm,
       tr.LatitudFinal AS latitudFinal,
       tr.LongitudFinal AS longitudFinal,
       tr.FechaHoraFinal AS fechaHoraFinal,
@@ -1133,6 +1139,10 @@ SELECT * FROM (
       td.IdTipoTransaccion AS idTipoTransaccion,
       ctt.Nombre AS tipoTransaccion,
       td.Monto AS monto,
+      td.LatitudInicial AS latitudInicial,
+      td.LongitudInicial AS longitudInicial,
+      td.FechaHoraInicio AS fechaHoraInicio,
+      td.DistanciaInicialKm AS distanciaInicialKm,
       td.LatitudFinal AS latitudFinal,
       td.LongitudFinal AS longitudFinal,
       td.FechaHoraFinal AS fechaHoraFinal,
@@ -1176,6 +1186,10 @@ SELECT * FROM (
       tr.IdTipoTransaccion AS idTipoTransaccion,
       ctt.Nombre AS tipoTransaccion,
       tr.Monto AS monto,
+      NULL AS latitudInicial,
+      NULL AS longitudInicial,
+      NULL AS fechaHoraInicio,
+      NULL AS distanciaInicialKm,
       tr.LatitudFinal AS latitudFinal,
       tr.LongitudFinal AS longitudFinal,
       tr.FechaHoraFinal AS fechaHoraFinal,
@@ -1256,6 +1270,10 @@ SELECT * FROM (
       td.IdTipoTransaccion AS idTipoTransaccion,
       ctt.Nombre AS tipoTransaccion,
       td.Monto AS monto,
+      td.LatitudInicial AS latitudInicial,
+      td.LongitudInicial AS longitudInicial,
+      td.FechaHoraInicio AS fechaHoraInicio,
+      td.DistanciaInicialKm AS distanciaInicialKm,
       td.LatitudFinal AS latitudFinal,
       td.LongitudFinal AS longitudFinal,
       td.FechaHoraFinal AS fechaHoraFinal,
@@ -1300,6 +1318,10 @@ SELECT * FROM (
       tr.IdTipoTransaccion AS idTipoTransaccion,
       ctt.Nombre AS tipoTransaccion,
       tr.Monto AS monto,
+      NULL AS latitudInicial,
+      NULL AS longitudInicial,
+      NULL AS fechaHoraInicio,
+      NULL AS distanciaInicialKm,
       tr.LatitudFinal AS latitudFinal,
       tr.LongitudFinal AS longitudFinal,
       tr.FechaHoraFinal AS fechaHoraFinal,
@@ -1389,6 +1411,10 @@ SELECT * FROM (
       td.IdTipoTransaccion AS idTipoTransaccion,
       ctt.Nombre AS tipoTransaccion,
       td.Monto AS monto,
+      td.LatitudInicial AS latitudInicial,
+      td.LongitudInicial AS longitudInicial,
+      td.FechaHoraInicio AS fechaHoraInicio,
+      td.DistanciaInicialKm AS distanciaInicialKm,
       td.LatitudFinal AS latitudFinal,
       td.LongitudFinal AS longitudFinal,
       td.FechaHoraFinal AS fechaHoraFinal,
@@ -1432,6 +1458,10 @@ SELECT * FROM (
       tr.IdTipoTransaccion AS idTipoTransaccion,
       ctt.Nombre AS tipoTransaccion,
       tr.Monto AS monto,
+      NULL AS latitudInicial,
+      NULL AS longitudInicial,
+      NULL AS fechaHoraInicio,
+      NULL AS distanciaInicialKm,
       tr.LatitudFinal AS latitudFinal,
       tr.LongitudFinal AS longitudFinal,
       tr.FechaHoraFinal AS fechaHoraFinal,
@@ -1508,6 +1538,9 @@ FROM (
         id: Number(item.id),
         idTipoTransaccion: Number(item.idTipoTransaccion),
         monto: Number(item.monto),
+        latitudInicial: item.latitudInicial ? Number(item.latitudInicial) : null,
+        longitudInicial: item.longitudInicial ? Number(item.longitudInicial) : null,
+        distanciaInicialKm: item.distanciaInicialKm ? Number(item.distanciaInicialKm) : null,
         latitudFinal: item.latitudFinal ? Number(item.latitudFinal) : null,
         longitudFinal: item.longitudFinal ? Number(item.longitudFinal) : null,
         idCliente: item.idCliente ? Number(item.idCliente) : null,
