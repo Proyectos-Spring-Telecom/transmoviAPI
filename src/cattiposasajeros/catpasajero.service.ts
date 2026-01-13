@@ -64,6 +64,7 @@ export class CatpasajeroService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       console.log(error)
       //-----Registro en la bitacora----- ERROR
       const querylogger = { createCatpasajeroDto };
@@ -139,6 +140,7 @@ export class CatpasajeroService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -224,6 +226,7 @@ ORDER BY cp.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -278,6 +281,7 @@ ORDER BY cp.Id DESC;
 
       return data;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -331,6 +335,7 @@ ORDER BY cp.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { updateCatpasajeroDto };
       await this.bitacoraLogger.logToBitacora(
@@ -401,6 +406,7 @@ ORDER BY cp.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { updateCatPasajeroEstatusDto };
       await this.bitacoraLogger.logToBitacora(
@@ -464,6 +470,7 @@ ORDER BY cp.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { id: id, estatus: EstatusEnum.INACTIVO };
       await this.bitacoraLogger.logToBitacora(

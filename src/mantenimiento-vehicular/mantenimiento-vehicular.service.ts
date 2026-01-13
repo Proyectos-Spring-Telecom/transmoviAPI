@@ -161,6 +161,7 @@ export class MantenimientoVehicularService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       console.log(error); 
       const querylogger = { createMantenimientoVehicularDto };
@@ -365,6 +366,7 @@ WHERE c.Id IN (${placeholders})
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -521,6 +523,7 @@ AND mv.Id = ?
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -619,6 +622,7 @@ AND mv.Id = ?
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { updateMantenimientoVehicularDto };
       await this.bitacoraLogger.logToBitacora(
@@ -676,6 +680,7 @@ AND mv.Id = ?
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(
@@ -738,6 +743,7 @@ AND mv.Id = ?
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { id: id, estatus: 1 };
       await this.bitacoraLogger.logToBitacora(
@@ -794,6 +800,7 @@ AND mv.Id = ?
         },
       };
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { id: idMantenimiento, estatus: estatus };
       await this.bitacoraLogger.logToBitacora(

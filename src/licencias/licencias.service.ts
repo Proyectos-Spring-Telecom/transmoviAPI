@@ -68,6 +68,7 @@ export class LicenciasService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora-----ERROR
       const querylogger = { createLicenciaDto };
       await this.bitacoraLogger.logToBitacora(
@@ -242,6 +243,7 @@ WHERE u.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -343,6 +345,7 @@ ORDER BY l.Id ASC
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -449,6 +452,7 @@ ORDER BY l.Id ASC
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -498,6 +502,7 @@ ORDER BY l.Id ASC
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora-----ERROR
       const querylogger = { updateLicenciaDto };
       await this.bitacoraLogger.logToBitacora(
@@ -557,6 +562,7 @@ ORDER BY l.Id ASC
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(

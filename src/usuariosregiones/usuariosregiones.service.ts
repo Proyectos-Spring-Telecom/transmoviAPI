@@ -109,6 +109,7 @@ export class UsuariosregionesService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       // --- Registro en la bitácora --- ERROR
       const querylogger = { createUsuariosRegionesDto };
       await this.bitacoraLogger.logToBitacora(
@@ -152,6 +153,7 @@ export class UsuariosregionesService {
 
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -186,6 +188,7 @@ export class UsuariosregionesService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -213,6 +216,7 @@ export class UsuariosregionesService {
 
       return { data: data };
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -237,6 +241,7 @@ export class UsuariosregionesService {
 
       return { data: usuariosregiones };
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -345,6 +350,7 @@ export class UsuariosregionesService {
 
       return result;
     } catch (error) {
+      console.log(error);
       // ----- Registro en la bitácora ----- ERROR
       const querylogger = { updateUsuariosregioneDto };
       await this.bitacoraLogger.logToBitacora(
@@ -413,6 +419,7 @@ export class UsuariosregionesService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { updateUsuariosRegionesEstatusDto };
       await this.bitacoraLogger.logToBitacora(
@@ -474,6 +481,7 @@ export class UsuariosregionesService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(

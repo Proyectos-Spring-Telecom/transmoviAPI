@@ -196,6 +196,7 @@ export class InstalacionesService {
 
       return result;
     } catch (error) {
+      console.log(error);
       // Registro en la bitácora ERROR
       const querylogger = { createInstalacioneDto };
       await this.bitacoraLogger.logToBitacora(
@@ -545,6 +546,7 @@ INNER JOIN Clientes c ON i.IdCliente = c.Id
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -765,6 +767,7 @@ ORDER BY i.Id DESC;
 
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -976,6 +979,7 @@ ORDER BY i.Id DESC;
 
       return { data: data };
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -1153,6 +1157,7 @@ ORDER BY i.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { updateInstalacioneEstatusDto };
       await this.bitacoraLogger.logToBitacora(
@@ -1283,6 +1288,7 @@ ORDER BY i.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { updateInstalacioneDto };
       await this.bitacoraLogger.logToBitacora(
@@ -1362,6 +1368,7 @@ ORDER BY i.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(

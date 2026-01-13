@@ -65,6 +65,7 @@ export class CatTipoCombustibleService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { createCatTipoCombustibleDto };
       await this.bitacoraLogger.logToBitacora(
@@ -103,6 +104,7 @@ export class CatTipoCombustibleService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -136,6 +138,7 @@ export class CatTipoCombustibleService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -164,6 +167,7 @@ export class CatTipoCombustibleService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -224,6 +228,7 @@ export class CatTipoCombustibleService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { updateCatTipoCombustibleDto };
       await this.bitacoraLogger.logToBitacora(
@@ -280,6 +285,7 @@ export class CatTipoCombustibleService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { id: id };
       await this.bitacoraLogger.logToBitacora(

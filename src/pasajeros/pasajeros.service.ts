@@ -203,6 +203,7 @@ export class PasajerosService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { createPasajeroDto };
       await this.bitacoraLogger.logToBitacora(
@@ -272,6 +273,7 @@ export class PasajerosService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { createPasajeroAfiliacionDto };
       await this.bitacoraLogger.logToBitacora(
@@ -477,6 +479,7 @@ LEFT JOIN CatTipoDescuento ctd
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -591,6 +594,7 @@ ORDER BY p.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -614,6 +618,7 @@ ORDER BY p.Id DESC;
       }
       return { data: pasajeroExistente };
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -638,6 +643,7 @@ ORDER BY p.Id DESC;
       }
       return pasajeroExistente;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -741,6 +747,7 @@ GROUP BY p.Id, u.Id, u.UserName, NombreCompleto;
         data: data,
       };
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -794,6 +801,7 @@ GROUP BY p.Id, u.Id, u.UserName, NombreCompleto;
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { updatePasajeroEstatusDto };
       await this.bitacoraLogger.logToBitacora(
@@ -889,6 +897,7 @@ GROUP BY p.Id, u.Id, u.UserName, NombreCompleto;
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { updatePasajeroEstadoSolicitudDto };
       await this.bitacoraLogger.logToBitacora(
@@ -957,6 +966,7 @@ GROUP BY p.Id, u.Id, u.UserName, NombreCompleto;
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { updatePasajeroDto };
       await this.bitacoraLogger.logToBitacora(
@@ -1015,6 +1025,7 @@ GROUP BY p.Id, u.Id, u.UserName, NombreCompleto;
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(

@@ -208,6 +208,7 @@ AND u.Id != ?
 
       return result;
     } catch (error) {
+      console.log(error);
       throw new InternalServerErrorException({
         message: 'Ocurrió un error al obtener la paginación de usuarios.',
         error: error.message,
@@ -317,6 +318,7 @@ ORDER BY u.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -360,6 +362,7 @@ ORDER BY u.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -390,6 +393,7 @@ ORDER BY u.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -512,6 +516,7 @@ ORDER BY u.Id DESC
 
       return { data: { usuario, permiso } };
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -590,6 +595,7 @@ ORDER BY u.Id DESC
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { updateUsuarioOperadorDto };
       await this.bitacoraLogger.logToBitacora(
@@ -687,6 +693,7 @@ ORDER BY u.Id DESC
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { updateUsuarioDispositivoDto };
       await this.bitacoraLogger.logToBitacora(
@@ -792,6 +799,7 @@ ORDER BY u.Id DESC
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { createUsuarioDto };
       await this.bitacoraLogger.logToBitacora(
@@ -893,6 +901,7 @@ ORDER BY u.Id DESC
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { id: id };
       await this.bitacoraLogger.logToBitacora(
@@ -1041,6 +1050,7 @@ ORDER BY u.Id DESC
       };
       return result;
     } catch (error) {
+      console.log(error);
       // ----- Registro en la bitácora ----- ERROR
       const querylogger = { updateUsuarioDto };
       await this.bitacoraLogger.logToBitacora(
@@ -1113,6 +1123,7 @@ ORDER BY u.Id DESC
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { updateUsuarioEstatusDto };
       await this.bitacoraLogger.logToBitacora(
@@ -1176,6 +1187,7 @@ ORDER BY u.Id DESC
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(

@@ -113,6 +113,7 @@ export class RutasService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       // Registro en la bitácora ERROR
       const querylogger = { createRutaDto };
       await this.bitacoraLogger.logToBitacora(
@@ -657,6 +658,7 @@ ORDER BY ru.Id DESC;
 
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -746,6 +748,7 @@ ORDER BY ru.Id DESC
 
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -901,6 +904,7 @@ ORDER BY ru.Id DESC;
 
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -951,6 +955,7 @@ ORDER BY ru.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       // Registro en la bitácora ERROR
       const querylogger = { updateRutasEstatusDto };
       await this.bitacoraLogger.logToBitacora(
@@ -1012,6 +1017,7 @@ ORDER BY ru.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       // Registro en la bitácora ERROR
       const querylogger = { updateRutaDto };
       await this.bitacoraLogger.logToBitacora(
@@ -1067,6 +1073,7 @@ ORDER BY ru.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       // Registro en la bitácora SUCCESS
       const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(
@@ -1136,6 +1143,7 @@ ORDER BY ru.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       // Registro en la bitácora SUCCESS
       const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(

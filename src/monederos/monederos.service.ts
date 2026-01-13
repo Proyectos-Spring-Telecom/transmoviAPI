@@ -125,6 +125,7 @@ export class MonederosService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       // -------------   ERROR -------------****-*-*
       // --- Registro en la bitácora --- ERROR
       const querylogger = { createMonederoDto };
@@ -371,6 +372,7 @@ WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que qu
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -418,6 +420,7 @@ WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que qu
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -572,6 +575,7 @@ ORDER BY m.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -605,6 +609,7 @@ ORDER BY m.Id DESC;
       };
       return { data: monederoResult };
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -637,6 +642,7 @@ ORDER BY m.Id DESC;
       };
       return { data: monederoResult };
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -693,6 +699,7 @@ ORDER BY m.Id DESC;
 
       return result;
     } catch (error) {
+      console.log(error);
       // --- Registro en la bitácora --- ERROR
       const querylogger = { updateMonederoEstatusDto };
       await this.bitacoraLogger.logToBitacora(
@@ -779,6 +786,7 @@ ORDER BY m.Id DESC;
 
       return result;
     } catch (error) {
+      console.log(error);
       // --- Registro en la bitácora --- SUCCESS
       const querylogger = { updateMonederoCatPasajeroDto };
       await this.bitacoraLogger.logToBitacora(
@@ -845,6 +853,7 @@ ORDER BY m.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       // --- Registro en la bitácora --- ERROR
       const querylogger = { numeroSerie: numeroSerie, saldo: saldo };
       await this.bitacoraLogger.logToBitacora(
@@ -913,6 +922,7 @@ ORDER BY m.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       // --- Registro en la bitácora --- ERROR
       const querylogger = { updateMonederoDto };
       await this.bitacoraLogger.logToBitacora(
@@ -977,6 +987,7 @@ ORDER BY m.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       // --- Registro en la bitácora --- ERROR
       const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(
@@ -1081,6 +1092,7 @@ ORDER BY m.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       // --- Registro en la bitácora --- SUCCESS
       const querylogger = { updateMonederoExtravioDto };
       await this.bitacoraLogger.logToBitacora(

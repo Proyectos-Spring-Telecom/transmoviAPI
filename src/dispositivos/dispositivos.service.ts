@@ -88,6 +88,7 @@ export class DispositivosService {
 
       return result;
     } catch (error) {
+      console.log(error);
       // --- Registro en la bitácora --- ERROR
       const querylogger = { createDispositivoDto };
       await this.bitacoraLogger.logToBitacora(
@@ -132,6 +133,7 @@ export class DispositivosService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -281,6 +283,7 @@ ORDER BY d.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -411,6 +414,7 @@ WHERE d.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente
       return result;
     } catch (error) {
       console.log(error);
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -506,6 +510,7 @@ ORDER BY d.Id DESC;
         data: data,
       };
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) throw error;
 
       throw new InternalServerErrorException({
@@ -579,6 +584,7 @@ ORDER BY d.Id DESC;
 
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { updateDispositivoEstatusDto };
       await this.bitacoraLogger.logToBitacora(
@@ -670,6 +676,7 @@ ORDER BY d.Id DESC;
 
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { updateDispositivoEstadoDto };
       await this.bitacoraLogger.logToBitacora(
@@ -741,6 +748,7 @@ ORDER BY d.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { updateDispositivoDto };
       await this.bitacoraLogger.logToBitacora(
@@ -817,6 +825,7 @@ ORDER BY d.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(

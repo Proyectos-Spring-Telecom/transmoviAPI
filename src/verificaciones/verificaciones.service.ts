@@ -150,6 +150,7 @@ export class VerificacionesService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       console.log(error); 
       const querylogger = { createVerificacionesDto };
@@ -436,6 +437,7 @@ WHERE c.Id IN (${placeholders})
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -596,6 +598,7 @@ AND v.Id = ?
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -683,6 +686,7 @@ AND v.Id = ?
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { updateVerificacionesDto };
       await this.bitacoraLogger.logToBitacora(
@@ -740,6 +744,7 @@ AND v.Id = ?
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(
@@ -802,6 +807,7 @@ AND v.Id = ?
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { id: id, estatus: 1 };
       await this.bitacoraLogger.logToBitacora(
@@ -844,6 +850,7 @@ AND v.Id = ?
         data: categoriasTransformadas,
       };
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }

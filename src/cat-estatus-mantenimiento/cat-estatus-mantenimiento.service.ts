@@ -65,6 +65,7 @@ export class CatEstatusMantenimientoService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { createCatEstatusMantenimientoDto };
       await this.bitacoraLogger.logToBitacora(
@@ -103,6 +104,7 @@ export class CatEstatusMantenimientoService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -136,6 +138,7 @@ export class CatEstatusMantenimientoService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -164,6 +167,7 @@ export class CatEstatusMantenimientoService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -227,6 +231,7 @@ export class CatEstatusMantenimientoService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { updateCatEstatusMantenimientoDto };
       await this.bitacoraLogger.logToBitacora(
@@ -283,6 +288,7 @@ export class CatEstatusMantenimientoService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { id: id };
       await this.bitacoraLogger.logToBitacora(

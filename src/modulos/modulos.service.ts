@@ -68,6 +68,7 @@ export class ModulosService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { createModuloDto };
       await this.bitacoraLogger.logToBitacora(
@@ -105,6 +106,7 @@ export class ModulosService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       throw new BadRequestException(error);
     }
   }
@@ -137,6 +139,7 @@ export class ModulosService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       throw new BadRequestException(error.message || 'Error fetching data');
     }
   }
@@ -151,6 +154,7 @@ export class ModulosService {
 
       return { data: modulo };
     } catch (error) {
+      console.log(error);
     if (error instanceof HttpException) throw error;
 
     console.error('Error interno:', error);
@@ -203,6 +207,7 @@ export class ModulosService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { updateModuloDto };
       await this.bitacoraLogger.logToBitacora(
@@ -256,6 +261,7 @@ export class ModulosService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { updateModulosEstatusDto };
       await this.bitacoraLogger.logToBitacora(
@@ -333,6 +339,7 @@ export class ModulosService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(

@@ -84,6 +84,7 @@ export class ViajesService {
 
       return result;
     } catch (error) {
+      console.log(error);
       // Registro en la bitácora SUCCESS
       const querylogger = { createViajeDto };
       await this.bitacoraLogger.logToBitacora(
@@ -170,6 +171,7 @@ export class ViajesService {
 
       return result;
     } catch (error) {
+      console.log(error);
       // Registro en la bitácora FAIL
       const querylogger = { updateViajeDto };
       await this.bitacoraLogger.logToBitacora(
@@ -502,6 +504,7 @@ ORDER BY v.Id DESC;
 
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -892,6 +895,7 @@ LIMIT ? OFFSET ?;
 
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -1022,6 +1026,7 @@ ORDER BY v.Id DESC
 
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }

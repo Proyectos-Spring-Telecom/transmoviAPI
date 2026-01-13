@@ -102,6 +102,7 @@ AND i.Estatus = 1
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { createTurnoDto };
       await this.bitacoraLogger.logToBitacora(
@@ -476,6 +477,7 @@ WHERE ui.IdUsuario = ?
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -732,6 +734,7 @@ ORDER BY t.Id DESC;
       const result: ApiResponseCommon = { data: data };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -996,6 +999,7 @@ ORDER BY t.Inicio DESC;
 
       return { data };
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -1042,6 +1046,7 @@ ORDER BY t.Inicio DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { updateTurnosEstatusDto };
       await this.bitacoraLogger.logToBitacora(
@@ -1138,6 +1143,7 @@ AND i.Estatus = 1
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { updateTurnoDto };
       await this.bitacoraLogger.logToBitacora(
@@ -1188,6 +1194,7 @@ AND i.Estatus = 1
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(

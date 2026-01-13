@@ -199,6 +199,7 @@ export class AuthService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -367,6 +368,7 @@ LEFT JOIN LicenciasJSON lj ON lj.IdUsuario = du.IdUsuario;
         permisos: permisos,
       };
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -551,6 +553,7 @@ LEFT JOIN LicenciasJSON lj ON lj.IdUsuario = du.IdUsuario;
         permisos: permisos,
       };
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -625,6 +628,7 @@ LEFT JOIN LicenciasJSON lj ON lj.IdUsuario = du.IdUsuario;
       return `La verificación del usuario ${user.nombre} se ha completado con éxito.
 Muchas gracias por su preferencia.`;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -673,6 +677,7 @@ Muchas gracias por su preferencia.`;
       );
       return `Se ha enviado un correo con el codigo.`;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -764,6 +769,7 @@ Muchas gracias por su preferencia.`;
       );
       return `Se ha enviado un correo con el codigo de autenticación.`;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -802,6 +808,7 @@ Muchas gracias por su preferencia.`;
       );
       return `La contraseña del usuario ${user.nombre} ha sido actualizada exitosamente.`;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }

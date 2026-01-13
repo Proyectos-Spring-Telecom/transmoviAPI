@@ -60,6 +60,7 @@ export class HistoricoinstalacionesService {
         EstatusEnumBitcora.SUCCESS,
       );
     } catch (error) {
+      console.log(error);
       // Registro en la bitácora SUCCESS
       const querylogger = {
         instalacion: idInstalacion,
@@ -159,6 +160,7 @@ export class HistoricoinstalacionesService {
         EstatusEnumBitcora.SUCCESS,
       );
     } catch (error) {
+      console.log(error);
       // Registro en la bitácora de errores
       const querylogger = {
         instalacion: instalacion.idInstalacion,

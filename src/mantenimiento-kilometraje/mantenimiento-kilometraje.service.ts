@@ -90,6 +90,7 @@ export class MantenimientoKilometrajeService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { createMantenimientoKilometrajeDto };
       await this.bitacoraLogger.logToBitacora(
@@ -291,6 +292,7 @@ WHERE c.Id IN (${placeholders})
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -445,6 +447,7 @@ AND mk.Id = ?
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -498,6 +501,7 @@ AND mk.Id = ?
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { updateMantenimientoKilometrajeDto };
       await this.bitacoraLogger.logToBitacora(
@@ -555,6 +559,7 @@ AND mk.Id = ?
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(
@@ -617,6 +622,7 @@ AND mk.Id = ?
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { id: id, estatus: 1 };
       await this.bitacoraLogger.logToBitacora(
@@ -808,6 +814,7 @@ AND mk.Id = ?
 
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }

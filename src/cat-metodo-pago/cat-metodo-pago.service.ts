@@ -31,6 +31,7 @@ export class CatMetodoPagoService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }

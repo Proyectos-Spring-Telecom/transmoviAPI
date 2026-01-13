@@ -116,6 +116,7 @@ export class OperadoresService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       console.log(error)
       //-----Registro en la bitacora-----SUCCESS
       const querylogger = { createOperadoreDto };
@@ -387,6 +388,7 @@ AND u.Estatus = 1
       };
       return result;
     } catch (error) {
+      console.log(error);
       console.log(error)
       if (error instanceof HttpException) {
         throw error;
@@ -514,6 +516,7 @@ ORDER BY o.Id DESC;
       };
       return data;
     } catch (error) {
+      console.log(error);
       console.log(error)
       if (error instanceof HttpException) {
         throw error;
@@ -601,6 +604,7 @@ ORDER BY o.Id DESC
 
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -790,6 +794,7 @@ ORDER BY o.Id DESC
         data: data,
       };
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -844,6 +849,7 @@ ORDER BY o.Id DESC
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { updateOperadorStatusDto };
       await this.bitacoraLogger.logToBitacora(
@@ -908,6 +914,7 @@ ORDER BY o.Id DESC
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora-----ERROR
       const querylogger = { updateOperadoreDto };
       await this.bitacoraLogger.logToBitacora(
@@ -967,6 +974,7 @@ ORDER BY o.Id DESC
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora-----SUCCESS
       const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(

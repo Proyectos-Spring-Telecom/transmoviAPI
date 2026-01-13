@@ -65,6 +65,7 @@ export class CatReferenciaServicioService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { createCatReferenciaServicioDto };
       await this.bitacoraLogger.logToBitacora(
@@ -106,6 +107,7 @@ export class CatReferenciaServicioService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -141,6 +143,7 @@ export class CatReferenciaServicioService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -171,6 +174,7 @@ export class CatReferenciaServicioService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -234,6 +238,7 @@ export class CatReferenciaServicioService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { updateCatReferenciaServicioDto };
       await this.bitacoraLogger.logToBitacora(
@@ -290,6 +295,7 @@ export class CatReferenciaServicioService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { id: id };
       await this.bitacoraLogger.logToBitacora(

@@ -56,6 +56,7 @@ export class PermisosService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -77,6 +78,7 @@ export class PermisosService {
 
       return { data: permiso };
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -124,6 +126,7 @@ export class PermisosService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       // --- Registro en la bitácora --- ERROR
       const querylogger = { createPermiso };
       await this.bitacoraLogger.logToBitacora(
@@ -183,6 +186,7 @@ export class PermisosService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       // --- Registro en la bitácora --- ERROR
       const querylogger = { updatePermisoEstatusDto };
       await this.bitacoraLogger.logToBitacora(
@@ -244,6 +248,7 @@ export class PermisosService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       // --- Registro en la bitácora --- ERROR
       const querylogger = { updatePermiso };
       await this.bitacoraLogger.logToBitacora(
@@ -292,6 +297,7 @@ export class PermisosService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       // --- Registro en la bitácora --- ERROR
       const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(
@@ -363,6 +369,7 @@ export class PermisosService {
 
       return permisosAgrupados;
     } catch (error) {
+      console.log(error);
       console.error('Error al obtener permisos agrupados:', error);
       throw error; // Lanzar el error para manejarlo en la capa superior si es necesario
     }

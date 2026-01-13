@@ -245,6 +245,7 @@ export class DerroterosService {
       return result;
 
     } catch (error) {
+      console.log(error);
       await this.bitacoraLogger.logToBitacora(
         'Derroteros',
         `Error al crear derrotero con nombre: ${createDerroteroDto.nombre}`,
@@ -608,6 +609,7 @@ WHERE ur.IdUsuario = ?
 
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) throw error;
 
       throw new InternalServerErrorException({
@@ -853,6 +855,7 @@ ORDER BY d.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) throw error;
 
       throw new InternalServerErrorException({
@@ -949,6 +952,7 @@ ORDER BY d.Id DESC
 
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -1197,6 +1201,7 @@ WHERE ur.IdUsuario = ?
 
       return { data: derrotero };
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) throw error;
 
       throw new InternalServerErrorException({
@@ -1248,6 +1253,7 @@ WHERE ur.IdUsuario = ?
 
       return result;
     } catch (error) {
+      console.log(error);
       // Registro en la bitácora ERROR
       const querylogger = { updateDerroterosEstatusDto };
       await this.bitacoraLogger.logToBitacora(
@@ -1317,6 +1323,7 @@ WHERE ur.IdUsuario = ?
 
       return result;
     } catch (error) {
+      console.log(error);
       // Registro en la bitácora ERROR
       const querylogger = { updateDerroteroDto };
       await this.bitacoraLogger.logToBitacora(
@@ -1374,6 +1381,7 @@ WHERE ur.IdUsuario = ?
 
       return result;
     } catch (error) {
+      console.log(error);
       // Registro en la bitácora SUCCESS
       const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(
@@ -1440,6 +1448,7 @@ WHERE ur.IdUsuario = ?
 
       return result;
     } catch (error) {
+      console.log(error);
       // Registro en la bitácora SUCCESS
       const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(

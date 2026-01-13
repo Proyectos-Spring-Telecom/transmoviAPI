@@ -167,6 +167,7 @@ ORDER BY d.Id DESC;
 
       return { derroteros, posicion };
     } catch (error) {
+      console.log(error);
       //console.log(error)
       if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
@@ -323,6 +324,7 @@ ORDER BY i.Id DESC
 
       return { posicion };
     } catch (error) {
+      console.log(error);
       console.log(error)
       if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({

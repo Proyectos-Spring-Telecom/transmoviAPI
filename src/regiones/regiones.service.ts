@@ -101,6 +101,7 @@ export class RegionesService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       // Registro en la bitácora en caso ERROR
       const querylogger = { createRegionesDto };
       await this.bitacoraLogger.logToBitacora(
@@ -360,6 +361,7 @@ WHERE
 
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -453,6 +455,7 @@ ORDER BY r.Id DESC
 
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -574,6 +577,7 @@ ORDER BY r.Id DESC;
 
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -732,6 +736,7 @@ ORDER BY r.Id DESC;
 
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -804,6 +809,7 @@ ORDER BY r.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       // Registro en la bitácora ERROR
       const querylogger = { updateRegionesEstatusDto };
       await this.bitacoraLogger.logToBitacora(
@@ -888,6 +894,7 @@ ORDER BY r.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       // Registro en la bitácora ERROR
       const querylogger = { updateRegioneDto };
       await this.bitacoraLogger.logToBitacora(
@@ -964,6 +971,7 @@ ORDER BY r.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       // Registro en la bitácora ERROR
       const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(

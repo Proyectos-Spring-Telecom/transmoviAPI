@@ -106,6 +106,7 @@ export class IncidentesService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       console.log(error);
       const querylogger = { createIncidentesDto };
@@ -199,6 +200,7 @@ export class IncidentesService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -253,6 +255,7 @@ export class IncidentesService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -329,6 +332,7 @@ export class IncidentesService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { updateIncidentesDto };
       await this.bitacoraLogger.logToBitacora(
@@ -386,6 +390,7 @@ export class IncidentesService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(
@@ -448,6 +453,7 @@ export class IncidentesService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { id: id, estatus: 1 };
       await this.bitacoraLogger.logToBitacora(
@@ -504,6 +510,7 @@ export class IncidentesService {
         },
       };
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { id: idIncidente, estatus: estatus };
       await this.bitacoraLogger.logToBitacora(

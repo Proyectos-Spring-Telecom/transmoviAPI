@@ -68,6 +68,7 @@ export class VehiculosService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { createVehiculoDto };
       await this.bitacoraLogger.logToBitacora(
@@ -132,6 +133,7 @@ export class VehiculosService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -216,6 +218,7 @@ ORDER BY v.Id DESC
 
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -365,6 +368,7 @@ LIMIT ? OFFSET ?;
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -489,6 +493,7 @@ ORDER BY v.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -605,6 +610,7 @@ ORDER BY v.Id DESC;
 
       return { data: data };
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -665,6 +671,7 @@ ORDER BY v.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { updateVehiculoEstausDto };
       await this.bitacoraLogger.logToBitacora(
@@ -727,6 +734,7 @@ ORDER BY v.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { updateVehiculoDto };
       await this.bitacoraLogger.logToBitacora(
@@ -792,6 +800,7 @@ ORDER BY v.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(

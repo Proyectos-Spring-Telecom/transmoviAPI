@@ -93,6 +93,7 @@ export class ClientesService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { createClienteDto };
       await this.bitacoraLogger.logToBitacora(
@@ -289,6 +290,7 @@ ORDER BY Id ASC
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -359,6 +361,7 @@ ORDER BY Id ASC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -407,6 +410,7 @@ ORDER BY Id ASC
       };
       return result;
     } catch (error) {
+      console.log(error);
       console.log(error)
       if (error instanceof HttpException) {
         throw error;
@@ -432,6 +436,7 @@ ORDER BY Id ASC
       }
       return { data: cliente };
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -491,6 +496,7 @@ ORDER BY Id ASC
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { updateClienteDto };
       await this.bitacoraLogger.logToBitacora(
@@ -571,6 +577,7 @@ ORDER BY Id ASC
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { updateClienteEstatusDto };
       await this.bitacoraLogger.logToBitacora(
@@ -651,6 +658,7 @@ ORDER BY Id ASC
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(

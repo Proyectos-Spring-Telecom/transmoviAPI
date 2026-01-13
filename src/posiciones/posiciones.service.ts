@@ -73,6 +73,7 @@ export class PosicionesService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -411,6 +412,7 @@ INNER JOIN Clientes c
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -560,6 +562,7 @@ ORDER BY p.Id DESC
       };
       return result;
     } catch (error) {
+      console.log(error);
       throw new InternalServerErrorException({
         message: 'Error al obtener posiciones',
         error,
@@ -616,6 +619,7 @@ ORDER BY p.Id DESC
 
       return { data: data[0] }; // solo un objeto, no array
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }

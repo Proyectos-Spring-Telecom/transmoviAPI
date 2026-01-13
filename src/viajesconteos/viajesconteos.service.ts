@@ -53,6 +53,7 @@ export class ViajesconteosService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { createViajesconteoDto };
       await this.bitacoraLogger.logToBitacora(
@@ -376,6 +377,7 @@ ORDER BY v.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -748,6 +750,7 @@ LEFT JOIN ConteoPasajeros cp ON cp.Id = vc.IdConteo
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -851,6 +854,7 @@ ORDER BY v.Id DESC
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }

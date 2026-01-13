@@ -61,6 +61,7 @@ export class RolesService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { createRoleDto };
       await this.bitacoraLogger.logToBitacora(
@@ -153,6 +154,7 @@ export class RolesService {
 
       return {data:permiso};
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -196,6 +198,7 @@ export class RolesService {
       };
       return result;
     } catch (error) {
+      console.log(error);
 
       // --- Registro en la bitácora --- ERROR
       const querylogger = { updateRoleDto };
@@ -259,6 +262,7 @@ export class RolesService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       // --- Registro en la bitácora --- ERROR
       const querylogger = { updateRolEstatusDto };
       await this.bitacoraLogger.logToBitacora(
@@ -312,6 +316,7 @@ export class RolesService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       // --- Registro en la bitácora --- ERROR
       const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(

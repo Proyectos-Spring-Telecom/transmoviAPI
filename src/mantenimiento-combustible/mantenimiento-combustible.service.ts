@@ -85,6 +85,7 @@ export class MantenimientoCombustibleService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { createMantenimientoCombustibleDto };
       await this.bitacoraLogger.logToBitacora(
@@ -275,6 +276,7 @@ WHERE c.Id IN (${placeholders})
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -418,6 +420,7 @@ AND mc.Id = ?
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -471,6 +474,7 @@ AND mc.Id = ?
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { updateMantenimientoCombustibleDto };
       await this.bitacoraLogger.logToBitacora(
@@ -528,6 +532,7 @@ AND mc.Id = ?
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(
@@ -590,6 +595,7 @@ AND mc.Id = ?
       };
       return result;
     } catch (error) {
+      console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { id: id, estatus: 1 };
       await this.bitacoraLogger.logToBitacora(

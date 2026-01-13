@@ -25,18 +25,37 @@ export class ConteopasajerosController {
     private readonly conteopasajerosService: ConteopasajerosService,
   ) { }
 
+  @UseGuards(JwtAuthGuard)
   @Post()
   async create(
     @Body() createConteopasajeroDto: CreateConteoPasajerosDto,
+    @Request() req,
   ): Promise<ApiCrudResponse> {
-    return this.conteopasajerosService.create(createConteopasajeroDto);
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+    const idUser = req.user.userId;
+    return this.conteopasajerosService.create(
+      +idUser,
+      +cliente,
+      +rol,
+      createConteopasajeroDto);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Patch(':id')
   async update(
+    @Request() req,
     @Param('id', ParseIntPipe) id: number,
     @Body() updateConteoPasajerosDto: UpdateConteoPasajerosDto): Promise<ApiCrudResponse> {
-    return this.conteopasajerosService.update(+id, updateConteoPasajerosDto)
+      const cliente = req.user.cliente;
+    const rol = req.user.rol;
+    const idUser = req.user.userId;
+    return this.conteopasajerosService.update(
+      +id, 
+      +idUser,
+      +cliente,
+      +rol,
+      updateConteoPasajerosDto)
   }
 
   // RUTAS ESPECÍFICAS PRIMERO (orden correcto)

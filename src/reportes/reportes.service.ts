@@ -165,6 +165,7 @@ ORDER BY DATE(td.FHRegistro) DESC, reg.Nombre, r.Nombre, d.Nombre;
         data,
       };
     } catch (error) {
+      console.log(error);
       console.error('Error en recaudacionDiariaPorRuta:', error);
       if (error instanceof BadRequestException) {
         throw error;
@@ -316,6 +317,7 @@ ORDER BY datos.ingresos DESC, datos.operador ASC;
         data,
       };
     } catch (error) {
+      console.log(error);
       console.error('Error en recaudacionPorOperador:', error);
       if (error instanceof BadRequestException) {
         throw error;
@@ -476,6 +478,7 @@ ORDER BY datos.ingresos DESC, datos.numeroEconomico ASC;
         data,
       };
     } catch (error) {
+      console.log(error);
       console.error('Error en recaudacionPorVehiculo:', error);
       if (error instanceof BadRequestException) {
         throw error;
@@ -622,6 +625,7 @@ ORDER BY datos.ingresos DESC, datos.serieDispositivo ASC;
         data,
       };
     } catch (error) {
+      console.log(error);
       console.error('Error en recaudacionPorDispositivo:', error);
       if (error instanceof BadRequestException) {
         throw error;

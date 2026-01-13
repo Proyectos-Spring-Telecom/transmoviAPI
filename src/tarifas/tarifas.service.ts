@@ -79,6 +79,7 @@ export class TarifasService {
       };
       return result;
     } catch (error) {
+      console.log(error);
       // Registro en la bitácora ERROR
       const querylogger = { createTarifaDto };
       await this.bitacoraLogger.logToBitacora(
@@ -357,6 +358,7 @@ ORDER BY t.Id DESC;
       };
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -691,6 +693,7 @@ WHERE ur.IdUsuario = ?
 
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -939,6 +942,7 @@ ORDER BY t.Id DESC
 
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -992,6 +996,7 @@ ORDER BY t.Id DESC
       };
       return result;
     } catch (error) {
+      console.log(error);
       // Registro en la bitácora Error
       const querylogger = { updateTarifasEstatusDto };
       await this.bitacoraLogger.logToBitacora(
@@ -1050,6 +1055,7 @@ ORDER BY t.Id DESC
       };
       return result;
     } catch (error) {
+      console.log(error);
       // Registro en la bitácora Error
       const querylogger = { updateTarifaDto };
       await this.bitacoraLogger.logToBitacora(
@@ -1108,6 +1114,7 @@ ORDER BY t.Id DESC
       };
       return result;
     } catch (error) {
+      console.log(error);
       // Registro en la bitácora Error
       const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(
@@ -1176,6 +1183,7 @@ ORDER BY t.Id DESC
       };
       return result;
     } catch (error) {
+      console.log(error);
       // Registro en la bitácora Error
       const querylogger = { query: `DELETE FROM Tarifas WHERE Id = ${id}` };
       await this.bitacoraLogger.logToBitacora(

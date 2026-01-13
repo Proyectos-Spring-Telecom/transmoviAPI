@@ -48,6 +48,7 @@ export class TalleresService {
       );
       return result;
     } catch (error) {
+      console.log(error);
       const querylogger = { createTallereDto };
       await this.bitacoraLogger.logToBitacora(
         'Talleres',
@@ -105,6 +106,7 @@ export class TalleresService {
       );
       return talleres;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -176,6 +178,7 @@ export class TalleresService {
 
       return result;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -192,6 +195,7 @@ export class TalleresService {
         throw new NotFoundException('No se ha encontrado el taller solicitado');
       return data;
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -230,6 +234,7 @@ export class TalleresService {
       );
       return result;
     } catch (error) {
+      console.log(error);
       const querylogger = { updateTallereDto };
       await this.bitacoraLogger.logToBitacora(
         'Talleres',
@@ -285,6 +290,7 @@ export class TalleresService {
   
       return result;
     } catch (error) {
+      console.log(error);
       const querylogger = { exist };
       await this.bitacoraLogger.logToBitacora(
         'Talleres',
@@ -340,6 +346,7 @@ export class TalleresService {
   
       return result;
     } catch (error) {
+      console.log(error);
       const querylogger = { exist };
       await this.bitacoraLogger.logToBitacora(
         'Talleres',
