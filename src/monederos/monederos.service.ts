@@ -207,7 +207,9 @@ export class MonederosService {
       const offset = (page - 1) * limit;
       let totalResult;
       let monederos;
-      switch (rol) {
+      // Convertir rol a número para el switch
+      const rolNumero = Number(rol);
+      switch (rolNumero) {
         case 1:
           // Consulta de datos paginados Usuario SuperAdministrador
           monederos = await this.monederoRepository.query(
@@ -270,14 +272,20 @@ INNER JOIN Clientes c ON m.IdCliente = c.Id
 
         case 9:
           // Consulta de datos paginados Usuario Pasajero
-          const pasajero =
-            await this.pasajerosService.findOnePasajeroCorreo(email);
+          // Buscar el pasajero por el idUsuario del token JWT
+          const pasajeroByUserPag = await this.monederoRepository.query(
+            `SELECT Id FROM Pasajeros WHERE IdUsuario = ?`,
+            [idUser],
+          );
           
-          if (!pasajero) {
+          if (!pasajeroByUserPag || pasajeroByUserPag.length === 0) {
+            // Si no tiene pasajero asociado, devolver array vacío
             monederos = [];
             totalResult = [{ total: 0 }];
             break;
           }
+          
+          const idPasajeroPag = pasajeroByUserPag[0].Id;
           
           monederos = await this.monederoRepository.query(
             `
@@ -314,16 +322,16 @@ SELECT
 FROM Monederos m
 LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
 LEFT JOIN Usuarios u ON p.IdUsuario = u.Id
-INNER JOIN Clientes c ON m.IdCliente = c.Id
+LEFT JOIN Clientes c ON m.IdCliente = c.Id
 LEFT JOIN CatTiposPasajeros ct ON m.IdTipoPasajero = ct.Id
 
-WHERE p.Id = ?
+WHERE m.IdPasajero = ? AND m.Estatus = 1
 
 ORDER BY m.Id DESC
 LIMIT ? OFFSET ?;
 
             `,
-            [pasajero.id, limit, offset],
+            [idPasajeroPag, limit, offset],
           );
 
           totalResult = await this.monederoRepository.query(
@@ -332,11 +340,11 @@ LIMIT ? OFFSET ?;
 FROM Monederos m
 LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
 LEFT JOIN Usuarios u ON p.IdUsuario = u.Id
-INNER JOIN Clientes c ON m.IdCliente = c.Id
+LEFT JOIN Clientes c ON m.IdCliente = c.Id
 
-WHERE p.Id = ?
+WHERE m.IdPasajero = ? AND m.Estatus = 1
   `,
-            [pasajero.id],
+            [idPasajeroPag],
           );
           break;
 
@@ -455,7 +463,9 @@ WHERE c.Id IN (${placeholders})
       const offset = (page - 1) * limit;
       let totalResult;
       let monederos;
-      switch (rol) {
+      // Convertir rol a número para el switch
+      const rolNumero = Number(rol);
+      switch (rolNumero) {
         case 1:
           // Consulta de datos paginados Usuario SuperAdministrador - Solo activos
           monederos = await this.monederoRepository.query(
@@ -520,14 +530,20 @@ WHERE m.Estatus = 1
 
         case 9:
           // Consulta de datos paginados Usuario Pasajero - Solo activos
-          const pasajero =
-            await this.pasajerosService.findOnePasajeroCorreo(email);
+          // Buscar el pasajero por el idUsuario del token JWT
+          const pasajeroByUserAct = await this.monederoRepository.query(
+            `SELECT Id FROM Pasajeros WHERE IdUsuario = ?`,
+            [idUser],
+          );
           
-          if (!pasajero) {
+          if (!pasajeroByUserAct || pasajeroByUserAct.length === 0) {
+            // Si no tiene pasajero asociado, devolver array vacío
             monederos = [];
             totalResult = [{ total: 0 }];
             break;
           }
+          
+          const idPasajeroAct = pasajeroByUserAct[0].Id;
           
           monederos = await this.monederoRepository.query(
             `
@@ -564,16 +580,16 @@ SELECT
 FROM Monederos m
 LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
 LEFT JOIN Usuarios u ON p.IdUsuario = u.Id
-INNER JOIN Clientes c ON m.IdCliente = c.Id
+LEFT JOIN Clientes c ON m.IdCliente = c.Id
 LEFT JOIN CatTiposPasajeros ct ON m.IdTipoPasajero = ct.Id
 
-WHERE p.Id = ? AND m.Estatus = 1
+WHERE m.IdPasajero = ? AND m.Estatus = 1
 
 ORDER BY m.Id DESC
 LIMIT ? OFFSET ?;
 
             `,
-            [pasajero.id, limit, offset],
+            [idPasajeroAct, limit, offset],
           );
 
           totalResult = await this.monederoRepository.query(
@@ -582,11 +598,11 @@ LIMIT ? OFFSET ?;
 FROM Monederos m
 LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
 LEFT JOIN Usuarios u ON p.IdUsuario = u.Id
-INNER JOIN Clientes c ON m.IdCliente = c.Id
+LEFT JOIN Clientes c ON m.IdCliente = c.Id
 
-WHERE p.Id = ? AND m.Estatus = 1
+WHERE m.IdPasajero = ? AND m.Estatus = 1
   `,
-            [pasajero.id],
+            [idPasajeroAct],
           );
           break;
 
@@ -750,8 +766,14 @@ WHERE c.Id IN (${placeholders}) AND m.Estatus = 1
     rol: number,
   ): Promise<ApiResponseCommon> {
     try {
+      console.log('[MONEDEROS LIST] Parámetros recibidos:', { idUser, email, cliente, rol, tipoRol: typeof rol });
+      
       let monederos;
-      switch (rol) {
+      // Convertir rol a número para el switch
+      const rolNumero = Number(rol);
+      console.log('[MONEDEROS LIST] Rol convertido a número:', rolNumero);
+      
+      switch (rolNumero) {
         case 1:
           monederos = await this.monederoRepository.query(
             `
@@ -796,14 +818,26 @@ ORDER BY m.Id DESC;
           break;
 
         case 9:
-          const pasajero =
-            await this.pasajerosService.findOnePasajeroCorreo(email);
+          console.log('[MONEDEROS LIST] Entró al case 9 (Pasajero)');
+          // Buscar el pasajero por el idUsuario del token JWT
+          const pasajeroByUser = await this.monederoRepository.query(
+            `SELECT Id FROM Pasajeros WHERE IdUsuario = ?`,
+            [idUser],
+          );
           
-          if (!pasajero) {
+          console.log('[MONEDEROS LIST] Resultado búsqueda pasajero:', pasajeroByUser);
+          
+          if (!pasajeroByUser || pasajeroByUser.length === 0) {
+            // Si no tiene pasajero asociado, devolver array vacío
+            console.log('[MONEDEROS LIST] No se encontró pasajero para idUser:', idUser);
             monederos = [];
             break;
           }
           
+          const idPasajero = pasajeroByUser[0].Id;
+          console.log('[MONEDEROS LIST] idPasajero encontrado:', idPasajero);
+          
+          // Traer TODOS los monederos del pasajero, tenga o no idCliente
           monederos = await this.monederoRepository.query(
             `
 SELECT 
@@ -835,15 +869,18 @@ SELECT
 FROM Monederos m
 LEFT JOIN Pasajeros p ON m.IdPasajero = p.Id
 LEFT JOIN Usuarios u ON p.IdUsuario = u.Id
-INNER JOIN Clientes c ON m.IdCliente = c.Id
+LEFT JOIN Clientes c ON m.IdCliente = c.Id
 
-WHERE p.Id = ?
+WHERE m.IdPasajero = ? AND m.Estatus = 1
 
 ORDER BY m.Id DESC;
 
             `,
-            [pasajero.id],
+            [idPasajero],
           );
+          
+          console.log('[MONEDEROS LIST] Cantidad de monederos encontrados:', monederos.length);
+          console.log('[MONEDEROS LIST] Primeros 3 monederos:', monederos.slice(0, 3).map(m => ({ id: m.id, idPasajero: m.idPasajero, numeroSerie: m.numeroSerie })));
           break;
 
         default:

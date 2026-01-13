@@ -98,9 +98,11 @@ export class CreateAltaPasajaroDto {
   @ApiProperty({
     example: 'MON-0001',
     description: 'Número de serie único del monedero',
+    required: false,
   })
+  @IsOptional()
   @IsString()
-  numeroSerieMonedero: string;
+  numeroSerieMonedero?: string;
 
   @IsOptional()
   @IsString()

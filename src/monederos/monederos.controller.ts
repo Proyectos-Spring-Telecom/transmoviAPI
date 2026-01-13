@@ -60,7 +60,7 @@ export class MonederosController {
     const idUser = req.user.userId;
     const email = req.user.email;
     const cliente = req.user.cliente;
-    const rol = req.user.rol;
+    const rol = Number(req.user.rol);
     return this.monederosService.findAllListMonederos(
       idUser,
       email,

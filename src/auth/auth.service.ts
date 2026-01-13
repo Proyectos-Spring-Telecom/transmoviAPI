@@ -20,7 +20,7 @@ import { LoginAuthResetDto } from './dto/login-recuperacion.dto';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import { ApiCrudResponse, EstatusEnumBitcora } from 'src/common/ApiResponse';
 import { CodigoAutenticacion } from 'src/entities/CodigoAutenticacion';
-import { EnumSolicitudPasajero, EstatusEnum, TipoCodigoAutenticacion } from 'src/common/estatus.enum';
+import { EnumModulos, EnumSolicitudPasajero, EstatusEnum, TipoCodigoAutenticacion } from 'src/common/estatus.enum';
 import { CreateAltaPasajaroDto } from './dto/create-pasajero.dto';
 import { MonederosService } from 'src/monederos/monederos.service';
 import { PasajerosService } from 'src/pasajeros/pasajeros.service';
@@ -29,6 +29,7 @@ import { number } from 'joi';
 import { Licencias } from 'src/entities/Licencias';
 import { NetpayService } from 'src/netpay/netpay.service';
 import { Pasajeros } from 'src/entities/Pasajeros';
+import { Monederos } from 'src/entities/Monederos';
 
 @Injectable()
 export class AuthService {
@@ -41,6 +42,8 @@ export class AuthService {
     private codigoAutenticacioRepository: Repository<CodigoAutenticacion>,
     @InjectRepository(Pasajeros)
     private readonly pasajeroRepository: Repository<Pasajeros>,
+    @InjectRepository(Monederos)
+    private readonly monederosRepository: Repository<Monederos>,
     private readonly jwtService: JwtService,
     private readonly emailService: MailService,
     private readonly bitacoraLogger: BitacoraLoggerService,
@@ -50,31 +53,117 @@ export class AuthService {
   ) { }
 
   // ========================================
+  // 🔹 FUNCIÓN PRIVADA PARA GENERAR NÚMERO DE SERIE ÚNICO
+  // ========================================
+  private async generarNumeroSerieUnico(): Promise<string> {
+    let numeroSerie: string;
+    let existe: boolean;
+    let intentos = 0;
+    const maxIntentos = 100;
+
+    do {
+      // Generar número de serie aleatorio con formato MON-XXXX donde XXXX son números aleatorios
+      // Usar timestamp y número aleatorio para mayor unicidad
+      const timestamp = Date.now().toString().slice(-6); // Últimos 6 dígitos del timestamp
+      const numeroAleatorio = Math.floor(1000 + Math.random() * 9000); // Número entre 1000 y 9999
+      numeroSerie = `MON-${timestamp}-${numeroAleatorio}`;
+
+      // Verificar si ya existe
+      const monederoExistente = await this.monederosRepository.findOne({
+        where: { numeroSerie },
+      });
+      existe = !!monederoExistente;
+      intentos++;
+
+      if (intentos >= maxIntentos) {
+        throw new InternalServerErrorException(
+          'No se pudo generar un número de serie único después de múltiples intentos.',
+        );
+      }
+    } while (existe);
+
+    return numeroSerie;
+  }
+
+  // ========================================
   //Creacion de una afiliacion
   // ========================================
   async createPasajero(createAltaPasajaroDto: CreateAltaPasajaroDto) {
     try {
-      //Buscamos el monedero que este dado de alta
-      const monederos = await this.monederoService.findOneMonederoBySerie(
-        createAltaPasajaroDto.numeroSerieMonedero,
-      );
+      let monederos: any = null;
+      let idClienteMonedero: number | null = null;
+      let numeroSerieMonedero: string;
+      const clienteDefault = 1; // Cliente por defecto para usuarios sin monedero previo
 
-      // Validar que el monedero no esté asignado a otro pasajero
-      if (monederos.data.idPasajero) {
-        // Verificar que el pasajero asociado realmente existe
-        const pasajeroAsociado = await this.pasajeroRepository.findOne({
-          where: { id: monederos.data.idPasajero },
-        });
+      // Si no se proporciona numeroSerieMonedero, generar uno aleatorio único y crear el monedero
+      if (!createAltaPasajaroDto.numeroSerieMonedero) {
+        // Generar número de serie aleatorio único
+        numeroSerieMonedero = await this.generarNumeroSerieUnico();
         
-        if (pasajeroAsociado) {
-          throw new BadRequestException(
-            `El monedero con número de serie ${createAltaPasajaroDto.numeroSerieMonedero} ya está asignado al pasajero ${pasajeroAsociado.nombre} ${pasajeroAsociado.apellidoPaterno} (ID: ${pasajeroAsociado.id}).`,
-          );
-        } else {
-          throw new BadRequestException(
-            `El monedero con número de serie ${createAltaPasajaroDto.numeroSerieMonedero} está asociado a un pasajero que no existe en el sistema.`,
-          );
+        // Crear nuevo monedero con el número de serie generado
+        const ahora = new Date();
+        const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas en milisegundos
+        const fechaDesfasada = new Date(ahora.getTime() + desfaseMs);
+
+        const nuevoMonedero = this.monederosRepository.create({
+          numeroSerie: numeroSerieMonedero,
+          saldo: 0,
+          fechaActivacion: fechaDesfasada,
+          estatus: EstatusEnum.INACTIVO, // Se activará cuando se asigne al pasajero
+          idCliente: clienteDefault,
+          idTipoPasajero: 1, // Tipo de pasajero por defecto
+          esVirtual: 1, // Monedero virtual creado automáticamente
+        });
+
+        const monederoGuardado = await this.monederosRepository.save(nuevoMonedero);
+        
+        // Convertir a formato esperado
+        monederos = {
+          data: {
+            id: monederoGuardado.id,
+            idCliente: monederoGuardado.idCliente,
+            idPasajero: monederoGuardado.idPasajero,
+          }
+        };
+
+        idClienteMonedero = monederoGuardado.idCliente;
+
+        // Registro en la bitácora SUCCESS
+        await this.bitacoraLogger.logToBitacora(
+          'Monederos',
+          `Se creó un monedero automático con número de serie: ${numeroSerieMonedero} durante el registro de pasajero.`,
+          'CREATE',
+          { numeroSerie: numeroSerieMonedero, idCliente: clienteDefault },
+          1, // Usuario sistema por defecto
+          EnumModulos.MONEDEROS,
+          EstatusEnumBitcora.SUCCESS,
+        );
+      } else {
+        // Si se proporciona, buscar el monedero existente
+        numeroSerieMonedero = createAltaPasajaroDto.numeroSerieMonedero;
+        monederos = await this.monederoService.findOneMonederoBySerie(
+          createAltaPasajaroDto.numeroSerieMonedero,
+        );
+
+        // Validar que el monedero no esté asignado a otro pasajero
+        if (monederos.data.idPasajero) {
+          // Verificar que el pasajero asociado realmente existe
+          const pasajeroAsociado = await this.pasajeroRepository.findOne({
+            where: { id: monederos.data.idPasajero },
+          });
+          
+          if (pasajeroAsociado) {
+            throw new BadRequestException(
+              `El monedero con número de serie ${createAltaPasajaroDto.numeroSerieMonedero} ya está asignado al pasajero ${pasajeroAsociado.nombre} ${pasajeroAsociado.apellidoPaterno} (ID: ${pasajeroAsociado.id}).`,
+            );
+          } else {
+            throw new BadRequestException(
+              `El monedero con número de serie ${createAltaPasajaroDto.numeroSerieMonedero} está asociado a un pasajero que no existe en el sistema.`,
+            );
+          }
         }
+
+        idClienteMonedero = monederos.data.idCliente;
       }
 
       const existUsuario = await this.usuariosRepository.findOne({
@@ -104,7 +193,7 @@ export class AuthService {
           'https://dashcamsys.s3.us-east-2.amazonaws.com/imagenes/2c369ac0-c489-4384-8d35-3ba482f7ccaa.jpeg',
         estatus: 1,
         idRol: 9,
-        idCliente: monederos.data.idCliente,
+        idCliente: idClienteMonedero, // Puede ser null si no se proporcionó monedero
       };
 
       //Creamos el usuario
@@ -112,7 +201,7 @@ export class AuthService {
       const userSave = await this.usuariosRepository.save(newUser); //creamos el usuario
 
       //Le añadimos los permisos correspondientes
-      const permisosIds = [122];
+      const permisosIds = [122,92];
       if (permisosIds.length > 0) {
         const usuariosPermisos = permisosIds.map((permisoId) =>
           this.permisosRepository.create({
@@ -289,21 +378,27 @@ export class AuthService {
         return n < 10 ? '0' + n : n;
       }
 
-      const ahora = new Date();
-      const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas en milisegundos
-      const fechaDesfasada = new Date(ahora.getTime() + desfaseMs);
+      // Actualizar el monedero con el ID del pasajero y activarlo
+      if (monederos && monederos.data) {
+        function pad(n: number) {
+          return n < 10 ? '0' + n : n;
+        }
+        const ahora = new Date();
+        const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas en milisegundos
+        const fechaDesfasada = new Date(ahora.getTime() + desfaseMs);
 
-      const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())} ${pad(fechaDesfasada.getHours())}:${pad(fechaDesfasada.getMinutes())}:${pad(fechaDesfasada.getSeconds())}`;
+        const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())} ${pad(fechaDesfasada.getHours())}:${pad(fechaDesfasada.getMinutes())}:${pad(fechaDesfasada.getSeconds())}`;
 
-      await this.monederoService.updateMonedero(
-        monederos.data.id,
-        userSave.id,
-        {
-          idPasajero: pasajero.data?.id,
-          fechaActivacion: fechaActual,
-          estatus: EstatusEnum.ACTIVO,
-        },
-      );
+        await this.monederoService.updateMonedero(
+          monederos.data.id,
+          userSave.id,
+          {
+            idPasajero: pasajero.data?.id,
+            fechaActivacion: fechaActual,
+            estatus: EstatusEnum.ACTIVO,
+          },
+        );
+      }
 
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { createAltaPasajaroDto };
@@ -518,15 +613,14 @@ LEFT JOIN LicenciasJSON lj ON lj.IdUsuario = du.IdUsuario;
   // ========================================
   async signIn(loginAuthDto: LoginAuthDto) {
     try {
+      console.log(loginAuthDto);
       const user = await this.usuariosRepository.findOne({
         relations: ['idRol2', 'idCliente2', 'idCliente2.idPadre2'],
         where: {
           userName: loginAuthDto.userName,
           estatus: 1,
           emailConfirmado: 1,
-          idCliente2: {
-            estatus: 1,
-          },
+        
         },
       });
       if (!user) {

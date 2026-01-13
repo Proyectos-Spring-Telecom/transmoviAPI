@@ -197,11 +197,16 @@ SELECT
   d.Marca AS marcaValidador,
   d.Modelo AS modeloValidador,
 
-  -- Contador
-  b.Id AS idContador,
-  b.NumeroSerie AS numeroSerieContador,
-  b.Marca AS marcaContador,
-  b.Modelo AS modeloContador,
+  -- Contadores (agregados)
+  GROUP_CONCAT(DISTINCT b.Id ORDER BY b.Id SEPARATOR ',') AS idContadores,
+  GROUP_CONCAT(DISTINCT b.NumeroSerie ORDER BY b.Id SEPARATOR ', ') AS numeroSerieContadores,
+  GROUP_CONCAT(DISTINCT b.Marca ORDER BY b.Id SEPARATOR ', ') AS marcaContadores,
+  GROUP_CONCAT(DISTINCT b.Modelo ORDER BY b.Id SEPARATOR ', ') AS modeloContadores,
+  -- Para compatibilidad con código antiguo (primer contador)
+  MIN(b.Id) AS idContador,
+  GROUP_CONCAT(DISTINCT b.NumeroSerie ORDER BY b.Id SEPARATOR ', ') AS numeroSerieContador,
+  GROUP_CONCAT(DISTINCT b.Marca ORDER BY b.Id SEPARATOR ', ') AS marcaContador,
+  GROUP_CONCAT(DISTINCT b.Modelo ORDER BY b.Id SEPARATOR ', ') AS modeloContador,
 
   -- Vehículo
   v.Id AS idVehiculo,
@@ -219,7 +224,6 @@ SELECT
 
   -- Operador
   o.Id AS idOperador,
- 
   o.FechaNacimiento AS fechaNacimientoOperador,
   u.Nombre AS nombreOperador,
   u.ApellidoPaterno AS apellidoPaternoOperador,
@@ -228,13 +232,21 @@ SELECT
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
 INNER JOIN Validadores d ON i.IdValidador = d.Id
-INNER JOIN Contadores b ON i.IdContador = b.Id
+LEFT JOIN InstalacionContadores ic ON i.Id = ic.IdInstalacion AND ic.Estatus = 1
+LEFT JOIN Contadores b ON ic.IdContador = b.Id
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
 
 WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+
+GROUP BY t.Id, t.Inicio, t.Fin, t.FechaCreacion, t.FechaActualizacion, t.Estatus,
+         i.Id, i.FechaCreacion, i.FechaActualizacion, i.Estatus,
+         d.Id, d.NumeroSerie, d.Marca, d.Modelo,
+         v.Id, v.Marca, v.Modelo, v.Placa, v.NumeroEconomico,
+         c.Id, c.Nombre, c.ApellidoPaterno, c.ApellidoMaterno, c.Estatus,
+         o.Id, o.FechaNacimiento, u.Nombre, u.ApellidoPaterno, u.ApellidoMaterno
 
 ORDER BY t.Id DESC
   LIMIT ? OFFSET ?;
@@ -245,11 +257,12 @@ ORDER BY t.Id DESC
   private async consultarTotalTurnosPaginados(cliente: number) {
     const { ids, placeholders } = await this.clienteHijos(cliente);
     const query = `  
-  SELECT COUNT(*) AS total
+  SELECT COUNT(DISTINCT t.Id) AS total
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
 INNER JOIN Validadores d ON i.IdValidador = d.Id
-INNER JOIN Contadores b ON i.IdContador = b.Id
+LEFT JOIN InstalacionContadores ic ON i.Id = ic.IdInstalacion AND ic.Estatus = 1
+LEFT JOIN Contadores b ON ic.IdContador = b.Id
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
@@ -298,11 +311,16 @@ SELECT
   d.Marca AS marcaValidador,
   d.Modelo AS modeloValidador,
 
-  -- Contador
-  b.Id AS idContador,
-  b.NumeroSerie AS numeroSerieContador,
-  b.Marca AS marcaContador,
-  b.Modelo AS modeloContador,
+  -- Contadores (agregados)
+  GROUP_CONCAT(DISTINCT b.Id ORDER BY b.Id SEPARATOR ',') AS idContadores,
+  GROUP_CONCAT(DISTINCT b.NumeroSerie ORDER BY b.Id SEPARATOR ', ') AS numeroSerieContadores,
+  GROUP_CONCAT(DISTINCT b.Marca ORDER BY b.Id SEPARATOR ', ') AS marcaContadores,
+  GROUP_CONCAT(DISTINCT b.Modelo ORDER BY b.Id SEPARATOR ', ') AS modeloContadores,
+  -- Para compatibilidad con código antiguo (primer contador)
+  MIN(b.Id) AS idContador,
+  GROUP_CONCAT(DISTINCT b.NumeroSerie ORDER BY b.Id SEPARATOR ', ') AS numeroSerieContador,
+  GROUP_CONCAT(DISTINCT b.Marca ORDER BY b.Id SEPARATOR ', ') AS marcaContador,
+  GROUP_CONCAT(DISTINCT b.Modelo ORDER BY b.Id SEPARATOR ', ') AS modeloContador,
 
   -- Vehículo
   v.Id AS idVehiculo,
@@ -320,7 +338,6 @@ SELECT
 
   -- Operador
   o.Id AS idOperador,
- 
   o.FechaNacimiento AS fechaNacimientoOperador,
   u.Nombre AS nombreOperador,
   u.ApellidoPaterno AS apellidoPaternoOperador,
@@ -329,13 +346,19 @@ SELECT
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
 INNER JOIN Validadores d ON i.IdValidador = d.Id
-INNER JOIN Contadores b ON i.IdContador = b.Id
+LEFT JOIN InstalacionContadores ic ON i.Id = ic.IdInstalacion AND ic.Estatus = 1
+LEFT JOIN Contadores b ON ic.IdContador = b.Id
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
 
-
+GROUP BY t.Id, t.Inicio, t.Fin, t.FechaCreacion, t.FechaActualizacion, t.Estatus,
+         i.Id, i.FechaCreacion, i.FechaActualizacion, i.Estatus,
+         d.Id, d.NumeroSerie, d.Marca, d.Modelo,
+         v.Id, v.Marca, v.Modelo, v.Placa, v.NumeroEconomico,
+         c.Id, c.Nombre, c.ApellidoPaterno, c.ApellidoMaterno, c.Estatus,
+         o.Id, o.FechaNacimiento, u.Nombre, u.ApellidoPaterno, u.ApellidoMaterno
 
 ORDER BY t.Id DESC
   LIMIT ? OFFSET ?;
@@ -346,11 +369,12 @@ ORDER BY t.Id DESC
           // Query para total (sin paginación)
           totalResult = await this.turnosRepository.query(
             `
-  SELECT COUNT(*) AS total
+  SELECT COUNT(DISTINCT t.Id) AS total
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
 INNER JOIN Validadores d ON i.IdValidador = d.Id
-INNER JOIN Contadores b ON i.IdContador = b.Id
+LEFT JOIN InstalacionContadores ic ON i.Id = ic.IdInstalacion AND ic.Estatus = 1
+LEFT JOIN Contadores b ON ic.IdContador = b.Id
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
@@ -404,11 +428,16 @@ SELECT
   d.Marca AS marcaValidador,
   d.Modelo AS modeloValidador,
 
-  -- Contador
-  b.Id AS idContador,
-  b.NumeroSerie AS numeroSerieContador,
-  b.Marca AS marcaContador,
-  b.Modelo AS modeloContador,
+  -- Contadores (agregados)
+  GROUP_CONCAT(DISTINCT b.Id ORDER BY b.Id SEPARATOR ',') AS idContadores,
+  GROUP_CONCAT(DISTINCT b.NumeroSerie ORDER BY b.Id SEPARATOR ', ') AS numeroSerieContadores,
+  GROUP_CONCAT(DISTINCT b.Marca ORDER BY b.Id SEPARATOR ', ') AS marcaContadores,
+  GROUP_CONCAT(DISTINCT b.Modelo ORDER BY b.Id SEPARATOR ', ') AS modeloContadores,
+  -- Para compatibilidad con código antiguo (primer contador)
+  MIN(b.Id) AS idContador,
+  GROUP_CONCAT(DISTINCT b.NumeroSerie ORDER BY b.Id SEPARATOR ', ') AS numeroSerieContador,
+  GROUP_CONCAT(DISTINCT b.Marca ORDER BY b.Id SEPARATOR ', ') AS marcaContador,
+  GROUP_CONCAT(DISTINCT b.Modelo ORDER BY b.Id SEPARATOR ', ') AS modeloContador,
 
   -- Vehículo
   v.Id AS idVehiculo,
@@ -426,7 +455,6 @@ SELECT
 
   -- Operador
   o.Id AS idOperador,
- 
   o.FechaNacimiento AS fechaNacimientoOperador,
   u.Nombre AS nombreOperador,
   u.ApellidoPaterno AS apellidoPaternoOperador,
@@ -437,7 +465,8 @@ INNER JOIN Instalaciones i ON ui.IdInstalacion = i.Id
 INNER JOIN Turnos t ON t.IdInstalacion = i.Id
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 LEFT JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
-LEFT JOIN Contadores b ON i.IdContador = b.Id AND i.IdCliente = b.IdCliente
+LEFT JOIN InstalacionContadores ic ON i.Id = ic.IdInstalacion AND ic.Estatus = 1
+LEFT JOIN Contadores b ON ic.IdContador = b.Id
 LEFT JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 LEFT JOIN Operadores o ON t.IdOperador = o.Id
 LEFT JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -446,6 +475,13 @@ WHERE
   ui.IdUsuario = ?        -- 🔹 filtra por usuario
   AND ui.Estatus = 1
   AND i.Estatus = 1
+
+GROUP BY t.Id, t.Inicio, t.Fin, t.FechaCreacion, t.FechaActualizacion, t.Estatus,
+         i.Id, i.FechaCreacion, i.FechaActualizacion, i.Estatus,
+         d.Id, d.NumeroSerie, d.Marca, d.Modelo,
+         v.Id, v.Marca, v.Modelo, v.Placa, v.NumeroEconomico,
+         c.Id, c.Nombre, c.ApellidoPaterno, c.ApellidoMaterno, c.Estatus,
+         o.Id, o.FechaNacimiento, u.Nombre, u.ApellidoPaterno, u.ApellidoMaterno
 
 ORDER BY t.Inicio DESC
 
@@ -457,12 +493,13 @@ ORDER BY t.Inicio DESC
           // Query para total (sin paginación)
           totalResult = await this.turnosRepository.query(
             `
-  SELECT COUNT(*) AS total
+  SELECT COUNT(DISTINCT t.Id) AS total
 FROM UsuariosInstalaciones ui
 INNER JOIN Instalaciones i ON ui.IdInstalacion = i.Id
 INNER JOIN Turnos t ON t.IdInstalacion = i.Id AND t.IdCliente = i.IdCliente
 INNER JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN Contadores b ON i.IdContador = b.Id AND i.IdCliente = b.IdCliente
+LEFT JOIN InstalacionContadores ic ON i.Id = ic.IdInstalacion AND ic.Estatus = 1
+LEFT JOIN Contadores b ON ic.IdContador = b.Id
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
@@ -535,11 +572,16 @@ SELECT
   d.Marca AS marcaValidador,
   d.Modelo AS modeloValidador,
 
-  -- Contador
-  b.Id AS idContador,
-  b.NumeroSerie AS numeroSerieContador,
-  b.Marca AS marcaContador,
-  b.Modelo AS modeloContador,
+  -- Contadores (agregados)
+  GROUP_CONCAT(DISTINCT b.Id ORDER BY b.Id SEPARATOR ',') AS idContadores,
+  GROUP_CONCAT(DISTINCT b.NumeroSerie ORDER BY b.Id SEPARATOR ', ') AS numeroSerieContadores,
+  GROUP_CONCAT(DISTINCT b.Marca ORDER BY b.Id SEPARATOR ', ') AS marcaContadores,
+  GROUP_CONCAT(DISTINCT b.Modelo ORDER BY b.Id SEPARATOR ', ') AS modeloContadores,
+  -- Para compatibilidad con código antiguo (primer contador)
+  MIN(b.Id) AS idContador,
+  GROUP_CONCAT(DISTINCT b.NumeroSerie ORDER BY b.Id SEPARATOR ', ') AS numeroSerieContador,
+  GROUP_CONCAT(DISTINCT b.Marca ORDER BY b.Id SEPARATOR ', ') AS marcaContador,
+  GROUP_CONCAT(DISTINCT b.Modelo ORDER BY b.Id SEPARATOR ', ') AS modeloContador,
 
   -- Vehículo
   v.Id AS idVehiculo,
@@ -557,7 +599,6 @@ SELECT
 
   -- Operador
   o.Id AS idOperador,
- 
   o.FechaNacimiento AS fechaNacimientoOperador,
   u.Nombre AS nombreOperador,
   u.ApellidoPaterno AS apellidoPaternoOperador,
@@ -566,7 +607,8 @@ SELECT
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
 INNER JOIN Validadores d ON i.IdValidador = d.Id
-INNER JOIN Contadores b ON i.IdContador = b.Id
+LEFT JOIN InstalacionContadores ic ON i.Id = ic.IdInstalacion AND ic.Estatus = 1
+LEFT JOIN Contadores b ON ic.IdContador = b.Id
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
@@ -575,6 +617,13 @@ INNER JOIN Usuarios u ON o.IdUsuario = u.Id
 WHERE t.Estatus = 1
 AND c.Estatus = 1
 AND c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+
+GROUP BY t.Id, t.Inicio, t.Fin, t.FechaCreacion, t.FechaActualizacion, t.Estatus,
+         i.Id, i.FechaCreacion, i.FechaActualizacion, i.Estatus,
+         d.Id, d.NumeroSerie, d.Marca, d.Modelo,
+         v.Id, v.Marca, v.Modelo, v.Placa, v.NumeroEconomico,
+         c.Id, c.Nombre, c.ApellidoPaterno, c.ApellidoMaterno, c.Estatus,
+         o.Id, o.FechaNacimiento, u.Nombre, u.ApellidoPaterno, u.ApellidoMaterno
 
 ORDER BY t.Id DESC;
    `;
@@ -610,11 +659,16 @@ SELECT
   d.Marca AS marcaValidador,
   d.Modelo AS modeloValidador,
 
-  -- Contador
-  b.Id AS idContador,
-  b.NumeroSerie AS numeroSerieContador,
-  b.Marca AS marcaContador,
-  b.Modelo AS modeloContador,
+  -- Contadores (agregados)
+  GROUP_CONCAT(DISTINCT b.Id ORDER BY b.Id SEPARATOR ',') AS idContadores,
+  GROUP_CONCAT(DISTINCT b.NumeroSerie ORDER BY b.Id SEPARATOR ', ') AS numeroSerieContadores,
+  GROUP_CONCAT(DISTINCT b.Marca ORDER BY b.Id SEPARATOR ', ') AS marcaContadores,
+  GROUP_CONCAT(DISTINCT b.Modelo ORDER BY b.Id SEPARATOR ', ') AS modeloContadores,
+  -- Para compatibilidad con código antiguo (primer contador)
+  MIN(b.Id) AS idContador,
+  GROUP_CONCAT(DISTINCT b.NumeroSerie ORDER BY b.Id SEPARATOR ', ') AS numeroSerieContador,
+  GROUP_CONCAT(DISTINCT b.Marca ORDER BY b.Id SEPARATOR ', ') AS marcaContador,
+  GROUP_CONCAT(DISTINCT b.Modelo ORDER BY b.Id SEPARATOR ', ') AS modeloContador,
 
   -- Vehículo
   v.Id AS idVehiculo,
@@ -632,7 +686,6 @@ SELECT
 
   -- Operador
   o.Id AS idOperador,
- 
   o.FechaNacimiento AS fechaNacimientoOperador,
   u.Nombre AS nombreOperador,
   u.ApellidoPaterno AS apellidoPaternoOperador,
@@ -641,7 +694,8 @@ SELECT
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
 INNER JOIN Validadores d ON i.IdValidador = d.Id
-INNER JOIN Contadores b ON i.IdContador = b.Id
+LEFT JOIN InstalacionContadores ic ON i.Id = ic.IdInstalacion AND ic.Estatus = 1
+LEFT JOIN Contadores b ON ic.IdContador = b.Id
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
@@ -649,6 +703,13 @@ INNER JOIN Usuarios u ON o.IdUsuario = u.Id
 
 WHERE t.Estatus = 1
 AND c.Estatus = 1
+
+GROUP BY t.Id, t.Inicio, t.Fin, t.FechaCreacion, t.FechaActualizacion, t.Estatus,
+         i.Id, i.FechaCreacion, i.FechaActualizacion, i.Estatus,
+         d.Id, d.NumeroSerie, d.Marca, d.Modelo,
+         v.Id, v.Marca, v.Modelo, v.Placa, v.NumeroEconomico,
+         c.Id, c.Nombre, c.ApellidoPaterno, c.ApellidoMaterno, c.Estatus,
+         o.Id, o.FechaNacimiento, u.Nombre, u.ApellidoPaterno, u.ApellidoMaterno
 
 ORDER BY t.Id DESC;
             `,
@@ -691,11 +752,16 @@ SELECT
   d.Marca AS marcaValidador,
   d.Modelo AS modeloValidador,
 
-  -- Contador
-  b.Id AS idContador,
-  b.NumeroSerie AS numeroSerieContador,
-  b.Marca AS marcaContador,
-  b.Modelo AS modeloContador,
+  -- Contadores (agregados)
+  GROUP_CONCAT(DISTINCT b.Id ORDER BY b.Id SEPARATOR ',') AS idContadores,
+  GROUP_CONCAT(DISTINCT b.NumeroSerie ORDER BY b.Id SEPARATOR ', ') AS numeroSerieContadores,
+  GROUP_CONCAT(DISTINCT b.Marca ORDER BY b.Id SEPARATOR ', ') AS marcaContadores,
+  GROUP_CONCAT(DISTINCT b.Modelo ORDER BY b.Id SEPARATOR ', ') AS modeloContadores,
+  -- Para compatibilidad con código antiguo (primer contador)
+  MIN(b.Id) AS idContador,
+  GROUP_CONCAT(DISTINCT b.NumeroSerie ORDER BY b.Id SEPARATOR ', ') AS numeroSerieContador,
+  GROUP_CONCAT(DISTINCT b.Marca ORDER BY b.Id SEPARATOR ', ') AS marcaContador,
+  GROUP_CONCAT(DISTINCT b.Modelo ORDER BY b.Id SEPARATOR ', ') AS modeloContador,
 
   -- Vehículo
   v.Id AS idVehiculo,
@@ -713,7 +779,6 @@ SELECT
 
   -- Operador
   o.Id AS idOperador,
- 
   o.FechaNacimiento AS fechaNacimientoOperador,
   u.Nombre AS nombreOperador,
   u.ApellidoPaterno AS apellidoPaternoOperador,
@@ -723,7 +788,8 @@ FROM UsuariosInstalaciones ui
 INNER JOIN Instalaciones i ON ui.IdInstalacion = i.Id
 INNER JOIN Turnos t ON t.IdInstalacion = i.Id AND t.IdCliente = i.IdCliente
 INNER JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN Contadores b ON i.IdContador = b.Id AND i.IdCliente = b.IdCliente
+LEFT JOIN InstalacionContadores ic ON i.Id = ic.IdInstalacion AND ic.Estatus = 1
+LEFT JOIN Contadores b ON ic.IdContador = b.Id
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
@@ -734,6 +800,13 @@ WHERE ui.IdUsuario = ?
   AND i.Estatus = 1
   AND t.Estatus = 1
   AND c.Estatus = 1
+
+GROUP BY t.Id, t.Inicio, t.Fin, t.FechaCreacion, t.FechaActualizacion, t.Estatus,
+         i.Id, i.FechaCreacion, i.FechaActualizacion, i.Estatus,
+         d.Id, d.NumeroSerie, d.Marca, d.Modelo,
+         v.Id, v.Marca, v.Modelo, v.Placa, v.NumeroEconomico,
+         c.Id, c.Nombre, c.ApellidoPaterno, c.ApellidoMaterno, c.Estatus,
+         o.Id, o.FechaNacimiento, u.Nombre, u.ApellidoPaterno, u.ApellidoMaterno
 
 ORDER BY t.Id DESC;
             `,
@@ -791,11 +864,16 @@ SELECT
   d.Marca AS marcaValidador,
   d.Modelo AS modeloValidador,
 
-  -- Contador
-  b.Id AS idContador,
-  b.NumeroSerie AS numeroSerieContador,
-  b.Marca AS marcaContador,
-  b.Modelo AS modeloContador,
+  -- Contadores (agregados)
+  GROUP_CONCAT(DISTINCT b.Id ORDER BY b.Id SEPARATOR ',') AS idContadores,
+  GROUP_CONCAT(DISTINCT b.NumeroSerie ORDER BY b.Id SEPARATOR ', ') AS numeroSerieContadores,
+  GROUP_CONCAT(DISTINCT b.Marca ORDER BY b.Id SEPARATOR ', ') AS marcaContadores,
+  GROUP_CONCAT(DISTINCT b.Modelo ORDER BY b.Id SEPARATOR ', ') AS modeloContadores,
+  -- Para compatibilidad con código antiguo (primer contador)
+  MIN(b.Id) AS idContador,
+  GROUP_CONCAT(DISTINCT b.NumeroSerie ORDER BY b.Id SEPARATOR ', ') AS numeroSerieContador,
+  GROUP_CONCAT(DISTINCT b.Marca ORDER BY b.Id SEPARATOR ', ') AS marcaContador,
+  GROUP_CONCAT(DISTINCT b.Modelo ORDER BY b.Id SEPARATOR ', ') AS modeloContador,
 
   -- Vehículo
   v.Id AS idVehiculo,
@@ -813,7 +891,6 @@ SELECT
 
   -- Operador
   o.Id AS idOperador,
- 
   o.FechaNacimiento AS fechaNacimientoOperador,
   u.Nombre AS nombreOperador,
   u.ApellidoPaterno AS apellidoPaternoOperador,
@@ -822,7 +899,8 @@ SELECT
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
 INNER JOIN Validadores d ON i.IdValidador = d.Id
-INNER JOIN Contadores b ON i.IdContador = b.Id
+LEFT JOIN InstalacionContadores ic ON i.Id = ic.IdInstalacion AND ic.Estatus = 1
+LEFT JOIN Contadores b ON ic.IdContador = b.Id
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
@@ -830,6 +908,13 @@ INNER JOIN Usuarios u ON o.IdUsuario = u.Id
 
 WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
 AND t.Id = ?
+
+GROUP BY t.Id, t.Inicio, t.Fin, t.FechaCreacion, t.FechaActualizacion, t.Estatus,
+         i.Id, i.FechaCreacion, i.FechaActualizacion, i.Estatus,
+         d.Id, d.NumeroSerie, d.Marca, d.Modelo,
+         v.Id, v.Marca, v.Modelo, v.Placa, v.NumeroEconomico,
+         c.Id, c.Nombre, c.ApellidoPaterno, c.ApellidoMaterno, c.Estatus,
+         o.Id, o.FechaNacimiento, u.Nombre, u.ApellidoPaterno, u.ApellidoMaterno
 
 ORDER BY t.Id DESC;
    `;
@@ -865,11 +950,16 @@ SELECT
   d.Marca AS marcaValidador,
   d.Modelo AS modeloValidador,
 
-  -- Contador
-  b.Id AS idContador,
-  b.NumeroSerie AS numeroSerieContador,
-  b.Marca AS marcaContador,
-  b.Modelo AS modeloContador,
+  -- Contadores (agregados)
+  GROUP_CONCAT(DISTINCT b.Id ORDER BY b.Id SEPARATOR ',') AS idContadores,
+  GROUP_CONCAT(DISTINCT b.NumeroSerie ORDER BY b.Id SEPARATOR ', ') AS numeroSerieContadores,
+  GROUP_CONCAT(DISTINCT b.Marca ORDER BY b.Id SEPARATOR ', ') AS marcaContadores,
+  GROUP_CONCAT(DISTINCT b.Modelo ORDER BY b.Id SEPARATOR ', ') AS modeloContadores,
+  -- Para compatibilidad con código antiguo (primer contador)
+  MIN(b.Id) AS idContador,
+  GROUP_CONCAT(DISTINCT b.NumeroSerie ORDER BY b.Id SEPARATOR ', ') AS numeroSerieContador,
+  GROUP_CONCAT(DISTINCT b.Marca ORDER BY b.Id SEPARATOR ', ') AS marcaContador,
+  GROUP_CONCAT(DISTINCT b.Modelo ORDER BY b.Id SEPARATOR ', ') AS modeloContador,
 
   -- Vehículo
   v.Id AS idVehiculo,
@@ -887,7 +977,6 @@ SELECT
 
   -- Operador
   o.Id AS idOperador,
- 
   o.FechaNacimiento AS fechaNacimientoOperador,
   u.Nombre AS nombreOperador,
   u.ApellidoPaterno AS apellidoPaternoOperador,
@@ -896,13 +985,21 @@ SELECT
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
 INNER JOIN Validadores d ON i.IdValidador = d.Id
-INNER JOIN Contadores b ON i.IdContador = b.Id
+LEFT JOIN InstalacionContadores ic ON i.Id = ic.IdInstalacion AND ic.Estatus = 1
+LEFT JOIN Contadores b ON ic.IdContador = b.Id
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
 
 WHERE t.Id = ?
+
+GROUP BY t.Id, t.Inicio, t.Fin, t.FechaCreacion, t.FechaActualizacion, t.Estatus,
+         i.Id, i.FechaCreacion, i.FechaActualizacion, i.Estatus,
+         d.Id, d.NumeroSerie, d.Marca, d.Modelo,
+         v.Id, v.Marca, v.Modelo, v.Placa, v.NumeroEconomico,
+         c.Id, c.Nombre, c.ApellidoPaterno, c.ApellidoMaterno, c.Estatus,
+         o.Id, o.FechaNacimiento, u.Nombre, u.ApellidoPaterno, u.ApellidoMaterno
 
 ORDER BY t.Id DESC;
             `,
@@ -946,11 +1043,16 @@ SELECT
   d.Marca AS marcaValidador,
   d.Modelo AS modeloValidador,
 
-  -- Contador
-  b.Id AS idContador,
-  b.NumeroSerie AS numeroSerieContador,
-  b.Marca AS marcaContador,
-  b.Modelo AS modeloContador,
+  -- Contadores (agregados)
+  GROUP_CONCAT(DISTINCT b.Id ORDER BY b.Id SEPARATOR ',') AS idContadores,
+  GROUP_CONCAT(DISTINCT b.NumeroSerie ORDER BY b.Id SEPARATOR ', ') AS numeroSerieContadores,
+  GROUP_CONCAT(DISTINCT b.Marca ORDER BY b.Id SEPARATOR ', ') AS marcaContadores,
+  GROUP_CONCAT(DISTINCT b.Modelo ORDER BY b.Id SEPARATOR ', ') AS modeloContadores,
+  -- Para compatibilidad con código antiguo (primer contador)
+  MIN(b.Id) AS idContador,
+  GROUP_CONCAT(DISTINCT b.NumeroSerie ORDER BY b.Id SEPARATOR ', ') AS numeroSerieContador,
+  GROUP_CONCAT(DISTINCT b.Marca ORDER BY b.Id SEPARATOR ', ') AS marcaContador,
+  GROUP_CONCAT(DISTINCT b.Modelo ORDER BY b.Id SEPARATOR ', ') AS modeloContador,
 
   -- Vehículo
   v.Id AS idVehiculo,
@@ -968,7 +1070,6 @@ SELECT
 
   -- Operador
   o.Id AS idOperador,
- 
   o.FechaNacimiento AS fechaNacimientoOperador,
   u.Nombre AS nombreOperador,
   u.ApellidoPaterno AS apellidoPaternoOperador,
@@ -978,7 +1079,8 @@ FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 LEFT JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
-LEFT JOIN Contadores b ON i.IdContador = b.Id AND i.IdCliente = b.IdCliente
+LEFT JOIN InstalacionContadores ic ON i.Id = ic.IdInstalacion AND ic.Estatus = 1
+LEFT JOIN Contadores b ON ic.IdContador = b.Id
 LEFT JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 LEFT JOIN Operadores o ON t.IdOperador = o.Id
 LEFT JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -993,6 +1095,13 @@ WHERE
       AND ui.IdUsuario = ?
       AND ui.Estatus = 1
   )
+
+GROUP BY t.Id, t.Inicio, t.Fin, t.FechaCreacion, t.FechaActualizacion, t.Estatus,
+         i.Id, i.FechaCreacion, i.FechaActualizacion, i.Estatus,
+         d.Id, d.NumeroSerie, d.Marca, d.Modelo,
+         v.Id, v.Marca, v.Modelo, v.Placa, v.NumeroEconomico,
+         c.Id, c.Nombre, c.ApellidoPaterno, c.ApellidoMaterno, c.Estatus,
+         o.Id, o.FechaNacimiento, u.Nombre, u.ApellidoPaterno, u.ApellidoMaterno
 
 ORDER BY t.Inicio DESC;
             `,

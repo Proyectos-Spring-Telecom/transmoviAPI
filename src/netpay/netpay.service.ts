@@ -895,7 +895,63 @@ export class NetpayService {
       );
     }
 
+    // Validar que se proporcione idDireccion
+    if (!paymentSavedCardDto.idDireccion) {
+      throw new BadRequestException(
+        'idDireccion es requerido para construir el billing',
+      );
+    }
+
     try {
+      // 🔹 Buscar la dirección en la base de datos
+      const direccion = await this.direccionesTarjetaRepository.findOne({
+        where: { id: paymentSavedCardDto.idDireccion },
+        relations: ['idDatosTarjeta2'], // Relación con DatosTarjeta
+      });
+
+      if (!direccion) {
+        throw new BadRequestException(
+          `No se encontró la dirección con ID: ${paymentSavedCardDto.idDireccion}`,
+        );
+      }
+
+      // Validar que la dirección tenga un idDatosTarjeta asociado
+      if (!direccion.idDatosTarjeta) {
+        throw new BadRequestException(
+          `La dirección ${paymentSavedCardDto.idDireccion} no tiene datos de tarjeta asociados`,
+        );
+      }
+
+      // Buscar los datos de la tarjeta
+      const datosTarjeta = await this.datosTarjetaRepository.findOne({
+        where: { id: direccion.idDatosTarjeta },
+      });
+
+      if (!datosTarjeta) {
+        throw new BadRequestException(
+          `No se encontraron los datos de tarjeta asociados a la dirección ${paymentSavedCardDto.idDireccion}`,
+        );
+      }
+
+      // 🔹 Construir el objeto billing con los datos de la BD
+      const billing = {
+        firstName: datosTarjeta.nombre || '',
+        lastName: datosTarjeta.apellidoMaterno 
+          ? `${datosTarjeta.apellidoPaterno || ''} ${datosTarjeta.apellidoMaterno}`.trim()
+          : datosTarjeta.apellidoPaterno || '',
+        email: datosTarjeta.email || '',
+        phone: datosTarjeta.telefono || '',
+        address: {
+          city: direccion.ciudad || '',
+          country: direccion.pais || 'MX',
+          postalCode: direccion.cp || '',
+          state: direccion.estado || '',
+          street1: direccion.calle || '',
+          street2: direccion.calleEsquina || '',
+        },
+        merchantReferenceCode: paymentSavedCardDto.referenceId, // Usar el referenceId como merchantReferenceCode
+      };
+
       // Preparar payload según el formato exacto de Netpay v3.5/charges para tarjeta guardada
       // Orden exacto según el curl proporcionado (NO incluir token, customerId, cardId)
       // IMPORTANTE: Para tarjeta guardada solo se usa referenceID, NO token
@@ -925,10 +981,8 @@ export class NetpayService {
       // Agregar currency después de deviceFingerPrint
       payload.currency = paymentSavedCardDto.currency || 'MXN';
 
-      // Agregar billing si está presente (debe ir después de currency, antes de saveCard)
-      if (paymentSavedCardDto.billing && Object.keys(paymentSavedCardDto.billing).length > 0) {
-        payload.billing = paymentSavedCardDto.billing;
-      }
+      // Agregar billing construido desde la BD (debe ir después de currency, antes de saveCard)
+      payload.billing = billing;
 
       // Agregar saveCard (string "true" o "false") - debe ir después de billing
       payload.saveCard = paymentSavedCardDto.saveCard || 'false';

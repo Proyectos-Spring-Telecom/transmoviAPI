@@ -475,9 +475,10 @@ export class PasajerosService {
           `El pasajero con el correo electrónico ${createPasajeroAfiliacionDto.correo} ya se encuentra registrado.`,
         );
       }
-      const newPasajero = await this.pasajeroRepository.create(
-        createPasajeroAfiliacionDto,
-      );
+      const newPasajero = await this.pasajeroRepository.create({
+        ...createPasajeroAfiliacionDto,
+        idUsuario: idUser, // ✅ Agregar el idUsuario
+      });
       const pasajeroSave = await this.pasajeroRepository.save(newPasajero);
 
       //-----Registro en la bitacora----- SUCCESS

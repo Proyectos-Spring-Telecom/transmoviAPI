@@ -77,40 +77,13 @@ export class PaymentSavedCardDto {
   @IsOptional()
   saveCard?: string;
 
-  @ApiPropertyOptional({
-    description: 'Datos de facturación del cliente',
-    example: {
-      firstName: 'Jon',
-      lastName: 'Doe',
-      email: 'accept@netpay.com.mx',
-      phone: '8190034544',
-      address: {
-        city: 'Monterrey',
-        country: 'MX',
-        postalCode: '65700',
-        state: 'NL',
-        street1: 'Filósofos 100',
-        street2: 'Tecnologico',
-      },
-      merchantReferenceCode: 'Folio-unico-de-transaccion-13423',
-    },
+  @ApiProperty({
+    description: 'ID de la dirección guardada en la base de datos (se usará para construir el billing)',
+    example: 1,
   })
-  @IsOptional()
-  billing?: {
-    firstName?: string;
-    lastName?: string;
-    email?: string;
-    phone?: string;
-    address?: {
-      city?: string;
-      country?: string;
-      postalCode?: string;
-      state?: string;
-      street1?: string;
-      street2?: string;
-    };
-    merchantReferenceCode?: string;
-  };
+  @IsNumber()
+  @IsNotEmpty()
+  idDireccion: number;
 
   @ApiPropertyOptional({
     description: 'Información del dispositivo (para 3DS) - formato Netpay',
