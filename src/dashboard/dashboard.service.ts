@@ -83,6 +83,7 @@ export class DashboardService {
       //console.log(data)
       const kpi1 = data.kpi1?.[0] ?? {};
       const kpi2 = data.kpi2?.[0] ?? {};
+      const kpiPorcentajePagos = data.kpiPorcentajePagos?.[0] ?? {};
 
       return {
         ingresosAlDia: Number(kpi1.ingresosDelDia ?? 0),
@@ -103,6 +104,12 @@ export class DashboardService {
         ocupacionPromedio: Number(kpi2.ocupacionPromedioTotal ?? 0),
         capacidadTeorica: Number(kpi2.capacidadTotalTeorica ?? 0),
 
+        // Porcentaje Pagos
+        porcentajePagos: {
+          efectivo: Number(kpiPorcentajePagos.porcentajeEfectivo ?? 0),
+          otrosMetodos: Number(kpiPorcentajePagos.porcentajeOtrosMetodos ?? 0),
+        },
+
         graficaIngresos,
         graficaPasajerosPorRutas,
         graficaAscensoBoleto,
@@ -112,7 +119,6 @@ export class DashboardService {
 
     } catch (error) {
       console.log(error);
-      console.log(error)
       if (error instanceof HttpException) {
         throw error;
       }
@@ -216,6 +222,7 @@ export class DashboardService {
     try {
       let kpi1;
       let kpi2;
+      let kpiPorcentajePagos;
       let graficaIngresosTotales;
       let graficaPasajerosPorRuta;
       let graficaAscensosVsBoleto;
@@ -226,6 +233,7 @@ export class DashboardService {
           if (idCliente === cliente) {
             kpi1 = await this.kpiParte1ClientePadre(fechaInicio, fechaFin, idCliente);
             kpi2 = await this.kpiParte2ClientePadre(fechaInicio, fechaFin, idCliente);
+            kpiPorcentajePagos = await this.kpiPorcentajePagosClientePadre(fechaInicio, fechaFin, idCliente);
             graficaIngresosTotales = await this.graficaIngresosTotalesSA(fechaInicio, fechaFin, idCliente);
             graficaPasajerosPorRuta = await this.graficaPasajerosPorRutaSA(fechaInicio, fechaFin, idCliente);
             graficaAscensosVsBoleto = await this.graficaAscensosVsBoletoSA(fechaInicio, fechaFin, idCliente);
@@ -234,6 +242,7 @@ export class DashboardService {
           } else {
             kpi1 = await this.kpiParte1(fechaInicio, fechaFin, idCliente);
             kpi2 = await this.kpi2Parte2(fechaInicio, fechaFin, idCliente);
+            kpiPorcentajePagos = await this.kpiPorcentajePagos(fechaInicio, fechaFin, idCliente);
             graficaIngresosTotales = await this.graficaIngresosTotales(fechaInicio, fechaFin, idCliente);
             graficaPasajerosPorRuta = await this.graficaPasajerosPorRuta(fechaInicio, fechaFin, idCliente);
             graficaAscensosVsBoleto = await this.graficaAscensosVsBoleto(fechaInicio, fechaFin, idCliente);
@@ -246,6 +255,7 @@ export class DashboardService {
           if (idCliente === cliente) {
             kpi1 = await this.kpiParte1ClientePadre(fechaInicio, fechaFin, idCliente);
             kpi2 = await this.kpiParte2ClientePadre(fechaInicio, fechaFin, idCliente);
+            kpiPorcentajePagos = await this.kpiPorcentajePagosClientePadre(fechaInicio, fechaFin, idCliente);
             graficaIngresosTotales = await this.graficaIngresosTotalesSA(fechaInicio, fechaFin, idCliente);
             graficaPasajerosPorRuta = await this.graficaPasajerosPorRutaSA(fechaInicio, fechaFin, idCliente);
             graficaAscensosVsBoleto = await this.graficaAscensosVsBoletoSA(fechaInicio, fechaFin, idCliente);
@@ -254,6 +264,7 @@ export class DashboardService {
           } else {
             kpi1 = await this.kpiParte1(fechaInicio, fechaFin, idCliente);
             kpi2 = await this.kpi2Parte2(fechaInicio, fechaFin, idCliente);
+            kpiPorcentajePagos = await this.kpiPorcentajePagos(fechaInicio, fechaFin, idCliente);
             graficaIngresosTotales = await this.graficaIngresosTotales(fechaInicio, fechaFin, idCliente);
             graficaPasajerosPorRuta = await this.graficaPasajerosPorRuta(fechaInicio, fechaFin, idCliente);
             graficaAscensosVsBoleto = await this.graficaAscensosVsBoleto(fechaInicio, fechaFin, idCliente);
@@ -265,6 +276,7 @@ export class DashboardService {
         default:
           kpi1 = await this.kpiParte1(fechaInicio, fechaFin, idCliente);
           kpi2 = await this.kpi2Parte2(fechaInicio, fechaFin, idCliente);
+          kpiPorcentajePagos = await this.kpiPorcentajePagos(fechaInicio, fechaFin, idCliente);
           graficaIngresosTotales = await this.graficaIngresosTotales(fechaInicio, fechaFin, idCliente);
           graficaPasajerosPorRuta = await this.graficaPasajerosPorRuta(fechaInicio, fechaFin, idCliente);
           graficaAscensosVsBoleto = await this.graficaAscensosVsBoleto(fechaInicio, fechaFin, idCliente);
@@ -272,11 +284,10 @@ export class DashboardService {
           dataGripTop5RutasPorIngresos = await this.dataGripTop5RutasPorIngresos(fechaInicio, fechaFin, idCliente);
           break;
       }
-      return { kpi1, kpi2, graficaIngresosTotales, graficaPasajerosPorRuta, graficaAscensosVsBoleto, dataGripTop5RutasPorIngresos, velocidadPromedioRuta }
+      return { kpi1, kpi2, kpiPorcentajePagos, graficaIngresosTotales, graficaPasajerosPorRuta, graficaAscensosVsBoleto, dataGripTop5RutasPorIngresos, velocidadPromedioRuta }
 
     } catch (error) {
       console.log(error);
-      console.log(error)
       if (error instanceof HttpException) {
         throw error;
       }
@@ -294,6 +305,8 @@ export class DashboardService {
     idCliente: number
   ) {
     const { ids, placeholders } = await this.clienteHijos(idCliente);
+    const fechaInicioParam = `${fechaInicio}T00:00:00Z`;
+    const fechaFinParam = `${fechaFin}T23:59:59Z`;
     const query = `
     -- kpi parte 1 para usuarios super administrador y administrador
 SELECT
@@ -314,24 +327,24 @@ SELECT
         FROM Monederos m
         WHERE m.IdCliente = c.Id
           AND m.Estatus = 1
-          AND m.FechaCreacion <= '${fechaFin}T23:59:59Z'
+          AND m.FechaCreacion <= ?
     ) AS monederosActivos,
      (
     SELECT COUNT(*)
     FROM Monederos m
     WHERE m.IdCliente = c.Id
       AND m.Estatus = 1
-      AND m.FechaCreacion <= '2025-12-05T23:59:59Z'
+      AND m.FechaCreacion <= ?
       AND m.IdPasajero IS NOT NULL
 ) AS monederosConPasajero
 FROM HistoricoTransaccionesDebito td
 INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
 INNER JOIN Clientes c ON d.IdCliente = c.Id
-WHERE td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
+WHERE td.FechaHoraFinal BETWEEN ? AND ?
   AND c.Id IN (${placeholders})
   GROUP BY c.Id;`
 
-    return this.clienteRepository.query(query, [...ids]);
+    return this.clienteRepository.query(query, [fechaFinParam, fechaFinParam, fechaInicioParam, fechaFinParam, ...ids]);
   }
 
   private async kpiParte2ClientePadre(
@@ -340,6 +353,8 @@ WHERE td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:5
     idCliente: number
   ) {
     const { ids, placeholders } = await this.clienteHijos(idCliente);
+    const fechaInicioParam = `${fechaInicio}T00:00:00Z`;
+    const fechaFinParam = `${fechaFin}T23:59:59Z`;
     const query = `
     -- Kpi parte 2
 WITH Ocupacion AS (
@@ -359,8 +374,8 @@ WITH Ocupacion AS (
     INNER JOIN ConteoPasajeros cp ON cp.Id = vc.IdConteo
     WHERE t.Estatus = 1
       AND v.Estatus = 1
-      AND cp.FechaHora >= '${fechaInicio}T00:00:00Z'
-      AND cp.FechaHora < '${fechaFin}T23:59:59Z'
+      AND cp.FechaHora >= ?
+      AND cp.FechaHora < ?
     GROUP BY t.IdCliente, v.Id
 )
 SELECT
@@ -399,13 +414,13 @@ LEFT JOIN Posiciones up ON up.NumeroSerieDispositivo = d.NumeroSerie
     AND up.FechaHora >= NOW() - INTERVAL 15 MINUTE
 LEFT JOIN Turnos t ON t.IdCliente = v.IdCliente
     AND t.Estatus = 1
-    AND t.Inicio >= '${fechaInicio}T00:00:00Z'
-    AND t.Inicio < '${fechaFin}T23:59:59Z'
+    AND t.Inicio >= ?
+    AND t.Inicio < ?
 LEFT JOIN Ocupacion o ON o.IdCliente = v.IdCliente AND o.idVehiculo = v.Id
 WHERE v.Estatus = 1
   AND v.IdCliente IN (${placeholders});
 `
-    return this.clienteRepository.query(query, [...ids]);
+    return this.clienteRepository.query(query, [fechaInicioParam, fechaFinParam, fechaInicioParam, fechaFinParam, ...ids]);
   }
 
   /////////*/*/*/*/*/*//*//////////////////////////////////////////******/////*/*/*/*/*/*/*/*/*/*/*/*/*/*/*//*/*/**/***/*/****
@@ -414,7 +429,8 @@ WHERE v.Estatus = 1
     fechaFin: string,
     idCliente: number
   ) {
-
+    const fechaInicioParam = `${fechaInicio}T00:00:00Z`;
+    const fechaFinParam = `${fechaFin}T23:59:59Z`;
     const query = `
     -- kpi parte 1
 SELECT
@@ -435,26 +451,26 @@ SELECT
         FROM Monederos m
         WHERE m.IdCliente = c.Id
           AND m.Estatus = 1
-          AND m.FechaCreacion <= '${fechaFin}T23:59:59Z'
+          AND m.FechaCreacion <= ?
     ) AS monederosActivos,
      (
     SELECT COUNT(*)
     FROM Monederos m
     WHERE m.IdCliente = c.Id
       AND m.Estatus = 1
-      AND m.FechaCreacion <= '2025-12-05T23:59:59Z'
+      AND m.FechaCreacion <= ?
       AND m.IdPasajero IS NOT NULL
 ) AS monederosConPasajero
 FROM HistoricoTransaccionesDebito td
 INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
 INNER JOIN Clientes c ON d.IdCliente = c.Id
-WHERE td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
-  AND c.Id IN (${idCliente})
+WHERE td.FechaHoraFinal BETWEEN ? AND ?
+  AND c.Id = ?
   
   GROUP BY c.Id;
 `
 
-    return this.clienteRepository.query(query,);
+    return this.clienteRepository.query(query, [fechaFinParam, fechaFinParam, fechaInicioParam, fechaFinParam, idCliente]);
   }
 
   private async kpi2Parte2(
@@ -462,6 +478,8 @@ WHERE td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:5
     fechaFin: string,
     idCliente: number
   ) {
+    const fechaInicioParam = `${fechaInicio}T00:00:00Z`;
+    const fechaFinParam = `${fechaFin}T23:59:59Z`;
     const query = `
 
     -- Kpi parte 2
@@ -482,8 +500,8 @@ WITH Ocupacion AS (
     INNER JOIN ConteoPasajeros cp ON cp.Id = vc.IdConteo
     WHERE t.Estatus = 1
       AND v.Estatus = 1
-      AND cp.FechaHora >= '${fechaInicio}T00:00:00Z'
-      AND cp.FechaHora < '${fechaFin}T23:59:59Z'
+      AND cp.FechaHora >= ?
+      AND cp.FechaHora < ?
     GROUP BY t.IdCliente, v.Id
 )
 SELECT
@@ -522,13 +540,68 @@ LEFT JOIN Posiciones up ON up.NumeroSerieDispositivo = d.NumeroSerie
     AND up.FechaHora >= NOW() - INTERVAL 15 MINUTE
 LEFT JOIN Turnos t ON t.IdCliente = v.IdCliente
     AND t.Estatus = 1
-    AND t.Inicio >= '${fechaInicio}T00:00:00Z'
-    AND t.Inicio < '${fechaFin}T23:59:59Z'
+    AND t.Inicio >= ?
+    AND t.Inicio < ?
 LEFT JOIN Ocupacion o ON o.IdCliente = v.IdCliente AND o.idVehiculo = v.Id
 WHERE v.Estatus = 1
-  AND v.IdCliente IN (${idCliente});
+  AND v.IdCliente = ?;
 `
-    return this.clienteRepository.query(query);
+    return this.clienteRepository.query(query, [fechaInicioParam, fechaFinParam, fechaInicioParam, fechaFinParam, idCliente]);
+  }
+
+  private async kpiPorcentajePagos(
+    fechaInicio: string,
+    fechaFin: string,
+    idCliente: number
+  ) {
+    const fechaInicioParam = `${fechaInicio}T00:00:00Z`;
+    const fechaFinParam = `${fechaFin}T23:59:59Z`;
+    const query = `
+    -- kpi porcentaje pagos
+SELECT
+    ROUND(
+        COUNT(CASE WHEN tr.IdMetodoPago = 1 THEN 1 END) / NULLIF(COUNT(*), 0) * 100,
+        2
+    ) AS porcentajeEfectivo,
+    ROUND(
+        COUNT(CASE WHEN tr.IdMetodoPago IN (2, 3, 4) THEN 1 END) / NULLIF(COUNT(*), 0) * 100,
+        2
+    ) AS porcentajeOtrosMetodos
+FROM HistoricoTransaccionesRecarga tr
+INNER JOIN Monederos m ON tr.NumeroSerieMonedero = m.NumeroSerie
+INNER JOIN Clientes c ON m.IdCliente = c.Id
+WHERE tr.FHRegistro BETWEEN ? AND ?
+  AND c.Id = ?;
+`
+    return this.clienteRepository.query(query, [fechaInicioParam, fechaFinParam, idCliente]);
+  }
+
+  private async kpiPorcentajePagosClientePadre(
+    fechaInicio: string,
+    fechaFin: string,
+    idCliente: number
+  ) {
+    const { ids, placeholders } = await this.clienteHijos(idCliente);
+    const fechaInicioParam = `${fechaInicio}T00:00:00Z`;
+    const fechaFinParam = `${fechaFin}T23:59:59Z`;
+    const query = `
+    -- kpi porcentaje pagos para usuarios super administrador y administrador
+SELECT
+    ROUND(
+        COUNT(CASE WHEN tr.IdMetodoPago = 1 THEN 1 END) / NULLIF(COUNT(*), 0) * 100,
+        2
+    ) AS porcentajeEfectivo,
+    ROUND(
+        COUNT(CASE WHEN tr.IdMetodoPago IN (2, 3, 4) THEN 1 END) / NULLIF(COUNT(*), 0) * 100,
+        2
+    ) AS porcentajeOtrosMetodos
+FROM HistoricoTransaccionesRecarga tr
+INNER JOIN Monederos m ON tr.NumeroSerieMonedero = m.NumeroSerie
+INNER JOIN Clientes c ON m.IdCliente = c.Id
+WHERE tr.FHRegistro BETWEEN ? AND ?
+  AND c.Id IN (${placeholders});
+`
+    return this.clienteRepository.query(query, [fechaInicioParam, fechaFinParam, ...ids]);
   }
 
   /////////*/*/*/*/*/*//*//////////////////////////////////////////******/////*/*/*/*/*/*/*/*/*/*/*/*/*/*/*//*/*/**/***/*/****
@@ -538,9 +611,11 @@ WHERE v.Estatus = 1
     fechaFin: string,
     idCliente: number
   ) {
+    const fechaInicioParam = `${fechaInicio}T00:00:00Z`;
+    const fechaFinParam = `${fechaFin}T23:59:59Z`;
     const query = `
 WITH rango AS (
-    SELECT DATEDIFF('${fechaFin}T23:59:59Z', '${fechaInicio}T00:00:00Z') AS dias
+    SELECT DATEDIFF(?, ?) AS dias
 ),
 datos AS (
     SELECT 
@@ -578,8 +653,8 @@ datos AS (
     INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
     INNER JOIN Clientes c ON d.IdCliente = c.Id
     CROSS JOIN rango
-    WHERE td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
-      AND c.Id IN (${idCliente})
+    WHERE td.FechaHoraFinal BETWEEN ? AND ?
+      AND c.Id = ?
 
     GROUP BY 
         CASE 
@@ -603,7 +678,7 @@ FROM datos
 ORDER BY periodo;
 
 `
-    return this.clienteRepository.query(query);
+    return this.clienteRepository.query(query, [fechaFinParam, fechaInicioParam, fechaInicioParam, fechaFinParam, idCliente]);
   }
 
   private async graficaIngresosTotalesSA(
@@ -612,9 +687,11 @@ ORDER BY periodo;
     idCliente: number
   ) {
     const { ids, placeholders } = await this.clienteHijos(idCliente);
+    const fechaInicioParam = `${fechaInicio}T00:00:00Z`;
+    const fechaFinParam = `${fechaFin}T23:59:59Z`;
     const query = `
 WITH rango AS (
-    SELECT DATEDIFF('${fechaFin}T23:59:59Z', '${fechaInicio}T00:00:00Z') AS dias
+    SELECT DATEDIFF(?, ?) AS dias
 ),
 datos AS (
     SELECT 
@@ -652,7 +729,7 @@ datos AS (
     INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
     INNER JOIN Clientes c ON d.IdCliente = c.Id
     CROSS JOIN rango
-    WHERE td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:59:59Z'
+    WHERE td.FechaHoraFinal BETWEEN ? AND ?
       AND c.Id IN (${placeholders})
 
     GROUP BY 
@@ -677,7 +754,7 @@ FROM datos
 ORDER BY periodo;
 
 `
-    return this.clienteRepository.query(query, [...ids]);
+    return this.clienteRepository.query(query, [fechaFinParam, fechaInicioParam, fechaInicioParam, fechaFinParam, ...ids]);
   }
 
   /////////*/*/*/*/*/*//*//////////////////////////////////////////******/////*/*/*/*/*/*/*/*/*/*/*/*/*/*/*//*/*/**/***/*/****
@@ -687,9 +764,11 @@ ORDER BY periodo;
     fechaFin: string,
     idCliente: number
   ) {
+    const fechaInicioParam = `${fechaInicio}T00:00:00`;
+    const fechaFinParam = `${fechaFin}T23:59:59`;
     const query = `
 WITH rango AS (
-    SELECT DATEDIFF('${fechaFin}T23:59:59', '${fechaInicio}T00:00:00') AS dias
+    SELECT DATEDIFF(?, ?) AS dias
 ),
 Pasajeros AS (
     SELECT
@@ -715,8 +794,8 @@ Pasajeros AS (
     INNER JOIN Derroteros d ON vi.IdDerrotero = d.Id AND d.Estatus = 1
     INNER JOIN Rutas r ON d.IdRuta = r.Id AND r.Estatus = 1
     INNER JOIN Clientes c ON v.IdCliente = c.Id AND c.Estatus = 1
-    WHERE cp.FechaHora BETWEEN '${fechaInicio}T00:00:00' AND '${fechaFin}T23:59:59'
-      AND c.Id IN (${idCliente})
+    WHERE cp.FechaHora BETWEEN ? AND ?
+      AND c.Id = ?
       AND v.Estatus = 1
       AND i.Estatus = 1
     GROUP BY r.Id, r.Nombre,
@@ -732,7 +811,7 @@ FROM Pasajeros
 ORDER BY periodo, ruta;
 
 `
-    return this.clienteRepository.query(query);
+    return this.clienteRepository.query(query, [fechaFinParam, fechaInicioParam, fechaInicioParam, fechaFinParam, idCliente]);
   }
 
   private async graficaPasajerosPorRutaSA(
@@ -741,9 +820,11 @@ ORDER BY periodo, ruta;
     idCliente: number
   ) {
     const { ids, placeholders } = await this.clienteHijos(idCliente);
+    const fechaInicioParam = `${fechaInicio}T00:00:00`;
+    const fechaFinParam = `${fechaFin}T23:59:59`;
     const query = `
 WITH rango AS (
-    SELECT DATEDIFF('${fechaFin}T23:59:59', '${fechaInicio}T00:00:00') AS dias
+    SELECT DATEDIFF(?, ?) AS dias
 ),
 Pasajeros AS (
     SELECT
@@ -769,7 +850,7 @@ Pasajeros AS (
     INNER JOIN Derroteros d ON vi.IdDerrotero = d.Id AND d.Estatus = 1
     INNER JOIN Rutas r ON d.IdRuta = r.Id AND r.Estatus = 1
     INNER JOIN Clientes c ON v.IdCliente = c.Id AND c.Estatus = 1
-    WHERE cp.FechaHora BETWEEN '${fechaInicio}T00:00:00' AND '${fechaFin}T23:59:59'
+    WHERE cp.FechaHora BETWEEN ? AND ?
       AND c.Id IN (${placeholders})
       AND v.Estatus = 1
       AND i.Estatus = 1
@@ -786,7 +867,7 @@ FROM Pasajeros
 ORDER BY periodo, ruta;
 
 `
-    return this.clienteRepository.query(query, [...ids]);
+    return this.clienteRepository.query(query, [fechaFinParam, fechaInicioParam, fechaInicioParam, fechaFinParam, ...ids]);
   }
 
   /////////*/*/*/*/*/*//*//////////////////////////////////////////******/////*/*/*/*/*/*/*/*/*/*/*/*/*/*/*//*/*/**/***/*/****
@@ -796,10 +877,12 @@ ORDER BY periodo, ruta;
     fechaFin: string,
     idCliente: number
   ) {
+    const fechaInicioParam = `${fechaInicio}T00:00:00Z`;
+    const fechaFinParam = `${fechaFin}T23:59:59Z`;
     const query = `
 
 WITH rango AS (
-    SELECT DATEDIFF('${fechaFin}T23:59:59Z', '${fechaInicio}T00:00:00Z') AS dias
+    SELECT DATEDIFF(?, ?) AS dias
 ),
 
 /* =====================================================
@@ -818,18 +901,16 @@ periodos AS (
         SELECT cp.FechaHora AS fecha
         FROM ConteoPasajeros cp
         INNER JOIN BlueVoxs bv ON cp.NumeroSerieBlueVox = bv.NumeroSerie
-        WHERE bv.IdCliente IN (${idCliente})
-          AND cp.FechaHora BETWEEN '${fechaInicio}T00:00:00Z' 
-                               AND '${fechaFin}T23:59:59Z'
+        WHERE bv.IdCliente = ?
+          AND cp.FechaHora BETWEEN ? AND ?
         
         UNION
         
         SELECT td.FechaHoraFinal AS fecha
         FROM HistoricoTransaccionesDebito td
         INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
-        WHERE d.IdCliente IN (${idCliente})
-          AND td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' 
-                               AND '${fechaFin}T23:59:59Z'
+        WHERE d.IdCliente = ?
+          AND td.FechaHoraFinal BETWEEN ? AND ?
     ) AS fechas
     CROSS JOIN rango
 ),
@@ -851,9 +932,8 @@ ascensos AS (
     FROM ConteoPasajeros cp
     INNER JOIN BlueVoxs bv ON cp.NumeroSerieBlueVox = bv.NumeroSerie
     CROSS JOIN rango
-    WHERE bv.IdCliente IN (${idCliente})
-      AND cp.FechaHora BETWEEN '${fechaInicio}T00:00:00Z' 
-                           AND '${fechaFin}T23:59:59Z'
+    WHERE bv.IdCliente = ?
+      AND cp.FechaHora BETWEEN ? AND ?
     GROUP BY periodo
 ),
 
@@ -874,9 +954,8 @@ boletos AS (
     FROM HistoricoTransaccionesDebito td
     INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
     CROSS JOIN rango
-    WHERE d.IdCliente IN (${idCliente})
-      AND td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' 
-                           AND '${fechaFin}T23:59:59Z'
+    WHERE d.IdCliente = ?
+      AND td.FechaHoraFinal BETWEEN ? AND ?
     GROUP BY periodo
 )
 
@@ -893,7 +972,13 @@ LEFT JOIN boletos  b ON b.periodo = p.periodo
 ORDER BY p.periodo;
 
 `
-    return this.clienteRepository.query(query);
+    return this.clienteRepository.query(query, [
+      fechaFinParam, fechaInicioParam, // DATEDIFF
+      idCliente, fechaInicioParam, fechaFinParam, // periodos - primera parte UNION
+      idCliente, fechaInicioParam, fechaFinParam, // periodos - segunda parte UNION
+      idCliente, fechaInicioParam, fechaFinParam, // ascensos
+      idCliente, fechaInicioParam, fechaFinParam, // boletos
+    ]);
   }
 
   private async graficaAscensosVsBoletoSA(
@@ -902,10 +987,12 @@ ORDER BY p.periodo;
     idCliente: number
   ) {
     const { ids, placeholders } = await this.clienteHijos(idCliente);
+    const fechaInicioParam = `${fechaInicio}T00:00:00Z`;
+    const fechaFinParam = `${fechaFin}T23:59:59Z`;
     const query = `
 
 WITH rango AS (
-    SELECT DATEDIFF('${fechaFin}T23:59:59Z', '${fechaInicio}T00:00:00Z') AS dias
+    SELECT DATEDIFF(?, ?) AS dias
 ),
 
 /* =====================================================
@@ -925,8 +1012,7 @@ periodos AS (
         FROM ConteoPasajeros cp
         INNER JOIN BlueVoxs bv ON cp.NumeroSerieBlueVox = bv.NumeroSerie
         WHERE bv.IdCliente IN (${placeholders})
-          AND cp.FechaHora BETWEEN '${fechaInicio}T00:00:00Z' 
-                               AND '${fechaFin}T23:59:59Z'
+          AND cp.FechaHora BETWEEN ? AND ?
         
         UNION
         
@@ -934,8 +1020,7 @@ periodos AS (
         FROM HistoricoTransaccionesDebito td
         INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
         WHERE d.IdCliente IN (${placeholders})
-          AND td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' 
-                               AND '${fechaFin}T23:59:59Z'
+          AND td.FechaHoraFinal BETWEEN ? AND ?
     ) AS fechas
     CROSS JOIN rango
 ),
@@ -958,8 +1043,7 @@ ascensos AS (
     INNER JOIN BlueVoxs bv ON cp.NumeroSerieBlueVox = bv.NumeroSerie
     CROSS JOIN rango
     WHERE bv.IdCliente IN (${placeholders})
-      AND cp.FechaHora BETWEEN '${fechaInicio}T00:00:00Z' 
-                           AND '${fechaFin}T23:59:59Z'
+      AND cp.FechaHora BETWEEN ? AND ?
     GROUP BY periodo
 ),
 
@@ -981,8 +1065,7 @@ boletos AS (
     INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
     CROSS JOIN rango
     WHERE d.IdCliente IN (${placeholders})
-      AND td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' 
-                           AND '${fechaFin}T23:59:59Z'
+      AND td.FechaHoraFinal BETWEEN ? AND ?
     GROUP BY periodo
 )
 
@@ -999,7 +1082,13 @@ LEFT JOIN boletos  b ON b.periodo = p.periodo
 ORDER BY p.periodo;
 
 `
-    return this.clienteRepository.query(query, [...ids, ...ids, ...ids, ...ids]);
+    return this.clienteRepository.query(query, [
+      fechaFinParam, fechaInicioParam, // DATEDIFF
+      ...ids, fechaInicioParam, fechaFinParam, // periodos - primera parte UNION
+      ...ids, fechaInicioParam, fechaFinParam, // periodos - segunda parte UNION
+      ...ids, fechaInicioParam, fechaFinParam, // ascensos
+      ...ids, fechaInicioParam, fechaFinParam, // boletos
+    ]);
   }
 
   /////////*/*/*/*/*/*//*//////////////////////////////////////////******/////*/*/*/*/*/*/*/*/*/*/*/*/*/*/*//*/*/**/***/*/****
@@ -1009,6 +1098,8 @@ ORDER BY p.periodo;
     fechaFin: string,
     idCliente: number
   ) {
+    const fechaInicioParam = `${fechaInicio} 00:00:00`;
+    const fechaFinParam = `${fechaFin} 23:59:59`;
     const query = `
 
 WITH ingresos AS (
@@ -1029,8 +1120,8 @@ WITH ingresos AS (
     JOIN Regiones reg 
             ON reg.Id = r.IdRegion
     WHERE td.IdTipoTransaccion = 2
-      AND td.FechaHoraFinal BETWEEN '${fechaInicio} 00:00:00' AND '${fechaFin} 23:59:59'
-      AND reg.IdCliente IN (${idCliente})     -- DISCRIMINACIÓN POR CLIENTE
+      AND td.FechaHoraFinal BETWEEN ? AND ?
+      AND reg.IdCliente = ?
     GROUP BY r.Id, r.Nombre
 )
 
@@ -1040,7 +1131,7 @@ ORDER BY ingresosTotales DESC
 LIMIT 5;
 
 `
-    return await this.clienteRepository.query(query);
+    return await this.clienteRepository.query(query, [fechaInicioParam, fechaFinParam, idCliente]);
   }
 
   private async dataGripTop5RutasPorIngresosSA(
@@ -1049,6 +1140,8 @@ LIMIT 5;
     idCliente: number
   ) {
     const { ids, placeholders } = await this.clienteHijos(idCliente);
+    const fechaInicioParam = `${fechaInicio} 00:00:00`;
+    const fechaFinParam = `${fechaFin} 23:59:59`;
     const query = `
 WITH ingresos AS (
     SELECT 
@@ -1068,8 +1161,8 @@ WITH ingresos AS (
     JOIN Regiones reg 
             ON reg.Id = r.IdRegion
     WHERE td.IdTipoTransaccion = 2
-      AND td.FechaHoraFinal BETWEEN '${fechaInicio} 00:00:00' AND '${fechaFin} 23:59:59'
-      AND reg.IdCliente IN (${placeholders})     -- DISCRIMINACIÓN POR CLIENTE
+      AND td.FechaHoraFinal BETWEEN ? AND ?
+      AND reg.IdCliente IN (${placeholders})
     GROUP BY r.Id, r.Nombre
 )
 
@@ -1079,7 +1172,7 @@ ORDER BY ingresosTotales DESC
 LIMIT 5;
 
 `
-    return await this.clienteRepository.query(query, [...ids]);
+    return await this.clienteRepository.query(query, [fechaInicioParam, fechaFinParam, ...ids]);
   }
 
   /////////*/*/*/*/*/*//*//////////////////////////////////////////******/////*/*/*/*/*/*/*/*/*/*/*/*/*/*/*//*/*/**/***/*/****
@@ -1089,10 +1182,12 @@ LIMIT 5;
     fechaFin: string,
     idCliente: number
   ) {
+    const fechaInicioParam = `${fechaInicio}T00:00:00`;
+    const fechaFinParam = `${fechaFin}T23:59:59`;
     const query = `
 
 WITH rango AS (
-    SELECT DATEDIFF('${fechaFin}T23:59:59', '${fechaInicio}T00:00:00') AS dias
+    SELECT DATEDIFF(?, ?) AS dias
 ),
 
 VelocidadRuta AS (
@@ -1121,8 +1216,8 @@ VelocidadRuta AS (
     INNER JOIN Rutas r ON drr.IdRuta = r.Id AND r.Estatus = 1
     INNER JOIN Clientes c ON c.Id = d.IdCliente AND c.Estatus = 1
 
-    WHERE p.FechaHora BETWEEN '${fechaInicio}T00:00:00' AND '${fechaFin}T23:59:59'
-      AND c.Id IN (${idCliente})
+    WHERE p.FechaHora BETWEEN ? AND ?
+      AND c.Id = ?
       AND v.Estatus = 1
       AND i.Estatus = 1
       AND d.Estatus = 1
@@ -1142,7 +1237,7 @@ FROM VelocidadRuta
 ORDER BY periodo, ruta;
 
 `
-    return this.clienteRepository.query(query);
+    return this.clienteRepository.query(query, [fechaFinParam, fechaInicioParam, fechaInicioParam, fechaFinParam, idCliente]);
   }
 
   private async velocidadPromedioRutaSA(
@@ -1151,10 +1246,12 @@ ORDER BY periodo, ruta;
     idCliente: number
   ) {
     const { ids, placeholders } = await this.clienteHijos(idCliente);
+    const fechaInicioParam = `${fechaInicio}T00:00:00`;
+    const fechaFinParam = `${fechaFin}T23:59:59`;
     const query = `
 
 WITH rango AS (
-    SELECT DATEDIFF('${fechaFin}T23:59:59', '${fechaInicio}T00:00:00') AS dias
+    SELECT DATEDIFF(?, ?) AS dias
 ),
 
 VelocidadRuta AS (
@@ -1183,7 +1280,7 @@ VelocidadRuta AS (
     INNER JOIN Rutas r ON drr.IdRuta = r.Id AND r.Estatus = 1
     INNER JOIN Clientes c ON c.Id = d.IdCliente AND c.Estatus = 1
 
-    WHERE p.FechaHora BETWEEN '${fechaInicio}T00:00:00' AND '${fechaFin}T23:59:59'
+    WHERE p.FechaHora BETWEEN ? AND ?
       AND c.Id IN (${placeholders})
       AND v.Estatus = 1
       AND i.Estatus = 1
@@ -1204,6 +1301,6 @@ FROM VelocidadRuta
 ORDER BY periodo, ruta;
 
 `
-    return this.clienteRepository.query(query, [...ids, ...ids, ...ids, ...ids]);
+    return this.clienteRepository.query(query, [fechaFinParam, fechaInicioParam, fechaInicioParam, fechaFinParam, ...ids]);
   }
 }
