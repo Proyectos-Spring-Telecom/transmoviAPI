@@ -497,22 +497,22 @@ export class NetpayService {
     createCustomerDto: CreateCustomerDto,
   ): Promise<NetpayCustomerResponse> {
     try {
+      // Generar identifier automáticamente si no se proporciona (mismo algoritmo que en pasajeros)
+      // Número aleatorio de 10 dígitos (entre 1000000000 y 9999999999)
+      const identifier = createCustomerDto.identifier ?? Math.floor(1000000000 + Math.random() * 9000000000).toString();
+
       // Según la documentación de Netpay v4, paymentSource es opcional
       // Si hay token, debe ir dentro de paymentSource con el formato correcto
       const payload: any = {
         firstName: createCustomerDto.firstName,
         lastName: createCustomerDto.lastName,
         email: createCustomerDto.email,
+        identifier: identifier,
       };
 
       // Agregar phone si existe
       if (createCustomerDto.phone) {
         payload.phone = createCustomerDto.phone;
-      }
-
-      // Agregar identifier si existe
-      if (createCustomerDto.identifier) {
-        payload.identifier = createCustomerDto.identifier;
       }
 
       // Según la documentación de Netpay v4, paymentSource es OPCIONAL
