@@ -728,8 +728,8 @@ export class TransaccionesService {
         createTransaccioneRecargaDto.idMetodoPago === EnumMetodoPago.TARJETA_DEBITO
       ) {
         newTransaccion.tokenCardNetPay = createTransaccioneRecargaDto.tokenCardNetPay || null;
-        // ✅ Guardar el transactionTokenId de la respuesta de Netpay
-        newTransaccion.transactionTokenIdNetPay = pagoNetpayResponse?.transactionTokenId || createTransaccioneRecargaDto.transactionTokenIdNetPay || null;
+        // ✅ Guardar el transactionTokenId de la respuesta de Netpay (viene en la respuesta, no en el request)
+        newTransaccion.transactionTokenIdNetPay = pagoNetpayResponse?.transactionTokenId || null;
         newTransaccion.referenceIdNetPay = createTransaccioneRecargaDto.referenceIdNetPay || null;
       }
 

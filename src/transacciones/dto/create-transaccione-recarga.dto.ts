@@ -108,11 +108,11 @@ export class CreateTransaccioneRecargaDto {
 
   @ApiPropertyOptional({
     example: 'trans_1234567890',
-    description: 'Transaction Token ID de Netpay (obligatorio si método de pago es Tarjeta)',
+    description: 'Transaction Token ID de Netpay (se obtiene de la respuesta de Netpay, no se debe enviar en el request)',
   })
   @ValidateIf((o) => o.idMetodoPago === EnumMetodoPago.TARJETA_CREDITO || o.idMetodoPago === EnumMetodoPago.TARJETA_DEBITO)
   @IsString({ message: 'El transactionTokenIdNetPay debe ser una cadena de texto' })
-  @IsNotEmpty({ message: 'El transactionTokenIdNetPay es obligatorio cuando el método de pago es Tarjeta' })
+  @IsOptional()
   transactionTokenIdNetPay?: string;
 
   @ApiPropertyOptional({
