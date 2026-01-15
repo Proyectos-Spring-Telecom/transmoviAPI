@@ -12,6 +12,7 @@ import { TransaccionesRecarga } from 'src/entities/TransaccionesRecarga';
 import { TransaccionesDebito } from 'src/entities/TransaccionesDebito';
 import {
   ApiCrudResponse,
+  ApiCrudTransaccionRecarga,
   ApiResponseCommon,
   EstatusEnumBitcora,
 } from 'src/common/ApiResponse';
@@ -79,7 +80,7 @@ export class TransaccionesService {
       );
 
       //Declaramos transaccion y creamos la variable montoFinal
-      let transaccion = createTransaccioneRecargaDto.idTipoTransaccion;
+      let transaccion = EnumTipoTransaccion.RECARGA;
       let montoFinal: number = 0;
 
       //Checamos el tipo transaccion
@@ -127,15 +128,10 @@ export class TransaccionesService {
       );
 
       //API response
-      const result: ApiCrudResponse = {
+      const result: ApiCrudTransaccionRecarga = {
         status: 'success',
         message: 'Transaccion creado correctamente',
-        data: {
-          id: Number(transaccionSave.id),
-          nombre:
-            `${createTransaccioneRecargaDto.numeroSerieMonedero} ${montoFinal} ` ||
-            '',
-        },
+        montoFinal: montoFinal,
       };
       return result;
     } catch (error) {

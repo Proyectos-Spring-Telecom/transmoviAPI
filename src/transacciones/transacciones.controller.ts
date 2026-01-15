@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { TransaccionesService } from './transacciones.service';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
+import { ApiCrudResponse, ApiCrudTransaccionRecarga, ApiResponseCommon } from 'src/common/ApiResponse';
 import { CreateTransaccioneDebitoDto } from './dto/create-transaccione-debito.dto';
 import { CreateTransaccioneRecargaDto } from './dto/create-transaccione-recarga.dto';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
@@ -46,7 +46,7 @@ export class TransaccionesController {
   createTransaccionRecarga(
     @Body() createTransaccioneRecargaDto: CreateTransaccioneRecargaDto,
     @Request() req,
-  ): Promise<ApiCrudResponse> {
+  ): Promise<ApiCrudTransaccionRecarga> {
     const idUser = req.user.userId;
     return this.transaccionesService.createTransaccionRecarga(
       createTransaccioneRecargaDto,

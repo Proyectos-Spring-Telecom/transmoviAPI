@@ -25,6 +25,13 @@ export interface ApiCrudResponse {
   data?: ApiData;
 }
 
+export interface ApiCrudTransaccionRecarga {
+  status: string;
+  message: string;
+  montoFinal?: number;
+  nombreUsuario?: string;
+}
+
 export interface ApiData {
   id: number;
   nombre: string;
