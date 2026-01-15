@@ -94,6 +94,9 @@ export class Vehiculos {
   @Column("float", { name: "CapacidadLitros", nullable: true })
   capacidadLitros: number;
 
+  @Column("int", { name: "CantidadAccesos", nullable: true })
+  cantidadAccesos: number;
+
   @OneToMany(() => Instalaciones, (instalaciones) => instalaciones.vehiculos)
   instalaciones: Instalaciones[];
 

@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsNotEmpty,
   IsNumber,
+  IsOptional,
   IsString,
 } from 'class-validator';
 
@@ -35,8 +36,16 @@ export class CreateTransaccioneDebitoDto {
     description: 'Número de serie del monedero',
   })
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   numeroSerieMonedero: string;
+
+  @ApiProperty({
+    example: 'MON-0001',
+    description: 'Número ID  único del monedero',
+  })
+  @IsString()
+  @IsOptional()
+  idCardMonedero: string;
 
   @ApiProperty({
     example: 'DISP-0001',

@@ -29,7 +29,8 @@ export interface ApiCrudTransaccionRecarga {
   status: string;
   message: string;
   montoFinal?: number;
-  nombreUsuario?: string;
+  fechaFinal?: Date;
+  metodoPago?: string;
 }
 
 export interface ApiData {

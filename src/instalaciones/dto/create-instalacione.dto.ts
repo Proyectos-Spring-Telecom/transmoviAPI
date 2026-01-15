@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional } from 'class-validator';
+import { IsArray, IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional } from 'class-validator';
 
 export class CreateInstalacionesDto {
   @ApiProperty({
@@ -9,14 +9,6 @@ export class CreateInstalacionesDto {
   @IsNotEmpty({ message: 'El IdDispositivo es obligatorio' })
   @IsNumber()
   idDispositivo: number;
-
-  @ApiProperty({
-    description: 'ID del BlueVox asociado a la instalación',
-    example: 202,
-  })
-  @IsNotEmpty({ message: 'El IdBlueVox es obligatorio' })
-  @IsNumber()
-  idBlueVox: number;
 
   @ApiProperty({
     description: 'ID del vehículo asociado a la instalación',
@@ -42,4 +34,14 @@ export class CreateInstalacionesDto {
     example: 1,
   })
   estatus?: number = 1;
+
+  @ApiProperty({
+    description:
+      'IDs de BlueVoxs asociados a la instalación. Deben pertenecer al mismo cliente y estar disponibles.',
+    example: [202, 203],
+  })
+  @IsNotEmpty()
+  @IsArray()
+  @IsNumber({}, { each: true })
+  idsBlueVoxs: number[];
 }

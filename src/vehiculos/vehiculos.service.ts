@@ -19,7 +19,7 @@ import {
 import { UpdateVehiculoEstatusDto } from './dto/update-vehiculos-estatus.dto';
 import { Instalaciones } from 'src/entities/Instalaciones';
 import { Clientes } from 'src/entities/Clientes';
-import { EstadoComponente, EstatusEnum } from 'src/common/estatus.enum';
+import { EnumModulos, EstadoComponente, EstatusEnum } from 'src/common/estatus.enum';
 
 @Injectable()
 export class VehiculosService {
@@ -53,7 +53,7 @@ export class VehiculosService {
         'CREATE',
         querylogger,
         idUser,
-        10,
+        EnumModulos.VEHICULOS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -77,7 +77,7 @@ export class VehiculosService {
         'CREATE',
         querylogger,
         idUser,
-        10,
+        EnumModulos.VEHICULOS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -178,6 +178,7 @@ SELECT
   v.KM AS km,
   v.IdCombustible AS idCombustible,
   v.CapacidadLitros AS capacidadLitros,
+  v.CantidadAccesos as cantidadAccesos,
   
   -- Datos del Cliente
   c.Nombre AS nombreCliente,
@@ -267,6 +268,7 @@ SELECT
   v.KM AS km,
   ctc.Nombre AS nombre,
   v.CapacidadLitros AS CapacidadLitros,
+  v.CantidadAccesos as cantidadAccesos,
 
   -- Datos del Cliente
   c.Id AS idCliente,
@@ -321,6 +323,7 @@ SELECT
   v.KM AS km,
   ctc.Nombre AS nombre,
   v.CapacidadLitros AS CapacidadLitros,
+  v.CantidadAccesos as cantidadAccesos,
 
   -- Datos del Cliente
   c.Id AS idCliente,
@@ -410,6 +413,7 @@ SELECT
   v.KM AS km,
   ctc.Nombre AS nombre,
   v.CapacidadLitros AS CapacidadLitros,
+  v.CantidadAccesos as cantidadAccesos,
 
   -- Datos del Cliente
   c.Id AS idCliente,
@@ -456,6 +460,7 @@ SELECT
   v.KM AS km,
   ctc.Nombre AS nombre,
   v.CapacidadLitros AS CapacidadLitros,
+  v.CantidadAccesos as cantidadAccesos,
 
   -- Datos del Cliente
   c.Id AS idCliente,
@@ -535,6 +540,7 @@ SELECT
   v.KM AS km,
   ctc.Nombre AS nombre,
   v.CapacidadLitros AS CapacidadLitros,
+  v.CantidadAccesos as cantidadAccesos,
 
   -- Datos del Cliente
   c.Id AS idCliente,
@@ -579,6 +585,7 @@ SELECT
   v.KM AS km,
   ctc.Nombre AS nombre,
   v.CapacidadLitros AS CapacidadLitros,
+  v.CantidadAccesos as cantidadAccesos,
 
   -- Datos del Cliente
   c.Id AS idCliente,
@@ -655,7 +662,7 @@ ORDER BY v.Id DESC;
         'UPDATE',
         querylogger,
         idUser,
-        10,
+        EnumModulos.VEHICULOS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -680,7 +687,7 @@ ORDER BY v.Id DESC;
         'UPDATE',
         querylogger,
         idUser,
-        10,
+        EnumModulos.VEHICULOS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -717,7 +724,7 @@ ORDER BY v.Id DESC;
         'UPDATE',
         querylogger,
         idUser,
-        10,
+        EnumModulos.VEHICULOS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -743,7 +750,7 @@ ORDER BY v.Id DESC;
         'UPDATE',
         querylogger,
         idUser,
-        10,
+        EnumModulos.VEHICULOS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -785,7 +792,7 @@ ORDER BY v.Id DESC;
         'UPDATE',
         querylogger,
         idUser,
-        10,
+        EnumModulos.VEHICULOS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -809,7 +816,7 @@ ORDER BY v.Id DESC;
         'UPDATE',
         querylogger,
         idUser,
-        10,
+        EnumModulos.VEHICULOS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );

@@ -62,12 +62,12 @@ export class MonederosController {
     );
   }
 
-  @Get('numero/serie/:numeroSerie')
+  @Get('numero/serie/:idCard')
   findOneMonederoBySerie(
-    @Param('numeroSerie') numeroSerie: string,
+    @Param('idCard') idCard: string,
     @Request() req,
   ) {
-    return this.monederosService.findOneMonederoBySerie(numeroSerie);
+    return this.monederosService.findOneMonederoBySerie(idCard);
   }
 
   @Get(':page/:limit')

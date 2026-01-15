@@ -17,6 +17,14 @@ export class UpdateMonederoDto {
   numeroSerie?: string;
 
   @ApiProperty({
+    example: 'MON-0001',
+    description: 'Número ID  único del monedero',
+  })
+  @IsString()
+  @IsOptional()
+  idCard?: string;
+
+  @ApiProperty({
     example: '2025-09-10T10:00:00Z',
     description: 'Fecha de activación del monedero en formato ISO8601',
   })

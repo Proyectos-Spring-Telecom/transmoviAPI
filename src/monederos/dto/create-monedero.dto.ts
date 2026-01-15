@@ -19,6 +19,13 @@ export class CreateMonederoDto {
   numeroSerie: string;
 
   @ApiProperty({
+    example: 'MON-0001',
+    description: 'Número ID  único del monedero',
+  })
+  @IsString()
+  idCard: string;
+
+  @ApiProperty({
     example: 500.0,
     description: 'Saldo inicial del monedero',
     default: 0.0,

@@ -26,7 +26,6 @@ import { applySchema } from "src/common/apply-schema.decorator";
   ["idDispositivo", "idCliente"],
   {}
 )
-@Index("IX_Instalaciones_IdCliente_IdBlueVox", ["idBlueVox", "idCliente"], {})
 @Index("IX_Instalaciones_IdCliente_IdVehiculo", ["idVehiculo", "idCliente"], {})
 @Index("FK_Instalaciones_Clientes", ["idCliente"], {})
 @Entity("Instalaciones")
@@ -52,8 +51,6 @@ export class Instalaciones {
   @Column("bigint", { name: "IdDispositivo" })
   idDispositivo: number;
 
-  @Column("bigint", { name: "IdBlueVox" })
-  idBlueVox: number;
 
   @Column("bigint", { name: "IdVehiculo" })
   idVehiculo: number;
@@ -61,15 +58,10 @@ export class Instalaciones {
   @Column("bigint", { name: "IdCliente" })
   idCliente: number;
 
-  @ManyToOne(() => BlueVoxs, (blueVoxs) => blueVoxs.instalaciones, {
-    onDelete: "NO ACTION",
-    onUpdate: "NO ACTION",
-  })
-  @JoinColumn([
-    { name: "IdCliente", referencedColumnName: "idCliente" },
-    { name: "IdBlueVox", referencedColumnName: "id" },
-  ])
-  blueVoxs: BlueVoxs;
+  // Relación correcta según BD:
+  // BlueVoxs tiene FK BlueVoxs.IdInstalaciones -> Instalaciones.Id (1 instalación, N bluevoxs).
+  @OneToMany(() => BlueVoxs, (blueVoxs) => blueVoxs.instalacion)
+  blueVoxs: BlueVoxs[];
 
   @ManyToOne(() => Clientes, (clientes) => clientes.instalaciones, {
     onDelete: "NO ACTION",

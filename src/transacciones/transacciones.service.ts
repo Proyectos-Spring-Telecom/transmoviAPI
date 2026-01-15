@@ -43,6 +43,7 @@ import { UpdateTransaccioneDebitoDto } from './dto/update-transaccione-debito.dt
 import { GetTransaccioneDto } from './dto/get-transacciones.dto';
 import { Viajes } from 'src/entities/Viajes';
 import { calcularDistanciaHastaIndex, calcularDistanciaReal, snapToRoute } from 'src/utils/recorrido.utils';
+import { CatMetodoPago } from 'src/entities/CatMetodoPago';
 
 @Injectable()
 export class TransaccionesService {
@@ -63,6 +64,8 @@ export class TransaccionesService {
     private readonly monederoRepository: Repository<Monederos>,
     @InjectRepository(Viajes)
     private readonly viajesRepository: Repository<Viajes>,
+    @InjectRepository(CatMetodoPago)
+    private readonly catMetodoPagoRepository: Repository<CatMetodoPago>,
     private readonly bitacoraLogger: BitacoraLoggerService,
     private readonly monederosService: MonederosService,
     private readonly pasajeroService: PasajerosService,
@@ -127,11 +130,17 @@ export class TransaccionesService {
         EstatusEnumBitcora.SUCCESS,
       );
 
+      const nombreMetodoPago =  await this.catMetodoPagoRepository.findOne({where: {
+        id: createTransaccioneRecargaDto.idMetodoPago
+      }})
+
       //API response
       const result: ApiCrudTransaccionRecarga = {
         status: 'success',
         message: 'Transaccion creado correctamente',
         montoFinal: montoFinal,
+        fechaFinal: transaccionSave.fhRegistro,
+        metodoPago: nombreMetodoPago?.nombre
       };
       return result;
     } catch (error) {
@@ -166,23 +175,29 @@ export class TransaccionesService {
     let idUsuario;
 
     try {
+      console.log('Datos del body en el dto: ', createTransaccioneDebitoDto)
       // 1️⃣ Cambiamos estado a VALIDANDO_SALDO
       estado = transicionarEstado(estado, EventoTransaccion.CREAR);
 
       // 2️⃣ Buscamos el monedero
+      if (!createTransaccioneDebitoDto.idCardMonedero && !createTransaccioneDebitoDto.numeroSerieMonedero   ) {
+        estado = EstadoTransaccion.ERROR;
+        throw new BadRequestException('Debe proporcionarse al menos uno de los campos requeridos: número de serie del monedero o ID Card.');
+      }
       const monedero = await this.monederoRepository.findOne({
-        where: {
-          numeroSerie: createTransaccioneDebitoDto.numeroSerieMonedero,
-          estatus: 1,
-        },
+        where: [
+          {numeroSerie: createTransaccioneDebitoDto.numeroSerieMonedero, estatus: 1,},
+          {idCard: createTransaccioneDebitoDto.idCardMonedero, estatus: 1}
+        ],
       });
 
       //controlTransaccion
-
       if (!monedero) {
         estado = EstadoTransaccion.ERROR;
         throw new BadRequestException('Monedero no encontrado');
       }
+
+      createTransaccioneDebitoDto.numeroSerieMonedero = monedero.numeroSerie
 
       const query = `
 SELECT 

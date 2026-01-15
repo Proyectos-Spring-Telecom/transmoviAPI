@@ -622,14 +622,14 @@ ORDER BY m.Id DESC;
   // ========================================
   // 🔹 OBTENER MONEDERO POR NUMERO DE SERIE
   // ========================================
-  async findOneMonederoBySerie(NumeroSerie: string) {
+  async findOneMonederoBySerie(idCard: string) {
     try {
       const monedero = await this.monederoRepository.findOne({
-        where: { numeroSerie: NumeroSerie },
+        where: { idCard: idCard },
       });
       if (!monedero) {
         throw new NotFoundException(
-          `El monedero con número de serie: ${NumeroSerie} no fue encontrado.`,
+          `El monedero con número de serie: ${idCard} no fue encontrado.`,
         );
       }
       //Cambiamos los datos numericos a number
