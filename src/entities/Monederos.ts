@@ -24,6 +24,9 @@ export class Monederos {
   @Column('varchar', { name: 'NumeroSerie', unique: true, length: 100 })
   numeroSerie: string;
 
+  @Column('varchar', { name: 'IdCard', unique: true, length: 100, nullable: true })
+  idCard: string;
+
   @Column('decimal', {
     name: 'Saldo',
     precision: 10,

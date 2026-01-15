@@ -173,4 +173,13 @@ export class CreateVehiculoDto {
   @IsNumber()
   @IsPositive()
   capacidadLitros?: number;
+
+  @ApiProperty({
+    description: 'La cantidad de accesos al vehiculo.',
+    example: 42,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  cantidadAccesos?: number;
 }

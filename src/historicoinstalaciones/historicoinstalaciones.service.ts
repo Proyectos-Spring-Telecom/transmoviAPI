@@ -7,7 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import { EstatusEnumBitcora } from 'src/common/ApiResponse';
 import { HistoricoInstalaciones } from 'src/entities/historico-instalaciones';
-import { IsNull, Repository } from 'typeorm';
+import { EntityManager, IsNull, Repository } from 'typeorm';
 import { UpdateHistoricoDto } from './dto/update-historico.dto';
 @Injectable()
 export class HistoricoinstalacionesService {
@@ -29,24 +29,27 @@ export class HistoricoinstalacionesService {
   async createHistorico(
     idInstalacion: number,
     idDispositivo: number,
-    idBlueVox: number,
+    blueVoxs: Array<{ Id: number; NumeroSerie: string }>,
     idVehiculo: number,
     idCliente: number,
     idUser: number,
+    manager?: EntityManager,
   ) {
     try {
       const historico = {
         idInstalacion: idInstalacion,
         idDispositivo: idDispositivo,
-        idBlueVox: idBlueVox,
+        idsBlueVoxs: blueVoxs,
         idVehiculo: idVehiculo,
         idCliente: idCliente,
       };
 
-      const createHistorico =
-        await this.historicoInstalacionesRepository.create(historico);
-      const historicoSave =
-        await this.historicoInstalacionesRepository.save(createHistorico);
+      const repo = manager
+        ? manager.getRepository(HistoricoInstalaciones)
+        : this.historicoInstalacionesRepository;
+
+      const createHistorico = await repo.create(historico as any);
+      const historicoSave = await repo.save(createHistorico as any);
 
       // Registro en la bitácora SUCCESS
       const querylogger = { historico };
@@ -65,7 +68,7 @@ export class HistoricoinstalacionesService {
       const querylogger = {
         instalacion: idInstalacion,
         dispositivo: idDispositivo,
-        bluevoxs: idBlueVox,
+        bluevoxs: blueVoxs,
         vehiculo: idVehiculo,
         cliente: idCliente,
       };
@@ -92,16 +95,21 @@ export class HistoricoinstalacionesService {
   async updateHistorico(
     instalacion: UpdateHistoricoDto,
     idDispositivoUp: number,
-    idBlueVoxUp: number,
+    blueVoxsUp: Array<{ Id: number; NumeroSerie: string }>,
     idVehiculoUp: number,
     idClienteUp: number,
     idUser: number,
     comentario?: string,
+    manager?: EntityManager,
   ) {
     try {
+      const repo = manager
+        ? manager.getRepository(HistoricoInstalaciones)
+        : this.historicoInstalacionesRepository;
+
       // Buscar el histórico activo (sin fechaBaja) para esta instalación
       const historicoActivo =
-        await this.historicoInstalacionesRepository.findOne({
+        await repo.findOne({
           where: {
             idInstalacion: instalacion.idInstalacion,
             fechaBaja: IsNull(),
@@ -110,10 +118,12 @@ export class HistoricoinstalacionesService {
 
       const mismoDispositivo =
         historicoActivo?.idDispositivo === idDispositivoUp;
-      const mismoBlueVox = historicoActivo?.idBlueVox === idBlueVoxUp;
+      const mismoBlueVoxs =
+        JSON.stringify(historicoActivo?.idsBlueVoxs ?? null) ===
+        JSON.stringify(blueVoxsUp);
 
       // 🚫 Si no hay cambios reales, no hacer nada
-      if (historicoActivo && mismoDispositivo && mismoBlueVox) {
+      if (historicoActivo && mismoDispositivo && mismoBlueVoxs) {
         return;
       }
 
@@ -130,23 +140,22 @@ export class HistoricoinstalacionesService {
 
       // ✅ Si existe un registro activo con datos distintos, cerrarlo
       if (historicoActivo) {
-        await this.historicoInstalacionesRepository.update(historicoActivo.id, {
+        await repo.update(historicoActivo.id, {
           fechaBaja: fechaDesfasada,
           comentario: comentario,
         });
       }
 
       // 🆕 Insertar nuevo histórico con los datos actualizados
-      const historico = this.historicoInstalacionesRepository.create({
+      const historico = repo.create({
         idInstalacion: instalacion.idInstalacion,
         idDispositivo: idDispositivoUp,
-        idBlueVox: idBlueVoxUp,
+        idsBlueVoxs: blueVoxsUp,
         idVehiculo: idVehiculoUp, // el vehículo no cambia, pero se registra
         idCliente: idClienteUp,
       });
 
-      const historicoSave =
-        await this.historicoInstalacionesRepository.save(historico);
+      const historicoSave = await repo.save(historico as any);
 
       // 📝 Registrar en bitácora
       const querylogger = { historico };
@@ -165,7 +174,7 @@ export class HistoricoinstalacionesService {
       const querylogger = {
         instalacion: instalacion.idInstalacion,
         dispositivo: idDispositivoUp,
-        bluevoxs: idBlueVoxUp,
+        bluevoxs: blueVoxsUp,
         vehiculo: idVehiculoUp,
         cliente: idClienteUp,
       };

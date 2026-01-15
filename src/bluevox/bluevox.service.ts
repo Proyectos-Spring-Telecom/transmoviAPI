@@ -545,7 +545,7 @@ ORDER BY b.Id DESC;
       if (estatus === 0) {
         //buscamos que no este asiganada a una instalacion
         const bluevoxInstalacion = await this.instalacionesRepository.findOne({
-          where: { idBlueVox: bluevoxs.id, estatus: 1 },
+          where: { id: bluevoxs.id, estatus: 1 },
         });
         if (bluevoxInstalacion)
           throw new BadRequestException(
@@ -627,7 +627,7 @@ ORDER BY b.Id DESC;
 
       //buscamos que no este asiganada a una instalacion
       const bluevoxInstalacion = await this.instalacionesRepository.findOne({
-        where: { idBlueVox: bluevoxs.id, estatus: 1 },
+        where: { id: bluevoxs.id, estatus: 1 },
       });
       if (bluevoxInstalacion)
         throw new BadRequestException(
@@ -706,7 +706,7 @@ ORDER BY b.Id DESC;
 
       //buscamos que no este asiganada a una instalacion
       const bluevoxInstalacion = await this.instalacionesRepository.findOne({
-        where: { idBlueVox: bluevoxs.id, estatus: 1 },
+        where: { id: bluevoxs.id, estatus: 1 },
       });
       if (bluevoxInstalacion)
         throw new BadRequestException(

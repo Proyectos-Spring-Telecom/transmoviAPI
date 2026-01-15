@@ -25,6 +25,8 @@ import { Clientes } from 'src/entities/Clientes';
 import { HistoricoInstalaciones } from 'src/entities/historico-instalaciones';
 import { HistoricoinstalacionesService } from 'src/historicoinstalaciones/historicoinstalaciones.service';
 import { EnumModulos, EstadoComponente, EstatusEnum } from 'src/common/estatus.enum';
+import { InjectDataSource } from '@nestjs/typeorm';
+import { DataSource, In } from 'typeorm';
 
 @Injectable()
 export class InstalacionesService {
@@ -41,6 +43,7 @@ export class InstalacionesService {
     private readonly usuariosinstalacionesRepository: Repository<UsuariosInstalaciones>,
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
+    @InjectDataSource() private readonly dataSource: DataSource,
     private readonly bitacoraLogger: BitacoraLoggerService,
     private readonly historicoinstalacionesService: HistoricoinstalacionesService,
   ) { }
@@ -56,145 +59,247 @@ export class InstalacionesService {
   ): Promise<ApiCrudResponse> {
     try {
       let permiso;
-      // ✅ VALIDACIÓN MEJORADA: Verificar todos los conflictos con relaciones
-      const errores: string[] = [];
+      // ==========================
+      // VALIDACIONES + CREACIÓN (ATÓMICO)
+      // ==========================
+      // Normalizamos idsBlueVoxs (sin duplicados) y validamos que venga al menos 1.
+      const idsBlueVoxs = Array.from(
+        new Set((createInstalacioneDto.idsBlueVoxs ?? []).map(Number)),
+      ).filter((id) => Number.isFinite(id) && id > 0);
 
-      // Verificar dispositivo CON relaciones
-      const dispositivoEnUso = await this.instalacionesRepository.findOne({
-        where: {
-          idDispositivo: createInstalacioneDto.idDispositivo,
-          estatus: 1,
-        },
-        relations: ['dispositivos'],
-      });
-      if (dispositivoEnUso) {
-        errores.push(
-          ` Dispositivo ${dispositivoEnUso.dispositivos.numeroSerie} ya está en uso.`,
-        );
+      if (idsBlueVoxs.length === 0) {
+        throw new BadRequestException('Debe enviar al menos 1 BlueVox en idsBlueVoxs.');
       }
 
-      // Verificar BlueVox CON relaciones
-      const blueVoxEnUso = await this.instalacionesRepository.findOne({
-        where: { idBlueVox: createInstalacioneDto.idBlueVox, estatus: 1 },
-        relations: ['blueVoxs'],
-      });
-      if (blueVoxEnUso) {
-        errores.push(
-          ` BlueVox ${blueVoxEnUso.blueVoxs.numeroSerie} ya está en uso.`,
-        );
-      }
+      // Transacción para evitar estados inconsistentes (componentes “asignados” sin instalación, etc.).
+      const queryRunner = this.dataSource.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
 
-      // Verificar Vehículo CON relaciones
-      const vehiculoEnUso = await this.instalacionesRepository.findOne({
-        where: { idVehiculo: createInstalacioneDto.idVehiculo, estatus: 1 },
-        relations: ['vehiculos'],
-      });
-      if (vehiculoEnUso) {
-        errores.push(
-          ` Vehículo con placa ${vehiculoEnUso.vehiculos.placa} ya está en uso.`,
-        );
-      }
+      try {
+        const instalacionesRepo = queryRunner.manager.getRepository(Instalaciones);
+        const dispositivosRepo = queryRunner.manager.getRepository(Dispositivos);
+        const vehiculosRepo = queryRunner.manager.getRepository(Vehiculos);
+        const blueVoxsRepo = queryRunner.manager.getRepository(BlueVoxs);
+        const usuariosInstRepo =
+          queryRunner.manager.getRepository(UsuariosInstalaciones);
 
-      // Si hay conflictos, lanzar error con todos los detalles
-      if (errores.length > 0) {
-        throw new BadRequestException({
-          message: `No se puede crear la instalación debido a los siguientes conflictos: ${errores[0]}`,
-          errors: errores,
-          conflictsCount: errores.length,
+        // 1) Validar Dispositivo (existencia + cliente + estatus/estado + no asignado)
+        const dispositivo = await dispositivosRepo.findOne({
+          where: {
+            id: createInstalacioneDto.idDispositivo,
+            idCliente: createInstalacioneDto.idCliente,
+            estatus: 1,
+            estadoActual: EstadoComponente.DISPONIBLE,
+          },
         });
+        if (!dispositivo) {
+          throw new BadRequestException({
+            message:
+              'Dispositivo inválido o no disponible (Estatus=1 y EstadoActual=1) o no pertenece al cliente.',
+            idDispositivo: createInstalacioneDto.idDispositivo,
+            idCliente: createInstalacioneDto.idCliente,
+          });
+        }
+
+        // Conflicto: si hay una instalación activa con ese dispositivo
+        const instalacionConDispositivo = await instalacionesRepo.findOne({
+          where: { idDispositivo: dispositivo.id, estatus: 1 },
+          relations: ['dispositivos'],
+        });
+        if (instalacionConDispositivo) {
+          throw new BadRequestException(
+            `El componente ${instalacionConDispositivo.dispositivos.numeroSerie} ya pertenece a una instalación.`,
+          );
+        }
+
+        // 2) Validar Vehículo (existencia + cliente + estatus/estado + no asignado)
+        const vehiculo = await vehiculosRepo.findOne({
+          where: {
+            id: createInstalacioneDto.idVehiculo,
+            idCliente: createInstalacioneDto.idCliente,
+            estatus: 1,
+            estadoActual: EstadoComponente.DISPONIBLE,
+          },
+        });
+        if (!vehiculo) {
+          throw new BadRequestException({
+            message:
+              'Vehículo inválido o no disponible (Estatus=1 y EstadoActual=1) o no pertenece al cliente.',
+            idVehiculo: createInstalacioneDto.idVehiculo,
+            idCliente: createInstalacioneDto.idCliente,
+          });
+        }
+
+        const instalacionConVehiculo = await instalacionesRepo.findOne({
+          where: { idVehiculo: vehiculo.id, estatus: 1 },
+          relations: ['vehiculos'],
+        });
+        if (instalacionConVehiculo) {
+          throw new BadRequestException(
+            `El componente ${instalacionConVehiculo.vehiculos.placa} ya pertenece a una instalación.`,
+          );
+        }
+
+        // 3) Validar BlueVoxs (existencia + cliente + estatus) y manejar conflictos automáticamente.
+        //
+        // Nota importante:
+        // - Si algún BlueVox está asignado (idInstalaciones != null), en vez de fallar,
+        //   lo liberamos automáticamente (idInstalaciones = null, estadoActual = DISPONIBLE)
+        //   ANTES de crear la nueva instalación.
+        //
+        // Esto mantiene el resto del flujo intacto: después, se reasignan a la nueva instalación
+        // con estadoActual = ASIGNADO (como ya se hace más abajo).
+
+        // 3.1) Traemos TODOS los BlueVoxs solicitados (sin filtrar por estadoActual),
+        // para poder detectar cuáles vienen asignados a otra instalación.
+        const blueVoxs = await blueVoxsRepo.find({
+          where: {
+            id: In(idsBlueVoxs),
+            idCliente: createInstalacioneDto.idCliente,
+            estatus: 1,
+          },
+        });
+
+        // Validamos existencia y pertenencia al cliente (estatus=1)
+        if (blueVoxs.length !== idsBlueVoxs.length) {
+          const encontrados = new Set(blueVoxs.map((b) => Number(b.id)));
+          const faltantes = idsBlueVoxs.filter((id) => !encontrados.has(id));
+          throw new BadRequestException({
+            message:
+              'Uno o más BlueVoxs no existen, no pertenecen al cliente o no están activos (Estatus=1).',
+            faltantes,
+          });
+        }
+
+        // 3.2) Detectar BlueVoxs ya asignados (conflictivos) y liberarlos automáticamente.
+        const blueVoxsAsignados = blueVoxs.filter(
+          (b) => b.idInstalaciones !== null && b.idInstalaciones !== undefined,
+        );
+
+        if (blueVoxsAsignados.length > 0) {
+          const idsAsignados = blueVoxsAsignados.map((b) => Number(b.id));
+
+          // Liberación automática: se desasocia de la instalación previa y se deja disponible.
+          // (Esto ocurre dentro de la misma transacción del create.)
+          await blueVoxsRepo.update(
+            { id: In(idsAsignados) },
+            {
+              idInstalaciones: null,
+              estadoActual: EstadoComponente.DISPONIBLE,
+            },
+          );
+
+          // Actualizamos el snapshot en memoria para que el histórico/log refleje los BlueVoxs correctos.
+          for (const b of blueVoxsAsignados) {
+            b.idInstalaciones = null;
+            b.estadoActual = EstadoComponente.DISPONIBLE;
+          }
+        }
+
+        // 4) Crear instalación (según BD: NO se guarda IdBlueVox ni JSON; la asociación es por BlueVoxs.IdInstalaciones)
+        const instalacion = instalacionesRepo.create({
+          idDispositivo: dispositivo.id,
+          idVehiculo: vehiculo.id,
+          idCliente: createInstalacioneDto.idCliente,
+          estatus: createInstalacioneDto.estatus ?? 1,
+        });
+        const instalacionSave = await instalacionesRepo.save(instalacion);
+
+        // 5) Permisos (misma lógica existente)
+        switch (rol) {
+          case 1:
+            permiso = {
+              estatus: 1,
+              idUsuario: 1,
+              idInstalacion: instalacionSave.id,
+            };
+            await usuariosInstRepo.save(permiso);
+            break;
+          case 2:
+            permiso = { estatus: 1, idUsuario: 1, idInstalacion: instalacionSave.id };
+            await usuariosInstRepo.save(permiso);
+            permiso = { estatus: 1, idUsuario: idUser, idInstalacion: instalacionSave.id };
+            await usuariosInstRepo.save(permiso);
+            break;
+          default:
+            permiso = { estatus: 1, idUsuario: 1, idInstalacion: instalacionSave.id };
+            await usuariosInstRepo.save(permiso);
+            break;
+        }
+
+        // 6) Actualizar estados de componentes (dispositivo/vehículo y N BlueVoxs)
+        await dispositivosRepo.update(dispositivo.id, {
+          estadoActual: EstadoComponente.ASIGNADO,
+        });
+        await vehiculosRepo.update(vehiculo.id, { estadoActual: EstadoComponente.ASIGNADO });
+
+        // Asociamos los BlueVoxs a la instalación (puntero + estado)
+        await blueVoxsRepo.update(
+          { id: In(idsBlueVoxs) },
+          {
+            estadoActual: EstadoComponente.ASIGNADO,
+            idInstalaciones: instalacionSave.id,
+          },
+        );
+
+        // 7) Histórico: arreglo de objetos {Id, NumeroSerie}
+        const blueVoxsSnapshot = blueVoxs.map((b) => ({
+          Id: Number(b.id),
+          NumeroSerie: b.numeroSerie,
+        }));
+
+        await this.historicoinstalacionesService.createHistorico(
+          instalacionSave.id,
+          dispositivo.id,
+          blueVoxsSnapshot,
+          vehiculo.id,
+          instalacionSave.idCliente,
+          idUser,
+          queryRunner.manager,
+        );
+
+        // 8) Logging/bitácora (creación y asociación)
+        const querylogger = {
+          instalacionId: instalacionSave.id,
+          idCliente: instalacionSave.idCliente,
+          idDispositivo: dispositivo.id,
+          idVehiculo: vehiculo.id,
+          idsBlueVoxs,
+        };
+        await this.bitacoraLogger.logToBitacora(
+          'Instalaciones',
+          `Instalación ${instalacionSave.id} creada. BlueVoxs asociados: ${blueVoxsSnapshot
+            .map((b) => b.NumeroSerie)
+            .join(', ')}`,
+          'CREATE',
+          querylogger,
+          idUser,
+          EnumModulos.INSTALACIONES,
+          EstatusEnumBitcora.SUCCESS,
+        );
+
+        await queryRunner.commitTransaction();
+
+        // 9) Respuesta
+        const result: ApiCrudResponse = {
+          status: 'success',
+          message: 'La instalación ha sido creada correctamente.',
+          data: {
+            id: Number(instalacionSave.id),
+            nombre: `Instalación ${instalacionSave.id} registrada con Dispositivo: ${dispositivo.id}, Vehículo: ${vehiculo.id} y BlueVoxs: ${blueVoxsSnapshot
+              .map((b) => b.NumeroSerie)
+              .join(', ')}.`,
+          },
+        };
+
+        return result;
+      } catch (error) {
+        await queryRunner.rollbackTransaction();
+        throw error;
+      } finally {
+        await queryRunner.release();
       }
-
-      // Crear instalación y guardarla en la base de datos
-      const newInstalaciones = await this.instalacionesRepository.create(
-        createInstalacioneDto,
-      );
-      const instalacionSave =
-        await this.instalacionesRepository.save(newInstalaciones);
-
-      //Asignamos a root la region
-      switch (rol) {
-        case 1:
-          permiso = {
-            estatus: 1,
-            idUsuario: 1, //Se asigna al usuario supremo
-            idInstalacion: instalacionSave.id,
-          };
-          await this.usuariosinstalacionesRepository.save(permiso);
-          break;
-
-        case 2:
-          permiso = {
-            estatus: 1,
-            idUsuario: 1, //Se asigna al usuario supremo
-            idInstalacion: instalacionSave.id,
-          };
-          await this.usuariosinstalacionesRepository.save(permiso);
-          permiso = {
-            estatus: 1,
-            idUsuario: idUser, //Se asigna al Administrador
-            idInstalacion: instalacionSave.id,
-          };
-          await this.usuariosinstalacionesRepository.save(permiso);
-          break;
-
-        default:
-          permiso = {
-            estatus: 1,
-            idUsuario: 1, //Se asigna al usuario supremo SuperAdministrador
-            idInstalacion: instalacionSave.id,
-          };
-          await this.usuariosinstalacionesRepository.save(permiso);
-          break;
-      }
-      const body = { estadoActual: EstadoComponente.ASIGNADO };
-
-      //actualizamos estatus de los componentes de la instalacion
-      await this.dispositivosRepository.update(
-        createInstalacioneDto.idDispositivo,
-        body,
-      );
-      await this.bluevoxsRepository.update(
-        createInstalacioneDto.idBlueVox,
-        body,
-      );
-      await this.vehiculosRepository.update(
-        createInstalacioneDto.idVehiculo,
-        body,
-      );
-
-      // Registro en la bitácora SUCCESS
-      const querylogger = { createInstalacioneDto };
-      await this.bitacoraLogger.logToBitacora(
-        'Instalaciones',
-        `La instalación con ID: ${instalacionSave.id} ha sido creada exitosamente.`,
-        'CREATE',
-        querylogger,
-        idUser,
-        EnumModulos.INSTALACIONES,
-        EstatusEnumBitcora.SUCCESS,
-      );
-
-      //Registro historico
-      await this.historicoinstalacionesService.createHistorico(
-        instalacionSave.id,
-        instalacionSave.idDispositivo,
-        instalacionSave.idBlueVox,
-        instalacionSave.idVehiculo,
-        instalacionSave.idCliente,
-        idUser,
-      );
-
-      // API response (con mensajes corregidos)
-      const result: ApiCrudResponse = {
-        status: 'success',
-        message: 'La instalación ha sido creada correctamente.',
-        data: {
-          id: Number(instalacionSave.id),
-          nombre: `Instalación ${instalacionSave.id} registrada con los siguientes detalles: Dispositivo: ${instalacionSave.idDispositivo}, BlueVox: ${instalacionSave.idBlueVox}, Vehículo: ${instalacionSave.idVehiculo}.`, // ✅ Mejorado
-        },
-      };
-
-      return result;
     } catch (error) {
       console.log(error);
       // Registro en la bitácora ERROR
@@ -270,11 +375,24 @@ SELECT
   d.Marca AS marcaDispositivo,
   d.Modelo AS modeloDispositivo,
 
-  -- BlueVox
-  i.IdBlueVox AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  -- BlueVoxs (1..N) asociado(s) por FK: BlueVoxs.IdInstalaciones -> Instalaciones.Id
+  -- Arreglo JSON con llaves requeridas por frontend
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idBlueVox', bx.Id,
+          'numeroSerieBlueVox', bx.NumeroSerie,
+          'marcaBlueVox', bx.Marca,
+          'modeloBlueVox', bx.Modelo
+        )
+      )
+      FROM BlueVoxs bx
+      WHERE bx.IdInstalaciones = i.Id
+        AND bx.IdCliente = i.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS blueVoxs,
 
   -- Vehículo
   i.IdVehiculo AS idVehiculo,
@@ -292,13 +410,11 @@ SELECT
 
 FROM Instalaciones i
 INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
 WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
   
-
 ORDER BY i.Id DESC
 LIMIT ? OFFSET ?;
    `;
@@ -311,7 +427,6 @@ LIMIT ? OFFSET ?;
   SELECT COUNT(*) AS total
   FROM Instalaciones i
 INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -353,11 +468,23 @@ SELECT
   d.Marca AS marcaDispositivo,
   d.Modelo AS modeloDispositivo,
 
-  -- BlueVox
-  i.IdBlueVox AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  -- BlueVoxs (1..N) por FK: BlueVoxs.IdInstalaciones -> Instalaciones.Id
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idBlueVox', bx.Id,
+          'numeroSerieBlueVox', bx.NumeroSerie,
+          'marcaBlueVox', bx.Marca,
+          'modeloBlueVox', bx.Modelo
+        )
+      )
+      FROM BlueVoxs bx
+      WHERE bx.IdInstalaciones = i.Id
+        AND bx.IdCliente = i.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS blueVoxs,
 
   -- Vehículo
   i.IdVehiculo AS idVehiculo,
@@ -375,13 +502,11 @@ SELECT
 
 FROM Instalaciones i
 INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
 
   
-
 ORDER BY i.Id DESC
   LIMIT ? OFFSET ?;
 
@@ -394,7 +519,6 @@ ORDER BY i.Id DESC
   SELECT COUNT(*) AS total
   FROM Instalaciones i
 INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -469,11 +593,23 @@ SELECT
   d.Marca AS marcaDispositivo,
   d.Modelo AS modeloDispositivo,
   
-  -- BlueVox
-  i.IdBlueVox AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  -- BlueVoxs (1..N) por FK: BlueVoxs.IdInstalaciones -> Instalaciones.Id
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idBlueVox', bx.Id,
+          'numeroSerieBlueVox', bx.NumeroSerie,
+          'marcaBlueVox', bx.Marca,
+          'modeloBlueVox', bx.Modelo
+        )
+      )
+      FROM BlueVoxs bx
+      WHERE bx.IdInstalaciones = i.Id
+        AND bx.IdCliente = i.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS blueVoxs,
   
   -- Vehículo
   i.IdVehiculo AS idVehiculo,
@@ -492,7 +628,6 @@ SELECT
 FROM UsuariosInstalaciones ui
 INNER JOIN Instalaciones i ON ui.IdInstalacion = i.Id
 INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -512,7 +647,6 @@ ORDER BY i.Id DESC
   FROM UsuariosInstalaciones ui
 INNER JOIN Instalaciones i ON ui.IdInstalacion = i.Id
 INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 	WHERE ui.IdUsuario = ?
@@ -530,7 +664,6 @@ INNER JOIN Clientes c ON i.IdCliente = c.Id
         ...item,
         id: Number(item.id),
         idDispositivo: Number(item.idDispositivo),
-        idBlueVox: Number(item.idBlueVox),
         idVehiculo: Number(item.idVehiculo),
         idCliente: Number(item.idCliente),
       }));
@@ -574,11 +707,23 @@ SELECT
   d.Marca AS marcaDispositivo,
   d.Modelo AS modeloDispositivo,
 
-  -- BlueVox
-  i.IdBlueVox AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  -- BlueVoxs (1..N)
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idBlueVox', bx.Id,
+          'numeroSerieBlueVox', bx.NumeroSerie,
+          'marcaBlueVox', bx.Marca,
+          'modeloBlueVox', bx.Modelo
+        )
+      )
+      FROM BlueVoxs bx
+      WHERE bx.IdInstalaciones = i.Id
+        AND bx.IdCliente = i.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS blueVoxs,
 
   -- Vehículo
   i.IdVehiculo AS idVehiculo,
@@ -596,7 +741,6 @@ SELECT
 
 FROM Instalaciones i
 INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -604,7 +748,6 @@ WHERE c.Estatus = 1
 AND c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
 AND i.Estatus = 1
   
-
 ORDER BY i.Id DESC
    `;
     return this.instalacionesRepository.query(query, [...ids]);
@@ -639,11 +782,23 @@ SELECT
   d.Marca AS marcaDispositivo,
   d.Modelo AS modeloDispositivo,
 
-  -- BlueVox
-  i.IdBlueVox AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  -- BlueVoxs (1..N)
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idBlueVox', bx.Id,
+          'numeroSerieBlueVox', bx.NumeroSerie,
+          'marcaBlueVox', bx.Marca,
+          'modeloBlueVox', bx.Modelo
+        )
+      )
+      FROM BlueVoxs bx
+      WHERE bx.IdInstalaciones = i.Id
+        AND bx.IdCliente = i.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS blueVoxs,
 
   -- Vehículo
   i.IdVehiculo AS idVehiculo,
@@ -661,7 +816,6 @@ SELECT
 
 FROM Instalaciones i
 INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -711,11 +865,23 @@ SELECT
   d.Marca AS marcaDispositivo,
   d.Modelo AS modeloDispositivo,
   
-  -- BlueVox
-  i.IdBlueVox AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  -- BlueVoxs (1..N)
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idBlueVox', bx.Id,
+          'numeroSerieBlueVox', bx.NumeroSerie,
+          'marcaBlueVox', bx.Marca,
+          'modeloBlueVox', bx.Modelo
+        )
+      )
+      FROM BlueVoxs bx
+      WHERE bx.IdInstalaciones = i.Id
+        AND bx.IdCliente = i.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS blueVoxs,
   
   -- Vehículo
   i.IdVehiculo AS idVehiculo,
@@ -734,7 +900,6 @@ SELECT
 FROM UsuariosInstalaciones ui
 INNER JOIN Instalaciones i ON ui.IdInstalacion = i.Id
 INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -756,7 +921,6 @@ ORDER BY i.Id DESC;
         ...item,
         id: Number(item.id),
         idDispositivo: Number(item.idDispositivo),
-        idBlueVox: Number(item.idBlueVox),
         idVehiculo: Number(item.idVehiculo),
         idCliente: Number(item.idCliente),
       }));
@@ -794,11 +958,23 @@ SELECT
   d.Marca AS marcaDispositivo,
   d.Modelo AS modeloDispositivo,
 
-  -- BlueVox
-  i.IdBlueVox AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  -- BlueVoxs (1..N)
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idBlueVox', bx.Id,
+          'numeroSerieBlueVox', bx.NumeroSerie,
+          'marcaBlueVox', bx.Marca,
+          'modeloBlueVox', bx.Modelo
+        )
+      )
+      FROM BlueVoxs bx
+      WHERE bx.IdInstalaciones = i.Id
+        AND bx.IdCliente = i.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS blueVoxs,
 
   -- Vehículo
   i.IdVehiculo AS idVehiculo,
@@ -816,7 +992,6 @@ SELECT
 
 FROM Instalaciones i
 INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -852,11 +1027,23 @@ SELECT
   d.Marca AS marcaDispositivo,
   d.Modelo AS modeloDispositivo,
 
-  -- BlueVox
-  i.IdBlueVox AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  -- BlueVoxs (1..N)
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idBlueVox', bx.Id,
+          'numeroSerieBlueVox', bx.NumeroSerie,
+          'marcaBlueVox', bx.Marca,
+          'modeloBlueVox', bx.Modelo
+        )
+      )
+      FROM BlueVoxs bx
+      WHERE bx.IdInstalaciones = i.Id
+        AND bx.IdCliente = i.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS blueVoxs,
 
   -- Vehículo
   i.IdVehiculo AS idVehiculo,
@@ -874,7 +1061,6 @@ SELECT
 
 FROM Instalaciones i
 INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -924,11 +1110,23 @@ SELECT
   d.Marca AS marcaDispositivo,
   d.Modelo AS modeloDispositivo,
   
-  -- BlueVox
-  i.IdBlueVox AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  -- BlueVoxs (1..N)
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idBlueVox', bx.Id,
+          'numeroSerieBlueVox', bx.NumeroSerie,
+          'marcaBlueVox', bx.Marca,
+          'modeloBlueVox', bx.Modelo
+        )
+      )
+      FROM BlueVoxs bx
+      WHERE bx.IdInstalaciones = i.Id
+        AND bx.IdCliente = i.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS blueVoxs,
   
   -- Vehículo
   i.IdVehiculo AS idVehiculo,
@@ -947,7 +1145,6 @@ SELECT
 FROM UsuariosInstalaciones ui
 INNER JOIN Instalaciones i ON ui.IdInstalacion = i.Id
 INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN BlueVoxs b ON i.IdBlueVox = b.Id AND i.IdCliente = b.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -972,7 +1169,6 @@ ORDER BY i.Id DESC;
         ...item,
         id: Number(item.id),
         idDispositivo: Number(item.idDispositivo),
-        idBlueVox: Number(item.idBlueVox),
         idVehiculo: Number(item.idVehiculo),
         idCliente: Number(item.idCliente),
       }));
@@ -1032,16 +1228,8 @@ ORDER BY i.Id DESC;
           );
         }
 
-        // Verificar BlueVox CON relaciones
-        const blueVoxEnUso = await this.instalacionesRepository.findOne({
-          where: { idBlueVox: instalacion.idBlueVox, estatus: 1 },
-          relations: ['blueVoxs'],
-        });
-        if (blueVoxEnUso) {
-          errores.push(
-            `BlueVox "${blueVoxEnUso.blueVoxs.numeroSerie}" ya está en uso`,
-          );
-        }
+        // BlueVoxs ya no se valida por Instalaciones.IdBlueVox (esa columna no existe en BD).
+        // La relación es por BlueVoxs.IdInstalaciones.
 
         // Verificar Vehículo CON relaciones
         const vehiculoEnUso = await this.instalacionesRepository.findOne({
@@ -1080,13 +1268,17 @@ ORDER BY i.Id DESC;
           );
         }
 
-        // Verificar BlueVox este disponible
-        const blueVoxEstado = await this.bluevoxsRepository.findOne({
-          where: { id: instalacion.idBlueVox, estatus: 1, estadoActual: 1 },
+        // Verificar que existan BlueVoxs asociados a la instalación y que estén disponibles (Estatus=1 y EstadoActual=1)
+        const blueVoxsEstado = await this.bluevoxsRepository.find({
+          where: {
+            idInstalaciones: instalacion.id,
+            estatus: 1,
+            estadoActual: 1,
+          },
         });
-        if (!blueVoxEstado) {
+        if (blueVoxsEstado.length === 0) {
           erroresEstado.push(
-            `BlueVox "${instalacion.idBlueVox}" su estado actual, no esta disponible`,
+            `No hay BlueVoxs disponibles asociados a la instalación "${instalacion.id}".`,
           );
         }
 
@@ -1115,7 +1307,10 @@ ORDER BY i.Id DESC;
           instalacion.idDispositivo,
           body,
         );
-        await this.bluevoxsRepository.update(instalacion.idBlueVox, body);
+        await this.bluevoxsRepository.update(
+          { idInstalaciones: instalacion.id },
+          body,
+        );
         await this.vehiculosRepository.update(instalacion.idVehiculo, body);
       } else if (estatus === 0) {
         // Desactivar instalación → activar componentes a 1(Disponible)
@@ -1124,7 +1319,9 @@ ORDER BY i.Id DESC;
           instalacion.idDispositivo,
           body,
         );
-        await this.bluevoxsRepository.update(instalacion.idBlueVox, body);
+        // Al desactivar, liberamos BlueVoxs de la instalación (estado + FK)
+        // Mantener IdInstalaciones (NO se modifica). Solo se deja disponible.
+        await this.bluevoxsRepository.update({ idInstalaciones: instalacion.id }, body);
         await this.vehiculosRepository.update(instalacion.idVehiculo, body);
       }
 
@@ -1151,7 +1348,7 @@ ORDER BY i.Id DESC;
         data: {
           id: id,
           nombre:
-            `${instalacion.id} dispositivo:${instalacion.idDispositivo} bluevox: ${instalacion.idBlueVox} vehiculo: ${instalacion.idVehiculo}` ||
+            `${instalacion.id} dispositivo:${instalacion.idDispositivo} vehiculo: ${instalacion.idVehiculo}` ||
             '',
         },
       };
@@ -1222,19 +1419,13 @@ ORDER BY i.Id DESC;
 
       //verificamos que exista el bluevoxs a actualizar
       if (updateInstalacioneDto.estatusBluevoxsAnterior) {
-        //Actualizamos el estado del bluevoxs anterior
-        await this.bluevoxsRepository.update(instalacion.idBlueVox, {
-          estadoActual: updateInstalacioneDto.estatusBluevoxsAnterior,
-        });
-        //Actualizamos el estado del bluevoxs nuevo a asignado
-        await this.bluevoxsRepository.update(
-          Number(updateInstalacioneDto.idBlueVox),
-          { estadoActual: EstadoComponente.ASIGNADO },
+        // IMPORTANTE (según tu BD): Instalaciones no tiene IdBlueVox.
+        // La reasignación de BlueVoxs debe hacerse moviendo la FK BlueVoxs.IdInstalaciones.
+        // Este update (aún) no soporta cambiar el set de BlueVoxs porque el DTO de update no trae idsBlueVoxs.
+        // Se deja explícito para que no se intenten updates inválidos contra la tabla Instalaciones.
+        throw new BadRequestException(
+          'Actualizar BlueVoxs en una instalación requiere enviar el arreglo idsBlueVoxs (no soportado en este endpoint actualmente).',
         );
-        //Actualizamos el bluevoxs en la instalacion
-        await this.instalacionesRepository.update(id, {
-          idBlueVox: updateInstalacioneDto.idBlueVox,
-        });
       }
 
       const instalacionActualizada = await this.instalacionesRepository.findOne(
@@ -1258,17 +1449,26 @@ ORDER BY i.Id DESC;
       const body = {
         idInstalacion: id,
         idDispositivo: instalacion.idDispositivo,
-        idBlueVox: instalacion.idBlueVox,
         idVehiculo: instalacion.idVehiculo,
         idCliente: instalacion.idCliente,
       };
       const comentario = `${updateInstalacioneDto.comentariosBluevox ?? ''} ${updateInstalacioneDto.comentariosDispositivo ?? ''}`;
 
       //Registro historico
+      // Snapshot: BlueVoxs asociados por FK (BlueVoxs.IdInstalaciones = Instalaciones.Id)
+      const blueVoxsUpdate = await this.bluevoxsRepository.find({
+        where: { idInstalaciones: id },
+      });
+
+      const blueVoxsSnapshot = blueVoxsUpdate.map((b) => ({
+        Id: Number(b.id),
+        NumeroSerie: b.numeroSerie,
+      }));
+
       await this.historicoinstalacionesService.updateHistorico(
         body,
         Number(instalacionActualizada?.idDispositivo),
-        Number(instalacionActualizada?.idBlueVox),
+        blueVoxsSnapshot,
         Number(instalacionActualizada?.idVehiculo),
         Number(instalacionActualizada?.idCliente),
         idUser,
@@ -1282,7 +1482,7 @@ ORDER BY i.Id DESC;
         data: {
           id: id,
           nombre:
-            `Instalación ${instalacion.id} asociada a Dispositivo: ${instalacion.idDispositivo}, BlueVox: ${instalacion.idBlueVox} y Vehículo: ${instalacion.idVehiculo}.` ||
+            `Instalación ${instalacion.id} asociada a Dispositivo: ${instalacion.idDispositivo} y Vehículo: ${instalacion.idVehiculo}.` ||
             '',
         },
       };
@@ -1321,59 +1521,83 @@ ORDER BY i.Id DESC;
     rol: number,
   ): Promise<ApiCrudResponse> {
     try {
-      let instalacion;
-      instalacion = await this.instalacionesRepository.findOne({
-        where: { id: id },
-      });
+      // Operación crítica: baja lógica + liberación de componentes debe ser atómica.
+      const queryRunner = this.dataSource.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
 
-      if (!instalacion) {
-        throw new NotFoundException(
-          `La instalación con ID: ${id} no está disponible.`,
+      try {
+        const instalacionesRepo = queryRunner.manager.getRepository(Instalaciones);
+        const dispositivosRepo = queryRunner.manager.getRepository(Dispositivos);
+        const vehiculosRepo = queryRunner.manager.getRepository(Vehiculos);
+        const blueVoxsRepo = queryRunner.manager.getRepository(BlueVoxs);
+
+        // 1) Buscar instalación
+        const instalacion = await instalacionesRepo.findOne({
+          where: { id: id },
+        });
+
+        if (!instalacion) {
+          throw new NotFoundException(
+            `La instalación con ID: ${id} no está disponible.`,
+          );
+        }
+
+        // 2) Baja lógica de instalación
+        await instalacionesRepo.update(id, {
+          estatus: EstatusEnum.INACTIVO,
+        });
+
+        // 3) Regla de negocio confirmada: al dar baja lógica, SIEMPRE dejar componentes en DISPONIBLE
+        const body = { estadoActual: EstadoComponente.DISPONIBLE };
+        await dispositivosRepo.update(instalacion.idDispositivo, body);
+        await vehiculosRepo.update(instalacion.idVehiculo, body);
+        // Regla confirmada: al dar baja lógica, SIEMPRE dejar componentes en DISPONIBLE.
+        // En BlueVoxs se debe conservar el valor actual de IdInstalaciones (NO se modifica).
+        await blueVoxsRepo.update(
+          { idInstalaciones: instalacion.id },
+          body,
         );
+
+        await queryRunner.commitTransaction();
+
+        //-----Registro en la bitacora----- SUCCESS
+        const querylogger = { id: id, estatus: 0 };
+        await this.bitacoraLogger.logToBitacora(
+          'Instalaciones',
+          `La instalación con ID: ${instalacion.id} ha sido eliminada exitosamente.`,
+          'UPDATE',
+          querylogger,
+          idUser,
+          EnumModulos.INSTALACIONES,
+          EstatusEnumBitcora.SUCCESS,
+        );
+
+        //Api response
+        const result: ApiCrudResponse = {
+          status: 'success',
+          message: 'Instalaciones eliminado correctamente',
+          data: {
+            id: id,
+            nombre:
+              `${instalacion.id} dispositivo:${instalacion.idDispositivo} vehiculo: ${instalacion.idVehiculo}` ||
+              '',
+          },
+        };
+        return result;
+      } catch (error) {
+        await queryRunner.rollbackTransaction();
+        throw error;
+      } finally {
+        await queryRunner.release();
       }
-
-      //Actualizamos datos
-      await this.instalacionesRepository.update(id, {
-        estatus: EstatusEnum.INACTIVO,
-      });
-
-      // Desactivar instalación → activar componentes
-      const body = { estadoActual: EstadoComponente.DISPONIBLE };
-      await this.dispositivosRepository.update(instalacion.idDispositivo, body);
-      await this.bluevoxsRepository.update(instalacion.idBlueVox, body);
-      await this.vehiculosRepository.update(instalacion.idVehiculo, body);
-
-      //-----Registro en la bitacora----- SUCCESS
-      const querylogger = { id: id, estatus: 0 };
-      await this.bitacoraLogger.logToBitacora(
-        'Instalaciones',
-        `La instalación con ID: ${instalacion.id} ha sido eliminada exitosamente.`,
-        'UPDATE',
-        querylogger,
-        idUser,
-        EnumModulos.INSTALACIONES,
-        EstatusEnumBitcora.SUCCESS,
-      );
-
-      //Api response
-      const result: ApiCrudResponse = {
-        status: 'success',
-        message: 'Instalaciones eliminado correctamente',
-        data: {
-          id: id,
-          nombre:
-            `${instalacion.id} dispositivo:${instalacion.idDispositivo} bluevox: ${instalacion.idBlueVox} vehiculo: ${instalacion.idVehiculo}` ||
-            '',
-        },
-      };
-      return result;
     } catch (error) {
       console.log(error);
       //-----Registro en la bitacora----- ERROR
       const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(
         'Instalaciones',
-        `La instalación con ID: ${id} ha sido eliminada exitosamente.`,
+        `Error al eliminar (baja lógica) la instalación con ID: ${id}.`,
         'UPDATE',
         querylogger,
         idUser,

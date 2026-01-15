@@ -2,8 +2,6 @@ import {
   Column,
   Entity,
   Index,
-  JoinColumn,
-  ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { applySchema } from 'src/common/apply-schema.decorator';
@@ -11,7 +9,6 @@ import { applySchema } from 'src/common/apply-schema.decorator';
 @applySchema
 @Index('FK_HistoricoInstalaciones_Instalaciones', ['idInstalacion'], {})
 @Index('FK_HistoricoInstalaciones_Dispositivo', ['idDispositivo'], {})
-@Index('FK_HistoricoInstalaciones_BlueVox', ['idBlueVox'], {})
 @Index('FK_HistoricoInstalaciones_Vehiculo', ['idVehiculo'], {})
 @Index('FK_HistoricoInstalaciones_Cliente', ['idCliente'], {})
 @Entity('HistoricoInstalaciones')
@@ -25,8 +22,8 @@ export class HistoricoInstalaciones {
   @Column('bigint', { name: 'IdDispositivo' })
   idDispositivo: number;
 
-  @Column('bigint', { name: 'IdBlueVox' })
-  idBlueVox: number;
+  @Column('json', { name: 'IdsBlueVoxs', nullable: false })
+  idsBlueVoxs: Array<{ Id: number; NumeroSerie: string }>;
 
   @Column('bigint', { name: 'IdVehiculo' })
   idVehiculo: number;

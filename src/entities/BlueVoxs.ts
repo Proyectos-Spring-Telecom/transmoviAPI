@@ -51,6 +51,9 @@ export class BlueVoxs {
   @Column('bigint', { name: 'IdCliente' })
   idCliente: number;
 
+  @Column('bigint', { name: 'IdInstalaciones', nullable: true })
+  idInstalaciones: number | null;
+
   @ManyToOne(() => Clientes, (clientes) => clientes.blueVoxs, {
     onDelete: 'NO ACTION',
     onUpdate: 'NO ACTION',
@@ -64,6 +67,12 @@ export class BlueVoxs {
   )
   conteoPasajeros: ConteoPasajeros[];
 
-  @OneToMany(() => Instalaciones, (instalaciones) => instalaciones.blueVoxs)
-  instalaciones: Instalaciones[];
+  // Relación correcta según BD:
+  // BlueVoxs.IdInstalaciones (FK) -> Instalaciones.Id
+  @ManyToOne(() => Instalaciones, (instalaciones) => instalaciones.blueVoxs, {
+    onDelete: 'NO ACTION',
+    onUpdate: 'NO ACTION',
+  })
+  @JoinColumn([{ name: 'IdInstalaciones', referencedColumnName: 'id' }])
+  instalacion: Instalaciones;
 }

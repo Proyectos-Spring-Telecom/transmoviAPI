@@ -13,10 +13,11 @@ import { Monederos } from 'src/entities/Monederos';
 import { CatTiposPasajeros } from 'src/entities/CatTiposPasajeros';
 import { HistoricoTransaccionesDebito } from 'src/entities/HistoricoTransaccionesDebito';
 import { Viajes } from 'src/entities/Viajes';
+import { CatMetodoPago } from 'src/entities/CatMetodoPago';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([TransaccionesRecarga, TransaccionesDebito, HistoricoTransaccionesDebito, Dispositivos, Clientes, Monederos, CatTiposPasajeros, Viajes]),
+    TypeOrmModule.forFeature([TransaccionesRecarga, TransaccionesDebito, HistoricoTransaccionesDebito, Dispositivos, Clientes, Monederos, CatTiposPasajeros, Viajes, CatMetodoPago]),
     MonederosModule,
     BitacoraModule,
     PasajerosModule,

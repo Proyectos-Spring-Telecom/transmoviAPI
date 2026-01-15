@@ -17,7 +17,7 @@ import { UpdateInstalacioneDto } from './dto/update-instalacione.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { UpdateInstalacioneEstatusDto } from './dto/update-instalacione-estatus.dto';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Instalaciones')
 @ApiBearerAuth('bearer-token')
@@ -27,6 +27,8 @@ export class InstalacionesController {
   constructor(private readonly instalacionesService: InstalacionesService) {}
 
   @Post()
+  @ApiOperation({ summary: 'Crear instalación' })
+  @ApiResponse({ status: 201, description: 'Instalación creada' })
   async create(
     @Body() createInstalacioneDto: CreateInstalacionesDto,
     @Request() req,
@@ -43,6 +45,10 @@ export class InstalacionesController {
   }
 
   @Get(':page/:limit')
+  @ApiOperation({ summary: 'Obtener instalaciones paginadas' })
+  @ApiParam({ name: 'page', type: Number })
+  @ApiParam({ name: 'limit', type: Number })
+  @ApiResponse({ status: 200, description: 'Paginación de instalaciones' })
   async findAll(
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,
@@ -55,6 +61,8 @@ export class InstalacionesController {
   }
 
   @Get('list')
+  @ApiOperation({ summary: 'Obtener listado de instalaciones' })
+  @ApiResponse({ status: 200, description: 'Listado de instalaciones' })
   async findAllList(@Request() req): Promise<ApiResponseCommon> {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
@@ -63,6 +71,9 @@ export class InstalacionesController {
   }
 
   @Get(':id')
+  @ApiOperation({ summary: 'Obtener una instalación por ID' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Instalación' })
   async findOne(@Param('id') id: string, @Request() req) {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
