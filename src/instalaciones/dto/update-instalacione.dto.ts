@@ -4,7 +4,6 @@ import {
   IsArray,
   IsIn,
   IsInt,
-  IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
@@ -31,12 +30,15 @@ export class UpdateInstalacioneDto extends PartialType(CreateInstalacionesDto) {
   estatusDispositivoAnterior?: number;
 
   @ApiProperty({
-    description: 'ID del BlueVox asociado a la instalación',
-    example: 202,
+    description:
+      'IDs de BlueVoxs asociados a la instalación. Si se envía, se actualizan las asociaciones usando la matriz de decisiones (similar a usuarios-permisos). Deben pertenecer al mismo cliente.',
+    example: [202, 203, 205],
+    required: false,
   })
-  @IsOptional({ message: 'El IdBlueVox es obligatorio' })
-  @IsNumber()
-  idBlueVox?: number;
+  @IsOptional()
+  @IsArray()
+  @IsNumber({}, { each: true })
+  idsBlueVoxs?: number[];
 
   @ApiProperty({
     description: 'ID del dispositivo asociado a la instalación',
@@ -66,13 +68,11 @@ export class UpdateInstalacioneDto extends PartialType(CreateInstalacionesDto) {
   comentariosBluevox?: string;
 
   @ApiProperty({
-    description:
-      'IDs de BlueVoxs asociados a la instalación. Si se envía, se actualizan las asociaciones usando la matriz de decisiones (similar a usuarios-permisos). Deben pertenecer al mismo cliente.',
-    example: [202, 203, 205],
+    description: 'ID del cliente asociado a la instalación',
+    example: 6,
     required: false,
   })
   @IsOptional()
-  @IsArray()
-  @IsNumber({}, { each: true })
-  idsBlueVoxs?: number[];
+  @IsNumber()
+  idCliente?: number;
 }

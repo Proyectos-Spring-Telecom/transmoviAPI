@@ -1512,17 +1512,19 @@ ORDER BY i.Id DESC;
    *   • NO en nueva lista + Existe inactivo (Estatus=0) → No hacer nada
    * 
    * Reglas de negocio:
-   * - Los BlueVoxs deben pertenecer al mismo cliente que la instalación
+   * - El cliente se obtiene del DTO (updateInstalacioneDto.idCliente). Si no se proporciona, se usa el de la instalación existente.
+   * - Los BlueVoxs deben pertenecer al mismo cliente que la instalación (del DTO o existente)
    * - Los BlueVoxs deben estar activos (Estatus=1) para ser asignados
-   * - Si un BlueVox está asignado a otra instalación activa, se desasocia automáticamente
+   * - Si un BlueVox está asignado a otra instalación activa, se lanza un error indicando que ya está asignado
+   * - Si un Dispositivo está asignado a otra instalación activa, se lanza un error indicando que ya está asignado
    * - Se actualiza EstadoActual de BlueVoxs (ASIGNADO al asignar, DISPONIBLE al desasignar)
    * - Los cambios se registran en el histórico de instalaciones
    * 
    * @param id ID de la instalación a actualizar
    * @param idUser ID del usuario que realiza la operación (para bitácora e histórico)
-   * @param cliente ID del cliente (para validaciones de roles si aplica)
+   * @param cliente ID del cliente del token (mantenido por compatibilidad, pero no se usa para validaciones)
    * @param rol Rol del usuario (para validaciones de permisos si aplica)
-   * @param updateInstalacioneDto DTO con los campos a actualizar (opcionales)
+   * @param updateInstalacioneDto DTO con los campos a actualizar (opcionales). El idCliente se obtiene de aquí.
    * @returns Respuesta de la operación con la instalación actualizada
    * @throws NotFoundException Si la instalación no existe
    * @throws BadRequestException Si los BlueVoxs no existen o no pertenecen al cliente
@@ -1545,8 +1547,40 @@ ORDER BY i.Id DESC;
         );
       }
 
-      //verificamos que exista el dispositivo a actualizar
-      if (updateInstalacioneDto.estatusDispositivoAnterior) {
+      // Obtener el cliente del DTO o usar el de la instalación existente como fallback
+      // IMPORTANTE: El cliente ahora se obtiene del DTO, no del token
+      const idClienteParaValidacion = updateInstalacioneDto.idCliente 
+        ? Number(updateInstalacioneDto.idCliente) 
+        : instalacion.idCliente;
+
+      // Si se proporciona idCliente en el DTO, actualizar la instalación
+      if (updateInstalacioneDto.idCliente !== undefined) {
+        await this.instalacionesRepository.update(id, {
+          idCliente: Number(updateInstalacioneDto.idCliente),
+        });
+      }
+
+      // ==========================================
+      // ACTUALIZACIÓN DE DISPOSITIVO
+      // ==========================================
+      // Validar conflictos: Si se intenta cambiar el dispositivo, verificar que no esté asignado a otra instalación activa
+      if (updateInstalacioneDto.estatusDispositivoAnterior && updateInstalacioneDto.idDispositivo) {
+        // Verificar que el nuevo dispositivo no esté asignado a otra instalación activa (excluyendo la actual)
+        const instalacionConDispositivo = await this.instalacionesRepository.findOne({
+          where: { 
+            idDispositivo: Number(updateInstalacioneDto.idDispositivo), 
+            estatus: 1 
+          },
+          relations: ['dispositivos'],
+        });
+
+        // Si existe una instalación activa con ese dispositivo Y no es la instalación actual, lanzar error
+        if (instalacionConDispositivo && instalacionConDispositivo.id !== id) {
+          throw new BadRequestException(
+            `El dispositivo con ID ${updateInstalacioneDto.idDispositivo} ya se encuentra asignado a la instalación ${instalacionConDispositivo.id}.`,
+          );
+        }
+
         //Actualizamos el estado del dispositivo anterior
         const estadoViejoDispositivo =
           updateInstalacioneDto.estatusDispositivoAnterior;
@@ -1573,9 +1607,11 @@ ORDER BY i.Id DESC;
       // Matriz de decisiones:
       // - En nueva lista + Existe en BD activo (Estatus=1) → No hacer nada
       // - En nueva lista + Existe en BD inactivo (Estatus=0) → Activar (Estatus=1, EstadoActual=ASIGNADO)
-      // - En nueva lista + NO existe en BD → Crear nuevo (Estatus=1, EstadoActual=ASIGNADO)
+      // - En nueva lista + NO existe en BD → Crear nuevo (pero primero validar que no esté asignado a otra instalación activa)
       // - NO en nueva lista + Existe activo (Estatus=1) → Desactivar (Estatus=0, EstadoActual=DISPONIBLE)
       // - NO en nueva lista + Existe inactivo (Estatus=0) → No hacer nada
+      //
+      // REGLA DE NEGOCIO: Si un BlueVox está asignado a otra instalación activa, se lanza un error.
       //
       if (
         updateInstalacioneDto.idsBlueVoxs &&
@@ -1587,10 +1623,11 @@ ORDER BY i.Id DESC;
         ).filter((id) => Number.isFinite(id) && id > 0);
 
         // Validar que los BlueVoxs solicitados existan, pertenezcan al cliente y estén activos
+        // IMPORTANTE: Usamos el cliente del DTO (o el de la instalación si no se proporciona)
         const blueVoxsSolicitados = await this.bluevoxsRepository.find({
           where: {
             id: In(nuevaLista),
-            idCliente: instalacion.idCliente, // Debe pertenecer al mismo cliente
+            idCliente: idClienteParaValidacion, // Debe pertenecer al cliente (del DTO o instalación)
             estatus: 1, // Solo BlueVoxs activos
           },
         });
@@ -1652,33 +1689,27 @@ ORDER BY i.Id DESC;
             });
 
             if (!existe) {
-              // Verificar si el BlueVox está asignado a otra instalación activa (conflicto)
+              // REGLA DE NEGOCIO: Verificar si el BlueVox está asignado a otra instalación activa (conflicto)
+              // Si está asignado a otra instalación activa, lanzar error en lugar de desasociarlo automáticamente
               const conflictos = await this.instalacionesBlueVoxsRepository.find({
                 where: {
                   idBlueVox: blueVoxId,
                   estatus: 1, // Solo asociaciones activas
                 },
-                relations: ['idInstalacion2'], // Cargar instalación para validar que esté activa
+                relations: ['idInstalacion2', 'idBlueVox2'], // Cargar instalación y BlueVox para validar y mensaje
               });
 
-              // Si hay conflictos donde la instalación también está activa, desactivarlos
+              // Filtrar conflictos donde la instalación también está activa Y no es la instalación actual
               const conflictosActivos = conflictos.filter(
                 (c) => c.idInstalacion2 && c.idInstalacion2.estatus === 1 && c.idInstalacion2.id !== id,
               );
 
+              // Si hay conflictos activos, lanzar error indicando que el BlueVox ya está asignado
               if (conflictosActivos.length > 0) {
-                // Desactivar asociaciones previas (resolución automática de conflictos)
-                const idsConflictivos = conflictosActivos.map((c) => c.id);
-                await this.instalacionesBlueVoxsRepository.update(
-                  { id: In(idsConflictivos) },
-                  { estatus: 0 },
-                );
-
-                // Liberar EstadoActual de BlueVoxs que estaban en instalaciones previas
-                const idsBlueVoxsConflictivos = conflictosActivos.map((c) => c.idBlueVox);
-                await this.bluevoxsRepository.update(
-                  { id: In(idsBlueVoxsConflictivos) },
-                  { estadoActual: EstadoComponente.DISPONIBLE },
+                const blueVox = conflictosActivos[0].idBlueVox2;
+                const instalacionConflictiva = conflictosActivos[0].idInstalacion2;
+                throw new BadRequestException(
+                  `El BlueVox con ID ${blueVoxId} (${blueVox?.numeroSerie || 'N/A'}) ya se encuentra asignado a la instalación ${instalacionConflictiva.id}.`,
                 );
               }
 
@@ -1722,6 +1753,13 @@ ORDER BY i.Id DESC;
         },
       );
 
+      // Validar que la instalación actualizada existe (por seguridad)
+      if (!instalacionActualizada) {
+        throw new NotFoundException(
+          `No se pudo recuperar la instalación actualizada con ID: ${id}.`,
+        );
+      }
+
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { updateInstalacioneDto };
       await this.bitacoraLogger.logToBitacora(
@@ -1734,11 +1772,16 @@ ORDER BY i.Id DESC;
         EstatusEnumBitcora.SUCCESS,
       );
 
+      // Usar el cliente actualizado (del DTO si se proporcionó, o el de la instalación)
+      const clienteFinal = updateInstalacioneDto.idCliente 
+        ? Number(updateInstalacioneDto.idCliente) 
+        : instalacionActualizada.idCliente;
+
       const body = {
         idInstalacion: id,
-        idDispositivo: instalacion.idDispositivo,
-        idVehiculo: instalacion.idVehiculo,
-        idCliente: instalacion.idCliente,
+        idDispositivo: instalacionActualizada.idDispositivo,
+        idVehiculo: instalacionActualizada.idVehiculo,
+        idCliente: clienteFinal,
       };
       const comentario = `${updateInstalacioneDto.comentariosBluevox ?? ''} ${updateInstalacioneDto.comentariosDispositivo ?? ''}`;
 
@@ -1764,7 +1807,7 @@ ORDER BY i.Id DESC;
         Number(instalacionActualizada?.idDispositivo),
         blueVoxsSnapshot,
         Number(instalacionActualizada?.idVehiculo),
-        Number(instalacionActualizada?.idCliente),
+        clienteFinal, // Usar el cliente final (del DTO si se proporcionó, o el de la instalación)
         idUser,
         comentario,
       );
