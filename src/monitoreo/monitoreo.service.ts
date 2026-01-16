@@ -8,6 +8,14 @@ import { ApiResponseCommon } from 'src/common/ApiResponse';
 import { Clientes } from 'src/entities/Clientes';
 import { Variantes } from 'src/entities/Variantes';
 import { UsuariosZonas } from 'src/entities/UsuariosZonas';
+import { Posiciones } from 'src/entities/Posiciones';
+import { Vehiculos } from 'src/entities/Vehiculos';
+import { Instalaciones } from 'src/entities/Instalaciones';
+import { Validadores } from 'src/entities/Validadores';
+import { Operadores } from 'src/entities/Operadores';
+import { Usuarios } from 'src/entities/Usuarios';
+import { Turnos } from 'src/entities/Turnos';
+import { Viajes } from 'src/entities/Viajes';
 import { Repository } from 'typeorm';
 import { RecorridoMonitoreoDto } from './dto/recorrido-monitoreo.dto';
 
@@ -20,6 +28,22 @@ export class MonitoreoService {
     private readonly variantesRepository: Repository<Variantes>,
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
+    @InjectRepository(Posiciones)
+    private readonly posicionesRepository: Repository<Posiciones>,
+    @InjectRepository(Vehiculos)
+    private readonly vehiculosRepository: Repository<Vehiculos>,
+    @InjectRepository(Instalaciones)
+    private readonly instalacionesRepository: Repository<Instalaciones>,
+    @InjectRepository(Validadores)
+    private readonly validadoresRepository: Repository<Validadores>,
+    @InjectRepository(Operadores)
+    private readonly operadoresRepository: Repository<Operadores>,
+    @InjectRepository(Usuarios)
+    private readonly usuariosRepository: Repository<Usuarios>,
+    @InjectRepository(Turnos)
+    private readonly turnosRepository: Repository<Turnos>,
+    @InjectRepository(Viajes)
+    private readonly viajesRepository: Repository<Viajes>,
   ) { }
 
   //funcion para obtener los clientes hijos
@@ -361,6 +385,217 @@ ORDER BY i.Id DESC
       if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
         message: 'Error al obtener listado variantes',
+        error: error.message,
+      });
+    }
+  }
+
+  // ========================================
+  // 🔹 OBTENER UNIDADES DE MONITOREO
+  // ========================================
+  async obtenerUnidades(cliente: number) {
+    try {
+      const { ids, placeholders } = await this.clienteHijos(cliente);
+
+      // Consulta para obtener la última posición de cada validador y datos relacionados
+      const query = `
+SELECT
+  -- Vehículo
+  v.Id AS idVehiculo,
+  v.Placa AS placa,
+  v.Modelo AS modelo,
+  
+  -- Última posición
+  p.Id AS idPosicion,
+  p.Latitud AS latitud,
+  p.Longitud AS longitud,
+  p.Velocidad AS velocidad,
+  p.FechaHora AS fechaHora,
+  p.Estado AS estado,
+  
+  -- Validador
+  val.NumeroSerie AS numeroSerieValidador,
+  
+  -- Operador/Conductor (del turno activo más reciente)
+  CONCAT(
+    IFNULL(u.Nombre, ''),
+    IFNULL(CONCAT(' ', u.ApellidoPaterno), ''),
+    IFNULL(CONCAT(' ', u.ApellidoMaterno), '')
+  ) AS conductor,
+  
+  -- Instalación
+  i.Id AS idInstalacion,
+  
+  -- Turno activo
+  t_activo.Id AS idTurno,
+  t_activo.Estatus AS turnoEstatus,
+  t_activo.Inicio AS turnoInicio,
+  t_activo.Fin AS turnoFin,
+  
+  -- Viaje activo
+  viaje.Id AS idViaje,
+  viaje.Estatus AS viajeEstatus,
+  viaje.Inicio AS viajeInicio,
+  viaje.Fin AS viajeFin,
+  
+  -- Variante del viaje
+  var.Id AS idVariante,
+  var.Nombre AS nombreVariante
+
+FROM Instalaciones i
+INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
+INNER JOIN Validadores val ON i.IdValidador = val.Id AND i.IdCliente = val.IdCliente
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+
+-- Última posición del validador
+INNER JOIN (
+  SELECT 
+    p1.NumeroSerieValidador,
+    p1.Id,
+    p1.Latitud,
+    p1.Longitud,
+    p1.Velocidad,
+    p1.FechaHora,
+    p1.Estado
+  FROM Posiciones p1
+  INNER JOIN (
+    SELECT 
+      NumeroSerieValidador,
+      MAX(FechaHora) AS MaxFechaHora
+    FROM Posiciones
+    GROUP BY NumeroSerieValidador
+  ) p2 ON p1.NumeroSerieValidador = p2.NumeroSerieValidador 
+    AND p1.FechaHora = p2.MaxFechaHora
+) p ON val.NumeroSerie = p.NumeroSerieValidador
+
+-- Turno activo más reciente (estatus = 1)
+LEFT JOIN (
+  SELECT 
+    t1.Id,
+    t1.IdInstalacion,
+    t1.IdOperador,
+    t1.Estatus,
+    t1.Inicio,
+    t1.Fin
+  FROM Turnos t1
+  WHERE t1.Estatus = 1
+    AND t1.Fin IS NULL
+    AND t1.Inicio = (
+      SELECT MAX(t2.Inicio)
+      FROM Turnos t2
+      WHERE t2.IdInstalacion = t1.IdInstalacion
+        AND t2.Estatus = 1
+        AND t2.Fin IS NULL
+    )
+) t_activo ON i.Id = t_activo.IdInstalacion
+
+-- Viaje activo del turno (si existe)
+LEFT JOIN (
+  SELECT 
+    v1.Id,
+    v1.IdTurno,
+    v1.IdVariante,
+    v1.Estatus,
+    v1.Inicio,
+    v1.Fin
+  FROM Viajes v1
+  WHERE v1.Estatus = 1
+    AND v1.Fin IS NULL
+    AND v1.Inicio = (
+      SELECT MAX(v2.Inicio)
+      FROM Viajes v2
+      WHERE v2.IdTurno = v1.IdTurno
+        AND v2.Estatus = 1
+        AND v2.Fin IS NULL
+    )
+) viaje ON t_activo.Id = viaje.IdTurno
+
+-- Variante del viaje
+LEFT JOIN Variantes var ON viaje.IdVariante = var.Id
+
+-- Operador del turno
+LEFT JOIN Operadores o ON t_activo.IdOperador = o.Id
+LEFT JOIN Usuarios u ON o.IdUsuario = u.Id
+
+WHERE c.Id IN (${placeholders})
+  AND i.Estatus = 1
+  AND v.Estatus = 1
+  AND val.Estatus = 1
+
+ORDER BY v.Id ASC;
+      `;
+
+      const resultados = await this.clienteRepository.query(query, [...ids]);
+
+      // Formatear la respuesta según la estructura UnidadMapa
+      const unidades = resultados.map((item) => {
+        // Formatear fechaHora a formato HH:mm
+        const fechaHora = item.fechaHora ? new Date(item.fechaHora) : null;
+        const ultimoPing = fechaHora 
+          ? `${String(fechaHora.getHours()).padStart(2, '0')}:${String(fechaHora.getMinutes()).padStart(2, '0')}`
+          : null;
+
+        // Determinar estado basado en turno, viaje y posición
+        let estado = 'pausa'; // Por defecto
+        const tieneTurno = item.idTurno && item.turnoEstatus === 1;
+        const tieneViaje = item.idViaje && item.viajeEstatus === 1;
+        
+        if (tieneViaje) {
+          // Si está en viaje, está en ruta
+          estado = 'ruta';
+        } else if (tieneTurno) {
+          // Si tiene turno pero no viaje, está en pausa
+          estado = 'pausa';
+        } else {
+          // Si no tiene turno, está disponible o fuera de servicio
+          estado = 'pausa';
+        }
+
+        // Formatear velocidad
+        const velocidad = item.velocidad 
+          ? `${Math.round(item.velocidad)} km/h`
+          : '0 km/h';
+
+        const unidad: any = {
+          id: Number(item.idVehiculo),
+          codigo: item.placa || `U-${String(item.idVehiculo).padStart(3, '0')}`,
+          modelo: item.modelo || '',
+          conductor: item.conductor || 'Sin asignar',
+          ultimoPing: ultimoPing || '--:--',
+          velocidad: velocidad,
+          estado: estado,
+          posicion: {
+            lat: Number(item.latitud) || 0,
+            lng: Number(item.longitud) || 0,
+          },
+          // Información de turno, viaje y variante
+          idInstalacion: item.idInstalacion ? Number(item.idInstalacion) : null,
+          idTurno: item.idTurno ? Number(item.idTurno) : null,
+          turnoEstatus: item.turnoEstatus ? Number(item.turnoEstatus) : null,
+          turnoInicio: item.turnoInicio || null,
+          turnoFin: item.turnoFin || null,
+          idViaje: item.idViaje ? Number(item.idViaje) : null,
+          viajeEstatus: item.viajeEstatus ? Number(item.viajeEstatus) : null,
+          viajeInicio: item.viajeInicio || null,
+          viajeFin: item.viajeFin || null,
+          idVariante: item.idVariante ? Number(item.idVariante) : null,
+          nombreVariante: item.nombreVariante || null,
+        };
+
+        return unidad;
+      });
+
+      const result: ApiResponseCommon = {
+        data: unidades,
+      };
+
+      return result;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Error al obtener las unidades de monitoreo.',
         error: error.message,
       });
     }

@@ -32,4 +32,13 @@ export class MonitoreoController {
       return this.monitoreoService.monitoreoRecorrido(recorridoMonitoreoDto, +cliente, +rol);
     }
 
+  @Get()
+  @ApiOperation({ summary: 'Obtener unidades de monitoreo filtradas por cliente del token y sus clientes hijos' })
+  @ApiResponse({ status: 200, description: 'Lista de unidades de monitoreo' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  obtenerUnidades(@Request() req) {
+    const cliente = req.user.cliente;
+    return this.monitoreoService.obtenerUnidades(+cliente);
+  }
+
 }
