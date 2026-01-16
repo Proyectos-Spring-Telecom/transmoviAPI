@@ -82,8 +82,49 @@ export class InstalacionesController {
   }
 
   @Patch('estatus/:id')
+  @ApiOperation({ 
+    summary: 'Actualizar estatus de una instalación',
+    description: 'Actualiza el estatus de una instalación (activa/inactiva) y ajusta automáticamente el estado de los componentes asociados (Dispositivo, Vehículo, BlueVoxs). Soporta múltiples BlueVoxs por instalación.'
+  })
+  @ApiParam({ 
+    name: 'id', 
+    type: Number, 
+    description: 'ID de la instalación a actualizar' 
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Estatus de la instalación actualizado exitosamente',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', example: 'success' },
+        message: { type: 'string', example: 'El estatus de las instalaciones ha sido actualizado con éxito.' },
+        estatus: { 
+          type: 'object',
+          properties: {
+            estatus: { type: 'number', example: 1 }
+          }
+        },
+        data: {
+          type: 'object',
+          properties: {
+            id: { type: 'number', example: 1 },
+            nombre: { type: 'string', example: '1 dispositivo:5 vehiculo: 10' }
+          }
+        }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 404, 
+    description: 'Instalación no encontrada' 
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Conflictos de uso o componentes no disponibles' 
+  })
   updateEstatus(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateInstalacioneEstatusDto: UpdateInstalacioneEstatusDto,
     @Request() req,
   ) {
@@ -91,7 +132,7 @@ export class InstalacionesController {
     const idUser = req.user.userId;
     const rol = req.user.rol;
     return this.instalacionesService.updateEstatus(
-      +id,
+      id,
       +idUser,
       +cliente,
       +rol,

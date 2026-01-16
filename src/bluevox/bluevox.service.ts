@@ -20,7 +20,7 @@ import { UpdateBlueVoxEstatusDto } from './dto/update-bluevox-estatus.dto';
 import { Instalaciones } from 'src/entities/Instalaciones';
 import { Clientes } from 'src/entities/Clientes';
 import { UpdateBluevoxEstadoDto } from './dto/update-bluevox.estado.dto';
-import { EstadoComponente, EstatusEnum } from 'src/common/estatus.enum';
+import { EnumModulos, EstadoComponente, EstatusEnum } from 'src/common/estatus.enum';
 
 @Injectable()
 export class BluevoxService {
@@ -62,7 +62,7 @@ export class BluevoxService {
         'CREATE',
         querylogger,
         idUser,
-        12,
+        EnumModulos.BLUEVOXS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -87,7 +87,7 @@ export class BluevoxService {
         'CREATE',
         querylogger,
         idUser,
-        12,
+        EnumModulos.BLUEVOXS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -484,7 +484,7 @@ ORDER BY b.Id DESC;
         'UPDATE',
         querylogger,
         idUser,
-        12,
+        EnumModulos.BLUEVOXS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -510,7 +510,7 @@ ORDER BY b.Id DESC;
         'UPDATE',
         querylogger,
         idUser,
-        12,
+        EnumModulos.BLUEVOXS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -572,7 +572,7 @@ ORDER BY b.Id DESC;
         'UPDATE',
         querylogger,
         idUser,
-        12,
+        EnumModulos.BLUEVOXS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -597,7 +597,7 @@ ORDER BY b.Id DESC;
         'UPDATE',
         querylogger,
         idUser,
-        12,
+        EnumModulos.BLUEVOXS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -656,7 +656,7 @@ ORDER BY b.Id DESC;
         'UPDATE',
         querylogger,
         idUser,
-        12,
+        EnumModulos.BLUEVOXS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -681,7 +681,7 @@ ORDER BY b.Id DESC;
         'UPDATE',
         querylogger,
         idUser,
-        12,
+        EnumModulos.BLUEVOXS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );
@@ -726,7 +726,7 @@ ORDER BY b.Id DESC;
         'UPDATE',
         querylogger,
         idUser,
-        12,
+        EnumModulos.BLUEVOXS,
         EstatusEnumBitcora.SUCCESS,
       );
 
@@ -750,7 +750,7 @@ ORDER BY b.Id DESC;
         'UPDATE',
         querylogger,
         idUser,
-        12,
+        EnumModulos.BLUEVOXS,
         EstatusEnumBitcora.ERROR,
         error.message,
       );

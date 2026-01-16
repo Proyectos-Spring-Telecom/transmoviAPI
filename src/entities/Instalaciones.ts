@@ -18,6 +18,7 @@ import { MantenimientoVehicular } from "./MantenimientoVehicular";
 import { MantenimientoKilometraje } from "./MantenimientoKilometraje";
 import { MantenimientoCombustible } from "./MantenimientoCombustible";
 import { Incidentes } from "./Incidentes";
+import { InstalacionesBlueVoxs } from "./InstalacionesBlueVoxs";
 import { applySchema } from "src/common/apply-schema.decorator";
 
 @applySchema
@@ -60,8 +61,6 @@ export class Instalaciones {
 
   // Relación correcta según BD:
   // BlueVoxs tiene FK BlueVoxs.IdInstalaciones -> Instalaciones.Id (1 instalación, N bluevoxs).
-  @OneToMany(() => BlueVoxs, (blueVoxs) => blueVoxs.instalacion)
-  blueVoxs: BlueVoxs[];
 
   @ManyToOne(() => Clientes, (clientes) => clientes.instalaciones, {
     onDelete: "NO ACTION",
@@ -113,4 +112,7 @@ export class Instalaciones {
 
   @OneToMany(() => Incidentes, (incidentes) => incidentes.instalacion)
   incidentes: Incidentes[];
+
+  @OneToMany(() => InstalacionesBlueVoxs, (instalacionesBlueVoxs) => instalacionesBlueVoxs.idInstalacion2)
+  instalacionesBlueVoxs: InstalacionesBlueVoxs[];
 }
