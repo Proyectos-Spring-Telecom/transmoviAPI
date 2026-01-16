@@ -126,12 +126,16 @@ export class ContadoresService {
   //Obtener los contadores por cliente -- incluye disponibles y el que está en uso
   async findAllListClientes(id: number, cliente: number) {
     try {
-      // Consulta SQL para obtener contadores disponibles y el que está en uso
+      // Consulta SQL para obtener contadores DISPONIBLES y ASIGNADOS
+      // Para los asignados a instalaciones, se agrega "-Asignado" al numeroSerie
       const contadores = await this.contadoresRepository.query(
         `
 SELECT
   c.Id AS id,
-  c.NumeroSerie AS numeroSerie,
+  CASE 
+    WHEN ic.Id IS NOT NULL THEN CONCAT(c.NumeroSerie, '-Asignado')
+    ELSE c.NumeroSerie
+  END AS numeroSerie,
   c.Marca AS marca,
   c.Modelo AS modelo,
   c.FechaCreacion AS fechaCreacion,
@@ -150,13 +154,13 @@ WHERE c.IdCliente = ?
   AND c.Estatus = 1
   AND (
     c.EstadoActual = ? -- DISPONIBLE
-    OR ic.Id IS NOT NULL -- En uso (asignado a instalación activa)
+    OR c.EstadoActual = ? -- ASIGNADO
   )
 ORDER BY 
   enUso DESC, -- Primero los que están en uso
   c.Id ASC;
         `,
-        [id, EstadoComponente.DISPONIBLE],
+        [id, EstadoComponente.DISPONIBLE, EstadoComponente.ASIGNADO],
       );
 
       //Forzamos a cambiar el id a number

@@ -73,6 +73,15 @@ export class TransaccionesDebito {
   @Column('decimal', { name: 'CobroMaximo', precision: 10, scale: 2, nullable: true })
   cobroMaximo: number | null;
 
+  @Column('decimal', { name: 'DistanciaRecorrida', precision: 10, scale: 2, nullable: true })
+  distanciaRecorrida: number | null;
+
+  @Column('decimal', { name: 'DescuentoTransbordo', precision: 10, scale: 2, nullable: true })
+  descuentoTransbordo: number | null;
+
+  @Column('bigint', { name: 'TipoDescuentoTransbordo', nullable: true })
+  tipoDescuentoTransbordo: number | null;
+
   @ManyToOne(() => Viajes, (viajes) => viajes, {
     onDelete: 'NO ACTION',
     onUpdate: 'NO ACTION',

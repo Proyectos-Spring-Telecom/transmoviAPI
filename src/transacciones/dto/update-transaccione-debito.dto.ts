@@ -11,27 +11,12 @@ import {
 import { EnumControlTransacciones, EnumTipoTransaccion } from 'src/common/estatus.enum';
 
 export class UpdateTransaccioneDebitoDto {
-    @ApiProperty({
-        example: 1,
-        description: 'ID de la transaccion que se quiere modificar',
-    })
-    @IsNumber()
-    @IsNotEmpty()
-    idTransaccionDebito: number;
-
     @IsEnum(EnumTipoTransaccion, {
         message: 'El tipo de transaccion a realizar: 1 (Recarga), 2 (Debito)',
     })
     @IsOptional()
     idTipoTransaccion?: EnumTipoTransaccion;
 
-    @ApiPropertyOptional({
-        example: 150.75,
-        description: 'Monto de la transacción (2 decimales)',
-    })
-    @IsNumber({ maxDecimalPlaces: 2 })
-    @IsOptional()
-    monto?: number;
 
     @ApiProperty({
         description: 'Control de la transacción',
@@ -59,14 +44,6 @@ export class UpdateTransaccioneDebitoDto {
     @IsNumber({ maxDecimalPlaces: 7 })
     @IsOptional()
     longitudFinal?: number;
-
-    @ApiPropertyOptional({
-        example: '2025-09-10T12:30:00Z',
-        description: 'Fecha y hora de la transacción en formato ISO8601',
-    })
-    @IsDateString()
-    @IsOptional()
-    fechaHoraFinal?: string;
 
     @ApiProperty({
         example: 'MON-0001',

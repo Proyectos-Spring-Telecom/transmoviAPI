@@ -113,18 +113,50 @@ export class ValidadoresService {
   //Obtener todos los Validadores por cliente
   async findAllListValidadoresClientes(id: number, cliente: number) {
     try {
-      const Validador = await this.validadoresRepository.find({
-        where: {
-          idCliente: id,
-          estatus: EstatusEnum.ACTIVO,
-          estadoActual: EstadoComponente.DISPONIBLE,
-        },
-      });
+      // Consulta SQL para obtener validadores DISPONIBLES y ASIGNADOS
+      // Para los asignados a instalaciones, se agrega "-Asignado" al numeroSerie
+      const validadores = await this.validadoresRepository.query(
+        `
+SELECT
+  v.Id AS id,
+  CASE 
+    WHEN i.Id IS NOT NULL THEN CONCAT(v.NumeroSerie, '-Asignado')
+    ELSE v.NumeroSerie
+  END AS numeroSerie,
+  v.Marca AS marca,
+  v.Modelo AS modelo,
+  v.FechaCreacion AS fechaCreacion,
+  v.FechaActualizacion AS fechaActualizacion,
+  v.EstadoActual AS estadoActual,
+  v.Estatus AS estatus,
+  v.IdCliente AS idCliente,
+  CASE 
+    WHEN i.Id IS NOT NULL THEN 1
+    ELSE 0
+  END AS enUso
+FROM Validadores v
+LEFT JOIN Instalaciones i ON v.Id = i.IdValidador AND i.Estatus = 1
+WHERE v.IdCliente = ?
+  AND v.Estatus = 1
+  AND (
+    v.EstadoActual = ? -- DISPONIBLE
+    OR v.EstadoActual = ? -- ASIGNADO
+  )
+ORDER BY 
+  enUso DESC, -- Primero los que están en uso
+  v.Id ASC;
+        `,
+        [id, EstadoComponente.DISPONIBLE, EstadoComponente.ASIGNADO],
+      );
 
       //Forzamos a cambiar el id a number
-      const data = Validador.map((item) => ({
+      const data = validadores.map((item) => ({
         ...item,
         id: Number(item.id),
+        idCliente: Number(item.idCliente),
+        estadoActual: Number(item.estadoActual),
+        estatus: Number(item.estatus),
+        enUso: Number(item.enUso),
       }));
 
       const result: ApiResponseCommon = {
