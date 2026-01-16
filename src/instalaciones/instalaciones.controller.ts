@@ -141,8 +141,43 @@ export class InstalacionesController {
   }
 
   @Put(':id')
+  @ApiOperation({ 
+    summary: 'Actualizar una instalación',
+    description: 'Actualiza los componentes de una instalación (Dispositivo, Vehículo, BlueVoxs). Soporta actualización de múltiples BlueVoxs mediante matriz de decisiones (similar a usuarios-permisos). Los BlueVoxs se gestionan mediante la tabla intermedia InstalacionesBlueVoxs.'
+  })
+  @ApiParam({ 
+    name: 'id', 
+    type: Number, 
+    description: 'ID de la instalación a actualizar' 
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Instalación actualizada exitosamente',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', example: 'success' },
+        message: { type: 'string', example: 'Las instalaciones se actualizaron con éxito.' },
+        data: {
+          type: 'object',
+          properties: {
+            id: { type: 'number', example: 1 },
+            nombre: { type: 'string', example: 'Instalación 1 asociada a Dispositivo: 5 y Vehículo: 10.' }
+          }
+        }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 404, 
+    description: 'Instalación no encontrada' 
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Error de validación o BlueVoxs inválidos' 
+  })
   async update(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateInstalacioneDto: UpdateInstalacioneDto,
     @Request() req,
   ) {
@@ -150,7 +185,7 @@ export class InstalacionesController {
     const idUser = req.user.userId;
     const rol = req.user.rol;
     return await this.instalacionesService.update(
-      +id,
+      id,
       +idUser,
       +cliente,
       +rol,

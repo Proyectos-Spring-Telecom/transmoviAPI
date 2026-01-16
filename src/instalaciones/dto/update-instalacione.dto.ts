@@ -1,6 +1,7 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { CreateInstalacionesDto } from './create-instalacione.dto';
 import {
+  IsArray,
   IsIn,
   IsInt,
   IsNotEmpty,
@@ -63,4 +64,15 @@ export class UpdateInstalacioneDto extends PartialType(CreateInstalacionesDto) {
   @IsString()
   @IsOptional()
   comentariosBluevox?: string;
+
+  @ApiProperty({
+    description:
+      'IDs de BlueVoxs asociados a la instalación. Si se envía, se actualizan las asociaciones usando la matriz de decisiones (similar a usuarios-permisos). Deben pertenecer al mismo cliente.',
+    example: [202, 203, 205],
+    required: false,
+  })
+  @IsOptional()
+  @IsArray()
+  @IsNumber({}, { each: true })
+  idsBlueVoxs?: number[];
 }
