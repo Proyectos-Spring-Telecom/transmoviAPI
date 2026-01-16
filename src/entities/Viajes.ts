@@ -3,7 +3,6 @@ import {
   Entity,
   Index,
   JoinColumn,
-  ManyToMany,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
@@ -88,10 +87,9 @@ export class Viajes {
   @JoinColumn([{ name: 'IdTurno', referencedColumnName: 'id' }])
   idTurno2: Turnos;
 
-  @ManyToMany(
-    () => ConteoPasajeros,
-    (conteoPasajeros) => conteoPasajeros.viajes,
-  )
+  // 🔹 RELACIÓN OneToMany con ConteoPasajeros
+  // Un viaje puede tener múltiples conteos de pasajeros asociados
+  @OneToMany(() => ConteoPasajeros, (conteoPasajeros) => conteoPasajeros.idViaje2)
   conteoPasajeros: ConteoPasajeros[];
 
   @OneToMany(() => ViajesConteos, (vc) => vc.viaje)

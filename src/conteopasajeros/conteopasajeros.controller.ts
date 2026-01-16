@@ -14,7 +14,14 @@ import { ConteopasajerosService } from './conteopasajeros.service';
 import { CreateConteoPasajerosDto } from './dto/create-conteopasajero.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiTags,
+  ApiOperation,
+  ApiParam,
+  ApiResponse,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { UpdateConteoPasajerosDto } from './dto/update-conteopasajero.dto';
 
 @ApiTags('Conteo pasajeros')
@@ -27,6 +34,37 @@ export class ConteopasajerosController {
 
   @UseGuards(JwtAuthGuard)
   @Post()
+  @ApiOperation({
+    summary: 'Crear un nuevo registro de conteo de pasajeros',
+    description:
+      'Crea un nuevo registro de conteo de pasajeros (entradas y salidas) capturado por un dispositivo BlueVox. El número de serie del BlueVox es obligatorio. El idViaje y estatus son opcionales.',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Registro de conteo creado exitosamente',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', example: 'success' },
+        message: { type: 'string', example: 'El registro de ConteoPasajero se realizó con éxito.' },
+        data: {
+          type: 'object',
+          properties: {
+            id: { type: 'number', example: 1 },
+            nombre: { type: 'string', example: '1 BVX-2025-XYZ123' },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'BlueVox o Viaje no encontrado',
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Error interno del servidor',
+  })
   async create(
     @Body() createConteopasajeroDto: CreateConteoPasajerosDto,
     @Request() req,
@@ -43,6 +81,48 @@ export class ConteopasajerosController {
 
   @UseGuards(JwtAuthGuard)
   @Patch(':id')
+  @ApiOperation({
+    summary: 'Actualizar un registro de conteo de pasajeros',
+    description:
+      'Actualiza un registro de conteo de pasajeros existente. Todos los campos son opcionales. Solo se actualizarán los campos proporcionados. ' +
+      'NO se puede actualizar si el conteo tiene estatus = 0 (inactivo) o si el viaje asociado está INACTIVO.',
+  })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'ID del registro de conteo a actualizar',
+    example: 1,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Registro de conteo actualizado exitosamente',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', example: 'success' },
+        message: { type: 'string', example: 'ConteoPasajero fue actualizada correctamente' },
+        data: {
+          type: 'object',
+          properties: {
+            id: { type: 'number', example: 1 },
+            nombre: { type: 'string', example: 'ConteoPasajero 1' },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'No se puede actualizar: el conteo tiene estatus 0 o el viaje asociado está inactivo',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Registro de conteo no encontrado',
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Error interno del servidor',
+  })
   async update(
     @Request() req,
     @Param('id', ParseIntPipe) id: number,
