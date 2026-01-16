@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   HttpException,
   Injectable,
   InternalServerErrorException,
@@ -12,9 +13,10 @@ import { ApiCrudResponse, ApiResponseCommon, EstatusEnumBitcora } from 'src/comm
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import { BlueVoxs } from 'src/entities/BlueVoxs';
 import { Usuarios } from 'src/entities/Usuarios';
-import { EnumModulos } from 'src/common/estatus.enum';
+import { EnumModulos, EstatusEnum } from 'src/common/estatus.enum';
 import { Clientes } from 'src/entities/Clientes';
 import { UpdateConteoPasajerosDto } from './dto/update-conteopasajero.dto';
+import { Viajes } from 'src/entities/Viajes';
 
 @Injectable()
 export class ConteopasajerosService {
@@ -27,12 +29,30 @@ export class ConteopasajerosService {
     private readonly usuariosRepository: Repository<Usuarios>,
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
+    @InjectRepository(Viajes)
+    private readonly viajesRepository: Repository<Viajes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
   ) { }
 
   // ========================================
   // 🔹 CREAR DATOS DE CONTEOPASAJEROS
   // ========================================
+  /**
+   * Crea un nuevo registro de conteo de pasajeros.
+   * 
+   * Reglas de negocio:
+   * - El número de serie del BlueVox debe existir en la base de datos
+   * - Si se proporciona idViaje, el viaje debe existir
+   * - El estatus es opcional (puede ser null)
+   * 
+   * @param idUser ID del usuario que realiza la operación (para bitácora)
+   * @param cliente ID del cliente (obtenido del token, para validaciones si aplica)
+   * @param rol Rol del usuario (obtenido del token, para validaciones si aplica)
+   * @param createConteopasajeroDto DTO con los datos del conteo (entradas, salidas, diferencia, fechaHora, numeroSerieBlueVox, estatus opcional, idViaje opcional)
+   * @returns Respuesta de la operación con el conteo creado
+   * @throws NotFoundException Si el BlueVox o el Viaje (si se proporciona) no existen
+   * @throws InternalServerErrorException Si ocurre un error al crear el conteo
+   */
   async create(
     idUser: number,
     cliente: number,
@@ -40,17 +60,37 @@ export class ConteopasajerosService {
     createConteopasajeroDto: CreateConteoPasajerosDto,
   ): Promise<ApiCrudResponse> {
     try {
-      //Buscamos que exista el bluevoxs
-      const bluevox = await this.bluevoxsRepository.findOne({ where: { numeroSerie: createConteopasajeroDto.numeroSerieBlueVox } });
+      // 🔹 VALIDACIÓN: Se verifica que el BlueVox exista mediante su número de serie
+      // El BlueVox es obligatorio ya que el conteo debe estar asociado a un dispositivo
+      const bluevox = await this.bluevoxsRepository.findOne({ 
+        where: { numeroSerie: createConteopasajeroDto.numeroSerieBlueVox } 
+      });
 
       if (!bluevox) {
         throw new NotFoundException('No se encontró el número de serie de Bluevox.')
       }
+
+      // 🔹 VALIDACIÓN: Si se proporciona idViaje, se verifica que el viaje exista
+      // El idViaje es opcional, pero si se proporciona debe ser válido
+      if (createConteopasajeroDto.idViaje !== undefined && createConteopasajeroDto.idViaje !== null) {
+        const viaje = await this.viajesRepository.findOne({ 
+          where: { id: createConteopasajeroDto.idViaje } 
+        });
+
+        if (!viaje) {
+          throw new NotFoundException(`No se encontró el viaje con ID: ${createConteopasajeroDto.idViaje}.`)
+        }
+      }
+
+      // 🔹 CREACIÓN DEL REGISTRO: Se crea una instancia de ConteoPasajeros con los datos del DTO
       const newConteoPasajero = await this.conteopasajeroRepository.create(
         createConteopasajeroDto,
       );
+      // 🔹 GUARDADO EN LA BASE DE DATOS: Se guarda el registro (genera el ID automático)
       const conteoPasajeroSave = await this.conteopasajeroRepository.save(newConteoPasajero);
 
+      // 🔹 REGISTRO EN BITÁCORA: Se registra la operación exitosa
+      // Se guarda el DTO completo para auditoría
       const querylogger = { createConteopasajeroDto };
       await this.bitacoraLogger.logToBitacora(
         'ConteoPasajeros',
@@ -62,7 +102,7 @@ export class ConteopasajerosService {
         EstatusEnumBitcora.SUCCESS,
       );
 
-
+      // 🔹 RESPUESTA DE LA API: Formato estándar de respuesta exitosa
       const result: ApiCrudResponse = {
         status: 'success',
         message: 'El registro de ConteoPasajero se realizó con éxito.',
@@ -921,6 +961,26 @@ WHERE cp.FechaHora BETWEEN '${fechaInicio}TT00:00:00' AND '${fechaFin}T23:59:00'
   // ========================================
   // 🔹 ACTUALIZAR CONTEOPASAJERO
   // ========================================
+  /**
+   * Actualiza un registro de conteo de pasajeros existente.
+   * 
+   * Reglas de negocio:
+   * - El registro de conteo debe existir
+   * - NO se puede actualizar si el registro de conteo tiene estatus = 0 (inactivo)
+   * - Si el conteo tiene un viaje asociado (idViaje), NO se puede actualizar si el viaje tiene estatus INACTIVO
+   * - Si se proporciona idViaje en el DTO, el viaje debe existir y no estar INACTIVO
+   * - Todos los campos del DTO son opcionales (solo se actualizan los proporcionados)
+   * 
+   * @param id ID del registro de conteo a actualizar
+   * @param idUser ID del usuario que realiza la operación (para bitácora)
+   * @param cliente ID del cliente (obtenido del token, para validaciones si aplica)
+   * @param rol Rol del usuario (obtenido del token, para validaciones si aplica)
+   * @param updateConteoPasajerosDto DTO con los campos a actualizar (todos opcionales)
+   * @returns Respuesta de la operación con el conteo actualizado
+   * @throws NotFoundException Si el registro de conteo o el viaje (si se proporciona) no existen
+   * @throws BadRequestException Si el conteo tiene estatus 0 o si el viaje asociado está INACTIVO
+   * @throws InternalServerErrorException Si ocurre un error al actualizar el conteo
+   */
   async update(
     id: number,
     idUser: number,
@@ -928,13 +988,62 @@ WHERE cp.FechaHora BETWEEN '${fechaInicio}TT00:00:00' AND '${fechaFin}T23:59:00'
     rol: number,
     updateConteoPasajerosDto: UpdateConteoPasajerosDto) {
     try {
+      // 🔹 BÚSQUEDA DEL REGISTRO: Se valida que el registro de conteo exista
       const conteoPasajero = await this.conteopasajeroRepository.findOne({
-        where:
-          { id: id }
+        where: { id: id }
       });
       if (!conteoPasajero) throw new NotFoundException('Conteo Pasajero no encontrada.');
 
-      //Actualizamos los datos de conteopasajeros
+      // 🔹 VALIDACIÓN: No se puede actualizar si el conteo tiene estatus = 0 (inactivo)
+      // Esto previene la modificación de registros que ya han sido finalizados
+      if (conteoPasajero.estatus === 0) {
+        throw new BadRequestException(
+          `No se puede actualizar el conteo de pasajeros con ID: ${id} porque tiene estatus inactivo (0).`
+        );
+      }
+
+      // 🔹 VALIDACIÓN: Si el conteo tiene un viaje asociado, verificar que el viaje no esté INACTIVO
+      // Si el viaje está finalizado (INACTIVO), no se deben modificar los conteos asociados
+      if (conteoPasajero.idViaje !== null && conteoPasajero.idViaje !== undefined) {
+        const viajeAsociado = await this.viajesRepository.findOne({
+          where: { id: conteoPasajero.idViaje }
+        });
+
+        if (!viajeAsociado) {
+          throw new NotFoundException(
+            `No se encontró el viaje asociado con ID: ${conteoPasajero.idViaje}.`
+          );
+        }
+
+        // Verificar si el viaje está INACTIVO (estatus = 0 o EstatusEnum.INACTIVO)
+        if (viajeAsociado.estatus === EstatusEnum.INACTIVO || viajeAsociado.estatus === 0) {
+          throw new BadRequestException(
+            `No se puede actualizar el conteo de pasajeros con ID: ${id} porque el viaje asociado (ID: ${conteoPasajero.idViaje}) está inactivo.`
+          );
+        }
+      }
+
+      // 🔹 VALIDACIÓN: Si se proporciona idViaje en el DTO, se verifica que el viaje exista y no esté INACTIVO
+      // Esto previene la asociación a viajes finalizados o inexistentes
+      if (updateConteoPasajerosDto.idViaje !== undefined && updateConteoPasajerosDto.idViaje !== null) {
+        const viaje = await this.viajesRepository.findOne({ 
+          where: { id: updateConteoPasajerosDto.idViaje } 
+        });
+
+        if (!viaje) {
+          throw new NotFoundException(`No se encontró el viaje con ID: ${updateConteoPasajerosDto.idViaje}.`)
+        }
+
+        // Verificar si el viaje nuevo está INACTIVO
+        if (viaje.estatus === EstatusEnum.INACTIVO || viaje.estatus === 0) {
+          throw new BadRequestException(
+            `No se puede actualizar el conteo de pasajeros para asociarlo al viaje con ID: ${updateConteoPasajerosDto.idViaje} porque el viaje está inactivo.`
+          );
+        }
+      }
+
+      // 🔹 ACTUALIZACIÓN EN LA BASE DE DATOS: Solo se actualizan los campos enviados
+      // Los campos que no se envían en el DTO permanecen sin cambios
       await this.conteopasajeroRepository.update(id, updateConteoPasajerosDto);
 
       const querylogger = { updateConteoPasajerosDto };

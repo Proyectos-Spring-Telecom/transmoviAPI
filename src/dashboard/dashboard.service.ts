@@ -787,7 +787,8 @@ Pasajeros AS (
     FROM ConteoPasajeros cp
     INNER JOIN rango ON 1=1
     INNER JOIN BlueVoxs bv ON cp.NumeroSerieBlueVox = bv.NumeroSerie
-    INNER JOIN Instalaciones i ON bv.Id = i.IdBlueVox
+    INNER JOIN InstalacionesBlueVoxs ibv ON bv.Id = ibv.IdBlueVox AND ibv.Estatus = 1
+    INNER JOIN Instalaciones i ON ibv.IdInstalacion = i.Id
     INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id
     INNER JOIN Turnos t ON i.Id = t.IdInstalacion AND t.Estatus = 1
     INNER JOIN Viajes vi ON t.Id = vi.IdTurno AND vi.Estatus = 1
@@ -843,7 +844,8 @@ Pasajeros AS (
     FROM ConteoPasajeros cp
     INNER JOIN rango ON 1=1
     INNER JOIN BlueVoxs bv ON cp.NumeroSerieBlueVox = bv.NumeroSerie
-    INNER JOIN Instalaciones i ON bv.Id = i.IdBlueVox
+    INNER JOIN InstalacionesBlueVoxs ibv ON bv.Id = ibv.IdBlueVox AND ibv.Estatus = 1
+    INNER JOIN Instalaciones i ON ibv.IdInstalacion = i.Id
     INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id
     INNER JOIN Turnos t ON i.Id = t.IdInstalacion AND t.Estatus = 1
     INNER JOIN Viajes vi ON t.Id = vi.IdTurno AND vi.Estatus = 1

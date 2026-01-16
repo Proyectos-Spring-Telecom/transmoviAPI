@@ -20,6 +20,7 @@ import {
 import { UpdateTurnosEstatusDto } from './dto/update-turno-estatus.dto';
 import { Clientes } from 'src/entities/Clientes';
 import { EnumModulos, EstatusEnum } from 'src/common/estatus.enum';
+import { horaDesfasada } from 'src/utils/correccion-hora';
 
 @Injectable()
 export class TurnosService {
@@ -42,16 +43,10 @@ export class TurnosService {
       if (!idOperador) {
         throw new UnauthorizedException(`El usuario no está autorizado para generar un turno.`)
       }
+      
       //Creamos el turno
-      function pad(n: number) {
-        return n < 10 ? '0' + n : n;
-      }
-      const ahora = new Date();
-      const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas
-      const fechaDesfasada = new Date(ahora.getTime() + desfaseMs);
-      const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())} ${pad(fechaDesfasada.getHours())}:${pad(fechaDesfasada.getMinutes())}:${pad(fechaDesfasada.getSeconds())}`;
 
-
+      const { fechaDesfasada, fechaActual } = await horaDesfasada();
       const { numeroSerieDispositivo, ...body } = createTurnoDto
 
       const query = `

@@ -3,23 +3,26 @@ import {
   Entity,
   Index,
   JoinColumn,
-  JoinTable,
-  ManyToMany,
   ManyToOne,
-  OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { BlueVoxs } from './BlueVoxs';
 import { Viajes } from './Viajes';
-import { ViajesConteos } from './ViajesConteos';
 import { applySchema } from "src/common/apply-schema.decorator";
 
+/**
+ * Entidad ConteoPasajeros
+ * 
+ * Representa el conteo de pasajeros (entradas y salidas) registrado por un dispositivo BlueVox
+ * en un momento específico. Está asociado a un viaje opcional.
+ * 
+ * Relaciones:
+ * - ManyToOne con BlueVoxs (a través de NumeroSerieBlueVox)
+ * - ManyToOne con Viajes (a través de IdViaje, opcional)
+ */
 @applySchema
-@Index(
-  'IX_ConteoPasajeros_Serie_FechaHora',
-  ['fechaHora', 'numeroSerieBlueVox'],
-  {},
-)
+@Index('IX_ConteoPasajeros_Serie_FechaHora', ['numeroSerieBlueVox', 'fechaHora'], {})
+@Index('FK_ConteoPasajeros_Viajes', ['idViaje'], {})
 @Entity('ConteoPasajeros')
 export class ConteoPasajeros {
   @PrimaryGeneratedColumn({ type: 'bigint', name: 'Id' })
@@ -43,9 +46,17 @@ export class ConteoPasajeros {
   })
   fhRegistro: Date;
 
+  @Column('tinyint', { name: 'Estatus', nullable: true })
+  estatus: number | null;
+
   @Column('varchar', { name: 'NumeroSerieBlueVox', length: 100 })
   numeroSerieBlueVox: string;
 
+  @Column('bigint', { name: 'IdViaje', nullable: true })
+  idViaje: number | null;
+
+  // 🔹 RELACIÓN ManyToOne con BlueVoxs
+  // El conteo está asociado a un BlueVox mediante su número de serie
   @ManyToOne(() => BlueVoxs, (blueVoxs) => blueVoxs.conteoPasajeros, {
     onDelete: 'NO ACTION',
     onUpdate: 'NO ACTION',
@@ -55,12 +66,12 @@ export class ConteoPasajeros {
   ])
   numeroSerieBlueVox2: BlueVoxs;
 
-  @ManyToMany(() => Viajes, (viajes) => viajes.conteoPasajeros)
-  @JoinTable({
-    name: "ViajesConteos",
-    joinColumns: [{ name: "IdConteo", referencedColumnName: "id" }],
-    inverseJoinColumns: [{ name: "IdViaje", referencedColumnName: "id" }],
-    schema: "TransmoviDev",
+  // 🔹 RELACIÓN ManyToOne con Viajes
+  // El conteo puede estar asociado opcionalmente a un viaje
+  @ManyToOne(() => Viajes, (viajes) => viajes.conteoPasajeros, {
+    onDelete: 'NO ACTION',
+    onUpdate: 'NO ACTION',
   })
-  viajes: Viajes[];
+  @JoinColumn([{ name: 'IdViaje', referencedColumnName: 'id' }])
+  idViaje2: Viajes;
 }
