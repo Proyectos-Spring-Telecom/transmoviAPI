@@ -1563,38 +1563,54 @@ ORDER BY i.Id DESC;
       // ==========================================
       // ACTUALIZACIÓN DE DISPOSITIVO
       // ==========================================
-      // Validar conflictos: Si se intenta cambiar el dispositivo, verificar que no esté asignado a otra instalación activa
-      if (updateInstalacioneDto.estatusDispositivoAnterior && updateInstalacioneDto.idDispositivo) {
-        // Verificar que el nuevo dispositivo no esté asignado a otra instalación activa (excluyendo la actual)
+      // Validaciones: Si se intenta cambiar el dispositivo, verificar todas las condiciones
+      if (updateInstalacioneDto.estatusDispositivoAnterior !== undefined && updateInstalacioneDto.idDispositivo) {
+        const nuevoDispositivoId = Number(updateInstalacioneDto.idDispositivo);
+        
+        // Validación 1: Verificar que el nuevo dispositivo no esté asignado a otra instalación activa (excluyendo la actual)
         const instalacionConDispositivo = await this.instalacionesRepository.findOne({
           where: { 
-            idDispositivo: Number(updateInstalacioneDto.idDispositivo), 
+            idDispositivo: nuevoDispositivoId, 
             estatus: 1 
           },
           relations: ['dispositivos'],
         });
 
-        // Si existe una instalación activa con ese dispositivo Y no es la instalación actual, lanzar error
         if (instalacionConDispositivo && instalacionConDispositivo.id !== id) {
           throw new BadRequestException(
-            `El dispositivo con ID ${updateInstalacioneDto.idDispositivo} ya se encuentra asignado a la instalación ${instalacionConDispositivo.id}.`,
+            `El dispositivo con ID ${nuevoDispositivoId} ya se encuentra asignado a la instalación ${instalacionConDispositivo.id}.`,
           );
         }
 
-        //Actualizamos el estado del dispositivo anterior
-        const estadoViejoDispositivo =
-          updateInstalacioneDto.estatusDispositivoAnterior;
-        await this.dispositivosRepository.update(instalacion.idDispositivo, {
-          estadoActual: estadoViejoDispositivo,
+        // Validación 2: Verificar que el nuevo dispositivo exista, tenga estatus=1, estadoActual=1 y pertenezca al cliente
+        const nuevoDispositivo = await this.dispositivosRepository.findOne({
+          where: {
+            id: nuevoDispositivoId,
+            idCliente: idClienteParaValidacion,
+            estatus: 1,
+            estadoActual: 1, // DISPONIBLE
+          },
         });
-        //Actualizamos el estado del dispositivo nuevo a asignado
+
+        if (!nuevoDispositivo) {
+          throw new BadRequestException({
+            message: `El dispositivo con ID ${nuevoDispositivoId} no está disponible. Verifique que exista, tenga estatus=1, estadoActual=1 (disponible) y pertenezca al cliente ${idClienteParaValidacion}.`,
+            idDispositivo: nuevoDispositivoId,
+          });
+        }
+
+        // Actualizamos el estado del dispositivo anterior
+        await this.dispositivosRepository.update(instalacion.idDispositivo, {
+          estadoActual: updateInstalacioneDto.estatusDispositivoAnterior,
+        });
+        // Actualizamos el estado del dispositivo nuevo a asignado
         await this.dispositivosRepository.update(
-          Number(updateInstalacioneDto.idDispositivo),
+          nuevoDispositivoId,
           { estadoActual: EstadoComponente.ASIGNADO },
         );
-        //Actualizamos el dispositivo en la instalacion
+        // Actualizamos el dispositivo en la instalacion
         await this.instalacionesRepository.update(id, {
-          idDispositivo: updateInstalacioneDto.idDispositivo,
+          idDispositivo: nuevoDispositivoId,
         });
       }
 
@@ -1613,41 +1629,116 @@ ORDER BY i.Id DESC;
       //
       // REGLA DE NEGOCIO: Si un BlueVox está asignado a otra instalación activa, se lanza un error.
       //
-      if (
-        updateInstalacioneDto.idsBlueVoxs &&
-        Array.isArray(updateInstalacioneDto.idsBlueVoxs)
-      ) {
+      // Primero, si hay BlueVoxs anteriores, actualizar sus estatus antes de cambiar
+      // IMPORTANTE: Cada BlueVox en blueVoxsAnteriores se actualiza individualmente con su estatusAnterior
+      if (updateInstalacioneDto.blueVoxsAnteriores && Array.isArray(updateInstalacioneDto.blueVoxsAnteriores)) {
+        for (const blueVoxAnterior of updateInstalacioneDto.blueVoxsAnteriores) {
+          // Validar que el BlueVox existe
+          const blueVoxExistente = await this.bluevoxsRepository.findOne({
+            where: { id: blueVoxAnterior.idBlueVox },
+          });
+
+          if (!blueVoxExistente) {
+            throw new BadRequestException(
+              `El BlueVox con ID ${blueVoxAnterior.idBlueVox} no existe en el sistema.`,
+            );
+          }
+
+          // Actualizar el estadoActual del BlueVox con el estatusAnterior especificado
+          await this.bluevoxsRepository.update(blueVoxAnterior.idBlueVox, {
+            estadoActual: blueVoxAnterior.estatusAnterior,
+          });
+
+          // Si el BlueVox está asociado a esta instalación, desactivar la asociación en InstalacionesBlueVoxs
+          const asociacion = await this.instalacionesBlueVoxsRepository.findOne({
+            where: {
+              idInstalacion: id,
+              idBlueVox: blueVoxAnterior.idBlueVox,
+            },
+          });
+
+          if (asociacion && asociacion.estatus === 1) {
+            // Desactivar la asociación (eliminación lógica)
+            await this.instalacionesBlueVoxsRepository.update(asociacion.id, {
+              estatus: 0,
+            });
+          }
+        }
+      }
+
+      if (updateInstalacioneDto.idsBlueVoxs && Array.isArray(updateInstalacioneDto.idsBlueVoxs)) {
         // Normalizamos idsBlueVoxs (sin duplicados) y validamos que sean números válidos
         const nuevaLista: number[] = Array.from(
           new Set(updateInstalacioneDto.idsBlueVoxs.map(Number)),
         ).filter((id) => Number.isFinite(id) && id > 0);
 
-        // Validar que los BlueVoxs solicitados existan, pertenezcan al cliente y estén activos
+        // Obtener todos los registros actuales en InstalacionesBlueVoxs para esta instalación
+        // (necesario para identificar cuáles son BlueVoxs nuevos vs existentes)
+        const creadaLista = await this.instalacionesBlueVoxsRepository.find({
+          where: { idInstalacion: id },
+        });
+
+        // Identificar BlueVoxs que ya están asociados a esta instalación (para excluirlos de validaciones estrictas)
+        const blueVoxsYaAsociados = new Set(
+          creadaLista.map((ibv) => Number(ibv.idBlueVox)),
+        );
+
+        // Validar que los BlueVoxs solicitados existan, pertenezcan al cliente, tengan estatus=1 y estadoActual=1
         // IMPORTANTE: Usamos el cliente del DTO (o el de la instalación si no se proporciona)
         const blueVoxsSolicitados = await this.bluevoxsRepository.find({
           where: {
             id: In(nuevaLista),
             idCliente: idClienteParaValidacion, // Debe pertenecer al cliente (del DTO o instalación)
             estatus: 1, // Solo BlueVoxs activos
+            estadoActual: 1, // Solo BlueVoxs disponibles (EstadoActual=1 = DISPONIBLE)
           },
         });
 
-        // Si algún BlueVox no existe o no pertenece al cliente, lanzar error
+        // Separar BlueVoxs en dos grupos: los que ya están asociados y los nuevos
+        const blueVoxsNuevos = nuevaLista.filter((id) => !blueVoxsYaAsociados.has(id));
+
+        // Validación 1: Verificar que todos los BlueVoxs solicitados existan, pertenezcan al cliente y estén disponibles
         if (blueVoxsSolicitados.length !== nuevaLista.length) {
           const encontrados = new Set(blueVoxsSolicitados.map((b) => Number(b.id)));
           const faltantes = nuevaLista.filter((id) => !encontrados.has(id));
           throw new BadRequestException({
             message:
-              'Uno o más BlueVoxs no existen, no pertenecen al cliente o no están activos (Estatus=1).',
+              'Uno o más BlueVoxs no están disponibles. Verifique que existan, tengan estatus=1, estadoActual=1 (disponible) y pertenezcan al cliente.',
             faltantes,
           });
         }
 
-        // Obtener todos los registros actuales en InstalacionesBlueVoxs para esta instalación
-        // (incluyendo inactivos para poder reactivarlos si es necesario)
-        const creadaLista = await this.instalacionesBlueVoxsRepository.find({
-          where: { idInstalacion: id },
-        });
+        // Validación 2: Para BlueVoxs NUEVOS, verificar que no estén asignados a otra instalación activa
+        if (blueVoxsNuevos.length > 0) {
+          const blueVoxsNuevosAsociados = await this.instalacionesBlueVoxsRepository.find({
+            where: {
+              idBlueVox: In(blueVoxsNuevos),
+              estatus: 1, // Solo asociaciones activas
+            },
+            relations: ['idInstalacion2'], // Cargar instalación para validar estatus
+          });
+
+          // Filtrar solo los que están asignados a instalaciones activas (excluyendo la actual)
+          const conflictosActivos = blueVoxsNuevosAsociados.filter(
+            (ibv) =>
+              ibv.idInstalacion2 &&
+              ibv.idInstalacion2.estatus === 1 &&
+              ibv.idInstalacion2.id !== id,
+          );
+
+          if (conflictosActivos.length > 0) {
+            const idsConflictivos = conflictosActivos.map((c) => c.idBlueVox);
+            const instalacionesConflictivas = conflictosActivos
+              .map((c) => c.idInstalacion2.id)
+              .join(', ');
+            throw new BadRequestException({
+              message:
+                'Uno o más BlueVoxs ya se encuentran asignados a una instalación activa.',
+              blueVoxsConflictivos: idsConflictivos,
+              instalacionesConflictivas,
+            });
+          }
+        }
 
         // Crear estructuras de datos para comparación eficiente
         const nuevaSet = new Set<number>(nuevaLista);
@@ -1783,7 +1874,8 @@ ORDER BY i.Id DESC;
         idVehiculo: instalacionActualizada.idVehiculo,
         idCliente: clienteFinal,
       };
-      const comentario = `${updateInstalacioneDto.comentariosBluevox ?? ''} ${updateInstalacioneDto.comentariosDispositivo ?? ''}`;
+      // Construir comentario combinando comentariosDispositivo y comentariosBluevox
+      const comentario = `${updateInstalacioneDto.comentariosDispositivo ?? ''} ${updateInstalacioneDto.comentariosBluevox ?? ''}`.trim();
 
       //Registro historico
       // Snapshot: BlueVoxs asociados mediante tabla intermedia InstalacionesBlueVoxs

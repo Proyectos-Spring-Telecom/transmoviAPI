@@ -7,7 +7,26 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class BlueVoxAnteriorDto {
+  @ApiProperty({
+    description: 'ID del BlueVox anterior',
+    example: 5,
+  })
+  @IsNumber()
+  idBlueVox: number;
+
+  @ApiProperty({
+    description: 'Estatus anterior del BlueVox',
+    example: 5,
+  })
+  @IsInt()
+  @IsIn([0, 1, 2, 3, 4, 5], { message: 'Solo se permite 0, 1, 2, 3, 4, 5' })
+  estatusAnterior: number;
+}
 
 export class UpdateInstalacioneDto extends PartialType(CreateInstalacionesDto) {
   @ApiProperty({
@@ -75,4 +94,19 @@ export class UpdateInstalacioneDto extends PartialType(CreateInstalacionesDto) {
   @IsOptional()
   @IsNumber()
   idCliente?: number;
+
+  @ApiProperty({
+    description: 'Lista de BlueVoxs anteriores que se van a cambiar con su estatus anterior',
+    example: [
+      { idBlueVox: 5, estatusAnterior: 5 },
+      { idBlueVox: 7, estatusAnterior: 1 },
+    ],
+    required: false,
+    type: [BlueVoxAnteriorDto],
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => BlueVoxAnteriorDto)
+  blueVoxsAnteriores?: BlueVoxAnteriorDto[];
 }
