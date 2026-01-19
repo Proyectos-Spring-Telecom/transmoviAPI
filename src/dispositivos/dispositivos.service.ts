@@ -424,6 +424,73 @@ WHERE d.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente
       });
     }
   }
+  // ========================================
+  // 🔹 OBTENER DISPOSITIVOS POR ID DE CLIENTE
+  // ========================================
+  async findByCliente(
+    idCliente: number,
+    idUser: number,
+    rol: number,
+  ): Promise<ApiResponseCommon> {
+    try {
+      // Consulta directa de dispositivos por cliente (solo el cliente especificado)
+      const dispositivos = await this.dispositivoRepository.query(
+        `
+SELECT
+  -- Datos del Dispositivo
+  d.Id AS id,
+  d.NumeroSerie AS numeroSerie,
+  d.Marca AS marca,
+  d.Modelo AS modelo,
+  d.FechaCreacion AS fechaCreacion,
+  d.FechaActualizacion AS fechaActualizacion,
+  d.EstadoActual AS estadoActual,
+  d.Estatus AS estatus,
+
+  -- Datos del Cliente
+  d.IdCliente AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', IFNULL(c.ApellidoMaterno, '')) AS nombreCompletoCliente
+
+FROM Dispositivos d
+INNER JOIN Clientes c ON d.IdCliente = c.Id
+
+WHERE 
+  d.IdCliente = ?
+  AND d.Estatus = 1
+  AND c.Estatus = 1
+
+ORDER BY d.Id DESC
+        `,
+        [idCliente],
+      );
+
+      // Forzamos a cambiar el id a number
+      const data = dispositivos.map((item) => ({
+        ...item,
+        id: Number(item.id),
+        idCliente: Number(item.idCliente),
+      }));
+
+      const result: ApiResponseCommon = {
+        data: data,
+      };
+
+      return result;
+    } catch (error) {
+      console.log(error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Error al obtener dispositivos por cliente',
+        error: error.message,
+      });
+    }
+  }
+
   //Obtener dispositivo por ID
   async findOneDispositivo(id: number, cliente: number, rol: number) {
     try {

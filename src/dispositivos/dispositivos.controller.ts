@@ -55,7 +55,7 @@ export class DispositivosController {
     const idUser = req.user.userId;
     const cliente = req.user.cliente;
     const rol = req.user.rol;
-    return await this.dispositivosService.findAllListDispositivosClientes(idCliente, +cliente);
+    return await this.dispositivosService.findByCliente(idCliente, +cliente, +rol);
   }
 
   @Get('clientes/:id')
