@@ -21,8 +21,8 @@ export class TransaccionesRecarga {
   @Column('bigint', { name: 'IdTipoTransaccion' })
   idTipoTransaccion: number;
 
-  @Column('tinyint', { name: 'ControlTransaccion' })
-  controlTransaccion: number;
+  @Column('varchar', { name: 'ControlTransaccion', nullable: true, length: 30 })
+  controlTransaccion: string | null;
 
   @Column('decimal', { name: 'Monto', precision: 10, scale: 2 })
   monto: number;

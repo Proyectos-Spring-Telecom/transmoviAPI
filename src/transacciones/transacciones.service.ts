@@ -39,11 +39,14 @@ import { horaDesfasada } from 'src/utils/correccion-hora';
 import { Monederos } from 'src/entities/Monederos';
 import { CatTiposPasajeros } from 'src/entities/CatTiposPasajeros';
 import { HistoricoTransaccionesDebito } from 'src/entities/HistoricoTransaccionesDebito';
+import { HistoricoTransaccionesRecarga } from 'src/entities/HistoricoTransaccionesRecarga';
 import { UpdateTransaccioneDebitoDto } from './dto/update-transaccione-debito.dto';
 import { GetTransaccioneDto } from './dto/get-transacciones.dto';
 import { Viajes } from 'src/entities/Viajes';
 import { calcularDistanciaHastaIndex, calcularDistanciaReal, snapToRoute } from 'src/utils/recorrido.utils';
 import { CatMetodoPago } from 'src/entities/CatMetodoPago';
+import { InjectDataSource } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
 
 @Injectable()
 export class TransaccionesService {
@@ -54,6 +57,9 @@ export class TransaccionesService {
     private readonly transaccionesdebitoRepository: Repository<TransaccionesDebito>,
     @InjectRepository(HistoricoTransaccionesDebito)
     private readonly historicoTransaccionesDebitoRepository: Repository<HistoricoTransaccionesDebito>,
+    @InjectRepository(HistoricoTransaccionesRecarga)
+    private readonly historicoTransaccionesRecargaRepository: Repository<HistoricoTransaccionesRecarga>,
+    @InjectDataSource() private readonly dataSource: DataSource,
     @InjectRepository(Dispositivos)
     private readonly dispositivoRepository: Repository<Dispositivos>,
     @InjectRepository(Clientes)
@@ -71,58 +77,126 @@ export class TransaccionesService {
     private readonly pasajeroService: PasajerosService,
   ) { }
 
-  //Funcion para transaccion Recarga
+  // ========================================
+  // 🔹 CREAR TRANSACCIÓN DE RECARGA (CON TRANSACCIÓN ATÓMICA)
+  // ========================================
+  /**
+   * Crea una transacción de recarga usando QueryRunner para garantizar atomicidad.
+   * Flujo:
+   * 1. Obtiene el saldo actual del monedero
+   * 2. Calcula el saldo final (saldo actual + monto de recarga)
+   * 3. Actualiza el saldo del monedero
+   * 4. Inserta la transacción en TransaccionesRecarga
+   * 5. Inserta los mismos datos en HistoricoTransaccionesRecarga
+   * 6. Registra el evento exitoso en la bitácora
+   * 
+   * Si ocurre un error en cualquier paso, se hace rollback de toda la transacción.
+   */
   async createTransaccionRecarga(
     createTransaccioneRecargaDto: CreateTransaccioneRecargaDto,
     idUser: number,
   ): Promise<ApiCrudResponse> {
+    // Transacción para evitar estados inconsistentes
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
-      //Buscamos el monedero
-      const monedero = await this.monederosService.findOneMonederoBySerie(
-        createTransaccioneRecargaDto.numeroSerieMonedero,
-      );
+      // Obtener repositorios dentro de la transacción
+      const transaccionesRecargaRepo = queryRunner.manager.getRepository(TransaccionesRecarga);
+      const historicoTransaccionesRecargaRepo = queryRunner.manager.getRepository(HistoricoTransaccionesRecarga);
+      const monederoRepo = queryRunner.manager.getRepository(Monederos);
+      const catMetodoPagoRepo = queryRunner.manager.getRepository(CatMetodoPago);
 
-      //Declaramos transaccion y creamos la variable montoFinal
-      let transaccion = EnumTipoTransaccion.RECARGA;
-      let montoFinal: number = 0;
 
-      //Checamos el tipo transaccion
-      montoFinal =
-        Number(monedero.data.saldo) +
-        Number(createTransaccioneRecargaDto.monto);
+      // 2️⃣ Buscamos el monedero
+      if (!createTransaccioneRecargaDto.idCardMonedero && !createTransaccioneRecargaDto.numeroSerieMonedero) {
+        throw new BadRequestException('Debe proporcionarse al menos uno de los campos requeridos: número de serie del monedero o ID Card.');
+      }
+
+      // 1) Validar que el monedero existe y está activo
+      const monedero = await this.monederoRepository.findOne({
+        where: [
+          { numeroSerie: createTransaccioneRecargaDto.numeroSerieMonedero, estatus: 1, },
+          { idCard: createTransaccioneRecargaDto.idCardMonedero, estatus: 1 }
+        ],
+      });
+
+      if (!monedero) {
+        throw new NotFoundException(
+          `Monedero con número de serie ${createTransaccioneRecargaDto.numeroSerieMonedero} no encontrado o inactivo.`,
+        );
+      }
+
+      createTransaccioneRecargaDto.numeroSerieMonedero = monedero.numeroSerie
+
+      // 2) Validar que el método de pago existe
+      const metodoPago = await catMetodoPagoRepo.findOne({
+        where: { id: createTransaccioneRecargaDto.idMetodoPago },
+      });
+
+      if (!metodoPago) {
+        throw new NotFoundException(
+          `Método de pago con ID ${createTransaccioneRecargaDto.idMetodoPago} no encontrado.`,
+        );
+      }
+
+      // 3) Calcular el saldo final
+      const saldoActual = Number(monedero.saldo);
+      const montoRecarga = Number(createTransaccioneRecargaDto.monto);
+      const montoFinal = saldoActual + montoRecarga;
 
       console.log(
         'Saldo Inicial: ',
-        monedero.data.saldo,
+        saldoActual,
         ' Tipo Transaccion: ',
-        transaccion,
+        EnumTipoTransaccion.RECARGA,
         ' Monto: ',
-        createTransaccioneRecargaDto.monto,
+        montoRecarga,
         ' Monto Final: ',
         montoFinal,
       );
 
-      //actualizamos el saldo del monedero
-      await this.monederosService.updateMonederoSaldo(
-        createTransaccioneRecargaDto.numeroSerieMonedero,
-        idUser,
-        montoFinal,
+      
+
+      // 5) Crear la transacción en TransaccionesRecarga
+      const newTransaccion = transaccionesRecargaRepo.create({
+        ...createTransaccioneRecargaDto,
+        idTipoTransaccion: EnumTipoTransaccion.RECARGA,
+        idUsuario: idUser,
+      });
+      const transaccionSave = await transaccionesRecargaRepo.save(newTransaccion);
+
+      // 4) Actualizar el saldo del monedero dentro de la transacción
+      await monederoRepo.update(
+        { id: monedero.id },
+        { saldo: montoFinal },
       );
 
-      //Creamos la transaccion en la BD
-      const newTransaccion = await this.transaccionesrecargaRepository.create(
-        createTransaccioneRecargaDto,
-      );
-      newTransaccion.idTipoTransaccion = EnumTipoTransaccion.RECARGA
-      newTransaccion.idUsuario = idUser
-      const transaccionSave =
-        await this.transaccionesrecargaRepository.save(newTransaccion);
+      // 6) Insertar en HistoricoTransaccionesRecarga (copiar todos los campos de la transacción guardada)
+      const historicoRecarga = historicoTransaccionesRecargaRepo.create({
+        idTipoTransaccion: transaccionSave.idTipoTransaccion,
+        controlTransaccion: transaccionSave.controlTransaccion ?? null,
+        monto: transaccionSave.monto,
+        idMetodoPago: transaccionSave.idMetodoPago ?? null,
+        latitudFinal: transaccionSave.latitudFinal ?? null,
+        longitudFinal: transaccionSave.longitudFinal ?? null,
+        fechaHoraFinal: transaccionSave.fechaHoraFinal,
+        fhRegistro: transaccionSave.fhRegistro,
+        numeroSerieMonedero: transaccionSave.numeroSerieMonedero,
+        numeroSerieDispositivo: transaccionSave.numeroSerieDispositivo ?? null,
+        idUsuario: transaccionSave.idUsuario ?? null,
+      });
+      await historicoTransaccionesRecargaRepo.save(historicoRecarga);
 
-      // --- Registro en la bitácora --- SUCCESS
+      // Commit de la transacción
+      await queryRunner.commitTransaction();
+
+      // 7) Registro en la bitácora --- SUCCESS (fuera de la transacción)
       const querylogger = { createTransaccioneRecargaDto };
       await this.bitacoraLogger.logToBitacora(
         'Transacciones',
-        `Se realizo una transaccion de tipo ${transaccion}`,
+        `Se realizó una transacción de tipo RECARGA. Monto: ${montoRecarga}, Saldo final: ${montoFinal}`,
         'CREATE',
         querylogger,
         idUser,
@@ -130,26 +204,25 @@ export class TransaccionesService {
         EstatusEnumBitcora.SUCCESS,
       );
 
-      const nombreMetodoPago =  await this.catMetodoPagoRepository.findOne({where: {
-        id: createTransaccioneRecargaDto.idMetodoPago
-      }})
-
-      //API response
+      // API response
       const result: ApiCrudTransaccionRecarga = {
         status: 'success',
-        message: 'Transaccion creado correctamente',
+        message: 'Transacción creada correctamente',
         montoFinal: montoFinal,
         fechaFinal: transaccionSave.fhRegistro,
-        metodoPago: nombreMetodoPago?.nombre
+        metodoPago: metodoPago.nombre,
       };
       return result;
     } catch (error) {
+      // Rollback en caso de error
+      await queryRunner.rollbackTransaction();
+
       console.log(error);
       // --- Registro en la bitácora --- ERROR
       const querylogger = { createTransaccioneRecargaDto };
       await this.bitacoraLogger.logToBitacora(
         'Transacciones',
-        `Se realizo una transaccion de tipo ${createTransaccioneRecargaDto.idTipoTransaccion}`,
+        `Error al crear transacción de recarga`,
         'CREATE',
         querylogger,
         idUser,
@@ -157,13 +230,18 @@ export class TransaccionesService {
         EstatusEnumBitcora.ERROR,
         error.message,
       );
-      console.log({ 'TransaccionesRecarga': error })
+      console.log({ 'TransaccionesRecarga': error });
+
       if (error instanceof HttpException) {
         throw error;
       }
-      throw new InternalServerErrorException(
-        `Error generar la transaccion de tipo ${createTransaccioneRecargaDto.idTipoTransaccion}`,
-      );
+      throw new InternalServerErrorException({
+        message: 'Error al generar la transacción de recarga',
+        error: error.message,
+      });
+    } finally {
+      // Liberar el QueryRunner
+      await queryRunner.release();
     }
   }
 
@@ -180,14 +258,14 @@ export class TransaccionesService {
       estado = transicionarEstado(estado, EventoTransaccion.CREAR);
 
       // 2️⃣ Buscamos el monedero
-      if (!createTransaccioneDebitoDto.idCardMonedero && !createTransaccioneDebitoDto.numeroSerieMonedero   ) {
+      if (!createTransaccioneDebitoDto.idCardMonedero && !createTransaccioneDebitoDto.numeroSerieMonedero) {
         estado = EstadoTransaccion.ERROR;
         throw new BadRequestException('Debe proporcionarse al menos uno de los campos requeridos: número de serie del monedero o ID Card.');
       }
       const monedero = await this.monederoRepository.findOne({
         where: [
-          {numeroSerie: createTransaccioneDebitoDto.numeroSerieMonedero, estatus: 1,},
-          {idCard: createTransaccioneDebitoDto.idCardMonedero, estatus: 1}
+          { numeroSerie: createTransaccioneDebitoDto.numeroSerieMonedero, estatus: 1, },
+          { idCard: createTransaccioneDebitoDto.idCardMonedero, estatus: 1 }
         ],
       });
 
@@ -1000,11 +1078,11 @@ WHERE
       let totalResult;
       let transacciones;
       const offset = (page - 1) * limit;
-      
+
       // Preparar fechas para parámetros SQL
       const fechaInicioParam = `${fechaInicio} 00:00:00`;
       const fechaFinParam = `${fechaFin} 23:59:59`;
-      
+
       // Validar nombres de tablas (whitelist)
       const allowedTables = [
         'TransaccionesDebito',
@@ -1012,11 +1090,11 @@ WHERE
         'HistoricoTransaccionesDebito',
         'HistoricoTransaccionesRecarga'
       ];
-      
+
       if (!allowedTables.includes(entidadDebito) || !allowedTables.includes(entidadRecarga)) {
         throw new BadRequestException('Nombre de tabla inválido');
       }
-      
+
       switch (rol) {
         case 1:
           transacciones = await this.transaccionesrecargaRepository.query(
@@ -3030,6 +3108,116 @@ WHERE tr.IdUsuario = ?   -- 👈 filtro por usuario
       });
     }
 
+  }
+
+  // ========================================
+  // 🔹 LIMPIAR TABLA DE TRABAJO TransaccionesRecarga
+  // ========================================
+  /**
+   * Limpia la tabla TransaccionesRecarga verificando que todos los registros
+   * ya existan en HistoricoTransaccionesRecarga antes de hacer TRUNCATE.
+   * 
+   * Este método se ejecuta mediante cron job a las 02:00 AM diariamente.
+   */
+  async limpiarTransaccionesRecarga(): Promise<void> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // Obtener repositorios dentro de la transacción
+      const transaccionesRecargaRepo = queryRunner.manager.getRepository(TransaccionesRecarga);
+      const historicoTransaccionesRecargaRepo = queryRunner.manager.getRepository(HistoricoTransaccionesRecarga);
+
+      // 1) Obtener todos los registros de TransaccionesRecarga
+      const transaccionesRecarga = await transaccionesRecargaRepo.find();
+
+      if (transaccionesRecarga.length === 0) {
+        // No hay registros que limpiar, finalizar sin transacción
+        await queryRunner.release();
+        console.log('No hay registros en TransaccionesRecarga para limpiar.');
+        return;
+      }
+
+      // 2) Verificar que todos los registros ya existan en HistoricoTransaccionesRecarga
+      // Comparar por campos clave: numeroSerieMonedero, monto, fechaHoraFinal, fhRegistro
+      for (const transaccion of transaccionesRecarga) {
+        const existeEnHistorico = await historicoTransaccionesRecargaRepo.findOne({
+          where: {
+            numeroSerieMonedero: transaccion.numeroSerieMonedero,
+            monto: transaccion.monto,
+            fechaHoraFinal: transaccion.fechaHoraFinal,
+          },
+        });
+
+        if (!existeEnHistorico) {
+          // Si algún registro no existe en histórico, no se puede limpiar
+          await queryRunner.rollbackTransaction();
+          await queryRunner.release();
+          console.warn(
+            `No se puede limpiar TransaccionesRecarga: La transacción con ID ${transaccion.id} no existe en HistoricoTransaccionesRecarga.`,
+          );
+          // Registrar error en bitácora
+          await this.bitacoraLogger.logToBitacora(
+            'Transacciones',
+            `Error al limpiar TransaccionesRecarga: La transacción con ID ${transaccion.id} no existe en histórico.`,
+            'DELETE',
+            { transaccionId: transaccion.id },
+            1, // Usuario del sistema
+            EnumModulos.TRANSACCIONES,
+            EstatusEnumBitcora.ERROR,
+            'La transacción no existe en histórico',
+          );
+          return;
+        }
+      }
+
+      // 3) Todos los registros existen en histórico, proceder con TRUNCATE
+      await queryRunner.query('TRUNCATE TABLE TransaccionesRecarga;');
+
+      // Commit de la transacción
+      await queryRunner.commitTransaction();
+
+      // 4) Registrar en bitácora la limpieza realizada
+      await this.bitacoraLogger.logToBitacora(
+        'Transacciones',
+        `Limpieza automática de TransaccionesRecarga completada. Registros eliminados: ${transaccionesRecarga.length}`,
+        'DELETE',
+        { registrosEliminados: transaccionesRecarga.length },
+        1, // Usuario del sistema
+        EnumModulos.TRANSACCIONES,
+        EstatusEnumBitcora.SUCCESS,
+      );
+
+      console.log(
+        `Limpieza automática de TransaccionesRecarga completada. ${transaccionesRecarga.length} registros eliminados.`,
+      );
+    } catch (error) {
+      // Rollback en caso de error
+      await queryRunner.rollbackTransaction();
+
+      console.error('Error al limpiar TransaccionesRecarga:', error);
+
+      // Registrar error en bitácora
+      await this.bitacoraLogger.logToBitacora(
+        'Transacciones',
+        `Error al limpiar TransaccionesRecarga`,
+        'DELETE',
+        {},
+        1, // Usuario del sistema
+        EnumModulos.TRANSACCIONES,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      );
+
+      throw new InternalServerErrorException({
+        message: 'Error al limpiar la tabla TransaccionesRecarga',
+        error: error.message,
+      });
+    } finally {
+      // Liberar el QueryRunner
+      await queryRunner.release();
+    }
   }
 
 }

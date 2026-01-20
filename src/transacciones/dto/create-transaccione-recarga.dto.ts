@@ -52,20 +52,25 @@ export class CreateTransaccioneRecargaDto {
   @IsOptional()
   longitudFinal?: number;
 
-  @ApiProperty({
-    example: '2025-09-10T12:30:00Z',
-    description: 'Fecha y hora de la transacción en formato ISO8601',
-  })
   @IsDateString()
-  fechaHoraFinal: string;
+  @IsOptional()
+  fechaHoraFinal?: string;
 
   @ApiProperty({
     example: 'MON-0001',
     description: 'Número de serie del monedero',
   })
   @IsString()
-  @IsNotEmpty()
-  numeroSerieMonedero: string;
+  @IsOptional()
+  numeroSerieMonedero?: string;
+
+  @ApiProperty({
+    example: 'MON-0001',
+    description: 'Número ID  único del monedero',
+  })
+  @IsString()
+  @IsOptional()
+  idCardMonedero?: string;
 
   @ApiProperty({
     example: 'DISP-0001',

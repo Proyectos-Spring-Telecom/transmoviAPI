@@ -10,6 +10,8 @@ import { applySchema } from 'src/common/apply-schema.decorator';
 @Index('FK_HistTransRec_NumeroSerieMonedero_idx', ['numeroSerieMonedero'], {})
 @Index('FK_HistTransRec_NumeroSerieDispositivo_idx', ['numeroSerieDispositivo'], {})
 @Index('FK_HistTransRec_CatTiposTransacciones_idx', ['idTipoTransaccion'], {})
+@Index('FK_HistoricoTransaccionesRecarga_CatMetodoPago', ['idMetodoPago'], {})
+@Index('FK_HistoricoTransaccionesRecarga_Usuarios', ['idUsuario'], {})
 @Entity('HistoricoTransaccionesRecarga')
 export class HistoricoTransaccionesRecarga {
   @PrimaryGeneratedColumn({ type: 'bigint', name: 'Id' })
@@ -23,6 +25,9 @@ export class HistoricoTransaccionesRecarga {
 
   @Column('decimal', { name: 'Monto', precision: 10, scale: 2 })
   monto: number;
+
+  @Column('bigint', { name: 'IdMetodoPago', nullable: true })
+  idMetodoPago: number | null;
 
   @Column('decimal', {
     name: 'LatitudFinal',
@@ -58,6 +63,9 @@ export class HistoricoTransaccionesRecarga {
     nullable: true,
   })
   numeroSerieDispositivo: string | null;
+
+  @Column('bigint', { name: 'IdUsuario', nullable: true })
+  idUsuario: number | null;
 
   // -------- RELACIONES --------
 
