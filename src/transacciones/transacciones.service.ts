@@ -128,7 +128,9 @@ export class TransaccionesService {
         );
       }
 
+      const { fechaActual } = await horaDesfasada();
       createTransaccioneRecargaDto.numeroSerieMonedero = monedero.numeroSerie
+      createTransaccioneRecargaDto.fechaHoraFinal = fechaActual;
 
       // 2) Validar que el método de pago existe
       const metodoPago = await catMetodoPagoRepo.findOne({
