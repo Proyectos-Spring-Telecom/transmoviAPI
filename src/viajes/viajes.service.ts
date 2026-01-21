@@ -16,11 +16,14 @@ import {
   ApiResponseCommon,
   EstatusEnumBitcora,
 } from 'src/common/ApiResponse';
-import { EnumModulos, EstatusEnum } from 'src/common/estatus.enum';
+import { EnumControlTarifaIncremental, EnumControlTransacciones, EnumModulos, EstatusEnum } from 'src/common/estatus.enum';
 import { Clientes } from 'src/entities/Clientes';
 import { UpdateViajeDto } from './dto/update-viaje.dto';
 import { ConteoPasajeros } from 'src/entities/ConteoPasajeros';
 import { horaDesfasada } from 'src/utils/correccion-hora';
+import { TransaccionesDebito } from 'src/entities/TransaccionesDebito';
+import { TransaccionesService } from 'src/transacciones/transacciones.service';
+import { calcularDistanciaHastaIndex, calcularDistanciaReal, snapToRoute } from 'src/utils/recorrido.utils';
 
 @Injectable()
 export class ViajesService {
@@ -31,7 +34,10 @@ export class ViajesService {
     private readonly clienteRepository: Repository<Clientes>,
     @InjectRepository(ConteoPasajeros)
     private readonly conteoPasajerosRepository: Repository<ConteoPasajeros>,
+    @InjectRepository(TransaccionesDebito)
+    private readonly transaccionesdebitoRepository: Repository<TransaccionesDebito>,
     private readonly bitacoraLogger: BitacoraLoggerService,
+    private readonly transaccionesService: TransaccionesService,
   ) { }
   // ========================================
   // 🔹 CREAR UN VIAJE
@@ -187,6 +193,43 @@ export class ViajesService {
     }
   }
 
+
+  async findTarifa(idViaje: number) {
+
+    const query = `
+SELECT
+	-- Datos de entidad Viajes
+	v.Id AS idViajes,
+    v.Estatus AS estatusViaje,
+	-- Datos del Turnos
+    tu.Id AS idTurno,
+    tu.Estatus AS estatusTurno,
+    -- Datos del Dispositivos
+    dp.NumeroSerie AS numeroSerieDispositivo,
+    -- Datos de entidad Derrotero
+    d.Id As idDerrotero,
+    d.RecorridoInterpolar AS  recorridoInterpolar,
+    d.DistanciaKm AS distanciaKm,
+    -- Datos de entidad Tarifas
+    t.Id AS idTarifa,
+    t.TarifaBase AS tarifaBase,
+    t.DistanciaBaseKm AS DistanciaBaseKm,
+    t.IncrementoCadaMetros AS incrementoCadaMetros,
+    t.CostoAdicional AS costoAdicional,
+    t.TipoTarifa AS tipoTarifa
+    
+FROM Viajes v
+INNER JOIN Turnos tu ON tu.Id = v.IdTurno
+INNER JOIN Instalaciones i ON i.Id = tu.IdInstalacion
+INNER JOIN Dispositivos dp ON dp.Id = i.IdDispositivo
+INNER JOIN Derroteros d ON d.Id  = v.IdDerrotero
+INNER JOIN Tarifas t ON t.IdDerrotero = d.Id
+
+WHERE v.Id = ${idViaje}
+    `
+    return await this.viajesRepository.query(query);
+  }
+
   // ========================================
   // 🔹 ACTUALIZAR UN VIAJE
   // ========================================
@@ -225,19 +268,7 @@ export class ViajesService {
         throw new UnauthorizedException(`Usuario no autorizado para la generación de viajes.`)
       }
 
-      // 🔹 FUNCIÓN AUXILIAR: Formatea números menores a 10 con un cero a la izquierda
-      function pad(n: number) {
-        return n < 10 ? '0' + n : n;
-      }
-
-      // 🔹 CÁLCULO DE FECHA CON DESFASE HORARIO
-      // Se aplica un desfase de -6 horas al tiempo actual (ajuste de zona horaria)
-      const ahora = new Date();
-      const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas en milisegundos
-      const fechaDesfasada = new Date(ahora.getTime() + desfaseMs);
-      // Formato de fecha para bitácora (string): YYYY-MM-DD HH:mm:ss
-      const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())} ${pad(fechaDesfasada.getHours())}:${pad(fechaDesfasada.getMinutes())}:${pad(fechaDesfasada.getSeconds())}`;
-
+      const { fechaDesfasada, fechaActual } = await horaDesfasada();
       // 🔹 BÚSQUEDA DEL VIAJE: Se valida que el viaje exista
       const viaje = await this.viajesRepository.findOne({ where: { id } });
       if (!viaje) {
@@ -317,6 +348,126 @@ export class ViajesService {
     }
   }
 
+  async viajeCierre(idViaje: number) {
+    try {
+      let montoCalculado;
+      let controlTransaccion;
+      let distancia;
+      let distanciaInicial;
+      let metrosBase;
+
+      // 🔹 BÚSQUEDA DEL VIAJE: Se valida que el viaje exista
+      const viaje = await this.viajesRepository.findOne({ where: { id: idViaje, estatus: EstatusEnum.ACTIVO } });
+      if (!viaje) {
+        throw new NotFoundException(`Viaje con ID ${idViaje} no encontrado`);
+      }
+
+      const transacciones = await this.transaccionesdebitoRepository.find({ where: { idViajes: idViaje, idControlTransaccion: EnumControlTransacciones.ABIERTA } });
+
+      //Proceso en caso de existir transacciones abiertas
+      if (transacciones.length > 0) {
+        const viajeData = await this.findTarifa(idViaje);
+        const {
+          estatusTurno,
+          estatusViaje,
+          recorridoInterpolar,
+          distanciaKm,
+          tarifaBase,
+          DistanciaBaseKm,
+          incrementoCadaMetros,
+          costoAdicional,
+          tipoTarifa
+        } = viajeData[0];
+
+        //Como existe transacciones abiertas, se debe calcular el monto de cada transaccion
+        for (const i of transacciones) {
+          const { latitudInicial, longitudInicial } = i;
+          if (latitudInicial && longitudInicial) {
+            const posicionActual = { lat: latitudInicial, lng: longitudInicial };
+
+            //Buscamos el punto mas que se encuentre nuestro recorrido con snapToRoute
+            const { index, distanciaMetros } = await snapToRoute(
+              posicionActual,
+              recorridoInterpolar
+            );
+
+            //Calculamos la distancia en metros
+            //tomamos el penultimo punto mas cercano a la posicion actual
+            const indexSeguro = Math.max(index - 1, 0);
+
+            //Tomamos del inicio de la ruta hasta el penultimo punto mas cercano
+            const metrosRecorridos = await calcularDistanciaHastaIndex(
+              recorridoInterpolar,
+              indexSeguro
+            );
+
+            //Creamos el arreglo del penultimo punto a la posicion actual
+            const punto = [indexSeguro === 0 ? recorridoInterpolar[index] : recorridoInterpolar[index - 1], posicionActual];
+            //Calculamos la distancia del penultimo punto a la posicion actual con la funcion calcularDistanciaReal
+            let ultimoIndex = await calcularDistanciaReal(punto);
+            //Si la distancia pasa mas de 150 metros solo se queda en 150 metros sino toma la calculada en calcularDistanciaReal
+            ultimoIndex = ultimoIndex > 150 ? 150 : ultimoIndex
+            //Sumamos para obtener el total de distancia desde el inicio de la ruta hasta la posicion actual
+            //Para esos sumamos las distacias del unicio de la ruta al penultimo punto + la distancia del penultimo punto a la posicion actual
+            //Redondeamos el valor a enteros
+            distanciaInicial = Math.round(metrosRecorridos + ultimoIndex)
+            //Obtenemos la distacia restante para verificar el monto que maximo que debe tener el monedero
+            //Para eso distanciaKm lo convertimos en metros que el total de recorrido que tiene nuestra ruta
+            //y le restamos la distanciaInicial anteriormente calculada
+            distancia = Math.round((distanciaKm * 1000) - distanciaInicial);
+            //Convertimos la distanciaBaseKm a metros
+            metrosBase = (DistanciaBaseKm * 1000);
+            //generamos la logica para calcular el monto
+            //Si la distancia (que es la distancia restante) es menor a la distanciaBaseKm el monto es la tarifa base
+            //Si la distancia (que es la distancia restante) es mayor a la distanciaBaseKm el monto es la distancia (que es la distancia restante) - distanciaBaseKm / incrementoCadaMetros * costoAdicional + tarifaBase
+            montoCalculado = distancia <= metrosBase ? tarifaBase : (tarifaBase + (Math.trunc((distancia - metrosBase) / (incrementoCadaMetros))) * costoAdicional);
+            //montoCalculado = tarifaBase;
+            controlTransaccion = EnumControlTransacciones.ABIERTA;
+            console.log(`Penultimo punto: ${indexSeguro}, Cordenadas del Penultimo punto: ${recorridoInterpolar[indexSeguro]},
+              Punto Mas cercano a la posicion recibida: ${index}, Distancia del punto mas cercano a la posicion recibida: ${distanciaMetros},
+              Distacia en metros del inicio de la ruta al penultimo punto: ${metrosRecorridos},
+              La distancia en metros del penultimo punto al posicion actual: ${ultimoIndex},
+              Distancia desde el inicio de la ruta a la posicion actual: ${distanciaInicial},
+              Distancia total de la ruta en metros: ${(distanciaKm * 1000)},
+              Distancia de la posicion inicial a la posicion actual: ${distancia},
+              Distancia base en km: ${DistanciaBaseKm},
+              Distancia base en metros: ${metrosBase},
+              Distancia en metros para el incremento: ${incrementoCadaMetros},
+              Costo adicional por cada incremente: ${costoAdicional},
+              Monto con el calculo: ${montoCalculado}
+              `);
+
+            //fin del proceso
+          }
+        }
+
+      }
+
+    } catch (error) {
+      console.log(error);
+      // Registro en la bitácora FAIL
+      /* const querylogger = { updateViajeDto };
+      await this.bitacoraLogger.logToBitacora(
+        'Viajes',
+        `Error al actualizar el viaje con ID: ${id}`,
+        'UPDATE',
+        querylogger,
+        idUser,
+        EnumModulos.VIAJES,
+        EstatusEnumBitcora.ERROR,
+        error.message,
+      ); */
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Error al actualizar el viaje',
+        error: error.message,
+      });
+    }
+  }
+
   /**
    * Función auxiliar para obtener los clientes hijos de un cliente padre.
    * 
@@ -342,7 +493,7 @@ export class ViajesService {
     const ids = idsFiltrados
       .map((clientesFiltrado: any) => Number(clientesFiltrado.Id))
       .filter(Boolean);
-    
+
     // Si no hay clientes, se retorna un objeto vacío
     if (ids.length === 0) {
       return { data: [] }; // No hay clientes que consultar

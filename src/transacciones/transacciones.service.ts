@@ -102,6 +102,7 @@ export class TransaccionesService {
     await queryRunner.startTransaction();
 
     try {
+      let monedero;
       // Obtener repositorios dentro de la transacción
       const transaccionesRecargaRepo = queryRunner.manager.getRepository(TransaccionesRecarga);
       const historicoTransaccionesRecargaRepo = queryRunner.manager.getRepository(HistoricoTransaccionesRecarga);
@@ -115,12 +116,19 @@ export class TransaccionesService {
       }
 
       // 1) Validar que el monedero existe y está activo
-      const monedero = await this.monederoRepository.findOne({
-        where: [
-          { numeroSerie: createTransaccioneRecargaDto.numeroSerieMonedero, estatus: 1, },
-          { idCard: createTransaccioneRecargaDto.idCardMonedero, estatus: 1 }
-        ],
-      });
+      if (createTransaccioneRecargaDto.idCardMonedero) {
+        monedero = await this.monederoRepository.findOne({
+          where:
+            { idCard: createTransaccioneRecargaDto.idCardMonedero, estatus: 1 }
+        });
+      } else if (createTransaccioneRecargaDto.numeroSerieMonedero) {
+        monedero = await this.monederoRepository.findOne({
+          where:
+            { numeroSerie: createTransaccioneRecargaDto.numeroSerieMonedero, estatus: 1, }
+        });
+      } else {
+        throw new BadRequestException('Debe proporcionarse al menos uno de los campos requeridos: número de serie del monedero o ID Card.');
+      }
 
       if (!monedero) {
         throw new NotFoundException(
@@ -159,7 +167,7 @@ export class TransaccionesService {
         montoFinal,
       );
 
-      
+
 
       // 5) Crear la transacción en TransaccionesRecarga
       const newTransaccion = transaccionesRecargaRepo.create({
@@ -255,7 +263,7 @@ export class TransaccionesService {
     let idUsuario;
 
     try {
-      console.log('Datos del body en el dto: ', createTransaccioneDebitoDto)
+      let monedero;
       // 1️⃣ Cambiamos estado a VALIDANDO_SALDO
       estado = transicionarEstado(estado, EventoTransaccion.CREAR);
 
@@ -264,12 +272,19 @@ export class TransaccionesService {
         estado = EstadoTransaccion.ERROR;
         throw new BadRequestException('Debe proporcionarse al menos uno de los campos requeridos: número de serie del monedero o ID Card.');
       }
-      const monedero = await this.monederoRepository.findOne({
-        where: [
-          { numeroSerie: createTransaccioneDebitoDto.numeroSerieMonedero, estatus: 1, },
-          { idCard: createTransaccioneDebitoDto.idCardMonedero, estatus: 1 }
-        ],
-      });
+      if (createTransaccioneDebitoDto.idCardMonedero) {
+        monedero = await this.monederoRepository.findOne({
+          where:
+            { idCard: createTransaccioneDebitoDto.idCardMonedero, estatus: 1 }
+        });
+      } else if (createTransaccioneDebitoDto.numeroSerieMonedero) {
+        monedero = await this.monederoRepository.findOne({
+          where:
+            { numeroSerie: createTransaccioneDebitoDto.numeroSerieMonedero, estatus: 1, }
+        });
+      } else {
+        throw new BadRequestException('Debe proporcionarse al menos uno de los campos requeridos: número de serie del monedero o ID Card.');
+      }
 
       //controlTransaccion
       if (!monedero) {
@@ -3219,6 +3234,247 @@ WHERE tr.IdUsuario = ?   -- 👈 filtro por usuario
     } finally {
       // Liberar el QueryRunner
       await queryRunner.release();
+    }
+  }
+
+
+  async createTransaccionDebitoByViajes(
+    montoCalculado: number,
+    latitudInicial: number,
+    longitudInicial: number,
+    fechaHoraInicio: Date,
+    distanciaInicial: number,
+    latitudFinal: number,
+    longitudFinal: number,
+    numeroSerieDispositivo: string,
+    idViaje: number,
+    idUser: number,
+    numeroSerieMonedero: string,
+    idCardMonedero?: string,
+  ): Promise<ApiCrudResponse> {
+    let estado: EstadoTransaccion = EstadoTransaccion.INICIADA;
+    let idUsuario;
+
+    try {
+      let monedero;
+      // 1️⃣ Cambiamos estado a VALIDANDO_SALDO
+      estado = transicionarEstado(estado, EventoTransaccion.CREAR);
+
+      // 2️⃣ Buscamos el monedero
+      if (!idCardMonedero && !numeroSerieMonedero) {
+        estado = EstadoTransaccion.ERROR;
+        throw new BadRequestException('Debe proporcionarse al menos uno de los campos requeridos: número de serie del monedero o ID Card.');
+      }
+      if (idCardMonedero) {
+        monedero = await this.monederoRepository.findOne({
+          where:
+            { idCard: idCardMonedero, estatus: 1 }
+        });
+      } else if (numeroSerieMonedero) {
+        monedero = await this.monederoRepository.findOne({
+          where:
+            { numeroSerie: numeroSerieMonedero, estatus: 1, }
+        });
+      } else {
+        throw new BadRequestException('Debe proporcionarse al menos uno de los campos requeridos: número de serie del monedero o ID Card.');
+      }
+
+      //controlTransaccion
+      if (!monedero) {
+        estado = EstadoTransaccion.ERROR;
+        throw new BadRequestException('Monedero no encontrado');
+      }
+
+      numeroSerieMonedero = monedero.numeroSerie
+
+      const query = `
+SELECT 
+    m.Id AS idMonedero,
+    p.Id AS idPasajero,
+    u.Id AS idUsuarioPasajero,
+    u.Nombre AS nombrePasajero,
+    u.ApellidoMaterno AS apellidoMaterno
+FROM
+    Monederos m
+        INNER JOIN
+    Pasajeros p ON m.IdPasajero = p.Id
+        INNER JOIN
+    Usuarios u ON p.Correo = u.UserName
+WHERE
+    m.NumeroSerie = '${numeroSerieMonedero}'
+    `
+      const pasajero = await this.viajesRepository.query(query);
+
+      if (pasajero.length != 0) {
+        const { idUsuarioPasajero } = pasajero[0];
+        idUsuario = idUsuarioPasajero
+      } else {
+        idUsuario = null
+      }
+
+      //Obtenemos el monto con descuento
+      let montoConDescuento = montoCalculado;
+
+      if (monedero.idTipoPasajero) {
+        const tipoPasajero = await this.CatTiposPasajerosRepository.findOne({
+          where: { id: monedero.idTipoPasajero },
+          relations: ['CatTipoDescuento'], // si tienes FK hacia CatTipoDescuento
+        });
+
+        if (tipoPasajero && tipoPasajero.idCatTipoDescuento) {
+          const tipoDescuento = Number(tipoPasajero.idCatTipoDescuento);
+          const cantidad = tipoPasajero.cantidad || 0;
+
+          switch (tipoDescuento) {
+            case Number(EnumTipoDescuento.PORCENTAJE):
+              console.log('Entro a porcentaje');
+              montoConDescuento =
+                montoConDescuento - (montoConDescuento * cantidad) / 100;
+              break;
+            case EnumTipoDescuento.MONETARIO:
+              console.log('Monetario');
+              montoConDescuento = montoConDescuento - cantidad;
+              break;
+            case EnumTipoDescuento.NULO:
+            default:
+              break;
+          }
+        }
+      }
+
+      let montoFinal = Number(monedero.saldo) - montoConDescuento;
+
+      console.log('Monto Final: ', montoFinal, 'Monedero Saldo: ', monedero.saldo, 'Monto Con Descuento: ', montoConDescuento)
+
+      // 4️⃣ Validación de saldo
+      if (montoFinal < 0) {
+        estado = transicionarEstado(
+          estado,
+          EventoTransaccion.SALDO_INSUFICIENTE,
+        );
+        //Obtenemos la fecha con desfase de 6 horas
+        const { fechaDesfasada } = await horaDesfasada();
+
+        // Guardar transacción rechazada
+        const newTransaccion = this.transaccionesdebitoRepository.create(
+          {
+            idTipoTransaccion: EnumTipoTransaccion.RECHAZO,
+            monto: montoConDescuento,
+            idControlTransaccion: EnumControlTransacciones.PAGADO,
+            latitudInicial: latitudInicial,
+            longitudInicial: longitudInicial,
+            fechaHoraInicio: fechaHoraInicio,
+            distanciaInicialKm: distanciaInicial,
+            latitudFinal: latitudFinal,
+            longitudFinal: longitudFinal,
+            fechaHoraFinal: fechaDesfasada,
+            numeroSerieMonedero: numeroSerieMonedero,
+            numeroSerieDispositivo: numeroSerieDispositivo,
+            idViajes: idViaje,
+            idUsuario: idUsuario
+          }
+        );
+        await this.transaccionesdebitoRepository.save(newTransaccion);
+        //se guarda en el historico
+        await this.historicoTransaccionesDebitoRepository.save(newTransaccion);
+
+        // Registrar en bitácora
+        await this.bitacoraLogger.logToBitacora(
+          'Transacciones',
+          `Transacción de débito RECHAZADA por saldo insuficiente`,
+          'CREATE',
+          { newTransaccion },
+          idUser,
+          EnumModulos.TRANSACCIONES,
+          EstatusEnumBitcora.ERROR,
+          'Saldo insuficiente',
+        );
+
+        return {
+          status: 'error',
+          message: 'Transacción creada correctamente',
+          data: {
+            id: Number(newTransaccion.id),
+            nombre: `${monedero.numeroSerie}`,
+          },
+        };
+      }
+
+      // 5️⃣ Si saldo OK, actualizamos el monedero y estado
+
+      //Obtenemos la fecha con desfase de 6 horas
+      const { fechaDesfasada } = await horaDesfasada();
+      //Creamos el body para crear una transaccion
+      const bodyTransaccionDebito = {
+        idTipoTransaccion: EnumTipoTransaccion.DEBITO,
+            monto: montoConDescuento,
+            idControlTransaccion: EnumControlTransacciones.PAGADO,
+            latitudInicial: latitudInicial,
+            longitudInicial: longitudInicial,
+            fechaHoraInicio: fechaHoraInicio,
+            distanciaInicialKm: distanciaInicial,
+            latitudFinal: latitudFinal,
+            longitudFinal: longitudFinal,
+            fechaHoraFinal: fechaDesfasada,
+            numeroSerieMonedero: numeroSerieMonedero,
+            numeroSerieDispositivo: numeroSerieDispositivo,
+            idViajes: idViaje,
+            idUsuario: idUsuario
+      }
+
+      estado = transicionarEstado(estado, EventoTransaccion.SALDO_OK);
+      await this.monederosService.updateMonederoSaldo(
+        numeroSerieMonedero,
+        idUser,
+        montoFinal,
+      );
+      bodyTransaccionDebito.monto = montoConDescuento
+      
+
+      // 6️⃣ Guardamos transacción aprobada
+      const newTransaccion = this.transaccionesdebitoRepository.create(
+        bodyTransaccionDebito,
+      );
+      const transaccionSave =
+        await this.transaccionesdebitoRepository.save(newTransaccion);
+        await this.historicoTransaccionesDebitoRepository.save(newTransaccion);
+
+      //Se guardara la transaccion en el historico de transacciones solamente cuando controltransaccion sea pagado
+
+      // 7️⃣ Bitácora de éxito
+      await this.bitacoraLogger.logToBitacora(
+        'Transacciones',
+        `Transacción de débito APROBADA`,
+        'CREATE',
+        { bodyTransaccionDebito },
+        idUser,
+        EnumModulos.TRANSACCIONES,
+        EstatusEnumBitcora.SUCCESS,
+      );
+
+      // 8️⃣ Finalizamos la transacción
+      estado = transicionarEstado(estado, EventoTransaccion.FINALIZAR);
+
+      return {
+        status: 'success',
+        message: 'Transacción creada correctamente',
+        data: {
+          id: Number(transaccionSave.id),
+          nombre: `${monedero.numeroSerie}`,
+        },
+      };
+    } catch (error) {
+      console.log(error);
+      estado = EstadoTransaccion.ERROR;
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      console.log({ 'TransaccionesDebito': error })
+      if (error instanceof HttpException) throw error;
+
+      throw new InternalServerErrorException(
+        `Error al generar la transacción de débito`,
+      );
     }
   }
 
