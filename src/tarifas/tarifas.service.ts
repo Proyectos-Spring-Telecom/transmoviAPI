@@ -61,11 +61,34 @@ export class TarifasService {
       });
       const tarifaSave = await this.tarifasRepository.save(newTarifas);
 
+      // Verificar si existe una variante de regreso (donde idVarianteIda = idVariante del payload)
+      const varianteRegreso = await this.variantesRepository.findOne({
+        where: { idVarianteIda: createTarifaDto.idVariante },
+      });
+
+      let tarifaRegresoSave: Tarifas | null = null;
+      if (varianteRegreso) {
+        // Crear también la tarifa para la variante de regreso
+        const newTarifaRegreso = this.tarifasRepository.create({
+          ...restDto,
+          tipoTarifa: idTipoTarifa,
+          idVariante: varianteRegreso.id,
+        });
+        tarifaRegresoSave = await this.tarifasRepository.save(newTarifaRegreso);
+      }
+
       // Registro en la bitácora SUCCESS
-      const querylogger = { createTarifaDto };
+      const querylogger: any = { 
+        createTarifaDto, 
+        varianteRegreso: varianteRegreso ? { id: varianteRegreso.id, nombre: varianteRegreso.nombre } : null 
+      };
+      const mensajeBitacora = tarifaRegresoSave
+        ? `Se creó una tarifa con ID: ${tarifaSave.id} y su tarifa de regreso con ID: ${tarifaRegresoSave.id}.`
+        : `Se creó una tarifa con ID: ${tarifaSave.id}.`;
+      
       await this.bitacoraLogger.logToBitacora(
         'Tarifas',
-        `Se creó una tarifa con ID: ${tarifaSave.id}.`,
+        mensajeBitacora,
         'CREATE',
         querylogger,
         idUser,
@@ -74,13 +97,22 @@ export class TarifasService {
       );
 
       // API response
+      const resultData: any = {
+        id: Number(tarifaSave.id),
+        nombre: `Tarifa con ID: ${tarifaSave.id}, tarifa base: ${tarifaSave.tarifaBase}.`,
+      };
+
+      if (tarifaRegresoSave) {
+        resultData.idTarifaRegreso = Number(tarifaRegresoSave.id);
+        resultData.nombreTarifaRegreso = `Tarifa con ID: ${tarifaRegresoSave.id}, tarifa base: ${tarifaRegresoSave.tarifaBase}.`;
+      }
+
       const result: ApiCrudResponse = {
         status: 'success',
-        message: 'La tarifa se creó correctamente.',
-        data: {
-          id: Number(tarifaSave.id),
-          nombre: `Tarifa con ID: ${tarifaSave.id}, tarifa base: ${tarifaSave.tarifaBase}.`,
-        },
+        message: tarifaRegresoSave
+          ? 'La tarifa y su tarifa de regreso se crearon correctamente.'
+          : 'La tarifa se creó correctamente.',
+        data: resultData,
       };
       return result;
     } catch (error) {

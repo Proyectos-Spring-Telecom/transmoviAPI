@@ -20,6 +20,7 @@ import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
 import { UpdateMonederoCatPasajeroDto } from './dto/update-monedero-catpasajero.dto';
 import { UpdateMonederoExtravioDto } from './dto/update-monedero-extravio.dto';
+import { GenerarQRDto } from './dto/generar-qr.dto';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 
 @ApiTags('Monederos')
@@ -49,10 +50,22 @@ export class MonederosController {
   // 🔹 GET ROUTES - Rutas específicas primero
   // ========================================
 
-  @Get('qr/saldo')
-  generarQRConSaldo(@Request() req) {
+  @Post('qr/saldo')
+  @ApiOperation({
+    summary: 'Generar QR con saldo del monedero',
+    description: 'Genera un código QR que contiene el saldo del monedero y el número de pasajes especificado',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'QR generado correctamente',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Pasajero o monedero no encontrado',
+  })
+  generarQRConSaldo(@Body() generarQRDto: GenerarQRDto, @Request() req) {
     const idUsuario = req.user.userId;
-    return this.monederosService.generarQRConSaldo(idUsuario);
+    return this.monederosService.generarQRConSaldo(idUsuario, generarQRDto.numeroPasajes);
   }
 
   @Get('list')

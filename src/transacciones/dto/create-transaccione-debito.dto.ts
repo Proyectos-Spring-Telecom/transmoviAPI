@@ -6,6 +6,8 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  ValidateIf,
+  Min,
 } from 'class-validator';
 
 export class CreateTransaccioneDebitoDto {
@@ -58,4 +60,25 @@ export class CreateTransaccioneDebitoDto {
   @IsBoolean()
   @IsOptional()
   esQR?: boolean = false;
+
+  @ApiPropertyOptional({
+    example: false,
+    description: 'Indica si se deben crear múltiples débitos',
+    required: false,
+    default: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  esMultiple?: boolean = false;
+
+  @ApiPropertyOptional({
+    example: 3,
+    description: 'Cantidad de pasajes a registrar. Solo tiene valor si esMultiple es true',
+    required: false,
+  })
+  @ValidateIf((o) => o.esMultiple === true)
+  @IsInt({ message: 'cantidadPasajes debe ser un número entero' })
+  @Min(1, { message: 'cantidadPasajes debe ser mayor a 0' })
+  @IsNotEmpty({ message: 'cantidadPasajes es obligatorio cuando esMultiple es true' })
+  cantidadPasajes?: number;
 }

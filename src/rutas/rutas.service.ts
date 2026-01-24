@@ -54,8 +54,61 @@ export class RutasService {
       });
       if (!zona) throw new NotFoundException('Zona no encontrada');
 
+      // Si tiene idZonaFin, validar que exista
+      if (createRutaDto.idZonaFin) {
+        const zonaFin = await this.zonasRepository.findOne({
+          where: { id: createRutaDto.idZonaFin },
+        });
+        if (!zonaFin) throw new NotFoundException('Zona final no encontrada');
+      }
+
       const newRuta = this.rutasRepository.create(createRutaDto);
       const rutaSave = await this.rutasRepository.save(newRuta);
+
+      // Si registraRegreso es true, crear la ruta de regreso
+      if (createRutaDto.registraRegreso === true) {
+        const rutaRegresoData = {
+          nombre: `${createRutaDto.nombre} Regreso`,
+          puntoInicio: createRutaDto.puntoFin || null,
+          nombreInicio: createRutaDto.nombreFin || null,
+          puntoFin: createRutaDto.puntoInicio || null,
+          nombreFin: createRutaDto.nombreInicio || null,
+          estatus: createRutaDto.estatus,
+          idZona: createRutaDto.idZonaFin || createRutaDto.idZona, // Si no hay idZonaFin, usar idZona
+          idZonaFin: createRutaDto.idZona,
+          idRutaIda: rutaSave.id,
+        };
+
+        const newRutaRegreso = this.rutasRepository.create(rutaRegresoData);
+        const rutaRegresoSave = await this.rutasRepository.save(newRutaRegreso);
+
+        // Actualizar la ruta original con el idRutaIda
+        rutaSave.idRutaIda = rutaRegresoSave.id;
+        await this.rutasRepository.save(rutaSave);
+
+        // Registro en la bitácora SUCCESS para ambas rutas
+        const querylogger = { createRutaDto, rutaRegreso: rutaRegresoData };
+        await this.bitacoraLogger.logToBitacora(
+          'Rutas',
+          `Se creó una ruta con nombre: ${rutaSave.nombre} (Id ${rutaSave.id}) y su ruta de regreso: ${rutaRegresoSave.nombre} (Id ${rutaRegresoSave.id})`,
+          'CREATE',
+          querylogger,
+          idUser,
+          EnumModulos.RUTAS,
+          EstatusEnumBitcora.SUCCESS,
+        );
+
+        // API response
+        const result: ApiCrudResponse = {
+          status: 'success',
+          message: 'Ruta y ruta de regreso creadas correctamente',
+          data: {
+            id: Number(rutaSave.id),
+            nombre: `Ruta ${rutaSave.id} Nombre: ${rutaSave.nombre}`,
+          },
+        };
+        return result;
+      }
 
       // Registro en la bitácora SUCCESS
       const querylogger = { createRutaDto };

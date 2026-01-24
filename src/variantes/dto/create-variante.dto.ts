@@ -13,6 +13,7 @@ import {
   IsIn,
   IsArray,
   ValidateNested,
+  IsBoolean,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 
@@ -95,6 +96,15 @@ export class CreateVarianteDto {
   @IsPositive({ message: 'El ID de la ruta debe ser un número positivo' })
   @Type(() => Number)
   idRuta: number;
+
+  @ApiPropertyOptional({
+    description: 'Indica si la variante registra regreso',
+    example: false,
+    default: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  registraRegreso?: boolean = false;
 
 }
 

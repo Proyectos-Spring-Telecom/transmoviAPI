@@ -889,12 +889,6 @@ export class TransaccionesService {
         },
       });
 
-      if (transaccionAbierta) {
-        estado = EstadoTransaccion.ERROR;
-        throw new BadRequestException(
-          `No se puede iniciar una nueva transacción. El monedero tiene una transacción abierta pendiente (ID: ${transaccionAbierta.id}). Debe finalizar la transacción vigente antes de iniciar otra.`,
-        );
-      }
 
       // 2.3?? Consulta de informaci?n de instalaci?n, validador, turno, viaje, variante y tarifa usando idViaje
       let infoValidadorViaje: any = null;
@@ -1285,15 +1279,89 @@ export class TransaccionesService {
       }
 
 
-      let montoFinal = Number(monedero.saldo) - montoConDescuento;
+      // Determinar cantidad de pasajes a procesar
+      let cantidadPasajes = 1;
+      if (createTransaccioneDebitoDto.esMultiple) {
+        if (!createTransaccioneDebitoDto.cantidadPasajes || createTransaccioneDebitoDto.cantidadPasajes < 1) {
+          throw new BadRequestException(
+            'Si esMultiple es true, cantidadPasajes es obligatorio y debe ser mayor a 0'
+          );
+        }
+        cantidadPasajes = createTransaccioneDebitoDto.cantidadPasajes;
+      }
 
-      console.log('[TRANSACCIONES] ===== DESCUENTO DEL MONEDERO =====');
-      console.log(`[TRANSACCIONES] Saldo ANTES del descuento: $${Number(monedero.saldo).toFixed(2)}`);
-      console.log(`[TRANSACCIONES] Monto a descontar (con descuentos aplicados): $${montoConDescuento.toFixed(2)}`);
-      console.log(`[TRANSACCIONES] Saldo DESPUÉS del descuento: $${montoFinal.toFixed(2)}`);
+      // Calcular distancia inicial y cobro máximo ANTES de la validación de saldo
+      // Aplicar desfase de -6 horas para la zona horaria
+      const ahora = new Date();
+      const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas en milisegundos
+      const fechaHoraInicio = new Date(ahora.getTime() + desfaseMs);
+      
+      // Calcular distancia inicial desde el punto inicial de la variante
+      const distanciaInicialKm = this.calcularDistanciaInicialKm(
+        variante,
+        createTransaccioneDebitoDto.latitud,
+        createTransaccioneDebitoDto.longitud,
+        {
+          tarifaBase: tarifaInfo.TarifaBase ? Number(tarifaInfo.TarifaBase) : undefined,
+          costoAdicional: tarifaInfo.CostoAdicional ? Number(tarifaInfo.CostoAdicional) : undefined,
+          distanciaBaseKm: tarifaInfo.DistanciaBaseKm ? Number(tarifaInfo.DistanciaBaseKm) : undefined,
+          incrementoCadaMetros: tarifaInfo.IncrementoCadaMetros ? Number(tarifaInfo.IncrementoCadaMetros) : undefined,
+          tipoTarifa: tarifaInfo.TipoTarifa ? Number(tarifaInfo.TipoTarifa) : undefined,
+        },
+      );
+      
+      // Asegurar que el valor sea un n?mero v?lido
+      const distanciaInicialKmFinal = (typeof distanciaInicialKm === 'number' && !isNaN(distanciaInicialKm)) 
+        ? parseFloat(distanciaInicialKm.toFixed(2)) 
+        : 0;
+      
+      // Calcular cobro máximo (necesario para validación de tarifas ABIERTA)
+      const cobroMaximo = this.calcularCobroMaximo(
+        variante,
+        {
+          tarifaBase: tarifaInfo.TarifaBase ? Number(tarifaInfo.TarifaBase) : undefined,
+          costoAdicional: tarifaInfo.CostoAdicional ? Number(tarifaInfo.CostoAdicional) : undefined,
+          distanciaBaseKm: tarifaInfo.DistanciaBaseKm ? Number(tarifaInfo.DistanciaBaseKm) : undefined,
+          incrementoCadaMetros: tarifaInfo.IncrementoCadaMetros ? Number(tarifaInfo.IncrementoCadaMetros) : undefined,
+          tipoTarifa: tarifaInfo.TipoTarifa ? Number(tarifaInfo.TipoTarifa) : undefined,
+        },
+        createTransaccioneDebitoDto.latitud,
+        createTransaccioneDebitoDto.longitud,
+      );
+
+      // Calcular monto total a validar según el tipo de tarifa
+      // Para tarifa FIJA: usar montoConDescuento
+      // Para tarifa ABIERTA: usar cobroMaximo
+      let montoTotalAValidar: number;
+      if (tipoTarifa === EnumTipoTarifa.FIJA) {
+        montoTotalAValidar = montoConDescuento * cantidadPasajes;
+      } else if (tipoTarifa === EnumTipoTarifa.ABIERTA) {
+        // Para tarifas ABIERTA, validar usando el monto máximo a cobrar
+        montoTotalAValidar = (cobroMaximo || 0) * cantidadPasajes;
+      } else {
+        // Por defecto, usar montoConDescuento
+        montoTotalAValidar = montoConDescuento * cantidadPasajes;
+      }
+
+      let montoFinal = Number(monedero.saldo) - montoTotalAValidar;
+
+      console.log('[TRANSACCIONES] ===== VALIDACIÓN DE SALDO =====');
+      console.log(`[TRANSACCIONES] Saldo actual: $${Number(monedero.saldo).toFixed(2)}`);
+      console.log(`[TRANSACCIONES] Tipo de tarifa: ${tipoTarifa === EnumTipoTarifa.FIJA ? 'FIJA' : tipoTarifa === EnumTipoTarifa.ABIERTA ? 'ABIERTA' : 'OTRO'}`);
+      console.log(`[TRANSACCIONES] Cantidad de pasajes: ${cantidadPasajes}`);
+      if (tipoTarifa === EnumTipoTarifa.FIJA) {
+        console.log(`[TRANSACCIONES] Monto por pasaje (con descuentos): $${montoConDescuento.toFixed(2)}`);
+        console.log(`[TRANSACCIONES] Monto total a validar: $${montoTotalAValidar.toFixed(2)}`);
+      } else if (tipoTarifa === EnumTipoTarifa.ABIERTA) {
+        console.log(`[TRANSACCIONES] Cobro máximo por pasaje: $${(cobroMaximo || 0).toFixed(2)}`);
+        console.log(`[TRANSACCIONES] Monto total a validar (cobro máximo × pasajes): $${montoTotalAValidar.toFixed(2)}`);
+      }
+      console.log(`[TRANSACCIONES] Saldo después de validación: $${montoFinal.toFixed(2)}`);
       console.log('[TRANSACCIONES] =============================================');
 
-      // 4?? Validaci?n de saldo
+      // 4?? Validaci?n de saldo - Aplica para ambos tipos de tarifa
+      // Para tarifa FIJA: valida con montoConDescuento
+      // Para tarifa ABIERTA: valida con cobroMaximo
       if (montoFinal < 0) {
         estado = transicionarEstado(
           estado,
@@ -1301,48 +1369,9 @@ export class TransaccionesService {
         );
 
         // Guardar transacci?n rechazada
-        // Mapear latitud/longitud a latitudInicial/longitudInicial
-        // Aplicar desfase de -6 horas para la zona horaria
-        const ahora = new Date();
-        const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas en milisegundos
-        const fechaHoraInicio = new Date(ahora.getTime() + desfaseMs);
-        
-        // Calcular distancia inicial desde el punto inicial de la variante
-        const distanciaInicialKm = this.calcularDistanciaInicialKm(
-          variante,
-          createTransaccioneDebitoDto.latitud,
-          createTransaccioneDebitoDto.longitud,
-          {
-            tarifaBase: tarifaInfo.TarifaBase ? Number(tarifaInfo.TarifaBase) : undefined,
-            costoAdicional: tarifaInfo.CostoAdicional ? Number(tarifaInfo.CostoAdicional) : undefined,
-            distanciaBaseKm: tarifaInfo.DistanciaBaseKm ? Number(tarifaInfo.DistanciaBaseKm) : undefined,
-            incrementoCadaMetros: tarifaInfo.IncrementoCadaMetros ? Number(tarifaInfo.IncrementoCadaMetros) : undefined,
-            tipoTarifa: tarifaInfo.TipoTarifa ? Number(tarifaInfo.TipoTarifa) : undefined,
-          },
-        );
-        
-        // Asegurar que el valor sea un n?mero v?lido
-        const distanciaInicialKmFinal = (typeof distanciaInicialKm === 'number' && !isNaN(distanciaInicialKm)) 
-          ? parseFloat(distanciaInicialKm.toFixed(2)) 
-          : 0;
-        
-        // Calcular cobro máximo solo si es tarifa INCREMENTAL (tipoTarifa === 2)
-        const cobroMaximoRechazo = this.calcularCobroMaximo(
-          variante,
-          {
-            tarifaBase: tarifaInfo.TarifaBase ? Number(tarifaInfo.TarifaBase) : undefined,
-            costoAdicional: tarifaInfo.CostoAdicional ? Number(tarifaInfo.CostoAdicional) : undefined,
-            distanciaBaseKm: tarifaInfo.DistanciaBaseKm ? Number(tarifaInfo.DistanciaBaseKm) : undefined,
-            incrementoCadaMetros: tarifaInfo.IncrementoCadaMetros ? Number(tarifaInfo.IncrementoCadaMetros) : undefined,
-            tipoTarifa: tarifaInfo.TipoTarifa ? Number(tarifaInfo.TipoTarifa) : undefined,
-          },
-          createTransaccioneDebitoDto.latitud,
-          createTransaccioneDebitoDto.longitud,
-        );
-
         const newTransaccion = this.transaccionesdebitoRepository.create({
           idTipoTransaccion: EnumTipoTransaccion.RECHAZO,
-          monto: montoConDescuento,
+          monto: montoTotalAValidar, // Monto total que se intentó validar
           controlTransaccion: EnumControlTransacciones.PAGADO,
           latitudInicial: createTransaccioneDebitoDto.latitud,
           longitudInicial: createTransaccioneDebitoDto.longitud,
@@ -1353,9 +1382,10 @@ export class TransaccionesService {
           numeroTransbordo,
           idViaje: idViaje,
           esQR: createTransaccioneDebitoDto.esQR ? 1 : 0,
-          cobroMaximo: cobroMaximoRechazo,
+          cobroMaximo: cobroMaximo,
           descuentoTransbordo: costoTransbordo !== null && costoTransbordo !== undefined ? parseFloat(costoTransbordo.toFixed(2)) : null,
           tipoDescuentoTransbordo: tipoDescuentoTransbordo !== null && tipoDescuentoTransbordo !== undefined ? Number(tipoDescuentoTransbordo) : null,
+          esMultiple: createTransaccioneDebitoDto.esMultiple ? 1 : 0,
         });
         await this.transaccionesdebitoRepository.save(newTransaccion);
         
@@ -1363,22 +1393,41 @@ export class TransaccionesService {
         await this.historicoTransaccionesDebitoRepository.save(newTransaccion);
 
         // Registrar en bit?cora
+        const tipoTarifaTexto = tipoTarifa === EnumTipoTarifa.FIJA ? 'FIJA' : tipoTarifa === EnumTipoTarifa.ABIERTA ? 'ABIERTA' : 'OTRO';
+        const mensajeRechazo = cantidadPasajes > 1 
+          ? `${cantidadPasajes} transacciones de débito RECHAZADAS por saldo insuficiente (Tarifa ${tipoTarifaTexto})`
+          : `Transacción de débito RECHAZADA por saldo insuficiente (Tarifa ${tipoTarifaTexto})`;
+        
+        const detalleMonto = tipoTarifa === EnumTipoTarifa.ABIERTA
+          ? `cobro máximo de $${(cobroMaximo || 0).toFixed(2)} por pasaje`
+          : `monto de $${montoConDescuento.toFixed(2)} por pasaje`;
+        
         await this.bitacoraLogger.logToBitacora(
           'Transacciones',
-          `Transacci?n de d?bito RECHAZADA por saldo insuficiente`,
+          mensajeRechazo,
           'CREATE',
           { createTransaccioneDebitoDto },
           idUser,
           EnumModulos.TRANSACCIONES,
           EstatusEnumBitcora.ERROR,
-          'Saldo insuficiente',
+          `Saldo insuficiente. Se intentó validar $${montoTotalAValidar.toFixed(2)} (${cantidadPasajes} pasaje${cantidadPasajes > 1 ? 's' : ''} con ${detalleMonto})`,
         );
 
-        throw new BadRequestException('Saldo insuficiente');
+        const mensajeError = tipoTarifa === EnumTipoTarifa.ABIERTA
+          ? `Saldo insuficiente. Se requiere $${montoTotalAValidar.toFixed(2)} para ${cantidadPasajes} pasaje${cantidadPasajes > 1 ? 's' : ''} (cobro máximo: $${(cobroMaximo || 0).toFixed(2)} por pasaje)`
+          : `Saldo insuficiente. Se requiere $${montoTotalAValidar.toFixed(2)} para ${cantidadPasajes} pasaje${cantidadPasajes > 1 ? 's' : ''} (monto: $${montoConDescuento.toFixed(2)} por pasaje)`;
+
+        throw new BadRequestException(mensajeError);
       }
 
       // 5?? Si saldo OK, actualizamos el monedero y estado
       estado = transicionarEstado(estado, EventoTransaccion.SALDO_OK);
+      
+      // Calcular monto total a descontar para actualización del saldo (solo para tarifas PAGADAS)
+      // Para tarifas FIJA: usar montoConDescuento
+      // Para tarifas ABIERTA: no se descuenta el saldo todavía
+      const montoTotalADescontar = montoConDescuento * cantidadPasajes;
+      let montoFinalParaMonedero = Number(monedero.saldo) - montoTotalADescontar;
       
       // Solo actualizar el saldo del monedero si la transacci?n es PAGADO
       // Si es ABIERTA, no se descuenta el saldo todav?a
@@ -1386,13 +1435,13 @@ export class TransaccionesService {
       if (controlTransaccion === EnumControlTransacciones.PAGADO) {
         console.log('[TRANSACCIONES] ===== ACTUALIZANDO SALDO DEL MONEDERO =====');
         console.log(`[TRANSACCIONES] Número de serie del monedero: ${createTransaccioneDebitoDto.numeroSerieMonedero}`);
-        console.log(`[TRANSACCIONES] Saldo que se va a guardar en el monedero: $${montoFinal.toFixed(2)}`);
+        console.log(`[TRANSACCIONES] Saldo que se va a guardar en el monedero: $${montoFinalParaMonedero.toFixed(2)}`);
         console.log(`[TRANSACCIONES] Control transacción: PAGADO`);
         
         await this.monederosService.updateMonederoSaldo(
           createTransaccioneDebitoDto.numeroSerieMonedero,
           idUser,
-          montoFinal,
+          montoFinalParaMonedero,
         );
         
         console.log('[TRANSACCIONES] Saldo del monedero actualizado exitosamente');
@@ -1420,118 +1469,71 @@ export class TransaccionesService {
         }
       }
 
-      // 6?? Guardamos transacci?n aprobada
-      // Mapear latitud/longitud a latitudInicial/longitudInicial
-      // Aplicar desfase de -6 horas para la zona horaria
-      const ahora = new Date();
-      const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas en milisegundos
-      const fechaHoraInicio = new Date(ahora.getTime() + desfaseMs);
+      // 6?? Guardamos transacci?n(es) aprobada(s)
+      const transaccionesCreadas: number[] = [];
       
-      // Calcular distancia inicial desde el punto inicial de la variante
-      const distanciaInicialKm = this.calcularDistanciaInicialKm(
-        variante,
-        createTransaccioneDebitoDto.latitud,
-        createTransaccioneDebitoDto.longitud,
-        {
-          tarifaBase: tarifaInfo.TarifaBase ? Number(tarifaInfo.TarifaBase) : undefined,
-          costoAdicional: tarifaInfo.CostoAdicional ? Number(tarifaInfo.CostoAdicional) : undefined,
-          distanciaBaseKm: tarifaInfo.DistanciaBaseKm ? Number(tarifaInfo.DistanciaBaseKm) : undefined,
-          incrementoCadaMetros: tarifaInfo.IncrementoCadaMetros ? Number(tarifaInfo.IncrementoCadaMetros) : undefined,
-        },
-      );
-      
-      // Asegurar que el valor sea un n?mero v?lido
-      const distanciaInicialKmFinal = (typeof distanciaInicialKm === 'number' && !isNaN(distanciaInicialKm)) 
-        ? parseFloat(distanciaInicialKm.toFixed(2)) 
-        : 0;
-      
-      // Calcular cobro máximo solo si es tarifa INCREMENTAL (tipoTarifa === 2)
-      // Usar las coordenadas iniciales de la transacción para calcular la distancia restante hasta el último punto
-      const cobroMaximo = this.calcularCobroMaximo(
-        variante,
-        {
-          tarifaBase: tarifaInfo.TarifaBase ? Number(tarifaInfo.TarifaBase) : undefined,
-          costoAdicional: tarifaInfo.CostoAdicional ? Number(tarifaInfo.CostoAdicional) : undefined,
-          distanciaBaseKm: tarifaInfo.DistanciaBaseKm ? Number(tarifaInfo.DistanciaBaseKm) : undefined,
-          incrementoCadaMetros: tarifaInfo.IncrementoCadaMetros ? Number(tarifaInfo.IncrementoCadaMetros) : undefined,
-          tipoTarifa: tarifaInfo.TipoTarifa ? Number(tarifaInfo.TipoTarifa) : undefined,
-        },
-        createTransaccioneDebitoDto.latitud,
-        createTransaccioneDebitoDto.longitud,
-      );
-      
-      const newTransaccion = this.transaccionesdebitoRepository.create({
-        idTipoTransaccion: EnumTipoTransaccion.DEBITO,
-        monto: montoAGuardar,
-        controlTransaccion: controlTransaccion,
-        latitudInicial: createTransaccioneDebitoDto.latitud,
-        longitudInicial: createTransaccioneDebitoDto.longitud,
-        distanciaInicialKm: distanciaInicialKmFinal,
-        fechaHoraInicio: fechaHoraInicio,
-        numeroSerieMonedero: createTransaccioneDebitoDto.numeroSerieMonedero,
-        numeroSerieValidador: createTransaccioneDebitoDto.numeroSerieValidador,
-        numeroTransbordo,
-        idViaje: idViaje,
-        esQR: createTransaccioneDebitoDto.esQR ? 1 : 0,
-        cobroMaximo: cobroMaximo,
-        descuentoTransbordo: costoTransbordo !== null && costoTransbordo !== undefined ? parseFloat(costoTransbordo.toFixed(2)) : null,
-        tipoDescuentoTransbordo: tipoDescuentoTransbordo !== null && tipoDescuentoTransbordo !== undefined ? Number(tipoDescuentoTransbordo) : null,
-      });
-      const transaccionSave =
-        await this.transaccionesdebitoRepository.save(newTransaccion);
-      
-      let transaccionSaveHis;
+      // Crear múltiples débitos si esMultiple es true
+      for (let i = 0; i < cantidadPasajes; i++) {
+        const newTransaccion = this.transaccionesdebitoRepository.create({
+          idTipoTransaccion: EnumTipoTransaccion.DEBITO,
+          monto: montoAGuardar,
+          controlTransaccion: controlTransaccion,
+          latitudInicial: createTransaccioneDebitoDto.latitud,
+          longitudInicial: createTransaccioneDebitoDto.longitud,
+          distanciaInicialKm: distanciaInicialKmFinal,
+          fechaHoraInicio: fechaHoraInicio,
+          numeroSerieMonedero: createTransaccioneDebitoDto.numeroSerieMonedero,
+          numeroSerieValidador: createTransaccioneDebitoDto.numeroSerieValidador,
+          numeroTransbordo,
+          idViaje: idViaje,
+          esQR: createTransaccioneDebitoDto.esQR ? 1 : 0,
+          cobroMaximo: cobroMaximo,
+          descuentoTransbordo: costoTransbordo !== null && costoTransbordo !== undefined ? parseFloat(costoTransbordo.toFixed(2)) : null,
+          tipoDescuentoTransbordo: tipoDescuentoTransbordo !== null && tipoDescuentoTransbordo !== undefined ? Number(tipoDescuentoTransbordo) : null,
+          esMultiple: createTransaccioneDebitoDto.esMultiple ? 1 : 0,
+        });
+        
+        const transaccionSave = await this.transaccionesdebitoRepository.save(newTransaccion);
+        transaccionesCreadas.push(Number(transaccionSave.id));
 
-      //Se guardara la transaccion en el historico de transacciones solamente cuando controltransaccion sea pagado
-      if (controlTransaccion === EnumControlTransacciones.PAGADO) {
-        transaccionSaveHis =
+        // Se guardará la transacción en el historico de transacciones solamente cuando controltransaccion sea pagado
+        if (controlTransaccion === EnumControlTransacciones.PAGADO) {
           await this.historicoTransaccionesDebitoRepository.save(newTransaccion);
-        // 7?? Bit?cora de ?xito //controltransaccion pagado----
-        await this.bitacoraLogger.logToBitacora(
-          'Transacciones',
-          `Transacci?n de d?bito APROBADA`,
-          'CREATE',
-          { createTransaccioneDebitoDto },
-          idUser,
-          EnumModulos.TRANSACCIONES,
-          EstatusEnumBitcora.SUCCESS,
-        );
-
-        // 8?? Finalizamos la transacci?n //controltransaccion pagado----
-        estado = transicionarEstado(estado, EventoTransaccion.FINALIZAR);
-
-        return {
-          status: 'success',
-          message: 'Transacci?n creada correctamente',
-          data: {
-            id: Number(transaccionSaveHis.id) || Number(transaccionSave.id),
-            nombre: `${monedero.numeroSerie}`,
-          },
-        };
-      } else {
-        // 7?? Bit?cora de ?xito para transacciones ABIERTAS
-        await this.bitacoraLogger.logToBitacora(
-          'Transacciones',
-          `Transacci?n de d?bito APROBADA (ABIERTA)`,
-          'CREATE',
-          { createTransaccioneDebitoDto },
-          idUser,
-          EnumModulos.TRANSACCIONES,
-          EstatusEnumBitcora.SUCCESS,
-        );
-
-        // 8?? Finalizamos la transacci?n
-        estado = transicionarEstado(estado, EventoTransaccion.FINALIZAR);
-
-        return {
-          status: 'success',
-          message: 'Transacci?n creada correctamente',
-          data: {
-            id: Number(transaccionSave.id),
-            nombre: `${monedero?.numeroSerie || createTransaccioneDebitoDto.numeroSerieMonedero}`,
-          },
-        };
+        }
       }
+
+      // 7?? Bit?cora de ?xito
+      const mensajeBitacora = cantidadPasajes > 1 
+        ? `${cantidadPasajes} transacciones de débito APROBADAS` 
+        : `Transacción de débito APROBADA${controlTransaccion === EnumControlTransacciones.ABIERTA ? ' (ABIERTA)' : ''}`;
+      
+      await this.bitacoraLogger.logToBitacora(
+        'Transacciones',
+        mensajeBitacora,
+        'CREATE',
+        { createTransaccioneDebitoDto },
+        idUser,
+        EnumModulos.TRANSACCIONES,
+        EstatusEnumBitcora.SUCCESS,
+      );
+
+      // 8?? Finalizamos la transacci?n
+      estado = transicionarEstado(estado, EventoTransaccion.FINALIZAR);
+
+      const mensajeRespuesta = cantidadPasajes > 1 
+        ? `${cantidadPasajes} transacciones creadas correctamente`
+        : 'Transacción creada correctamente';
+
+      return {
+        status: 'success',
+        message: mensajeRespuesta,
+        data: {
+          id: transaccionesCreadas[0], // ID de la primera transacción
+          ids: cantidadPasajes > 1 ? transaccionesCreadas : undefined, // IDs de todas las transacciones si hay múltiples
+          cantidadPasajes: cantidadPasajes,
+          nombre: `${monedero?.numeroSerie || createTransaccioneDebitoDto.numeroSerieMonedero}`,
+        },
+      };
     } catch (error) {
       estado = EstadoTransaccion.ERROR;
       if (error instanceof HttpException) {
@@ -1542,7 +1544,7 @@ export class TransaccionesService {
       const querylogger = { createTransaccioneDebitoDto };
       await this.bitacoraLogger.logToBitacora(
         'Transacciones',
-        `Error en transacci?n de d?bito`,
+        `Error en transacción de d?bito`,
         'CREATE',
         querylogger,
         idUser,
@@ -1554,7 +1556,7 @@ export class TransaccionesService {
       if (error instanceof HttpException) throw error;
 
       throw new InternalServerErrorException(
-        `Error al generar la transacci?n de d?bito`,
+        `Error al generar la transacción de débito`,
       );
     }
   }

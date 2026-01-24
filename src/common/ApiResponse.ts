@@ -28,6 +28,8 @@ export interface ApiCrudResponse {
 export interface ApiData {
   id: number;
   nombre: string;
+  ids?: number[];
+  cantidadPasajes?: number;
 }
 
 export interface ApiEstatus {

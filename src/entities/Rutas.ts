@@ -55,6 +55,9 @@ export class Rutas {
   @Column("bigint", { name: "IdZonaFin", nullable: true })
   idZonaFin: number | null;
 
+  @Column("bigint", { name: "IdRutaIda", nullable: true })
+  idRutaIda: number | null;
+
   @OneToMany(() => Variantes, (variantes) => variantes.idRuta2)
   variantes: Variantes[];
 

@@ -62,6 +62,9 @@ fechaActualizacion: Date;
   @Column("bigint", { name: "IdRuta" })
   idRuta: number;
 
+  @Column("bigint", { name: "IdVarianteIda", nullable: true })
+  idVarianteIda: number | null;
+
   @ManyToOne(() => Rutas, (rutas) => rutas.variantes, {
     onDelete: "NO ACTION",
     onUpdate: "NO ACTION",

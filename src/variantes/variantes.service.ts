@@ -56,6 +56,69 @@ export class VariantesService {
 
       const varianteSave = await this.variantesRepository.save(newVariante);
 
+      // Si registraRegreso es true, crear la variante de regreso
+      if (createVarianteDto.registraRegreso === true) {
+        // Hacer una copia del recorridoDetallado y aplicar reverse
+        const recorridoDetalladoRegreso = [...puntos].reverse();
+
+        // Crear datos de la variante de regreso
+        const varianteRegresoData = {
+          nombre: `${createVarianteDto.nombre} Regreso`,
+          puntoInicio: createVarianteDto.puntoFin || null,
+          puntoFin: createVarianteDto.puntoInicio || null,
+          recorridoDetallado: recorridoDetalladoRegreso,
+          distanciaKm: createVarianteDto.distanciaKm || null,
+          estatus: createVarianteDto.estatus || 1,
+          idRuta: createVarianteDto.idRuta,
+          idVarianteIda: varianteSave.id,
+        };
+
+        const newVarianteRegreso =
+          await this.variantesRepository.create(varianteRegresoData);
+
+        // Aplicar interpolación a la variante de regreso
+        const { recorridoDetallado: recorridoInterpolarRegreso, distanciaKm: distanciaKmRegreso } =
+          await generarRecorridoDetallado(recorridoDetalladoRegreso as any);
+
+        newVarianteRegreso.recorridoInterpolar = recorridoInterpolarRegreso;
+        if (distanciaKmRegreso) {
+          newVarianteRegreso.distanciaKm = distanciaKmRegreso;
+        }
+
+        const varianteRegresoSave = await this.variantesRepository.save(newVarianteRegreso);
+
+        // Actualizar la variante original con el idVarianteIda
+        varianteSave.idVarianteIda = varianteRegresoSave.id;
+        await this.variantesRepository.save(varianteSave);
+
+        // Registro en la bitácora SUCCESS para ambas variantes
+        const querylogger = { createVarianteDto, varianteRegreso: varianteRegresoData };
+        await this.bitacoraLogger.logToBitacora(
+          'Variantes',
+          `Se creó un Variante con nombre: ${varianteSave.nombre} (Id: ${varianteSave.id}) y su variante de regreso: ${varianteRegresoSave.nombre} (Id: ${varianteRegresoSave.id})`,
+          'CREATE',
+          querylogger,
+          idUser,
+          18,
+          EstatusEnumBitcora.SUCCESS,
+        );
+
+        // API response
+        const result: any = {
+          status: 'succes',
+          message: 'Se creo correctamente Variante y variante de regreso',
+          id: Number(varianteSave.id),
+          nombre: varianteSave.nombre,
+          distancia: Number(varianteSave.distanciaKm),
+          estatus: varianteSave.estatus,
+          idVarianteIda: Number(varianteRegresoSave.id),
+          nombreVarianteRegreso: varianteRegresoSave.nombre,
+          distanciaVarianteRegreso: Number(varianteRegresoSave.distanciaKm),
+        };
+
+        return result;
+      }
+
       // Registro en la bitácora SUCCESS
       const querylogger = { createVarianteDto };
       await this.bitacoraLogger.logToBitacora(

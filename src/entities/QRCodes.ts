@@ -44,6 +44,9 @@ export class QRCodes {
   })
   fechaActualizacion: Date;
 
+  @Column('int', { name: 'NumeroPasajes', nullable: true })
+  numeroPasajes: number | null;
+
   @ManyToOne(() => Pasajeros, (pasajeros) => pasajeros, {
     onDelete: 'NO ACTION',
     onUpdate: 'NO ACTION',

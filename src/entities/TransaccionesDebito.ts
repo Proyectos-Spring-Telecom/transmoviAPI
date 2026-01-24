@@ -82,6 +82,9 @@ export class TransaccionesDebito {
   @Column('bigint', { name: 'TipoDescuentoTransbordo', nullable: true })
   tipoDescuentoTransbordo: number | null;
 
+  @Column('tinyint', { name: 'EsMultiple', nullable: true })
+  esMultiple: number | null;
+
   @ManyToOne(() => Viajes, (viajes) => viajes, {
     onDelete: 'NO ACTION',
     onUpdate: 'NO ACTION',

@@ -1561,7 +1561,7 @@ ORDER BY m.Id DESC;
   // ========================================
   // 🔹 GENERAR QR CON SALDO DEL MONEDERO
   // ========================================
-  async generarQRConSaldo(idUsuario: number) {
+  async generarQRConSaldo(idUsuario: number, numeroPasajes: number) {
     try {
       // Buscar el pasajero asociado al usuario
       const pasajero = await this.pasajeroRepository.findOne({
@@ -1609,12 +1609,13 @@ ORDER BY m.Id DESC;
           // Necesitamos extraer el JSON del QR para comparar el saldo
           // El QR fue generado con: JSON.stringify({ saldo, numeroSerie, idMonedero, idPasajero })
           
-          // Generar el JSON esperado con el saldo actual
+          // Generar el JSON esperado con el saldo actual y numeroPasajes
           const qrDataEsperado = JSON.stringify({
             saldo: saldo,
             numeroSerie: monedero.numeroSerie,
             idMonedero: monedero.id,
             idPasajero: pasajero.id,
+            numeroPasajes: numeroPasajes,
           });
 
           // Generar un QR temporal con el saldo actual para comparar
@@ -1631,8 +1632,12 @@ ORDER BY m.Id DESC;
           const qrExistenteInicio = qrExistente.qrCodeBase64.substring(0, 500);
           const qrTemporalInicio = qrTemporal.substring(0, 500);
 
-          // Si son muy similares, el saldo probablemente no cambió
-          if (qrExistenteInicio === qrTemporalInicio) {
+          // Verificar también si el numeroPasajes coincide con el QR existente
+          // Si el numeroPasajes cambió, necesitamos generar un nuevo QR
+          const numeroPasajesCoincide = qrExistente.numeroPasajes === numeroPasajes;
+          
+          // Si son muy similares y el numeroPasajes coincide, devolver el QR existente
+          if (qrExistenteInicio === qrTemporalInicio && numeroPasajesCoincide) {
             return {
               status: 'success',
               message: 'QR existente devuelto correctamente.',
@@ -1641,6 +1646,7 @@ ORDER BY m.Id DESC;
                 saldo: saldo,
                 numeroSerie: monedero.numeroSerie,
                 idQR: qrExistente.id,
+                numeroPasajes: numeroPasajes,
               },
             };
           }
@@ -1667,6 +1673,7 @@ ORDER BY m.Id DESC;
         numeroSerie: monedero.numeroSerie,
         idMonedero: monedero.id,
         idPasajero: pasajero.id,
+        numeroPasajes: numeroPasajes,
       });
 
       // Generar el QR en base64
@@ -1682,6 +1689,7 @@ ORDER BY m.Id DESC;
         qrCodeBase64: qrCodeBase64,
         fhRegistro: new Date(),
         estatus: EstatusEnum.ACTIVO,
+        numeroPasajes: numeroPasajes,
       });
       await this.qrCodesRepository.save(nuevoQR);
 
@@ -1694,6 +1702,7 @@ ORDER BY m.Id DESC;
           saldo: saldo,
           numeroSerie: monedero.numeroSerie,
           idQR: nuevoQR.id,
+          numeroPasajes: numeroPasajes,
         },
       };
     } catch (error) {
