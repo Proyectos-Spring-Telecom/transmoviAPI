@@ -27,7 +27,7 @@ export class MailService {
     token: string,
     codigo: string,
   ) {
-    const url = `https://transmovi.mx/transmoviDev/#/account/verify?token=${token}`;
+    const url = `https://transmovi.mx/transmoviDev/#/verify?token=${token}`;
     await this.transporter.sendMail({
       from: `<${process.env.E_MAIL}>`,
       to,
@@ -132,7 +132,7 @@ export class MailService {
   }
 
   async sendResetPasswordEmail(to: string, name: string, token: string, codigo: string) {
-    const url = `https://transmovi.mx/transmoviDev/#/account/signup?token=${token}`;
+    const url = `https://transmovi.mx/transmoviDev/#/signup?token=${token}`;
     // 👆 Este debe apuntar a tu frontend Angular (puedes ajustarlo a localhost:3000 si haces la prueba desde backend)
 
     await this.transporter.sendMail({
