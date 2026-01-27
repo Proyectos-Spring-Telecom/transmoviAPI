@@ -22,6 +22,7 @@ import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import { UsuariosZonas } from 'src/entities/UsuariosZonas';
 import { UpdateVariantesEstatusDto } from './dto/update-variante-estatus.dto';
 import { Clientes } from 'src/entities/Clientes';
+import { CatTipoVariante } from 'src/entities/CatTipoVariante';
 
 @Injectable()
 export class VariantesService {
@@ -34,6 +35,8 @@ export class VariantesService {
     private readonly variantesRepository: Repository<Variantes>,
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
+    @InjectRepository(CatTipoVariante)
+    private readonly catTipoVarianteRepository: Repository<CatTipoVariante>,
     private readonly bitacoraLogger: BitacoraLoggerService,
   ) {}
 
@@ -45,8 +48,15 @@ export class VariantesService {
   ) {
     try {
       const { recorridoDetallado: puntos } = createVarianteDto;
+      
+      // Si no viene idTipoVariante, asignar 1 por defecto
+      const idTipoVariante = createVarianteDto.idTipoVariante || 1;
+      
       const newVariante =
-        await this.variantesRepository.create(createVarianteDto);
+        await this.variantesRepository.create({
+          ...createVarianteDto,
+          idTipoVariante: idTipoVariante,
+        });
 
       // Aplicamos interpolación
       const { recorridoDetallado, distanciaKm } =
@@ -71,6 +81,7 @@ export class VariantesService {
           estatus: createVarianteDto.estatus || 1,
           idRuta: createVarianteDto.idRuta,
           idVarianteIda: varianteSave.id,
+          idTipoVariante: idTipoVariante,
         };
 
         const newVarianteRegreso =
@@ -87,9 +98,8 @@ export class VariantesService {
 
         const varianteRegresoSave = await this.variantesRepository.save(newVarianteRegreso);
 
-        // Actualizar la variante original con el idVarianteIda
-        varianteSave.idVarianteIda = varianteRegresoSave.id;
-        await this.variantesRepository.save(varianteSave);
+        // La variante original mantiene idVarianteIda en null
+        // Solo la variante de regreso tiene idVarianteIda apuntando a la original
 
         // Registro en la bitácora SUCCESS para ambas variantes
         const querylogger = { createVarianteDto, varianteRegreso: varianteRegresoData };
@@ -1365,12 +1375,45 @@ WHERE ur.IdUsuario = ?
     }
   }
 
+  // ========================================
+  // 🔹 OBTENER TIPOS DE VARIANTE
+  // ========================================
+  async findAllTiposVariante(): Promise<ApiResponseCommon> {
+    try {
+      const tiposVariante = await this.catTipoVarianteRepository.find({
+        where: { estatus: 1 },
+        order: { nombre: 'ASC' },
+      });
+
+      const data = tiposVariante.map((item) => ({
+        id: Number(item.id),
+        nombre: item.nombre,
+        fhRegistro: item.fhRegistro,
+        estatus: Number(item.estatus),
+      }));
+
+      const result: ApiResponseCommon = {
+        data: data,
+      };
+
+      return result;
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+
+      throw new InternalServerErrorException({
+        message: 'Error al obtener tipos de variante',
+        error: error.message,
+      });
+    }
+  }
+
   async removeTotal(id: number, idUser: number, cliente: number, rol: number) {
     try {
       let variante;
       switch (rol) {
         case 1:
-          // Usuario SuperAdministrador
+        case 2:
+          // Usuario SuperAdministrador y Administrador
           variante = await this.variantesRepository.findOne({
             where: { id: id },
           });

@@ -440,7 +440,12 @@ SELECT
   
   -- Variante del viaje
   var.Id AS idVariante,
-  var.Nombre AS nombreVariante
+  var.Nombre AS nombreVariante,
+  
+  -- Sumatorias de ConteoPasajeros por idViaje
+  COALESCE(SUM(cp.Entradas), 0) AS sumSubidas,
+  COALESCE(SUM(cp.Salidas), 0) AS sumBajadas,
+  COALESCE(SUM(cp.Entradas), 0) - COALESCE(SUM(cp.Salidas), 0) AS diferencia
 
 FROM Instalaciones i
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
@@ -517,10 +522,23 @@ LEFT JOIN Variantes var ON viaje.IdVariante = var.Id
 LEFT JOIN Operadores o ON t_activo.IdOperador = o.Id
 LEFT JOIN Usuarios u ON o.IdUsuario = u.Id
 
+-- Conteo de pasajeros por viaje
+LEFT JOIN ConteoPasajeros cp ON viaje.Id = cp.IdViaje AND cp.Estatus = 1
+
 WHERE c.Id IN (${placeholders})
   AND i.Estatus = 1
   AND v.Estatus = 1
   AND val.Estatus = 1
+
+GROUP BY 
+  v.Id, v.Placa, v.Modelo,
+  p.Id, p.Latitud, p.Longitud, p.Velocidad, p.FechaHora, p.Estado,
+  val.NumeroSerie,
+  u.Nombre, u.ApellidoPaterno, u.ApellidoMaterno,
+  i.Id,
+  t_activo.Id, t_activo.Estatus, t_activo.Inicio, t_activo.Fin,
+  viaje.Id, viaje.Estatus, viaje.Inicio, viaje.Fin,
+  var.Id, var.Nombre
 
 ORDER BY v.Id ASC;
       `;
@@ -580,6 +598,9 @@ ORDER BY v.Id ASC;
           viajeFin: item.viajeFin || null,
           idVariante: item.idVariante ? Number(item.idVariante) : null,
           nombreVariante: item.nombreVariante || null,
+          sumSubidas: item.sumSubidas ? Number(item.sumSubidas) : 0,
+          sumBajadas: item.sumBajadas ? Number(item.sumBajadas) : 0,
+          diferencia: item.diferencia ? Number(item.diferencia) : 0,
         };
 
         return unidad;

@@ -1061,23 +1061,38 @@ ORDER BY i.Id DESC;
       }
 
       // 🔥 Transformamos ids a number y convertimos idContadores a array
-      const data = instalaciones.map((item) => ({
-        ...item,
-        id: Number(item.id),
-        idValidador: Number(item.idValidador),
-        idContadores: item.idContadores ? item.idContadores.split(',').map(id => Number(id)) : [],
-        numeroSerieContadores: item.numeroSerieContadores ? item.numeroSerieContadores.split(', ') : [],
-        marcaContadores: item.marcaContadores ? item.marcaContadores.split(', ') : [],
-        modeloContadores: item.modeloContadores ? item.modeloContadores.split(', ') : [],
-        // Mantener compatibilidad con código antiguo (primer contador)
-        idContador: item.idContadores ? Number(item.idContadores.split(',')[0]) : null,
-        numeroSerieContador: item.numeroSerieContadores ? item.numeroSerieContadores.split(', ')[0] : null,
-        marcaContador: item.marcaContadores ? item.marcaContadores.split(', ')[0] : null,
-        modeloContador: item.modeloContadores ? item.modeloContadores.split(', ')[0] : null,
-        idVehiculo: Number(item.idVehiculo),
-        cantidadPuertas: item.cantidadPuertas ? Number(item.cantidadPuertas) : null,
-        idCliente: Number(item.idCliente),
-      }));
+      const data = instalaciones.map((item) => {
+        // Asegurar que idContadores sea un array de números
+        let idContadoresArray: number[] = [];
+        if (item.idContadores) {
+          // Manejar tanto string como null/undefined
+          const idsStr = String(item.idContadores).trim();
+          if (idsStr) {
+            idContadoresArray = idsStr.split(',').map(id => {
+              const numId = Number(id.trim());
+              return isNaN(numId) ? null : numId;
+            }).filter(id => id !== null) as number[];
+          }
+        }
+
+        return {
+          ...item,
+          id: Number(item.id),
+          idValidador: Number(item.idValidador),
+          idContadores: idContadoresArray, // Array de IDs de contadores
+          numeroSerieContadores: item.numeroSerieContadores ? item.numeroSerieContadores.split(', ') : [],
+          marcaContadores: item.marcaContadores ? item.marcaContadores.split(', ') : [],
+          modeloContadores: item.modeloContadores ? item.modeloContadores.split(', ') : [],
+          // Mantener compatibilidad con código antiguo (primer contador)
+          idContador: idContadoresArray.length > 0 ? idContadoresArray[0] : null,
+          numeroSerieContador: item.numeroSerieContadores ? item.numeroSerieContadores.split(', ')[0] : null,
+          marcaContador: item.marcaContadores ? item.marcaContadores.split(', ')[0] : null,
+          modeloContador: item.modeloContadores ? item.modeloContadores.split(', ')[0] : null,
+          idVehiculo: Number(item.idVehiculo),
+          cantidadPuertas: item.cantidadPuertas ? Number(item.cantidadPuertas) : null,
+          idCliente: Number(item.idCliente),
+        };
+      });
 
       return { data: data };
     } catch (error) {

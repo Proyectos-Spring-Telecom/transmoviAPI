@@ -28,6 +28,9 @@ export class Tarifas {
   @Column("decimal", { name: "CostoAdicional", precision: 10, scale: 2,  nullable: true })
   costoAdicional: number;
 
+  @Column("decimal", { name: "CostoPorEstacion", precision: 10, scale: 2, nullable: true })
+  costoPorEstacion: number | null;
+
   @Column("int", { name: "TipoTarifa",  unsigned: true })
   tipoTarifa: number;
 

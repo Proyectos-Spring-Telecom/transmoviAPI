@@ -23,6 +23,9 @@ class PuntoDto {
 
   @IsNumber()
   lng: number;
+  @IsString()
+  @IsOptional()
+  nombre: string;
 }
 
 export class CreateVarianteDto {
@@ -105,6 +108,18 @@ export class CreateVarianteDto {
   @IsOptional()
   @IsBoolean()
   registraRegreso?: boolean = false;
+
+  @ApiPropertyOptional({
+    description: 'ID del tipo de variante',
+    example: 1,
+    type: Number,
+    minimum: 1,
+  })
+  @IsOptional()
+  @IsNumber({}, { message: 'El ID del tipo de variante debe ser un número' })
+  @IsPositive({ message: 'El ID del tipo de variante debe ser un número positivo' })
+  @Type(() => Number)
+  idTipoVariante?: number;
 
 }
 

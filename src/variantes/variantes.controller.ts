@@ -33,6 +33,27 @@ export class VariantesController {
     return this.variantesService.create(+idUser, +cliente, +rol, createVarianteDto);
   }
 
+  @Get('tipos-variante')
+  @ApiOperation({
+    summary: 'Obtener tipos de variante',
+    description: 'Obtiene todos los tipos de variante activos disponibles.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Tipos de variante obtenidos exitosamente',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'No autorizado',
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Error interno del servidor',
+  })
+  findAllTiposVariante() {
+    return this.variantesService.findAllTiposVariante();
+  }
+
   @Get('list')
   findAllList(@Request() req) {
     const cliente = req.user.cliente;

@@ -47,6 +47,16 @@ export class CreateTarifaDto {
   costoAdicional?: number;
 
   @ApiProperty({
+    example: 5.0,
+    description: 'Costo por estación',
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber({}, { message: 'El costo por estación debe ser numérico' })
+  @Min(0, { message: 'El costo por estación no puede ser negativo' })
+  costoPorEstacion?: number;
+
+  @ApiProperty({
     description: 'ID del tipo de tarifa. Debe ser un ID válido del catálogo de tipos de tarifa (obtener desde /cat-tipo-tarifa)',
     required: true,
   })

@@ -10,10 +10,12 @@ import {
 import { Rutas } from "./Rutas";
 import { Tarifas } from "./Tarifas";
 import { Viajes } from "./Viajes";
+import { CatTipoVariante } from "./CatTipoVariante";
 import { applySchema } from "src/common/apply-schema.decorator";
 
 @applySchema
 @Index("FK_Variantes_Rutas", ["idRuta"], {})
+@Index("FK_Variante_TipoVariante", ["idTipoVariante"], {})
 @Entity("Variantes")
 export class Variantes {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
@@ -65,12 +67,22 @@ fechaActualizacion: Date;
   @Column("bigint", { name: "IdVarianteIda", nullable: true })
   idVarianteIda: number | null;
 
+  @Column("bigint", { name: "IdTipoVariante", nullable: true })
+  idTipoVariante: number | null;
+
   @ManyToOne(() => Rutas, (rutas) => rutas.variantes, {
     onDelete: "NO ACTION",
     onUpdate: "NO ACTION",
   })
   @JoinColumn([{ name: "IdRuta", referencedColumnName: "id" }])
   idRuta2: Rutas;
+
+  @ManyToOne(() => CatTipoVariante, (catTipoVariante) => catTipoVariante.variantes, {
+    onDelete: "NO ACTION",
+    onUpdate: "NO ACTION",
+  })
+  @JoinColumn([{ name: "IdTipoVariante", referencedColumnName: "id" }])
+  tipoVariante: CatTipoVariante;
 
   @OneToMany(() => Tarifas, (tarifas) => tarifas.idVariante2)
   tarifas: Tarifas[];

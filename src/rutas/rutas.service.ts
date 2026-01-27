@@ -82,9 +82,8 @@ export class RutasService {
         const newRutaRegreso = this.rutasRepository.create(rutaRegresoData);
         const rutaRegresoSave = await this.rutasRepository.save(newRutaRegreso);
 
-        // Actualizar la ruta original con el idRutaIda
-        rutaSave.idRutaIda = rutaRegresoSave.id;
-        await this.rutasRepository.save(rutaSave);
+        // La ruta original mantiene idRutaIda en null
+        // Solo la ruta de regreso tiene idRutaIda apuntando a la original
 
         // Registro en la bitácora SUCCESS para ambas rutas
         const querylogger = { createRutaDto, rutaRegreso: rutaRegresoData };
