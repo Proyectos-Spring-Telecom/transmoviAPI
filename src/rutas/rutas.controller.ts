@@ -41,15 +41,15 @@ export class RutasController {
     return this.rutasService.findAllList(+idUser, +cliente, +rol);
   }
 
-  @Get('by-region/:idRegion')
+  @Get('by-zona/:idZona')
   @ApiOperation({
-    summary: 'Listar rutas por ID de región',
-    description: 'Obtiene todas las rutas activas pertenecientes únicamente a la región especificada.',
+    summary: 'Listar rutas por ID de zona',
+    description: 'Obtiene todas las rutas activas pertenecientes únicamente a la zona especificada.',
   })
   @ApiParam({
-    name: 'idRegion',
+    name: 'idZona',
     type: Number,
-    description: 'ID de la región de la cual se desean obtener las rutas',
+    description: 'ID de la zona de la cual se desean obtener las rutas',
     example: 1,
   })
   @ApiResponse({
@@ -64,13 +64,45 @@ export class RutasController {
     status: 500,
     description: 'Error interno del servidor',
   })
-  async findByRegion(
-    @Param('idRegion', ParseIntPipe) idRegion: number,
+  async findByZona(
+    @Param('idZona', ParseIntPipe) idZona: number,
     @Request() req,
   ) {
     const idUser = req.user.userId;
     const rol = req.user.rol;
-    return await this.rutasService.findByRegion(+idRegion, +idUser, +rol);
+    return await this.rutasService.findByZona(+idZona, +idUser, +rol);
+  }
+
+  @Get('by-idCliente/:idCliente')
+  @ApiOperation({
+    summary: 'Listar rutas por ID de cliente',
+    description: 'Obtiene todas las rutas activas pertenecientes al cliente especificado (a través de sus zonas).',
+  })
+  @ApiParam({
+    name: 'idCliente',
+    type: Number,
+    description: 'ID del cliente del cual se desean obtener las rutas',
+    example: 1,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Rutas obtenidas exitosamente',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'No autorizado',
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Error interno del servidor',
+  })
+  async findByCliente(
+    @Param('idCliente', ParseIntPipe) idCliente: number,
+    @Request() req,
+  ) {
+    const idUser = req.user.userId;
+    const rol = req.user.rol;
+    return await this.rutasService.findByCliente(+idCliente, +idUser, +rol);
   }
 
   @Get(':page/:limit')

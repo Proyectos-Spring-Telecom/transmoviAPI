@@ -79,12 +79,6 @@ export class ReportesService {
         parametros.push(fechaFin);
       }
 
-      // Filtro de región
-      if (filtros.idRegion) {
-        condiciones.push(`reg.Id = ?`);
-        parametros.push(filtros.idRegion);
-      }
-
       // Filtro de ruta
       if (filtros.idRuta) {
         condiciones.push(`r.Id = ?`);

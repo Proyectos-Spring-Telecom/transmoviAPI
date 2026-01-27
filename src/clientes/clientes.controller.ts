@@ -51,15 +51,24 @@ export class ClientesController {
   }
   //Obtener todos los clientes
   @Get('list')
+  @UseGuards(JwtAuthGuard)
   async getAllListClientes(@Request() req,): Promise<ApiResponseCommon> {
-    const cliente = req.user.cliente;
-    const idUser = req.user.userId;
-    const rol = req.user.rol;
-    return this.clientesService.getAllListClientes(+idUser, +cliente, +rol);
+    console.log(req.user,"REQ")
+    if (!req.user) {
+      throw new Error('Usuario no autenticado');
+    }
+    const cliente = req.user?.cliente ?? null;
+    const idUser = req.user?.userId;
+    const rol = req.user?.rol;
+    if (!idUser || !rol) {
+      throw new Error('Datos de usuario incompletos');
+    }
+    return this.clientesService.getAllListClientes(+idUser, cliente ? +cliente : null, +rol);
   }
 
   //Obtener todos los clientes
   @Get('list/:cliente')
+  @UseGuards(JwtAuthGuard)
   async getAllListClientesId(
     @Param('cliente', ParseIntPipe) cliente: number,
     @Request() req,): Promise<ApiResponseCommon> {
@@ -70,6 +79,8 @@ export class ClientesController {
 
   //Obtener todos los clientes con paginado
   @Get(':page/:limit')
+  @UseGuards(JwtAuthGuard)
+
   getAllClientes(
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,
@@ -83,6 +94,8 @@ export class ClientesController {
 
   //Obtener solo un cliente
   @Get(':id')
+  @UseGuards(JwtAuthGuard)
+
   getOneCliente(@Param('id') id: string, @Request() req,) {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
@@ -92,6 +105,8 @@ export class ClientesController {
 
   //Actualizar el estatus del cliente
   @Patch('estatus/:id')
+  @UseGuards(JwtAuthGuard)
+
   updateEstatusClientes(
     @Param('id') id: string,
     @Request() req,
@@ -109,6 +124,8 @@ export class ClientesController {
 
   //Actualizar un cliente
   @Put(':id')
+  @UseGuards(JwtAuthGuard)
+
   async updateCliente(
     @Param('id') id: string,
     @Request() req,
@@ -120,6 +137,8 @@ export class ClientesController {
 
   //Eliminar Cliente
   @Delete(':id')
+  @UseGuards(JwtAuthGuard)
+
   async removeClientes(@Param('id') id: string, @Request() req): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
     const cliente = req.user.cliente;

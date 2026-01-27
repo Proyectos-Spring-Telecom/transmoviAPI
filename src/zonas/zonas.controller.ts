@@ -46,6 +46,36 @@ export class ZonasController {
     return await this.zonasService.findAllList(+cliente, +idUser, +rol);
   }
 
+  @Get('by-idCliente/:idCliente')
+  @ApiOperation({
+    summary: 'Listar zonas por ID de cliente',
+    description: 'Obtiene todas las zonas activas filtradas por el ID de cliente especificado en la ruta.',
+  })
+  @ApiParam({
+    name: 'idCliente',
+    type: Number,
+    description: 'ID del cliente del cual se desean obtener las zonas',
+    example: 1,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Zonas obtenidas exitosamente',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'No autorizado',
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Error interno del servidor',
+  })
+  async findByIdCliente(
+    @Param('idCliente', ParseIntPipe) idCliente: number,
+    @Request() req,
+  ) {
+    return await this.zonasService.findByCliente(+idCliente, +req.user.userId, +req.user.rol);
+  }
+
   @Get('by-cliente/:idCliente')
   @ApiOperation({
     summary: 'Listar zonas por ID de cliente',

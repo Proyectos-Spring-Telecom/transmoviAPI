@@ -851,6 +851,182 @@ ORDER BY i.Id DESC;
     }
   }
 
+  async findByValidador(idValidador: number, idUser: number, cliente: number, rol: number) {
+    try {
+      let instalaciones;
+      switch (rol) {
+        case 1:
+          // Usuario SuperAdministrador - obtiene todas las instalaciones
+          instalaciones = await this.usuariosinstalacionesRepository.query(
+            `
+SELECT
+  -- Instalación
+  i.Id AS id,
+  i.FechaCreacion AS fechaCreacion,
+  i.FechaActualizacion AS fechaActualizacion,
+  i.Estatus AS estatus,
+
+  -- Validador
+  i.IdValidador AS idValidador,
+  d.NumeroSerie AS numeroSerieValidador,
+  d.Marca AS marcaValidador,
+  d.Modelo AS modeloValidador,
+
+  -- Contadores (agregados)
+  GROUP_CONCAT(DISTINCT b.Id ORDER BY b.Id SEPARATOR ',') AS idContadores,
+  GROUP_CONCAT(DISTINCT b.NumeroSerie ORDER BY b.Id SEPARATOR ', ') AS numeroSerieContadores,
+  GROUP_CONCAT(DISTINCT b.Marca ORDER BY b.Id SEPARATOR ', ') AS marcaContadores,
+  GROUP_CONCAT(DISTINCT b.Modelo ORDER BY b.Id SEPARATOR ', ') AS modeloContadores,
+
+  -- Vehículo
+  i.IdVehiculo AS idVehiculo,
+  v.Marca AS marcaVehiculo,
+  v.Modelo AS modeloVehiculo,
+  v.Placa AS placaVehiculo,
+  v.NumeroEconomico AS numeroEconomicoVehiculo,
+  v.CantidadPuertas AS cantidadPuertas,
+
+  -- Cliente
+  i.IdCliente AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente
+
+FROM Instalaciones i
+INNER JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
+LEFT JOIN InstalacionContadores ic ON i.Id = ic.IdInstalacion AND ic.Estatus = 1
+LEFT JOIN Contadores b ON ic.IdContador = b.Id
+INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+
+WHERE i.IdValidador = ?
+  AND i.Estatus = 1
+
+GROUP BY i.Id, i.FechaCreacion, i.FechaActualizacion, i.Estatus,
+         i.IdValidador, d.NumeroSerie, d.Marca, d.Modelo,
+         i.IdVehiculo, v.Marca, v.Modelo, v.Placa, v.NumeroEconomico, v.CantidadPuertas,
+         i.IdCliente, c.Nombre, c.ApellidoPaterno, c.ApellidoMaterno, c.Estatus
+
+ORDER BY i.Id DESC;
+
+  `,
+            [idValidador],
+          );
+          break;
+
+        default:
+          // Usuarios normales - solo instalaciones de su cliente
+          const { ids, placeholders } = await this.clienteHijos(cliente);
+          instalaciones = await this.instalacionesRepository.query(
+            `
+SELECT
+  -- Instalación
+  i.Id AS id,
+  i.FechaCreacion AS fechaCreacion,
+  i.FechaActualizacion AS fechaActualizacion,
+  i.Estatus AS estatus,
+
+  -- Validador
+  i.IdValidador AS idValidador,
+  d.NumeroSerie AS numeroSerieValidador,
+  d.Marca AS marcaValidador,
+  d.Modelo AS modeloValidador,
+
+  -- Contadores (agregados)
+  GROUP_CONCAT(DISTINCT b.Id ORDER BY b.Id SEPARATOR ',') AS idContadores,
+  GROUP_CONCAT(DISTINCT b.NumeroSerie ORDER BY b.Id SEPARATOR ', ') AS numeroSerieContadores,
+  GROUP_CONCAT(DISTINCT b.Marca ORDER BY b.Id SEPARATOR ', ') AS marcaContadores,
+  GROUP_CONCAT(DISTINCT b.Modelo ORDER BY b.Id SEPARATOR ', ') AS modeloContadores,
+
+  -- Vehículo
+  i.IdVehiculo AS idVehiculo,
+  v.Marca AS marcaVehiculo,
+  v.Modelo AS modeloVehiculo,
+  v.Placa AS placaVehiculo,
+  v.NumeroEconomico AS numeroEconomicoVehiculo,
+  v.CantidadPuertas AS cantidadPuertas,
+
+  -- Cliente
+  i.IdCliente AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente
+
+FROM Instalaciones i
+INNER JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
+LEFT JOIN InstalacionContadores ic ON i.Id = ic.IdInstalacion AND ic.Estatus = 1
+LEFT JOIN Contadores b ON ic.IdContador = b.Id
+INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+
+WHERE i.IdValidador = ?
+  AND i.IdCliente IN (${placeholders})
+  AND i.Estatus = 1
+
+GROUP BY i.Id, i.FechaCreacion, i.FechaActualizacion, i.Estatus,
+         i.IdValidador, d.NumeroSerie, d.Marca, d.Modelo,
+         i.IdVehiculo, v.Marca, v.Modelo, v.Placa, v.NumeroEconomico, v.CantidadPuertas,
+         i.IdCliente, c.Nombre, c.ApellidoPaterno, c.ApellidoMaterno, c.Estatus
+
+ORDER BY i.Id DESC;
+   `,
+            [idValidador, ...ids],
+          );
+          break;
+      }
+
+      if (instalaciones.length === 0) {
+        return { data: [] };
+      }
+
+      // Transformamos ids a number y convertimos idContadores a array
+      const data = instalaciones.map((item) => {
+        // Asegurar que idContadores sea un array de números
+        let idContadoresArray: number[] = [];
+        if (item.idContadores) {
+          // Manejar tanto string como null/undefined
+          const idsStr = String(item.idContadores).trim();
+          if (idsStr) {
+            idContadoresArray = idsStr.split(',').map(id => {
+              const numId = Number(id.trim());
+              return isNaN(numId) ? null : numId;
+            }).filter(id => id !== null) as number[];
+          }
+        }
+
+        return {
+          ...item,
+          id: Number(item.id),
+          idValidador: Number(item.idValidador),
+          idContadores: idContadoresArray, // Array de IDs de contadores
+          numeroSerieContadores: item.numeroSerieContadores ? item.numeroSerieContadores.split(', ') : [],
+          marcaContadores: item.marcaContadores ? item.marcaContadores.split(', ') : [],
+          modeloContadores: item.modeloContadores ? item.modeloContadores.split(', ') : [],
+          // Mantener compatibilidad con código antiguo (primer contador)
+          idContador: idContadoresArray.length > 0 ? idContadoresArray[0] : null,
+          numeroSerieContador: item.numeroSerieContadores ? item.numeroSerieContadores.split(', ')[0] : null,
+          marcaContador: item.marcaContadores ? item.marcaContadores.split(', ')[0] : null,
+          modeloContador: item.modeloContadores ? item.modeloContadores.split(', ')[0] : null,
+          idVehiculo: Number(item.idVehiculo),
+          cantidadPuertas: item.cantidadPuertas ? Number(item.cantidadPuertas) : null,
+          idCliente: Number(item.idCliente),
+        };
+      });
+
+      return { data: data };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Error al obtener instalaciones por validador',
+        error: error.message,
+      });
+    }
+  }
+
   private async consultarInstalacionesOne(cliente: number, id: number) {
     const { ids, placeholders } = await this.clienteHijos(cliente);
     const query = `

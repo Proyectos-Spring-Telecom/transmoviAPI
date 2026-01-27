@@ -3,6 +3,8 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { CreatePosicionesDto } from './dto/create-posicione.dto';
 import { ApiCrudResponse, ApiResponseCommon, EstatusEnumBitcora } from 'src/common/ApiResponse';
@@ -15,6 +17,8 @@ import { Clientes } from 'src/entities/Clientes';
 import { EnumModulos } from 'src/common/estatus.enum';
 import { UpdatePosicionesDto } from './dto/update-posicione.dto';
 import { Validadores } from 'src/entities/Validadores';
+import { MonitoreoGateway } from 'src/monitoreo/monitoreo.gateway';
+import { MonitoreoService } from 'src/monitoreo/monitoreo.service';
 
 @Injectable()
 export class PosicionesService {
@@ -28,6 +32,10 @@ export class PosicionesService {
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
+    @Inject(forwardRef(() => MonitoreoGateway))
+    private readonly monitoreoGateway: MonitoreoGateway,
+    @Inject(forwardRef(() => MonitoreoService))
+    private readonly monitoreoService: MonitoreoService,
   ) { }
 
   // ========================================
@@ -52,6 +60,30 @@ export class PosicionesService {
       const posicionSave = await this.posicionesRepository.save(newPosicion, {
         reload: false,
       });
+
+      // 🔥 NUEVO: Emitir actualización completa de unidad en tiempo real a usuarios conectados
+      try {
+        // Obtener el validador para obtener el idCliente
+        const validador = await this.validadoresRepository.findOne({
+          where: { numeroSerie: posicionSave.numeroSerieValidador },
+        });
+
+        if (validador && this.monitoreoGateway && this.monitoreoService) {
+          // Obtener los datos completos de la unidad (igual formato que obtenerUnidades)
+          const unidadCompleta = await this.monitoreoService.obtenerUnidadPorValidador(
+            posicionSave.numeroSerieValidador,
+            validador.idCliente,
+          );
+
+          if (unidadCompleta) {
+            // Emitir actualización completa de unidad en tiempo real
+            this.monitoreoGateway.emitUnidadUpdate(unidadCompleta, validador.idCliente);
+          }
+        }
+      } catch (wsError) {
+        // No fallar la creación si hay error en WebSocket
+        console.error('Error al emitir actualización WebSocket:', wsError);
+      }
 
       // Registro en la bitácora----- SUCCESS
       const querylogger = { createPosicionesDto };

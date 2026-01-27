@@ -707,9 +707,9 @@ ORDER BY ru.Id DESC;
   // ========================================
   // 🔹 OBTENER RUTAS POR REGIÓN
   // ========================================
-  async findByRegion(idRegion: number, idUser: number, rol: number) {
+  async findByZona(idZona: number, idUser: number, rol: number) {
     try {
-      // Consulta directa de rutas por región (solo la región especificada)
+      // Consulta directa de rutas por zona (solo la zona especificada)
       const rutas = await this.rutasRepository.query(
         `
 SELECT 
@@ -722,23 +722,23 @@ SELECT
   ru.NombreFin AS nombreFin,
   ru.FechaCreacion AS fechaCreacionRuta,
   ru.Estatus AS estatusRuta,
-  ru.IdRegionFin AS idRegionFin,
+  ru.IdZonaFin AS idZonaFin,
 
-  -- REGIÓN INICIAL
-  r.Id AS idRegion,
-  r.Nombre AS nombreRegion,
-  r.Descripcion AS descripcionRegion,
-  r.FechaCreacion AS fechaCreacionRegion,
-  r.FechaActualizacion AS fechaActualizacionRegion,
-  r.Estatus AS estatusRegion,
+  -- ZONA INICIAL
+  r.Id AS idZona,
+  r.Nombre AS nombreZona,
+  r.Descripcion AS descripcionZona,
+  r.FechaCreacion AS fechaCreacionZona,
+  r.FechaActualizacion AS fechaActualizacionZona,
+  r.Estatus AS estatusZona,
 
-  -- REGIÓN FINAL (si existe)
-  rf.Id AS idRegionFinDetalle,
-  rf.Nombre AS nombreRegionFinDetalle,
-  rf.Descripcion AS descripcionRegionFin,
-  rf.FechaCreacion AS fechaCreacionRegionFin,
-  rf.FechaActualizacion AS fechaActualizacionRegionFin,
-  rf.Estatus AS estatusRegionFin,
+  -- ZONA FINAL (si existe)
+  rf.Id AS idZonaFinDetalle,
+  rf.Nombre AS nombreZonaFinDetalle,
+  rf.Descripcion AS descripcionZonaFin,
+  rf.FechaCreacion AS fechaCreacionZonaFin,
+  rf.FechaActualizacion AS fechaActualizacionZonaFin,
+  rf.Estatus AS estatusZonaFin,
 
   -- CLIENTE
   c.Id AS idCliente,
@@ -754,24 +754,24 @@ LEFT JOIN Zonas rf ON ru.IdZonaFin = rf.Id
 INNER JOIN Clientes c ON r.IdCliente = c.Id
 
 WHERE 
-  ru.IdRegion = ?
+  ru.IdZona = ?
   AND r.Estatus = 1
   AND ru.Estatus = 1
   AND c.Estatus = 1
 
 ORDER BY ru.Id DESC
         `,
-        [idRegion],
+        [idZona],
       );
 
       // Mapeo de resultados con conversión de tipos
       const data = rutas.map((item) => ({
         ...item,
         id: item.id ? Number(item.id) : null,
-        idRegion: item.idRegion ? Number(item.idRegion) : null,
-        idRegionFin: item.idRegionFin ? Number(item.idRegionFin) : null,
-        idRegionFinDetalle: item.idRegionFinDetalle
-          ? Number(item.idRegionFinDetalle)
+        idZona: item.idZona ? Number(item.idZona) : null,
+        idZonaFin: item.idZonaFin ? Number(item.idZonaFin) : null,
+        idZonaFinDetalle: item.idZonaFinDetalle
+          ? Number(item.idZonaFinDetalle)
           : null,
         idCliente: item.idCliente ? Number(item.idCliente) : null,
       }));
@@ -787,7 +787,93 @@ ORDER BY ru.Id DESC
         throw error;
       }
       throw new InternalServerErrorException({
-        message: 'Error al obtener rutas por región',
+        message: 'Error al obtener rutas por zona',
+        error: error.message,
+      });
+    }
+  }
+
+  async findByCliente(idCliente: number, idUser: number, rol: number) {
+    try {
+      // Consulta directa de rutas por cliente (a través de las zonas)
+      const rutas = await this.rutasRepository.query(
+        `
+SELECT 
+  -- RUTA
+  ru.Id AS id,
+  ru.Nombre AS nombre,
+  ru.PuntoInicio AS puntoInicio,
+  ru.NombreInicio AS nombreInicio,
+  ru.PuntoFin AS puntoFin,
+  ru.NombreFin AS nombreFin,
+  ru.FechaCreacion AS fechaCreacionRuta,
+  ru.Estatus AS estatusRuta,
+  ru.IdZonaFin AS idZonaFin,
+
+  -- ZONA INICIAL
+  r.Id AS idZona,
+  r.Nombre AS nombreZona,
+  r.Descripcion AS descripcionZona,
+  r.FechaCreacion AS fechaCreacionZona,
+  r.FechaActualizacion AS fechaActualizacionZona,
+  r.Estatus AS estatusZona,
+
+  -- ZONA FINAL (si existe)
+  rf.Id AS idZonaFinDetalle,
+  rf.Nombre AS nombreZonaFinDetalle,
+  rf.Descripcion AS descripcionZonaFin,
+  rf.FechaCreacion AS fechaCreacionZonaFin,
+  rf.FechaActualizacion AS fechaActualizacionZonaFin,
+  rf.Estatus AS estatusZonaFin,
+
+  -- CLIENTE
+  c.Id AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente,
+  CONCAT(c.Nombre, ' ', c.ApellidoPaterno, ' ', c.ApellidoMaterno) AS nombreCompletoCliente
+
+FROM Rutas ru
+INNER JOIN Zonas r ON ru.IdZona = r.Id
+LEFT JOIN Zonas rf ON ru.IdZonaFin = rf.Id
+INNER JOIN Clientes c ON r.IdCliente = c.Id
+
+WHERE 
+  c.Id = ?
+  AND r.Estatus = 1
+  AND ru.Estatus = 1
+  AND c.Estatus = 1
+
+ORDER BY ru.Id DESC
+        `,
+        [idCliente],
+      );
+
+      // Mapeo de resultados con conversión de tipos
+      const data = rutas.map((item) => ({
+        ...item,
+        id: item.id ? Number(item.id) : null,
+        idZona: item.idZona ? Number(item.idZona) : null,
+        idZonaFin: item.idZonaFin ? Number(item.idZonaFin) : null,
+        idZonaFinDetalle: item.idZonaFinDetalle
+          ? Number(item.idZonaFinDetalle)
+          : null,
+        idCliente: item.idCliente ? Number(item.idCliente) : null,
+      }));
+
+      // API response
+      const result: ApiResponseCommon = {
+        data: data,
+      };
+
+      return result;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Error al obtener rutas por cliente',
         error: error.message,
       });
     }

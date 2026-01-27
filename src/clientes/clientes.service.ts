@@ -305,7 +305,7 @@ ORDER BY Id ASC
   // ========================================
   async getAllListClientes(
     idUser: number,
-    cliente: number,
+    cliente: number | null,
     rol: number,
   ): Promise<ApiResponseCommon> {
     try {
@@ -331,6 +331,9 @@ ORDER BY c.Id ASC;
 
         default:
           // Usuarios normales - solo sus zonas asignadas
+          if (!cliente) {
+            throw new Error('Cliente es requerido para usuarios no administradores');
+          }
           const { ids, placeholders } = await this.clienteHijos(cliente);
           clientes = await this.clienteRepository.query(
             `

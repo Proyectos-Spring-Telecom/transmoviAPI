@@ -30,15 +30,6 @@ export class RecaudacionDiariaRutaDto {
   idCliente?: number;
 
   @ApiProperty({
-    description: 'ID de la región para filtrar',
-    example: 1,
-    required: false,
-  })
-  @IsInt({ message: 'El ID de la región debe ser un número entero.' })
-  @IsOptional()
-  idRegion?: number;
-
-  @ApiProperty({
     description: 'ID de la ruta para filtrar',
     example: 1,
     required: false,
