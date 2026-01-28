@@ -47,7 +47,7 @@ import { Viajes } from 'src/entities/Viajes';
 import { calcularDistanciaHastaIndex, calcularDistanciaReal, snapToRoute } from 'src/utils/recorrido.utils';
 import { CatMetodoPago } from 'src/entities/CatMetodoPago';
 import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource, QueryRunner } from 'typeorm';
+import { DataSource, EntityManager, QueryRunner } from 'typeorm';
 
 @Injectable()
 export class TransaccionesService {
@@ -78,6 +78,26 @@ export class TransaccionesService {
 
   /** Ventana en ms para permitir varias transacciones abiertas: 1 min 20 s desde la primera. */
   private static readonly VENTANA_ABIERTAS_MS = 80 * 1000;
+
+  /**
+   * Actualiza el saldo del monedero sin conflicto de locks.
+   * Si se proporciona `manager` (misma transacción/QueryRunner), usa ese manager.
+   * Si no, delega en MonederosService (transacción independiente).
+   * Nunca mezclar: dentro de una transacción con lock en Monederos solo actualizar vía manager.
+   */
+  private async updateMonederoSaldoSafe(
+    manager: EntityManager | null | undefined,
+    monederoId: number,
+    numeroSerie: string,
+    saldo: number,
+    idUser: number,
+  ): Promise<void> {
+    if (manager) {
+      await manager.getRepository(Monederos).update({ id: monederoId }, { saldo });
+      return;
+    }
+    await this.monederosService.updateMonederoSaldo(numeroSerie, idUser, saldo);
+  }
 
   // ========================================
   // 🔹 CREAR TRANSACCIÓN DE RECARGA (CON TRANSACCIÓN ATÓMICA)
@@ -336,6 +356,11 @@ WHERE v.Id = ${idViaje}
   // 🔹 Cerrar transacciones abiertas de un viaje
   // ========================================
 
+  /**
+   * Cierra transacciones abiertas de un viaje.
+   * Si se invoca desde createOrCloseTransaccionDebito, debe recibir queryRunner
+   * para que todas las actualizaciones (incl. Monederos) usen la misma transacción y se eviten conflictos de locks.
+   */
   async viajeCierre(idViaje: number, queryRunner?: QueryRunner) {
     try {
       let montoCalculado;
@@ -725,14 +750,13 @@ WHERE v.Id = ${idViaje}
 
       const openList = await this.findOpenTransaccionesDebito(queryRunner.manager, monedero.numeroSerie);
 
-      //En caso de que la transacciones encontradas sean diferentes al viaje actual, se cierran las transacciones de ese viaje
+      // En caso de transacciones abiertas de otro viaje, cerrarlas en la misma transacción.
+      // Siempre pasar queryRunner para evitar lock conflict (update monedero vía manager).
       for (const open of openList) {
-        console.log('open.idViajes: ', open.idViajes);
         if (Number(open.idViajes) !== createTransaccioneDebitoDto.idViaje) {
-          console.log('entro al for y encontro transacciones abiertas de otro viaje.');
+          console.log('Cerrando transacciones abiertas de otro viaje');
           await this.viajeCierre(Number(open.idViajes), queryRunner);
         }
-        continue;
       }
 
       //En caso de que la transacciones encontradas sean diferentes al viaje actual, se manda un error
@@ -3835,15 +3859,13 @@ WHERE
 
       estado = transicionarEstado(estado, EventoTransaccion.SALDO_OK);
 
-      if (manager) {
-        await monederoRepo.update({ id: monedero.id }, { saldo: montoFinal });
-      } else {
-        await this.monederosService.updateMonederoSaldo(
-          numeroSerieMonedero,
-          idUser,
-          montoFinal,
-        );
-      }
+      await this.updateMonederoSaldoSafe(
+        manager ?? null,
+        monedero.id,
+        numeroSerieMonedero,
+        montoFinal,
+        idUser,
+      );
 
       // 6️⃣ Guardamos transacción aprobada (update por id)
       await transDebitoRepo.update(idTransaccion, bodyTransaccionDebito);

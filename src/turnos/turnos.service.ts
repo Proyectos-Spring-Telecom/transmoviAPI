@@ -50,12 +50,10 @@ export class TurnosService {
       const { numeroSerieDispositivo, ...body } = createTurnoDto;
 
       const query = `
-      SELECT
-	i.Id 
-FROM Dispositivos d
-LEFT JOIN Instalaciones i ON i.IdDispositivo = d.Id
-WHERE d.NumeroSerie = ?
-AND i.Estatus = 1
+      SELECT i.Id
+      FROM Dispositivos d
+      INNER JOIN Instalaciones i ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+      WHERE d.NumeroSerie = ? AND i.Estatus = 1
       `;
 
       const instalacion = await this.turnosRepository.query(query, [numeroSerieDispositivo]);
@@ -140,12 +138,27 @@ AND i.Estatus = 1
     return { ids, placeholders };
   }
 
+  /**
+   * Parsea y normaliza el array blueVoxs (JSON_ARRAYAGG). Alineado con instalaciones/viajes.
+   */
+  private parseBlueVoxs(raw: any): any[] {
+    if (raw == null) return [];
+    const arr = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (!Array.isArray(arr)) return [];
+    return arr.map((b: any) => ({
+      ...b,
+      idBlueVox: b.idBlueVox != null ? Number(b.idBlueVox) : null,
+    }));
+  }
+
   private async consultarTurnoPaginado(
     cliente: number,
     limit: number,
     offset: number,
   ) {
-    const { ids, placeholders } = await this.clienteHijos(cliente);
+    const hijos = await this.clienteHijos(cliente);
+    if ('data' in hijos && !('ids' in hijos)) return [];
+    const { ids, placeholders } = hijos;
     const query = `
 SELECT
   -- Turno
@@ -168,11 +181,24 @@ SELECT
   d.Marca AS marcaDispositivo,
   d.Modelo AS modeloDispositivo,
 
-  -- BlueVox (primer BlueVox activo asociado a la instalación)
-  b.Id AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idBlueVox', bx.Id,
+          'numeroSerieBlueVox', bx.NumeroSerie,
+          'marcaBlueVox', bx.Marca,
+          'modeloBlueVox', bx.Modelo
+        )
+      )
+      FROM InstalacionesBlueVoxs ibv
+      INNER JOIN BlueVoxs bx ON ibv.IdBlueVox = bx.Id
+      WHERE ibv.IdInstalacion = i.Id
+        AND ibv.Estatus = 1
+        AND bx.IdCliente = i.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS blueVoxs,
 
   -- Vehículo
   v.Id AS idVehiculo,
@@ -199,38 +225,32 @@ SELECT
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
 INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-LEFT JOIN (
-  SELECT ibv.IdInstalacion, b.Id, b.NumeroSerie, b.Marca, b.Modelo
-  FROM InstalacionesBlueVoxs ibv
-  INNER JOIN BlueVoxs b ON ibv.IdBlueVox = b.Id
-  WHERE ibv.Estatus = 1
-  ORDER BY ibv.Id
-  LIMIT 1
-) AS first_bv ON first_bv.IdInstalacion = i.Id
-LEFT JOIN BlueVoxs b ON first_bv.Id = b.Id
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
 
-WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
-
+WHERE t.Estatus = 1 AND c.Estatus = 1 AND c.Id IN (${placeholders})
 ORDER BY t.Id DESC
-  LIMIT ? OFFSET ?;
+LIMIT ? OFFSET ?
    `;
     return this.turnosRepository.query(query, [...ids, limit, offset]);
   }
 
   private async consultarTotalTurnosPaginados(cliente: number) {
-    const { ids, placeholders } = await this.clienteHijos(cliente);
-    const query = `  
-  SELECT COUNT(*) AS total
+    const hijos = await this.clienteHijos(cliente);
+    if ('data' in hijos && !('ids' in hijos)) return [{ total: 0 }];
+    const { ids, placeholders } = hijos;
+    const query = `
+SELECT COUNT(*) AS total
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
+INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON t.IdCliente = c.Id
-
-WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
-  
+INNER JOIN Operadores o ON t.IdOperador = o.Id
+INNER JOIN Usuarios u ON o.IdUsuario = u.Id
+WHERE t.Estatus = 1 AND c.Estatus = 1 AND c.Id IN (${placeholders})
 `;
     return await this.turnosRepository.query(query, [...ids]);
   }
@@ -272,11 +292,24 @@ SELECT
   d.Marca AS marcaDispositivo,
   d.Modelo AS modeloDispositivo,
 
-  -- BlueVox
-  b.Id AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idBlueVox', bx.Id,
+          'numeroSerieBlueVox', bx.NumeroSerie,
+          'marcaBlueVox', bx.Marca,
+          'modeloBlueVox', bx.Modelo
+        )
+      )
+      FROM InstalacionesBlueVoxs ibv
+      INNER JOIN BlueVoxs bx ON ibv.IdBlueVox = bx.Id
+      WHERE ibv.IdInstalacion = i.Id
+        AND ibv.Estatus = 1
+        AND bx.IdCliente = i.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS blueVoxs,
 
   -- Vehículo
   v.Id AS idVehiculo,
@@ -303,36 +336,29 @@ SELECT
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
 INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-LEFT JOIN (
-  SELECT ibv.IdInstalacion, b.Id, b.NumeroSerie, b.Marca, b.Modelo
-  FROM InstalacionesBlueVoxs ibv
-  INNER JOIN BlueVoxs b ON ibv.IdBlueVox = b.Id
-  WHERE ibv.Estatus = 1
-  ORDER BY ibv.Id
-  LIMIT 1
-) AS first_bv ON first_bv.IdInstalacion = i.Id
-LEFT JOIN BlueVoxs b ON first_bv.Id = b.Id
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
-
-
-
+WHERE t.Estatus = 1 AND c.Estatus = 1
 ORDER BY t.Id DESC
-  LIMIT ? OFFSET ?;
+LIMIT ? OFFSET ?
             `,
             [limit, offset],
           );
 
-          // Query para total (sin paginación)
           totalResult = await this.turnosRepository.query(
             `
-  SELECT COUNT(*) AS total
+SELECT COUNT(*) AS total
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
+INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON t.IdCliente = c.Id
-  `,
+INNER JOIN Operadores o ON t.IdOperador = o.Id
+INNER JOIN Usuarios u ON o.IdUsuario = u.Id
+WHERE t.Estatus = 1 AND c.Estatus = 1
+            `,
           );
           break;
 
@@ -381,11 +407,24 @@ SELECT
   d.Marca AS marcaDispositivo,
   d.Modelo AS modeloDispositivo,
 
-  -- BlueVox
-  b.Id AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idBlueVox', bx.Id,
+          'numeroSerieBlueVox', bx.NumeroSerie,
+          'marcaBlueVox', bx.Marca,
+          'modeloBlueVox', bx.Modelo
+        )
+      )
+      FROM InstalacionesBlueVoxs ibv
+      INNER JOIN BlueVoxs bx ON ibv.IdBlueVox = bx.Id
+      WHERE ibv.IdInstalacion = i.Id
+        AND ibv.Estatus = 1
+        AND bx.IdCliente = i.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS blueVoxs,
 
   -- Vehículo
   v.Id AS idVehiculo,
@@ -414,57 +453,38 @@ INNER JOIN Instalaciones i ON ui.IdInstalacion = i.Id
 INNER JOIN Turnos t ON t.IdInstalacion = i.Id
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 LEFT JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-LEFT JOIN (
-  SELECT ibv.IdInstalacion, b.Id, b.NumeroSerie, b.Marca, b.Modelo, b.IdCliente
-  FROM InstalacionesBlueVoxs ibv
-  INNER JOIN BlueVoxs b ON ibv.IdBlueVox = b.Id
-  WHERE ibv.Estatus = 1
-  ORDER BY ibv.Id
-  LIMIT 1
-) AS first_bv ON first_bv.IdInstalacion = i.Id AND first_bv.IdCliente = i.IdCliente
-LEFT JOIN BlueVoxs b ON first_bv.Id = b.Id
 LEFT JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 LEFT JOIN Operadores o ON t.IdOperador = o.Id
 LEFT JOIN Usuarios u ON o.IdUsuario = u.Id
 
-WHERE 
-  ui.IdUsuario = ?        -- 🔹 filtra por usuario
+WHERE ui.IdUsuario = ?
   AND ui.Estatus = 1
   AND i.Estatus = 1
-
+  AND t.Estatus = 1
+  AND c.Estatus = 1
 ORDER BY t.Inicio DESC
-
-  LIMIT ? OFFSET ?;
+LIMIT ? OFFSET ?
             `,
             [idUser, limit, offset],
           );
 
-          // Query para total (sin paginación)
           totalResult = await this.turnosRepository.query(
             `
-  SELECT COUNT(*) AS total
+SELECT COUNT(*) AS total
 FROM UsuariosInstalaciones ui
 INNER JOIN Instalaciones i ON ui.IdInstalacion = i.Id
 INNER JOIN Turnos t ON t.IdInstalacion = i.Id AND t.IdCliente = i.IdCliente
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-LEFT JOIN (
-  SELECT ibv.IdInstalacion, b.Id, b.NumeroSerie, b.Marca, b.Modelo
-  FROM InstalacionesBlueVoxs ibv
-  INNER JOIN BlueVoxs b ON ibv.IdBlueVox = b.Id
-  WHERE ibv.Estatus = 1
-  ORDER BY ibv.Id
-  LIMIT 1
-) AS first_bv ON first_bv.IdInstalacion = i.Id
-LEFT JOIN BlueVoxs b ON first_bv.Id = b.Id
-INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
+LEFT JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+LEFT JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
-
 WHERE ui.IdUsuario = ?
   AND ui.Estatus = 1
   AND i.Estatus = 1
-  `,
+  AND t.Estatus = 1
+  AND c.Estatus = 1
+            `,
             [idUser],
           );
           break;
@@ -472,20 +492,19 @@ WHERE ui.IdUsuario = ?
 
       const total = Number(totalResult[0]?.total || 0);
 
-      // 🔥 Transformación con map
       const data = turnos.map((item) => ({
         ...item,
         id: Number(item.id),
         idInstalacion: Number(item.idInstalacion),
-        idDispositivo: Number(item.idDispositivo),
-        idBlueVox: Number(item.idBlueVox),
-        idVehiculo: Number(item.idVehiculo),
+        idDispositivo: item.idDispositivo != null ? Number(item.idDispositivo) : null,
+        blueVoxs: this.parseBlueVoxs(item.blueVoxs),
+        idVehiculo: item.idVehiculo != null ? Number(item.idVehiculo) : null,
         idCliente: Number(item.idCliente),
         idOperador: Number(item.idOperador),
       }));
 
       const result: ApiResponseCommon = {
-        data: data,
+        data,
         paginated: {
           total: total,
           page,
@@ -506,7 +525,9 @@ WHERE ui.IdUsuario = ?
   }
 
   private async consultarTurnoListado(cliente: number) {
-    const { ids, placeholders } = await this.clienteHijos(cliente);
+    const hijos = await this.clienteHijos(cliente);
+    if ('data' in hijos && !('ids' in hijos)) return [];
+    const { ids, placeholders } = hijos;
     const query = `
 SELECT
   -- Turno
@@ -529,11 +550,24 @@ SELECT
   d.Marca AS marcaDispositivo,
   d.Modelo AS modeloDispositivo,
 
-  -- BlueVox
-  b.Id AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idBlueVox', bx.Id,
+          'numeroSerieBlueVox', bx.NumeroSerie,
+          'marcaBlueVox', bx.Marca,
+          'modeloBlueVox', bx.Modelo
+        )
+      )
+      FROM InstalacionesBlueVoxs ibv
+      INNER JOIN BlueVoxs bx ON ibv.IdBlueVox = bx.Id
+      WHERE ibv.IdInstalacion = i.Id
+        AND ibv.Estatus = 1
+        AND bx.IdCliente = i.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS blueVoxs,
 
   -- Vehículo
   v.Id AS idVehiculo,
@@ -560,15 +594,6 @@ SELECT
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
 INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-LEFT JOIN (
-  SELECT ibv.IdInstalacion, b.Id, b.NumeroSerie, b.Marca, b.Modelo
-  FROM InstalacionesBlueVoxs ibv
-  INNER JOIN BlueVoxs b ON ibv.IdBlueVox = b.Id
-  WHERE ibv.Estatus = 1
-  ORDER BY ibv.Id
-  LIMIT 1
-) AS first_bv ON first_bv.IdInstalacion = i.Id
-LEFT JOIN BlueVoxs b ON first_bv.Id = b.Id
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
@@ -612,11 +637,24 @@ SELECT
   d.Marca AS marcaDispositivo,
   d.Modelo AS modeloDispositivo,
 
-  -- BlueVox
-  b.Id AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idBlueVox', bx.Id,
+          'numeroSerieBlueVox', bx.NumeroSerie,
+          'marcaBlueVox', bx.Marca,
+          'modeloBlueVox', bx.Modelo
+        )
+      )
+      FROM InstalacionesBlueVoxs ibv
+      INNER JOIN BlueVoxs bx ON ibv.IdBlueVox = bx.Id
+      WHERE ibv.IdInstalacion = i.Id
+        AND ibv.Estatus = 1
+        AND bx.IdCliente = i.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS blueVoxs,
 
   -- Vehículo
   v.Id AS idVehiculo,
@@ -643,15 +681,6 @@ SELECT
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
 INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-LEFT JOIN (
-  SELECT ibv.IdInstalacion, b.Id, b.NumeroSerie, b.Marca, b.Modelo
-  FROM InstalacionesBlueVoxs ibv
-  INNER JOIN BlueVoxs b ON ibv.IdBlueVox = b.Id
-  WHERE ibv.Estatus = 1
-  ORDER BY ibv.Id
-  LIMIT 1
-) AS first_bv ON first_bv.IdInstalacion = i.Id
-LEFT JOIN BlueVoxs b ON first_bv.Id = b.Id
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
@@ -701,11 +730,24 @@ SELECT
   d.Marca AS marcaDispositivo,
   d.Modelo AS modeloDispositivo,
 
-  -- BlueVox
-  b.Id AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idBlueVox', bx.Id,
+          'numeroSerieBlueVox', bx.NumeroSerie,
+          'marcaBlueVox', bx.Marca,
+          'modeloBlueVox', bx.Modelo
+        )
+      )
+      FROM InstalacionesBlueVoxs ibv
+      INNER JOIN BlueVoxs bx ON ibv.IdBlueVox = bx.Id
+      WHERE ibv.IdInstalacion = i.Id
+        AND ibv.Estatus = 1
+        AND bx.IdCliente = i.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS blueVoxs,
 
   -- Vehículo
   v.Id AS idVehiculo,
@@ -733,15 +775,6 @@ FROM UsuariosInstalaciones ui
 INNER JOIN Instalaciones i ON ui.IdInstalacion = i.Id
 INNER JOIN Turnos t ON t.IdInstalacion = i.Id AND t.IdCliente = i.IdCliente
 INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-LEFT JOIN (
-  SELECT ibv.IdInstalacion, b.Id, b.NumeroSerie, b.Marca, b.Modelo
-  FROM InstalacionesBlueVoxs ibv
-  INNER JOIN BlueVoxs b ON ibv.IdBlueVox = b.Id
-  WHERE ibv.Estatus = 1
-  ORDER BY ibv.Id
-  LIMIT 1
-) AS first_bv ON first_bv.IdInstalacion = i.Id
-LEFT JOIN BlueVoxs b ON first_bv.Id = b.Id
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
@@ -760,19 +793,18 @@ ORDER BY t.Id DESC;
           break;
       }
 
-      // 🔥 Transformación con map
       const data = turnos.map((item) => ({
         ...item,
         id: Number(item.id),
         idInstalacion: Number(item.idInstalacion),
-        idDispositivo: Number(item.idDispositivo),
-        idBlueVox: Number(item.idBlueVox),
-        idVehiculo: Number(item.idVehiculo),
+        idDispositivo: item.idDispositivo != null ? Number(item.idDispositivo) : null,
+        blueVoxs: this.parseBlueVoxs(item.blueVoxs),
+        idVehiculo: item.idVehiculo != null ? Number(item.idVehiculo) : null,
         idCliente: Number(item.idCliente),
         idOperador: Number(item.idOperador),
       }));
 
-      const result: ApiResponseCommon = { data: data };
+      const result: ApiResponseCommon = { data };
       return result;
     } catch (error) {
       console.log(error);
@@ -787,7 +819,9 @@ ORDER BY t.Id DESC;
   }
 
   private async consultarTurnoOne(cliente: number, id: number) {
-    const { ids, placeholders } = await this.clienteHijos(cliente);
+    const hijos = await this.clienteHijos(cliente);
+    if ('data' in hijos && !('ids' in hijos)) return [];
+    const { ids, placeholders } = hijos;
     const query = `
 SELECT
   -- Turno
@@ -810,11 +844,24 @@ SELECT
   d.Marca AS marcaDispositivo,
   d.Modelo AS modeloDispositivo,
 
-  -- BlueVox
-  b.Id AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idBlueVox', bx.Id,
+          'numeroSerieBlueVox', bx.NumeroSerie,
+          'marcaBlueVox', bx.Marca,
+          'modeloBlueVox', bx.Modelo
+        )
+      )
+      FROM InstalacionesBlueVoxs ibv
+      INNER JOIN BlueVoxs bx ON ibv.IdBlueVox = bx.Id
+      WHERE ibv.IdInstalacion = i.Id
+        AND ibv.Estatus = 1
+        AND bx.IdCliente = i.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS blueVoxs,
 
   -- Vehículo
   v.Id AS idVehiculo,
@@ -841,15 +888,6 @@ SELECT
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
 INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-LEFT JOIN (
-  SELECT ibv.IdInstalacion, b.Id, b.NumeroSerie, b.Marca, b.Modelo
-  FROM InstalacionesBlueVoxs ibv
-  INNER JOIN BlueVoxs b ON ibv.IdBlueVox = b.Id
-  WHERE ibv.Estatus = 1
-  ORDER BY ibv.Id
-  LIMIT 1
-) AS first_bv ON first_bv.IdInstalacion = i.Id
-LEFT JOIN BlueVoxs b ON first_bv.Id = b.Id
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
@@ -892,11 +930,24 @@ SELECT
   d.Marca AS marcaDispositivo,
   d.Modelo AS modeloDispositivo,
 
-  -- BlueVox
-  b.Id AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idBlueVox', bx.Id,
+          'numeroSerieBlueVox', bx.NumeroSerie,
+          'marcaBlueVox', bx.Marca,
+          'modeloBlueVox', bx.Modelo
+        )
+      )
+      FROM InstalacionesBlueVoxs ibv
+      INNER JOIN BlueVoxs bx ON ibv.IdBlueVox = bx.Id
+      WHERE ibv.IdInstalacion = i.Id
+        AND ibv.Estatus = 1
+        AND bx.IdCliente = i.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS blueVoxs,
 
   -- Vehículo
   v.Id AS idVehiculo,
@@ -923,15 +974,6 @@ SELECT
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
 INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-LEFT JOIN (
-  SELECT ibv.IdInstalacion, b.Id, b.NumeroSerie, b.Marca, b.Modelo
-  FROM InstalacionesBlueVoxs ibv
-  INNER JOIN BlueVoxs b ON ibv.IdBlueVox = b.Id
-  WHERE ibv.Estatus = 1
-  ORDER BY ibv.Id
-  LIMIT 1
-) AS first_bv ON first_bv.IdInstalacion = i.Id
-LEFT JOIN BlueVoxs b ON first_bv.Id = b.Id
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
@@ -946,15 +988,15 @@ ORDER BY t.Id DESC;
           break;
 
         case 2:
-          turnos = await this.consultarTurnoOne(cliente, id)
+          turnos = await this.consultarTurnoOne(cliente, id);
           break;
 
         case 8:
-          turnos = await this.consultarTurnoOne(cliente, id)
+          turnos = await this.consultarTurnoOne(cliente, id);
           break;
 
         case 10:
-          turnos = await this.consultarTurnoOne(cliente, id)
+          turnos = await this.consultarTurnoOne(cliente, id);
           break;
 
         default:
@@ -981,11 +1023,24 @@ SELECT
   d.Marca AS marcaDispositivo,
   d.Modelo AS modeloDispositivo,
 
-  -- BlueVox
-  b.Id AS idBlueVox,
-  b.NumeroSerie AS numeroSerieBlueVox,
-  b.Marca AS marcaBlueVox,
-  b.Modelo AS modeloBlueVox,
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idBlueVox', bx.Id,
+          'numeroSerieBlueVox', bx.NumeroSerie,
+          'marcaBlueVox', bx.Marca,
+          'modeloBlueVox', bx.Modelo
+        )
+      )
+      FROM InstalacionesBlueVoxs ibv
+      INNER JOIN BlueVoxs bx ON ibv.IdBlueVox = bx.Id
+      WHERE ibv.IdInstalacion = i.Id
+        AND ibv.Estatus = 1
+        AND bx.IdCliente = i.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS blueVoxs,
 
   -- Vehículo
   v.Id AS idVehiculo,
@@ -1013,22 +1068,11 @@ FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 LEFT JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
-LEFT JOIN (
-  SELECT ibv.IdInstalacion, b.Id, b.NumeroSerie, b.Marca, b.Modelo, b.IdCliente
-  FROM InstalacionesBlueVoxs ibv
-  INNER JOIN BlueVoxs b ON ibv.IdBlueVox = b.Id
-  WHERE ibv.Estatus = 1
-  ORDER BY ibv.Id
-  LIMIT 1
-) AS first_bv ON first_bv.IdInstalacion = i.Id AND first_bv.IdCliente = i.IdCliente
-LEFT JOIN BlueVoxs b ON first_bv.Id = b.Id
 LEFT JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 LEFT JOIN Operadores o ON t.IdOperador = o.Id
 LEFT JOIN Usuarios u ON o.IdUsuario = u.Id
 
-WHERE 
-  t.Id = ?              -- 🔹 filtra por cliente
- 
+WHERE t.Id = ?
   AND EXISTS (                -- 🔹 asegura que el usuario está asignado a la instalación
     SELECT 1 
     FROM UsuariosInstalaciones ui
@@ -1050,19 +1094,18 @@ ORDER BY t.Inicio DESC;
         );
       }
 
-      // 🔥 Transformación con map
       const data = turnos.map((item) => ({
         ...item,
         id: Number(item.id),
         idInstalacion: Number(item.idInstalacion),
-        idDispositivo: Number(item.idDispositivo),
-        idBlueVox: Number(item.idBlueVox),
-        idVehiculo: Number(item.idVehiculo),
+        idDispositivo: item.idDispositivo != null ? Number(item.idDispositivo) : null,
+        blueVoxs: this.parseBlueVoxs(item.blueVoxs),
+        idVehiculo: item.idVehiculo != null ? Number(item.idVehiculo) : null,
         idCliente: Number(item.idCliente),
         idOperador: Number(item.idOperador),
       }));
 
-      return { data };
+      return { data: data[0] };
     } catch (error) {
       console.log(error);
       if (error instanceof HttpException) {
@@ -1146,19 +1189,17 @@ ORDER BY t.Inicio DESC;
       const { numeroSerieDispositivo } = updateTurnoDto;
 
       const query = `
-      SELECT
-	i.Id 
-FROM Dispositivos d
-LEFT JOIN Instalaciones i ON i.IdDispositivo = d.Id
-WHERE d.NumeroSerie = ?
-AND i.Estatus = 1
+      SELECT i.Id
+      FROM Dispositivos d
+      INNER JOIN Instalaciones i ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+      WHERE d.NumeroSerie = ? AND i.Estatus = 1
       `;
 
       const instalacion = await this.turnosRepository.query(query, [numeroSerieDispositivo]);
       if (instalacion.length === 0) {
         throw new NotFoundException('No se ha encontrado la instalación asignada al dispositivo.');
       }
-      const idInstalacion = instalacion[0].Id
+      const idInstalacion = instalacion[0].Id;
       //Generamos el desfase de horarios
       function pad(n: number) {
         return n < 10 ? '0' + n : n;

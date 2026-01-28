@@ -227,9 +227,9 @@ INNER JOIN Dispositivos dp ON dp.Id = i.IdDispositivo
 INNER JOIN Derroteros d ON d.Id  = v.IdDerrotero
 INNER JOIN Tarifas t ON t.IdDerrotero = d.Id
 
-WHERE v.Id = ${idViaje}
-    `
-    return await this.viajesRepository.query(query);
+WHERE v.Id = ?
+    `;
+    return await this.viajesRepository.query(query, [idViaje]);
   }
 
   // ========================================
@@ -581,6 +581,20 @@ WHERE v.Id = ${idViaje}
   }
 
   /**
+   * Parsea y normaliza el array blueVoxs devuelto por las consultas (JSON_ARRAYAGG).
+   * Compatible con instalaciones: idBlueVox, numeroSerieBlueVox, marcaBlueVox, modeloBlueVox.
+   */
+  private parseBlueVoxs(raw: any): any[] {
+    if (raw == null) return [];
+    const arr = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (!Array.isArray(arr)) return [];
+    return arr.map((b: any) => ({
+      ...b,
+      idBlueVox: b.idBlueVox != null ? Number(b.idBlueVox) : null,
+    }));
+  }
+
+  /**
    * Consulta SQL privada: Obtiene viajes de un cliente específico (sin jerarquía).
    * 
    * Utilizada por roles Cliente (rol 3) para obtener solo sus propios viajes.
@@ -613,9 +627,24 @@ SELECT
   ins.IdDispositivo AS idDispositivo,
   -- Dispositivo
   d.NumeroSerie AS numeroSerieDispositivo,
-  ins.IdBlueVox AS idBlueVox,
-  -- BlueVox
-  bv.NumeroSerie AS numeroSerieBlueVox,
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idBlueVox', bx.Id,
+          'numeroSerieBlueVox', bx.NumeroSerie,
+          'marcaBlueVox', bx.Marca,
+          'modeloBlueVox', bx.Modelo
+        )
+      )
+      FROM InstalacionesBlueVoxs ibv
+      INNER JOIN BlueVoxs bx ON ibv.IdBlueVox = bx.Id
+      WHERE ibv.IdInstalacion = ins.Id
+        AND ibv.Estatus = 1
+        AND bx.IdCliente = ins.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS blueVoxs,
   ins.IdVehiculo AS idVehiculo,
   -- Vehículo
   vhl.Placa AS placaVehiculo,
@@ -640,10 +669,8 @@ SELECT
   r.Id AS idRuta,
   r.Nombre AS nombreRuta,
   r.IdRegion AS idRegion,
-  -- Regiones (Inicio y Fin)
   regInicio.Nombre AS nombreRegionInicio,
   r.IdRegionFin AS idRegionFin,
-  -- Regiones (Inicio y Fin)
   regFin.Nombre AS nombreRegionFin
 
 FROM Viajes v
@@ -651,7 +678,6 @@ JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
 JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
-JOIN BlueVoxs bv ON ins.IdCliente = bv.IdCliente AND ins.IdBlueVox = bv.Id
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -659,13 +685,10 @@ JOIN Derroteros der ON v.IdDerrotero = der.Id
 JOIN Rutas r ON der.IdRuta = r.Id
 LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
 LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
-
-        WHERE v.Estatus = 1
-        AND c.Id = ?
-        AND c.Estatus = 1
-
+WHERE v.Estatus = 1
+  AND c.Id = ?
+  AND c.Estatus = 1
 ORDER BY v.Id DESC
-
     `;
     return this.viajesRepository.query(query, [cliente]);
   }
@@ -680,7 +703,9 @@ ORDER BY v.Id DESC
    * @returns Listado de viajes con información completa (sin paginación)
    */
   private async consultarViajesListado(cliente: number) {
-    const { ids, placeholders } = await this.clienteHijos(cliente);
+    const hijos = await this.clienteHijos(cliente);
+    if ('data' in hijos && !('ids' in hijos)) return [];
+    const { ids, placeholders } = hijos;
     const query = `
 SELECT
   -- Viaje
@@ -702,39 +727,45 @@ SELECT
 
   -- Instalación
   ins.IdDispositivo AS idDispositivo,
-  -- Dispositivo
   d.NumeroSerie AS numeroSerieDispositivo,
-  ins.IdBlueVox AS idBlueVox,
-  -- BlueVox
-  bv.NumeroSerie AS numeroSerieBlueVox,
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idBlueVox', bx.Id,
+          'numeroSerieBlueVox', bx.NumeroSerie,
+          'marcaBlueVox', bx.Marca,
+          'modeloBlueVox', bx.Modelo
+        )
+      )
+      FROM InstalacionesBlueVoxs ibv
+      INNER JOIN BlueVoxs bx ON ibv.IdBlueVox = bx.Id
+      WHERE ibv.IdInstalacion = ins.Id
+        AND ibv.Estatus = 1
+        AND bx.IdCliente = ins.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS blueVoxs,
   ins.IdVehiculo AS idVehiculo,
-  -- Vehículo
   vhl.Placa AS placaVehiculo,
 
-  -- Operador
   o.Id AS idOperador,
   o.IdUsuario AS idUsuario,
-
-  -- Usuario del operador
   u.Nombre AS nombreOperador,
   u.ApellidoPaterno AS apellidoPaternoOperador,
   u.ApellidoMaterno AS apellidoMaternoOperador,
 
-  -- Derrotero
   der.Id AS idDerrotero,
   der.Nombre AS nombreDerrotero,
   der.PuntoInicio AS puntoInicioDerrotero,
   der.PuntoFin AS puntoFinDerrotero,
   der.DistanciaKm AS distanciaKmDerrotero,
 
-  -- Ruta
   r.Id AS idRuta,
   r.Nombre AS nombreRuta,
   r.IdRegion AS idRegion,
-  -- Regiones (Inicio y Fin)
   regInicio.Nombre AS nombreRegionInicio,
   r.IdRegionFin AS idRegionFin,
-  -- Regiones (Inicio y Fin)
   regFin.Nombre AS nombreRegionFin
 
 FROM Viajes v
@@ -742,7 +773,6 @@ JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
 JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
-JOIN BlueVoxs bv ON ins.IdCliente = bv.IdCliente AND ins.IdBlueVox = bv.Id
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -750,13 +780,10 @@ JOIN Derroteros der ON v.IdDerrotero = der.Id
 JOIN Rutas r ON der.IdRuta = r.Id
 LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
 LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
-
-        WHERE v.Estatus = 1
-        AND c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
-        AND c.Estatus = 1
-
+WHERE v.Estatus = 1
+  AND c.Id IN (${placeholders})
+  AND c.Estatus = 1
 ORDER BY v.Id DESC
-
     `;
     return this.viajesRepository.query(query, [...ids]);
   }
@@ -788,71 +815,64 @@ ORDER BY v.Id DESC
       switch (rol) {
         case 1:
           // 🔹 ROL 1 (SuperAdministrador): Obtiene TODOS los viajes activos del sistema
-          // No hay filtrado por cliente, se muestran todos los viajes activos
           viajes = await this.viajesRepository.query(
             `
 SELECT
-  -- Viaje
   v.Id AS id,
   v.Inicio AS inicio,
   v.Fin AS fin,
   v.Estatus AS estatus,
-
-  -- Cliente
   c.Id AS idCliente,
   c.Nombre AS nombreCliente,
   c.ApellidoPaterno AS apellidoPaternoCliente,
   c.ApellidoMaterno AS apellidoMaternoCliente,
-
-  -- Turno
   t.Id AS idTurno,
   t.Inicio AS inicioTurno,
   t.IdInstalacion AS idInstalacion,
-
-  -- Instalación
   ins.IdDispositivo AS idDispositivo,
-  -- Dispositivo
   d.NumeroSerie AS numeroSerieDispositivo,
-  ins.IdBlueVox AS idBlueVox,
-  -- BlueVox
-  bv.NumeroSerie AS numeroSerieBlueVox,
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idBlueVox', bx.Id,
+          'numeroSerieBlueVox', bx.NumeroSerie,
+          'marcaBlueVox', bx.Marca,
+          'modeloBlueVox', bx.Modelo
+        )
+      )
+      FROM InstalacionesBlueVoxs ibv
+      INNER JOIN BlueVoxs bx ON ibv.IdBlueVox = bx.Id
+      WHERE ibv.IdInstalacion = ins.Id
+        AND ibv.Estatus = 1
+        AND bx.IdCliente = ins.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS blueVoxs,
   ins.IdVehiculo AS idVehiculo,
-  -- Vehículo
   vhl.Placa AS placaVehiculo,
-
-  -- Operador
   o.Id AS idOperador,
   o.IdUsuario AS idUsuario,
-
-  -- Usuario del operador
   u.Nombre AS nombreOperador,
   u.ApellidoPaterno AS apellidoPaternoOperador,
   u.ApellidoMaterno AS apellidoMaternoOperador,
-
-  -- Derrotero
   der.Id AS idDerrotero,
   der.Nombre AS nombreDerrotero,
   der.PuntoInicio AS puntoInicioDerrotero,
   der.PuntoFin AS puntoFinDerrotero,
   der.DistanciaKm AS distanciaKmDerrotero,
-
-  -- Ruta
   r.Id AS idRuta,
   r.Nombre AS nombreRuta,
   r.IdRegion AS idRegion,
-  -- Regiones (Inicio y Fin)
   regInicio.Nombre AS nombreRegionInicio,
   r.IdRegionFin AS idRegionFin,
-  -- Regiones (Inicio y Fin)
   regFin.Nombre AS nombreRegionFin
 
 FROM Viajes v
--- Cliente
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
 JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
-JOIN BlueVoxs bv ON ins.IdCliente = bv.IdCliente AND ins.IdBlueVox = bv.Id
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -860,9 +880,8 @@ JOIN Derroteros der ON v.IdDerrotero = der.Id
 JOIN Rutas r ON der.IdRuta = r.Id
 LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
 LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
-WHERE c.Estatus = 1
-
-ORDER BY v.Id DESC;
+WHERE v.Estatus = 1 AND c.Estatus = 1
+ORDER BY v.Id DESC
             `,
           );
           break;
@@ -891,7 +910,7 @@ ORDER BY v.Id DESC;
         idTurno: Number(item.idTurno),
         idInstalacion: Number(item.idInstalacion),
         idDispositivo: Number(item.idDispositivo),
-        idBlueVox: Number(item.idBlueVox),
+        blueVoxs: this.parseBlueVoxs(item.blueVoxs),
         idVehiculo: Number(item.idVehiculo),
         idOperador: Number(item.idOperador),
         idUsuario: Number(item.idUsuario),
@@ -906,9 +925,8 @@ ORDER BY v.Id DESC;
           item.idRegionFin !== null ? Number(item.idRegionFin) : null,
       }));
 
-      //APi response
       const result: ApiResponseCommon = {
-        data: viajes,
+        data,
       };
 
       return result;
@@ -940,7 +958,9 @@ ORDER BY v.Id DESC;
     limit: number,
     offset: number,
   ) {
-    const { ids, placeholders } = await this.clienteHijos(cliente);
+    const hijos = await this.clienteHijos(cliente);
+    if ('data' in hijos && !('ids' in hijos)) return [];
+    const { ids, placeholders } = hijos;
     const query = `
 SELECT
   -- Viaje
@@ -962,39 +982,45 @@ SELECT
 
   -- Instalación
   ins.IdDispositivo AS idDispositivo,
-  -- Dispositivo
   d.NumeroSerie AS numeroSerieDispositivo,
-  ins.IdBlueVox AS idBlueVox,
-  -- BlueVox
-  bv.NumeroSerie AS numeroSerieBlueVox,
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idBlueVox', bx.Id,
+          'numeroSerieBlueVox', bx.NumeroSerie,
+          'marcaBlueVox', bx.Marca,
+          'modeloBlueVox', bx.Modelo
+        )
+      )
+      FROM InstalacionesBlueVoxs ibv
+      INNER JOIN BlueVoxs bx ON ibv.IdBlueVox = bx.Id
+      WHERE ibv.IdInstalacion = ins.Id
+        AND ibv.Estatus = 1
+        AND bx.IdCliente = ins.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS blueVoxs,
   ins.IdVehiculo AS idVehiculo,
-  -- Vehículo
   vhl.Placa AS placaVehiculo,
 
-  -- Operador
   o.Id AS idOperador,
   o.IdUsuario AS idUsuario,
-
-  -- Usuario del operador
   u.Nombre AS nombreOperador,
   u.ApellidoPaterno AS apellidoPaternoOperador,
   u.ApellidoMaterno AS apellidoMaternoOperador,
 
-  -- Derrotero
   der.Id AS idDerrotero,
   der.Nombre AS nombreDerrotero,
   der.PuntoInicio AS puntoInicioDerrotero,
   der.PuntoFin AS puntoFinDerrotero,
   der.DistanciaKm AS distanciaKmDerrotero,
 
-  -- Ruta
   r.Id AS idRuta,
   r.Nombre AS nombreRuta,
   r.IdRegion AS idRegion,
-  -- Regiones (Inicio y Fin)
   regInicio.Nombre AS nombreRegionInicio,
   r.IdRegionFin AS idRegionFin,
-  -- Regiones (Inicio y Fin)
   regFin.Nombre AS nombreRegionFin
 
 FROM Viajes v
@@ -1002,7 +1028,6 @@ JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
 JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
-JOIN BlueVoxs bv ON ins.IdCliente = bv.IdCliente AND ins.IdBlueVox = bv.Id
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -1010,13 +1035,11 @@ JOIN Derroteros der ON v.IdDerrotero = der.Id
 JOIN Rutas r ON der.IdRuta = r.Id
 LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
 LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
-
-       
-        AND c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
-
+WHERE v.Estatus = 1
+  AND c.Estatus = 1
+  AND c.Id IN (${placeholders})
 ORDER BY v.Id DESC
-
-  LIMIT ? OFFSET ?;
+LIMIT ? OFFSET ?
     `;
     return this.viajesRepository.query(query, [...ids, limit, offset]);
   }
@@ -1031,16 +1054,16 @@ ORDER BY v.Id DESC
    * @returns Total de viajes (número entero)
    */
   private async consultarTotalRutasPaginados(cliente: number) {
-    const { ids, placeholders } = await this.clienteHijos(cliente);
-    const query = `  
+    const hijos = await this.clienteHijos(cliente);
+    if ('data' in hijos && !('ids' in hijos)) return [{ total: 0 }];
+    const { ids, placeholders } = hijos;
+    const query = `
 SELECT COUNT(*) AS total
 FROM Viajes v
--- Cliente
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
 JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
-JOIN BlueVoxs bv ON ins.IdCliente = bv.IdCliente AND ins.IdBlueVox = bv.Id
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -1048,9 +1071,9 @@ JOIN Derroteros der ON v.IdDerrotero = der.Id
 JOIN Rutas r ON der.IdRuta = r.Id
 LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
 LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
-
-       
-        AND c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
+WHERE v.Estatus = 1
+  AND c.Estatus = 1
+  AND c.Id IN (${placeholders})
 `;
     return await this.viajesRepository.query(query, [...ids]);
   }
@@ -1075,58 +1098,54 @@ LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
   ) {
     const query = `
 SELECT
-  -- Viaje
   v.Id AS id,
   v.Inicio AS inicio,
   v.Fin AS fin,
   v.Estatus AS estatus,
-
-  -- Cliente
   c.Id AS idCliente,
   c.Nombre AS nombreCliente,
   c.ApellidoPaterno AS apellidoPaternoCliente,
   c.ApellidoMaterno AS apellidoMaternoCliente,
-
-  -- Turno
   t.Id AS idTurno,
   t.Inicio AS inicioTurno,
   t.IdInstalacion AS idInstalacion,
-
-  -- Instalación
   ins.IdDispositivo AS idDispositivo,
-  -- Dispositivo
   d.NumeroSerie AS numeroSerieDispositivo,
-  ins.IdBlueVox AS idBlueVox,
-  -- BlueVox
-  bv.NumeroSerie AS numeroSerieBlueVox,
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idBlueVox', bx.Id,
+          'numeroSerieBlueVox', bx.NumeroSerie,
+          'marcaBlueVox', bx.Marca,
+          'modeloBlueVox', bx.Modelo
+        )
+      )
+      FROM InstalacionesBlueVoxs ibv
+      INNER JOIN BlueVoxs bx ON ibv.IdBlueVox = bx.Id
+      WHERE ibv.IdInstalacion = ins.Id
+        AND ibv.Estatus = 1
+        AND bx.IdCliente = ins.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS blueVoxs,
   ins.IdVehiculo AS idVehiculo,
-  -- Vehículo
   vhl.Placa AS placaVehiculo,
-
-  -- Operador
   o.Id AS idOperador,
   o.IdUsuario AS idUsuario,
-
-  -- Usuario del operador
   u.Nombre AS nombreOperador,
   u.ApellidoPaterno AS apellidoPaternoOperador,
   u.ApellidoMaterno AS apellidoMaternoOperador,
-
-  -- Derrotero
   der.Id AS idDerrotero,
   der.Nombre AS nombreDerrotero,
   der.PuntoInicio AS puntoInicioDerrotero,
   der.PuntoFin AS puntoFinDerrotero,
   der.DistanciaKm AS distanciaKmDerrotero,
-
-  -- Ruta
   r.Id AS idRuta,
   r.Nombre AS nombreRuta,
   r.IdRegion AS idRegion,
-  -- Regiones (Inicio y Fin)
   regInicio.Nombre AS nombreRegionInicio,
   r.IdRegionFin AS idRegionFin,
-  -- Regiones (Inicio y Fin)
   regFin.Nombre AS nombreRegionFin
 
 FROM Viajes v
@@ -1134,7 +1153,6 @@ JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
 JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
-JOIN BlueVoxs bv ON ins.IdCliente = bv.IdCliente AND ins.IdBlueVox = bv.Id
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -1142,13 +1160,11 @@ JOIN Derroteros der ON v.IdDerrotero = der.Id
 JOIN Rutas r ON der.IdRuta = r.Id
 LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
 LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
-
-       
-        AND c.Id = ?
-
+WHERE v.Estatus = 1
+  AND c.Estatus = 1
+  AND c.Id = ?
 ORDER BY v.Id DESC
-
-  LIMIT ? OFFSET ?;
+LIMIT ? OFFSET ?
     `;
     return this.viajesRepository.query(query, [cliente, limit, offset]);
   }
@@ -1163,15 +1179,13 @@ ORDER BY v.Id DESC
    * @returns Total de viajes (número entero)
    */
   private async consultarTotalRutasPaginadosCL(cliente: number) {
-    const query = `  
+    const query = `
 SELECT COUNT(*) AS total
 FROM Viajes v
--- Cliente
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
 JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
-JOIN BlueVoxs bv ON ins.IdCliente = bv.IdCliente AND ins.IdBlueVox = bv.Id
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -1179,9 +1193,9 @@ JOIN Derroteros der ON v.IdDerrotero = der.Id
 JOIN Rutas r ON der.IdRuta = r.Id
 LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
 LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
-
-       
-        AND c.Id = ?
+WHERE v.Estatus = 1
+  AND c.Estatus = 1
+  AND c.Id = ?
 `;
     return await this.viajesRepository.query(query, [cliente]);
   }
@@ -1223,62 +1237,57 @@ LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
       switch (rol) {
         case 1:
           // 🔹 ROL 1 (SuperAdministrador): Obtiene TODOS los viajes activos (paginados)
-          // Se ejecuta una consulta directa sin filtrado por cliente
           viajes = await this.viajesRepository.query(
             `
 SELECT
-  -- Viaje
   v.Id AS id,
   v.Inicio AS inicio,
   v.Fin AS fin,
   v.Estatus AS estatus,
-
-  -- Cliente
   c.Id AS idCliente,
   c.Nombre AS nombreCliente,
   c.ApellidoPaterno AS apellidoPaternoCliente,
   c.ApellidoMaterno AS apellidoMaternoCliente,
-
-  -- Turno
   t.Id AS idTurno,
   t.Inicio AS inicioTurno,
   t.IdInstalacion AS idInstalacion,
-
-  -- Instalación
   ins.IdDispositivo AS idDispositivo,
-  -- Dispositivo
   d.NumeroSerie AS numeroSerieDispositivo,
-  ins.IdBlueVox AS idBlueVox,
-  -- BlueVox
-  bv.NumeroSerie AS numeroSerieBlueVox,
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idBlueVox', bx.Id,
+          'numeroSerieBlueVox', bx.NumeroSerie,
+          'marcaBlueVox', bx.Marca,
+          'modeloBlueVox', bx.Modelo
+        )
+      )
+      FROM InstalacionesBlueVoxs ibv
+      INNER JOIN BlueVoxs bx ON ibv.IdBlueVox = bx.Id
+      WHERE ibv.IdInstalacion = ins.Id
+        AND ibv.Estatus = 1
+        AND bx.IdCliente = ins.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS blueVoxs,
   ins.IdVehiculo AS idVehiculo,
-  -- Vehículo
   vhl.Placa AS placaVehiculo,
-
-  -- Operador
   o.Id AS idOperador,
   o.IdUsuario AS idUsuario,
-
-  -- Usuario del operador
   u.Nombre AS nombreOperador,
   u.ApellidoPaterno AS apellidoPaternoOperador,
   u.ApellidoMaterno AS apellidoMaternoOperador,
-
-  -- Derrotero
   der.Id AS idDerrotero,
   der.Nombre AS nombreDerrotero,
   der.PuntoInicio AS puntoInicioDerrotero,
   der.PuntoFin AS puntoFinDerrotero,
   der.DistanciaKm AS distanciaKmDerrotero,
-
-  -- Ruta
   r.Id AS idRuta,
   r.Nombre AS nombreRuta,
   r.IdRegion AS idRegion,
-  -- Regiones (Inicio y Fin)
   regInicio.Nombre AS nombreRegionInicio,
   r.IdRegionFin AS idRegionFin,
-  -- Regiones (Inicio y Fin)
   regFin.Nombre AS nombreRegionFin
 
 FROM Viajes v
@@ -1286,7 +1295,6 @@ JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
 JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
-JOIN BlueVoxs bv ON ins.IdCliente = bv.IdCliente AND ins.IdBlueVox = bv.Id
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -1294,23 +1302,30 @@ JOIN Derroteros der ON v.IdDerrotero = der.Id
 JOIN Rutas r ON der.IdRuta = r.Id
 LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
 LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
-
-        
-
+WHERE v.Estatus = 1 AND c.Estatus = 1
 ORDER BY v.Id DESC
-LIMIT ? OFFSET ?;
+LIMIT ? OFFSET ?
             `,
             [limit, offset],
           );
 
-          // 🔹 CONTEO TOTAL: Se obtiene el total de viajes (sin paginación) para calcular la última página
-          // Esta consulta no incluye LIMIT ni OFFSET, solo cuenta los registros
           totalResult = await this.viajesRepository.query(
             `
-  SELECT COUNT(*) AS total
-  FROM Viajes v
-  
-  `,
+SELECT COUNT(*) AS total
+FROM Viajes v
+JOIN Clientes c ON v.IdCliente = c.Id
+JOIN Turnos t ON v.IdTurno = t.Id
+JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
+JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
+JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
+JOIN Operadores o ON v.IdOperador = o.Id
+JOIN Usuarios u ON o.IdUsuario = u.Id
+JOIN Derroteros der ON v.IdDerrotero = der.Id
+JOIN Rutas r ON der.IdRuta = r.Id
+LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
+LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
+WHERE v.Estatus = 1 AND c.Estatus = 1
+            `,
           );
           break;
         case 2: // Administrador
@@ -1340,7 +1355,7 @@ LIMIT ? OFFSET ?;
         idTurno: Number(item.idTurno),
         idInstalacion: Number(item.idInstalacion),
         idDispositivo: Number(item.idDispositivo),
-        idBlueVox: Number(item.idBlueVox),
+        blueVoxs: this.parseBlueVoxs(item.blueVoxs),
         idVehiculo: Number(item.idVehiculo),
         idOperador: Number(item.idOperador),
         idUsuario: Number(item.idUsuario),
@@ -1357,9 +1372,8 @@ LIMIT ? OFFSET ?;
 
       const total = Number(totalResult[0]?.total || 0);
 
-      //APi response
       const result: ApiResponseCommon = {
-        data: viajes,
+        data,
         paginated: {
           total: total,
           page,
@@ -1405,67 +1419,61 @@ LIMIT ? OFFSET ?;
       viajes = await this.viajesRepository.query(
         `
 SELECT
-  -- Viaje
   v.Id AS id,
   v.Inicio AS inicio,
   v.Fin AS fin,
   v.Estatus AS estatus,
-
-  -- Cliente
   c.Id AS idCliente,
   c.Nombre AS nombreCliente,
   c.ApellidoPaterno AS apellidoPaternoCliente,
   c.ApellidoMaterno AS apellidoMaternoCliente,
-
-  -- Turno
   t.Id AS idTurno,
   t.Inicio AS inicioTurno,
   t.IdInstalacion AS idInstalacion,
-
-  -- Instalación
   ins.IdDispositivo AS idDispositivo,
-  -- Dispositivo
   d.NumeroSerie AS numeroSerieDispositivo,
-  ins.IdBlueVox AS idBlueVox,
-  -- BlueVox
-  bv.NumeroSerie AS numeroSerieBlueVox,
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idBlueVox', bx.Id,
+          'numeroSerieBlueVox', bx.NumeroSerie,
+          'marcaBlueVox', bx.Marca,
+          'modeloBlueVox', bx.Modelo
+        )
+      )
+      FROM InstalacionesBlueVoxs ibv
+      INNER JOIN BlueVoxs bx ON ibv.IdBlueVox = bx.Id
+      WHERE ibv.IdInstalacion = ins.Id
+        AND ibv.Estatus = 1
+        AND bx.IdCliente = ins.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS blueVoxs,
   ins.IdVehiculo AS idVehiculo,
-  -- Vehículo
   vhl.Placa AS placaVehiculo,
-
-  -- Operador
   o.Id AS idOperador,
   o.IdUsuario AS idUsuario,
-
-  -- Usuario del operador
   u.Nombre AS nombreOperador,
   u.ApellidoPaterno AS apellidoPaternoOperador,
   u.ApellidoMaterno AS apellidoMaternoOperador,
-
-  -- Derrotero
   der.Id AS idDerrotero,
   der.Nombre AS nombreDerrotero,
   der.PuntoInicio AS puntoInicioDerrotero,
   der.PuntoFin AS puntoFinDerrotero,
   der.DistanciaKm AS distanciaKmDerrotero,
-
-  -- Ruta
   r.Id AS idRuta,
   r.Nombre AS nombreRuta,
   r.IdRegion AS idRegion,
-  -- Regiones (Inicio y Fin)
   regInicio.Nombre AS nombreRegionInicio,
   r.IdRegionFin AS idRegionFin,
-  -- Regiones (Inicio y Fin)
   regFin.Nombre AS nombreRegionFin
 
 FROM Viajes v
-
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
 JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
-JOIN BlueVoxs bv ON ins.IdCliente = bv.IdCliente AND ins.IdBlueVox = bv.Id
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -1473,9 +1481,7 @@ JOIN Derroteros der ON v.IdDerrotero = der.Id
 JOIN Rutas r ON der.IdRuta = r.Id
 LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
 LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
-
-        WHERE v.Id = ?
-
+WHERE v.Id = ?
 ORDER BY v.Id DESC
             `,
         [id],
@@ -1494,7 +1500,7 @@ ORDER BY v.Id DESC
         idTurno: Number(viaje.idTurno),
         idInstalacion: Number(viaje.idInstalacion),
         idDispositivo: Number(viaje.idDispositivo),
-        idBlueVox: Number(viaje.idBlueVox),
+        blueVoxs: this.parseBlueVoxs(viaje.blueVoxs),
         idVehiculo: Number(viaje.idVehiculo),
         idOperador: Number(viaje.idOperador),
         idUsuario: Number(viaje.idUsuario),
@@ -1509,9 +1515,8 @@ ORDER BY v.Id DESC
           viaje.idRegionFin !== null ? Number(viaje.idRegionFin) : null,
       };
 
-      //APi response
       const result: ApiResponseCommon = {
-        data: viajes,
+        data,
       };
 
       return result;
