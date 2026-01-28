@@ -21,7 +21,7 @@ import { CatMetodoPago } from 'src/entities/CatMetodoPago';
 @Module({
   imports: [
     ScheduleModule.forRoot(),
-    TypeOrmModule.forFeature([TransaccionesRecarga, TransaccionesDebito, HistoricoTransaccionesDebito, HistoricoTransaccionesRecarga, Dispositivos, Clientes, Monederos, CatTiposPasajeros, Viajes, CatMetodoPago]),
+    TypeOrmModule.forFeature([TransaccionesRecarga, TransaccionesDebito, HistoricoTransaccionesDebito, HistoricoTransaccionesRecarga, Dispositivos, Clientes, Monederos, CatTiposPasajeros, Viajes, CatMetodoPago, Monederos]),
     MonederosModule,
     BitacoraModule,
     PasajerosModule,

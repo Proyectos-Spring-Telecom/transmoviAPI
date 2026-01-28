@@ -35,7 +35,7 @@ export class TransaccionesController {
     @Request() req,
   ): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
-    return this.transaccionesService.createTransaccionDebitoPrueba(
+    return this.transaccionesService.createOrCloseTransaccionDebito(
       createTransaccioneDebitoDto,
       idUser,
     );
@@ -50,19 +50,6 @@ export class TransaccionesController {
     const idUser = req.user.userId;
     return this.transaccionesService.createTransaccionRecarga(
       createTransaccioneRecargaDto,
-      idUser,
-    );
-  }
-
-  @Patch('debito')
-  @UseGuards(JwtAuthGuard)
-  updateTransaccionDebito(
-    @Body() updateTransaccioneDebitoDto: UpdateTransaccioneDebitoDto,
-    @Request() req,
-  ): Promise<ApiCrudResponse> {
-    const idUser = req.user.userId;
-    return this.transaccionesService.updateTransaccionDebito(
-      updateTransaccioneDebitoDto,
       idUser,
     );
   }
