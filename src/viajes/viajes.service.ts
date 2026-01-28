@@ -82,9 +82,7 @@ export class ViajesService {
 
       // 🔹 FUNCIÓN AUXILIAR: Formatea números menores a 10 con un cero a la izquierda
       // Ejemplo: pad(5) = "05", pad(15) = "15"
-      function pad(n: number) {
-        return n < 10 ? '0' + n : n;
-      }
+  
 
       // 🔹 CÁLCULO DE FECHA CON DESFASE HORARIO
       // Se aplica un desfase de -6 horas al tiempo actual (ajuste de zona horaria)

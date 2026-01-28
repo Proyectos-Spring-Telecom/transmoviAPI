@@ -10,6 +10,7 @@ import { Bitacora } from 'src/entities/Bitacora';
 import { Repository } from 'typeorm';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
 import { Clientes } from 'src/entities/Clientes';
+import { horaDesfasada } from 'src/utils/correccion-hora';
 
 @Injectable()
 export class BitacoraLoggerService {
@@ -18,7 +19,7 @@ export class BitacoraLoggerService {
     private readonly bitacoraRepository: Repository<Bitacora>,
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
-  ) {}
+  ) { }
   createBitacora(createBitacoraDto: CreateBitacoraDto) {
     return 'This action adds a new bitacora';
   }
@@ -257,7 +258,7 @@ INNER JOIN Usuarios u ON b.IdUsuario = u.Id
 INNER JOIN Modulos m ON b.IdModulo = m.Id
 WHERE u.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
   `,
-  [...ids],
+            [...ids],
           );
           break;
       }
@@ -362,11 +363,7 @@ ORDER BY b.FechaCreacion DESC;
     estatus?: string,
     error?: string,
   ) {
-    function pad(n: number) {
-      return n < 10 ? '0' + n : n;
-    }
-    const ahora = new Date();
-    const FechaActual = `${ahora.getFullYear()}-${pad(ahora.getMonth() + 1)}-${pad(ahora.getDate())} ${pad(ahora.getHours())}:${pad(ahora.getMinutes())}:${pad(ahora.getSeconds())}`;
+    const { fechaDesfasada, fechaActual } = await horaDesfasada();
 
     const registro = this.bitacoraRepository.create({
       modulo: modulo,
@@ -378,7 +375,7 @@ ORDER BY b.FechaCreacion DESC;
       idUsuario: idUsuario,
       idModulo: idModulo,
     });
-    console.log(FechaActual);
+    console.log(fechaActual);
     await this.bitacoraRepository.save(registro);
     console.log('Registro guardado correctamente en la bitácora: ', registro);
   }

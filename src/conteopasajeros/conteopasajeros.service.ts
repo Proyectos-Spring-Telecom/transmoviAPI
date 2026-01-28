@@ -62,8 +62,8 @@ export class ConteopasajerosService {
     try {
       // 🔹 VALIDACIÓN: Se verifica que el BlueVox exista mediante su número de serie
       // El BlueVox es obligatorio ya que el conteo debe estar asociado a un dispositivo
-      const bluevox = await this.bluevoxsRepository.findOne({ 
-        where: { numeroSerie: createConteopasajeroDto.numeroSerieBlueVox } 
+      const bluevox = await this.bluevoxsRepository.findOne({
+        where: { numeroSerie: createConteopasajeroDto.numeroSerieBlueVox }
       });
 
       if (!bluevox) {
@@ -73,8 +73,8 @@ export class ConteopasajerosService {
       // 🔹 VALIDACIÓN: Si se proporciona idViaje, se verifica que el viaje exista
       // El idViaje es opcional, pero si se proporciona debe ser válido
       if (createConteopasajeroDto.idViaje !== undefined && createConteopasajeroDto.idViaje !== null) {
-        const viaje = await this.viajesRepository.findOne({ 
-          where: { id: createConteopasajeroDto.idViaje } 
+        const viaje = await this.viajesRepository.findOne({
+          where: { id: createConteopasajeroDto.idViaje }
         });
 
         if (!viaje) {
@@ -142,15 +142,14 @@ export class ConteopasajerosService {
       [cliente],
     );
 
-    const idsFiltrados = clientesFiltrado[0]; // El primer índice contiene los resultados
+    const idsFiltrados = clientesFiltrado[0];
     const ids = idsFiltrados
       .map((clientesFiltrado: any) => Number(clientesFiltrado.Id))
       .filter(Boolean);
     if (ids.length === 0) {
-      return { data: [] }; // No hay clientes que consultar
+      return { data: [] };
     }
 
-    // 3. Construir el query dinámico con los IDs
     const placeholders = ids.map(() => '?').join(', ');
     return { ids, placeholders };
   }
@@ -169,9 +168,12 @@ SELECT
     cp.Diferencia AS diferencia,
     cp.FechaHora AS fechaHora,
     cp.FHRegistro AS fhRegistro,
+    cp.Estatus AS estatus,
     cp.NumeroSerieBlueVox AS numeroSerieBlueVox,
+    cp.IdViaje AS idViaje,
     bv.Marca AS marcaBlueVox,
     bv.Modelo AS modeloBlueVox,
+    v.Placa AS placaVehiculo,
     c.Id AS idCliente,
     CONCAT(
         c.Nombre,
@@ -181,33 +183,48 @@ SELECT
 FROM ConteoPasajeros cp
 INNER JOIN BlueVoxs bv
     ON cp.NumeroSerieBlueVox = bv.NumeroSerie
+LEFT JOIN (
+  SELECT ibv.IdInstalacion, ibv.IdBlueVox, i.IdVehiculo, i.IdCliente
+  FROM InstalacionesBlueVoxs ibv
+  INNER JOIN Instalaciones i ON ibv.IdInstalacion = i.Id
+  WHERE ibv.Estatus = 1 AND i.Estatus = 1
+  ORDER BY ibv.Id DESC
+  LIMIT 1
+) AS first_inst ON first_inst.IdBlueVox = bv.Id
+LEFT JOIN Instalaciones i ON first_inst.IdInstalacion = i.Id
+LEFT JOIN Vehiculos v 
+    ON first_inst.IdVehiculo = v.Id AND first_inst.IdCliente = v.IdCliente
 INNER JOIN Clientes c
     ON bv.IdCliente = c.Id
-
-WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
-
+WHERE c.Id IN (${placeholders})
 ORDER BY cp.Id DESC
 LIMIT ? OFFSET ?;
-    `;
-    return this.conteopasajeroRepository.query(query, [
-      ...ids,
-      limit,
-      offset,
-    ]);
+  `;
+    return this.conteopasajeroRepository.query(query, [...ids, limit, offset]);
   }
 
   private async consultarTotalConteoPasajerosPaginados(cliente: number) {
     const { ids, placeholders } = await this.clienteHijos(cliente);
-    const query = `  
-    SELECT COUNT(*) AS total
+    const query = `
+SELECT COUNT(*) AS total
 FROM ConteoPasajeros cp
 INNER JOIN BlueVoxs bv
     ON cp.NumeroSerieBlueVox = bv.NumeroSerie
+LEFT JOIN (
+  SELECT ibv.IdInstalacion, ibv.IdBlueVox, i.IdVehiculo, i.IdCliente
+  FROM InstalacionesBlueVoxs ibv
+  INNER JOIN Instalaciones i ON ibv.IdInstalacion = i.Id
+  WHERE ibv.Estatus = 1 AND i.Estatus = 1
+  ORDER BY ibv.Id DESC
+  LIMIT 1
+) AS first_inst ON first_inst.IdBlueVox = bv.Id
+LEFT JOIN Instalaciones i ON first_inst.IdInstalacion = i.Id
+LEFT JOIN Vehiculos v 
+    ON first_inst.IdVehiculo = v.Id AND first_inst.IdCliente = v.IdCliente
 INNER JOIN Clientes c
     ON bv.IdCliente = c.Id
-
-WHERE c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
-`;
+WHERE c.Id IN (${placeholders})
+  `;
     return await this.conteopasajeroRepository.query(query, [...ids]);
   }
 
@@ -224,9 +241,12 @@ SELECT
     cp.Diferencia AS diferencia,
     cp.FechaHora AS fechaHora,
     cp.FHRegistro AS fhRegistro,
+    cp.Estatus AS estatus,
     cp.NumeroSerieBlueVox AS numeroSerieBlueVox,
+    cp.IdViaje AS idViaje,
     bv.Marca AS marcaBlueVox,
     bv.Modelo AS modeloBlueVox,
+    v.Placa AS placaVehiculo,
     c.Id AS idCliente,
     CONCAT(
         c.Nombre,
@@ -236,32 +256,47 @@ SELECT
 FROM ConteoPasajeros cp
 INNER JOIN BlueVoxs bv
     ON cp.NumeroSerieBlueVox = bv.NumeroSerie
+LEFT JOIN (
+  SELECT ibv.IdInstalacion, ibv.IdBlueVox, i.IdVehiculo, i.IdCliente
+  FROM InstalacionesBlueVoxs ibv
+  INNER JOIN Instalaciones i ON ibv.IdInstalacion = i.Id
+  WHERE ibv.Estatus = 1 AND i.Estatus = 1
+  ORDER BY ibv.Id DESC
+  LIMIT 1
+) AS first_inst ON first_inst.IdBlueVox = bv.Id
+LEFT JOIN Instalaciones i ON first_inst.IdInstalacion = i.Id
+LEFT JOIN Vehiculos v 
+    ON first_inst.IdVehiculo = v.Id AND first_inst.IdCliente = v.IdCliente
 INNER JOIN Clientes c
     ON bv.IdCliente = c.Id
-
-WHERE c.Id = ?   -- 🔹 aquí colocas el ID del cliente que quieres consultar
-
+WHERE c.Id = ?
 ORDER BY cp.Id DESC
 LIMIT ? OFFSET ?;
-    `;
-    return this.conteopasajeroRepository.query(query, [
-      cliente,
-      limit,
-      offset,
-    ]);
+  `;
+    return this.conteopasajeroRepository.query(query, [cliente, limit, offset]);
   }
 
   private async consultarTotalConteoPasajerosPaginadosCl(cliente: number) {
-    const query = `  
-    SELECT COUNT(*) AS total
+    const query = `
+SELECT COUNT(*) AS total
 FROM ConteoPasajeros cp
 INNER JOIN BlueVoxs bv
     ON cp.NumeroSerieBlueVox = bv.NumeroSerie
+LEFT JOIN (
+  SELECT ibv.IdInstalacion, ibv.IdBlueVox, i.IdVehiculo, i.IdCliente
+  FROM InstalacionesBlueVoxs ibv
+  INNER JOIN Instalaciones i ON ibv.IdInstalacion = i.Id
+  WHERE ibv.Estatus = 1 AND i.Estatus = 1
+  ORDER BY ibv.Id DESC
+  LIMIT 1
+) AS first_inst ON first_inst.IdBlueVox = bv.Id
+LEFT JOIN Instalaciones i ON first_inst.IdInstalacion = i.Id
+LEFT JOIN Vehiculos v 
+    ON first_inst.IdVehiculo = v.Id AND first_inst.IdCliente = v.IdCliente
 INNER JOIN Clientes c
     ON bv.IdCliente = c.Id
-
-WHERE c.Id = ?   -- 🔹 aquí colocas el ID del cliente que quieres consultar
-`;
+WHERE c.Id = ?
+  `;
     return await this.conteopasajeroRepository.query(query, [cliente]);
   }
 
@@ -287,9 +322,12 @@ SELECT
     cp.Diferencia AS diferencia,
     cp.FechaHora AS fechaHora,
     cp.FHRegistro AS fhRegistro,
+    cp.Estatus AS estatus,
     cp.NumeroSerieBlueVox AS numeroSerieBlueVox,
+    cp.IdViaje AS idViaje,
     bv.Marca AS marcaBlueVox,
     bv.Modelo AS modeloBlueVox,
+    v.Placa AS placaVehiculo,
     c.Id AS idCliente,
     CONCAT(
         c.Nombre,
@@ -299,66 +337,70 @@ SELECT
 FROM ConteoPasajeros cp
 INNER JOIN BlueVoxs bv
     ON cp.NumeroSerieBlueVox = bv.NumeroSerie
+LEFT JOIN (
+  SELECT ibv.IdInstalacion, ibv.IdBlueVox, i.IdVehiculo, i.IdCliente
+  FROM InstalacionesBlueVoxs ibv
+  INNER JOIN Instalaciones i ON ibv.IdInstalacion = i.Id
+  WHERE ibv.Estatus = 1 AND i.Estatus = 1
+  ORDER BY ibv.Id DESC
+  LIMIT 1
+) AS first_inst ON first_inst.IdBlueVox = bv.Id
+LEFT JOIN Instalaciones i ON first_inst.IdInstalacion = i.Id
+LEFT JOIN Vehiculos v 
+    ON first_inst.IdVehiculo = v.Id AND first_inst.IdCliente = v.IdCliente
 INNER JOIN Clientes c
     ON bv.IdCliente = c.Id
-
 ORDER BY cp.Id DESC
 LIMIT ? OFFSET ?;
-        `,
+          `,
             [limit, offset],
           );
 
-          // Query para total (sin paginación)
           totalResult = await this.conteopasajeroRepository.query(
             `
-  SELECT COUNT(*) AS total
+SELECT COUNT(*) AS total
 FROM ConteoPasajeros cp
 INNER JOIN BlueVoxs bv
     ON cp.NumeroSerieBlueVox = bv.NumeroSerie
+LEFT JOIN (
+  SELECT ibv.IdInstalacion, ibv.IdBlueVox, i.IdVehiculo, i.IdCliente
+  FROM InstalacionesBlueVoxs ibv
+  INNER JOIN Instalaciones i ON ibv.IdInstalacion = i.Id
+  WHERE ibv.Estatus = 1 AND i.Estatus = 1
+  ORDER BY ibv.Id DESC
+  LIMIT 1
+) AS first_inst ON first_inst.IdBlueVox = bv.Id
+LEFT JOIN Instalaciones i ON first_inst.IdInstalacion = i.Id
+LEFT JOIN Vehiculos v 
+    ON first_inst.IdVehiculo = v.Id AND first_inst.IdCliente = v.IdCliente
 INNER JOIN Clientes c
     ON bv.IdCliente = c.Id
-
-  `,
+          `,
           );
           break;
 
         case 2:
-          // Consulta de datos paginados Usuario Administrador
           conteoPasajeros = await this.consultarConteoPasajerosPaginado(cliente, limit, offset);
-
-          // Query para total (sin paginación)
           totalResult = await this.consultarTotalConteoPasajerosPaginados(cliente);
           break;
 
         case 3:
-          // Consulta de datos paginados Usuario Operador
           conteoPasajeros = await this.consultarConteoPasajerosPaginadoCL(cliente, limit, offset);
-
-          // Query para total (sin paginación)
           totalResult = await this.consultarTotalConteoPasajerosPaginadosCl(cliente);
           break;
 
         case 8:
-          // Consulta de datos paginados Usuario Reportes
           conteoPasajeros = await this.consultarConteoPasajerosPaginado(cliente, limit, offset);
-
-          // Query para total (sin paginación)
           totalResult = await this.consultarTotalConteoPasajerosPaginados(cliente);
           break;
 
         case 10:
-          // Consulta de datos paginados Usuario Capturista
           conteoPasajeros = await this.consultarConteoPasajerosPaginado(cliente, limit, offset);
-
-          // Query para total (sin paginación)
           totalResult = await this.consultarTotalConteoPasajerosPaginados(cliente);
           break;
 
         default:
-          // Consulta de datos paginados Usuario Operador
           conteoPasajeros = await this.consultarConteoPasajerosPaginadoCL(cliente, limit, offset);
-
-          // Query para total (sin paginación)
           totalResult = await this.consultarTotalConteoPasajerosPaginadosCl(cliente);
           break;
       }
@@ -381,7 +423,6 @@ INNER JOIN Clientes c
       };
       return result;
     } catch (error) {
-      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -400,6 +441,8 @@ INNER JOIN Clientes c
     offset: number,
   ) {
     const { ids, placeholders } = await this.clienteHijos(cliente);
+    const fechaInicioParam = `${fechaInicio}T00:00:00`;
+    const fechaFinParam = `${fechaFin}T23:59:59`;
     const query = `
 -- Parámetros:
 -- :fechaInicio -> '2025-11-01'
@@ -414,7 +457,9 @@ SELECT
     cp.Diferencia AS diferencia,
     cp.FechaHora AS fechaHora,
     cp.FHRegistro AS fhRegistro,
+    cp.Estatus AS estatus,
     cp.NumeroSerieBlueVox AS numeroSerieBlueVox,
+    cp.IdViaje AS idViaje,
     bv.Marca AS marcaBlueVox,
     bv.Modelo AS modeloBlueVox,
     c.Id AS idCliente,
@@ -428,13 +473,15 @@ INNER JOIN BlueVoxs bv
     ON cp.NumeroSerieBlueVox = bv.NumeroSerie
 INNER JOIN Clientes c
     ON bv.IdCliente = c.Id
-WHERE cp.FechaHora BETWEEN '${fechaInicio}T00:00:00' AND '${fechaFin}T23:59:00'
+WHERE cp.FechaHora BETWEEN ? AND ?
 AND c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
 
 ORDER BY cp.FechaHora DESC
 LIMIT ? OFFSET ?;
     `;
     return this.conteopasajeroRepository.query(query, [
+      fechaInicioParam,
+      fechaFinParam,
       ...ids,
       limit,
       offset,
@@ -447,6 +494,8 @@ LIMIT ? OFFSET ?;
     cliente: number,
   ) {
     const { ids, placeholders } = await this.clienteHijos(cliente);
+    const fechaInicioParam = `${fechaInicio}T00:00:00`;
+    const fechaFinParam = `${fechaFin}T23:59:59`;
     const query = `  
     SELECT COUNT(*) AS total
 FROM ConteoPasajeros cp
@@ -454,10 +503,10 @@ INNER JOIN BlueVoxs bv
     ON cp.NumeroSerieBlueVox = bv.NumeroSerie
 INNER JOIN Clientes c
     ON bv.IdCliente = c.Id
-WHERE cp.FechaHora BETWEEN '${fechaInicio}T00:00:00' AND '${fechaFin}T23:59:00'
+WHERE cp.FechaHora BETWEEN ? AND ?
 AND c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
 `;
-    return await this.conteopasajeroRepository.query(query, [...ids]);
+    return await this.conteopasajeroRepository.query(query, [fechaInicioParam, fechaFinParam, ...ids]);
   }
 
   private async consultarConteoPasajerosPaginadoRangoCL(
@@ -467,6 +516,8 @@ AND c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quie
     limit: number,
     offset: number,
   ) {
+    const fechaInicioParam = `${fechaInicio}T00:00:00`;
+    const fechaFinParam = `${fechaFin}T23:59:59`;
     const query = `
 -- Parámetros:
 -- :fechaInicio -> '2025-11-01'
@@ -481,7 +532,9 @@ SELECT
     cp.Diferencia AS diferencia,
     cp.FechaHora AS fechaHora,
     cp.FHRegistro AS fhRegistro,
+    cp.Estatus AS estatus,
     cp.NumeroSerieBlueVox AS numeroSerieBlueVox,
+    cp.IdViaje AS idViaje,
     bv.Marca AS marcaBlueVox,
     bv.Modelo AS modeloBlueVox,
     c.Id AS idCliente,
@@ -495,13 +548,15 @@ INNER JOIN BlueVoxs bv
     ON cp.NumeroSerieBlueVox = bv.NumeroSerie
 INNER JOIN Clientes c
     ON bv.IdCliente = c.Id
-WHERE cp.FechaHora BETWEEN '${fechaInicio}T00:00:00' AND '${fechaFin}T23:59:00'
+WHERE cp.FechaHora BETWEEN ? AND ?
 AND c.Id = ?   -- 🔹 aquí colocas el ID del cliente que quieres consultar
 
 ORDER BY cp.FechaHora DESC
 LIMIT ? OFFSET ?;
     `;
     return this.conteopasajeroRepository.query(query, [
+      fechaInicioParam,
+      fechaFinParam,
       cliente,
       limit,
       offset,
@@ -512,6 +567,8 @@ LIMIT ? OFFSET ?;
     fechaInicio: string,
     fechaFin: string,
     cliente: number) {
+    const fechaInicioParam = `${fechaInicio}T00:00:00`;
+    const fechaFinParam = `${fechaFin}T23:59:59`;
     const query = `  
     SELECT COUNT(*) AS total
 FROM ConteoPasajeros cp
@@ -519,10 +576,10 @@ INNER JOIN BlueVoxs bv
     ON cp.NumeroSerieBlueVox = bv.NumeroSerie
 INNER JOIN Clientes c
     ON bv.IdCliente = c.Id
-WHERE cp.FechaHora BETWEEN '${fechaInicio}T00:00:00' AND '${fechaFin}T23:59:00'
+WHERE cp.FechaHora BETWEEN ? AND ?
 AND c.Id = ?   -- 🔹 aquí colocas el ID del cliente que quieres consultar
 `;
-    return await this.conteopasajeroRepository.query(query, [cliente]);
+    return await this.conteopasajeroRepository.query(query, [fechaInicioParam, fechaFinParam, cliente]);
   }
 
   async findAllList(): Promise<ApiResponseCommon> {
@@ -633,6 +690,8 @@ AND c.Id = ?   -- 🔹 aquí colocas el ID del cliente que quieres consultar
       const endDate = new Date(`${fechaFin} 23:59:59`);
       switch (rol) {
         case 1:
+          const fechaInicioParam = `${fechaInicio}T00:00:00`;
+          const fechaFinParam = `${fechaFin}T23:59:59`;
           conteoPasajeros = await this.conteopasajeroRepository.query(
             `
 -- Parámetros:
@@ -648,7 +707,9 @@ SELECT
     cp.Diferencia AS diferencia,
     cp.FechaHora AS fechaHora,
     cp.FHRegistro AS fhRegistro,
+    cp.Estatus AS estatus,
     cp.NumeroSerieBlueVox AS numeroSerieBlueVox,
+    cp.IdViaje AS idViaje,
     bv.Marca AS marcaBlueVox,
     bv.Modelo AS modeloBlueVox,
     c.Id AS idCliente,
@@ -662,12 +723,12 @@ INNER JOIN BlueVoxs bv
     ON cp.NumeroSerieBlueVox = bv.NumeroSerie
 INNER JOIN Clientes c
     ON bv.IdCliente = c.Id
-WHERE cp.FechaHora BETWEEN '${fechaInicio}T00:00:00' AND '${fechaFin}T23:59:00'
+WHERE cp.FechaHora BETWEEN ? AND ?
 
 ORDER BY cp.FechaHora DESC
 LIMIT ? OFFSET ?;
         `,
-            [limit, offset],
+            [fechaInicioParam, fechaFinParam, limit, offset],
           );
 
           // Query para total (sin paginación)
@@ -679,9 +740,10 @@ INNER JOIN BlueVoxs bv
     ON cp.NumeroSerieBlueVox = bv.NumeroSerie
 INNER JOIN Clientes c
     ON bv.IdCliente = c.Id
-WHERE cp.FechaHora BETWEEN '${fechaInicio}TT00:00:00' AND '${fechaFin}T23:59:00'
+WHERE cp.FechaHora BETWEEN ? AND ?
 
   `,
+            [fechaInicioParam, fechaFinParam],
           );
           break;
 
@@ -1026,8 +1088,8 @@ WHERE cp.FechaHora BETWEEN '${fechaInicio}TT00:00:00' AND '${fechaFin}T23:59:00'
       // 🔹 VALIDACIÓN: Si se proporciona idViaje en el DTO, se verifica que el viaje exista y no esté INACTIVO
       // Esto previene la asociación a viajes finalizados o inexistentes
       if (updateConteoPasajerosDto.idViaje !== undefined && updateConteoPasajerosDto.idViaje !== null) {
-        const viaje = await this.viajesRepository.findOne({ 
-          where: { id: updateConteoPasajerosDto.idViaje } 
+        const viaje = await this.viajesRepository.findOne({
+          where: { id: updateConteoPasajerosDto.idViaje }
         });
 
         if (!viaje) {
