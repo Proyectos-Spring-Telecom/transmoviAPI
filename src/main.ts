@@ -8,9 +8,6 @@ import { SocketIOAdapter } from './common/socket-io.adapter';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
-  // Establecer prefijo global para todas las rutas REST (excepto WebSocket)
-  app.setGlobalPrefix('apidev');
-  
   // Configurar el adaptador de Socket.IO
   app.useWebSocketAdapter(new SocketIOAdapter(app));
 
