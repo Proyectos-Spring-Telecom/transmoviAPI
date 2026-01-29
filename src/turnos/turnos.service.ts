@@ -1126,7 +1126,7 @@ ORDER BY t.Inicio DESC;
     try {
       //obtenemos estatus
       const estatus = updateTurnosEstatusDto.estatus;
-
+      
       //actualizamos
       await this.turnosRepository.update(id, { estatus: estatus });
 

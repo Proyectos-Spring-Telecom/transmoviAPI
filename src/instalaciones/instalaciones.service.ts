@@ -1671,6 +1671,7 @@ ORDER BY i.Id DESC;
         const nuevaLista: number[] = Array.from(
           new Set(updateInstalacioneDto.idsBlueVoxs.map(Number)),
         ).filter((id) => Number.isFinite(id) && id > 0);
+        console.log('nuevaLista', nuevaLista);
 
         // Obtener todos los registros actuales en InstalacionesBlueVoxs para esta instalación
         // (necesario para identificar cuáles son BlueVoxs nuevos vs existentes)

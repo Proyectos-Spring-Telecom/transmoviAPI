@@ -118,26 +118,24 @@ export class TransaccionesService {
     createTransaccioneRecargaDto: CreateTransaccioneRecargaDto,
     idUser: number,
   ): Promise<ApiCrudResponse> {
-    // Transacción para evitar estados inconsistentes
+    // CRÍTICO: Transacción atómica para evitar estados inconsistentes (monedero vs. transacción/histórico).
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
       let monedero;
-      // Obtener repositorios dentro de la transacción
+      // Repositorios dentro de la misma transacción para commit/rollback unificado.
       const transaccionesRecargaRepo = queryRunner.manager.getRepository(TransaccionesRecarga);
       const historicoTransaccionesRecargaRepo = queryRunner.manager.getRepository(HistoricoTransaccionesRecarga);
       const monederoRepo = queryRunner.manager.getRepository(Monederos);
       const catMetodoPagoRepo = queryRunner.manager.getRepository(CatMetodoPago);
 
-
-      // 2️⃣ Buscamos el monedero
       if (!createTransaccioneRecargaDto.idCardMonedero && !createTransaccioneRecargaDto.numeroSerieMonedero) {
         throw new BadRequestException('Debe proporcionarse al menos uno de los campos requeridos: número de serie del monedero o ID Card.');
       }
 
-      // 1) Validar que el monedero existe y está activo
+      // CRÍTICO: Validar que el monedero existe y está activo (estatus = 1).
       if (createTransaccioneRecargaDto.idCardMonedero) {
         monedero = await this.monederoRepository.findOne({
           where:
@@ -159,10 +157,10 @@ export class TransaccionesService {
       }
 
       const { fechaActual } = await horaDesfasada();
-      createTransaccioneRecargaDto.numeroSerieMonedero = monedero.numeroSerie
+      createTransaccioneRecargaDto.numeroSerieMonedero = monedero.numeroSerie;
       createTransaccioneRecargaDto.fechaHoraFinal = fechaActual;
 
-      // 2) Validar que el método de pago existe
+      // CRÍTICO: Validar que el método de pago existe antes de crear la transacción.
       const metodoPago = await catMetodoPagoRepo.findOne({
         where: { id: createTransaccioneRecargaDto.idMetodoPago },
       });
@@ -173,25 +171,12 @@ export class TransaccionesService {
         );
       }
 
-      // 3) Calcular el saldo final
+      // CRÍTICO: Cálculo del saldo final. Recarga = suma; debe coincidir con el update al monedero.
       const saldoActual = Number(monedero.saldo);
       const montoRecarga = Number(createTransaccioneRecargaDto.monto);
       const montoFinal = saldoActual + montoRecarga;
 
-      console.log(
-        'Saldo Inicial: ',
-        saldoActual,
-        ' Tipo Transaccion: ',
-        EnumTipoTransaccion.RECARGA,
-        ' Monto: ',
-        montoRecarga,
-        ' Monto Final: ',
-        montoFinal,
-      );
-
-
-
-      // 5) Crear la transacción en TransaccionesRecarga
+      // CRÍTICO: Orden de escritura. 1) Insertar TransaccionesRecarga; 2) Actualizar Monederos; 3) Insertar Historico.
       const newTransaccion = transaccionesRecargaRepo.create({
         ...createTransaccioneRecargaDto,
         idTipoTransaccion: EnumTipoTransaccion.RECARGA,
@@ -199,13 +184,11 @@ export class TransaccionesService {
       });
       const transaccionSave = await transaccionesRecargaRepo.save(newTransaccion);
 
-      // 4) Actualizar el saldo del monedero dentro de la transacción
       await monederoRepo.update(
         { id: monedero.id },
         { saldo: montoFinal },
       );
 
-      // 6) Insertar en HistoricoTransaccionesRecarga (copiar todos los campos de la transacción guardada)
       const historicoRecarga = historicoTransaccionesRecargaRepo.create({
         idTipoTransaccion: transaccionSave.idTipoTransaccion,
         controlTransaccion: transaccionSave.controlTransaccion ?? null,
@@ -221,10 +204,9 @@ export class TransaccionesService {
       });
       await historicoTransaccionesRecargaRepo.save(historicoRecarga);
 
-      // Commit de la transacción
       await queryRunner.commitTransaction();
 
-      // 7) Registro en la bitácora --- SUCCESS (fuera de la transacción)
+      // Bitácora fuera de la transacción; ya se hizo commit.
       const querylogger = { createTransaccioneRecargaDto };
       await this.bitacoraLogger.logToBitacora(
         'Transacciones',
@@ -236,7 +218,6 @@ export class TransaccionesService {
         EstatusEnumBitcora.SUCCESS,
       );
 
-      // API response
       const result: ApiCrudTransaccionRecarga = {
         status: 'success',
         message: 'Transacción creada correctamente',
@@ -246,11 +227,11 @@ export class TransaccionesService {
       };
       return result;
     } catch (error) {
-      // Rollback en caso de error
       await queryRunner.rollbackTransaction();
 
-      console.log(error);
-      // --- Registro en la bitácora --- ERROR
+      // Log estructurado solo en fallo; evita duplicar con bitácora. Útil para depuración en servidor.
+      console.error('[createTransaccionRecarga]', error?.message ?? error);
+
       const querylogger = { createTransaccioneRecargaDto };
       await this.bitacoraLogger.logToBitacora(
         'Transacciones',
@@ -262,7 +243,6 @@ export class TransaccionesService {
         EstatusEnumBitcora.ERROR,
         error.message,
       );
-      console.log({ 'TransaccionesRecarga': error });
 
       if (error instanceof HttpException) {
         throw error;
@@ -272,7 +252,7 @@ export class TransaccionesService {
         error: error.message,
       });
     } finally {
-      // Liberar el QueryRunner
+      // CRÍTICO: Siempre liberar el QueryRunner para no dejar conexiones colgadas.
       await queryRunner.release();
     }
   }
@@ -281,13 +261,15 @@ export class TransaccionesService {
   // 🔹 CREAR TRANSACCIÓN DE DÉBITO (CON TRANSACCIÓN ATÓMICA)
   // ========================================
   /**
-   * Crea una transacción de débito usando QueryRunner para garantizar atomicidad.
+   * Facade para creación/cierre de transacciones de débito.
    * Delega en createOrCloseTransaccionDebito (servicio unificado create+close).
+   * La lógica crítica (ventana 1m20s, transacciones abiertas, cierre, creación) está allí.
    */
   async createTransaccionDebitoPrueba(
     createTransaccioneDebitoDto: CreateTransaccioneDebitoDto,
     idUser: number,
   ): Promise<ApiCrudResponse> {
+    // CRÍTICO: Toda la lógica atómica y de negocio vive en createOrCloseTransaccionDebito (QueryRunner, locks, bitácora).
     return this.createOrCloseTransaccionDebito(createTransaccioneDebitoDto, idUser);
   }
 
@@ -377,7 +359,7 @@ WHERE v.Id = ${idViaje}
 
       const transacciones = await this.transaccionesdebitoRepository.find({ where: { idViajes: idViaje, idControlTransaccion: EnumControlTransacciones.ABIERTA } });
 
-      //Proceso en caso de existir transacciones abiertas
+      // CRÍTICO: Si hay transacciones abiertas, calcular monto por cada una según tarifa (estacionaria vs incremental).
       if (transacciones.length > 0) {
         const viajeData = await this.findTarifaByOtherViaje(idViaje);
         const {
@@ -393,20 +375,17 @@ WHERE v.Id = ${idViaje}
           tipoTarifa
         } = viajeData[0];
 
-        //Como existe transacciones abiertas, se debe calcular el monto de cada transaccion
         for (const i of transacciones) {
           const { latitudInicial, longitudInicial } = i;
           if (latitudInicial && longitudInicial) {
             const posicionActual = { lat: latitudInicial, lng: longitudInicial };
 
-            ///////////////////*********************
-            // //////////switch para saber si la tarifa es incremental o estacionaria */
             switch (tipoTarifa) {
               case EnumTipoTarifa.ESTACIONARIA:
                 montoCalculado = tarifaBase;
                 controlTransaccion = EnumControlTransacciones.PAGADO;
 
-                //Obtenemos los ultimos puntos del derrotero
+                // CRÍTICO: Coordenadas finales = último punto del derrotero (decimal 10,7).
                 const ultimoPunto1 = recorridoInterpolar.length - 1;
                 const { lat: latitudFinal1Raw, lng: longitudFinal1Raw } = recorridoInterpolar[ultimoPunto1];
                 // Formatear a decimal(10,7) - 7 decimales
@@ -431,65 +410,31 @@ WHERE v.Id = ${idViaje}
                 )
                 break;
               case EnumTipoTarifa.INCREMENTAL:
-                //Buscamos el punto mas que se encuentre nuestro recorrido con snapToRoute
+                // CRÍTICO: snapToRoute → índice más cercano en recorrido; luego distancia hasta penúltimo + último tramo (máx 150 m).
                 const { index, distanciaMetros } = await snapToRoute(
                   posicionActual,
                   recorridoInterpolar
                 );
 
-                //Calculamos la distancia en metros
-                //tomamos el penultimo punto mas cercano a la posicion actual
                 const indexSeguro = Math.max(index - 1, 0);
-                console.log(latitudInicial, longitudInicial, index, indexSeguro, distanciaMetros);
-                //Tomamos del inicio de la ruta hasta el penultimo punto mas cercano
                 const metrosRecorridos = await calcularDistanciaHastaIndex(
                   recorridoInterpolar,
                   indexSeguro
                 );
 
-                //Creamos el arreglo del penultimo punto a la posicion actual
                 const punto = [indexSeguro === 0 ? recorridoInterpolar[index] : recorridoInterpolar[index - 1], posicionActual];
-                //Calculamos la distancia del penultimo punto a la posicion actual con la funcion calcularDistanciaReal
                 let ultimoIndex = await calcularDistanciaReal(punto);
-                //Si la distancia pasa mas de 150 metros solo se queda en 150 metros sino toma la calculada en calcularDistanciaReal
-                ultimoIndex = ultimoIndex > 150 ? 150 : ultimoIndex
-                //Sumamos para obtener el total de distancia desde el inicio de la ruta hasta la posicion actual
-                //Para esos sumamos las distacias del unicio de la ruta al penultimo punto + la distancia del penultimo punto a la posicion actual
-                //Redondeamos el valor a enteros
-                distanciaInicial = Math.round(metrosRecorridos + ultimoIndex)
-                //Obtenemos la distacia restante para verificar el monto que maximo que debe tener el monedero
-                //Para eso distanciaKm lo convertimos en metros que el total de recorrido que tiene nuestra ruta
-                //y le restamos la distanciaInicial anteriormente calculada
+                ultimoIndex = ultimoIndex > 150 ? 150 : ultimoIndex;
+                distanciaInicial = Math.round(metrosRecorridos + ultimoIndex);
                 distancia = Math.round((distanciaKm * 1000) - distanciaInicial);
-                //Convertimos la distanciaBaseKm a metros
                 metrosBase = (DistanciaBaseKm * 1000);
-                //generamos la logica para calcular el monto
-                //Si la distancia (que es la distancia restante) es menor a la distanciaBaseKm el monto es la tarifa base
-                //Si la distancia (que es la distancia restante) es mayor a la distanciaBaseKm el monto es la distancia (que es la distancia restante) - distanciaBaseKm / incrementoCadaMetros * costoAdicional + tarifaBase
                 montoCalculado = distancia <= metrosBase ? tarifaBase : (tarifaBase + (Math.trunc((distancia - metrosBase) / (incrementoCadaMetros))) * costoAdicional);
-                //montoCalculado = tarifaBase;
                 controlTransaccion = EnumControlTransacciones.ABIERTA;
-                console.log(`Penultimo punto: ${indexSeguro}, Cordenadas del Penultimo punto: ${recorridoInterpolar[indexSeguro]},
-              Punto Mas cercano a la posicion recibida: ${index}, Distancia del punto mas cercano a la posicion recibida: ${distanciaMetros},
-              Distacia en metros del inicio de la ruta al penultimo punto: ${metrosRecorridos},
-              La distancia en metros del penultimo punto al posicion actual: ${ultimoIndex},
-              Distancia desde el inicio de la ruta a la posicion actual: ${distanciaInicial},
-              Distancia total de la ruta en metros: ${(distanciaKm * 1000)},
-              Distancia de la posicion inicial a la posicion actual: ${distancia},
-              Distancia base en km: ${DistanciaBaseKm},
-              Distancia base en metros: ${metrosBase},
-              Distancia en metros para el incremento: ${incrementoCadaMetros},
-              Costo adicional por cada incremente: ${costoAdicional},
-              Monto con el calculo: ${montoCalculado}
-              `);
 
-                //Obtenemos los ultimos puntos del derrotero
                 const ultimoPunto = recorridoInterpolar.length - 1;
                 const { lat: latitudFinal, lng: longitudFinal } = recorridoInterpolar[ultimoPunto];
-                // Formatear a decimal(10,7) - 7 decimales
                 const latitudFinalRaw = parseFloat(Number(latitudFinal).toFixed(7));
                 const longitudFinalRaw = parseFloat(Number(longitudFinal).toFixed(7));
-                //console.log(latitudFinalRaw,longitudFinalRaw,'///*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*',latitudFinal, longitudFinal);
 
                 await this.createTransaccionDebitoByViajes(
                   montoCalculado,
@@ -506,9 +451,8 @@ WHERE v.Id = ${idViaje}
                   i.id,
                   undefined,
                   queryRunner,
-                )
+                );
 
-                //fin del proceso
                 break;
 
               default:
@@ -520,7 +464,7 @@ WHERE v.Id = ${idViaje}
       }
 
     } catch (error) {
-      console.log(error);
+      console.error('[viajeCierre]', error?.message ?? error);
       // Registro en la bitácora FAIL
       /* const querylogger = { updateViajeDto };
       await this.bitacoraLogger.logToBitacora(
@@ -583,6 +527,7 @@ WHERE v.Id = ${idViaje}
       throw new BadRequestException(`Transacción realizada fuera del viaje o del turno.`);
     }
 
+    // CRÍTICO: Bloqueo pesimista para evitar race conditions al cerrar y actualizar monedero.
     const transaccionFind = await transaccionesDebitoRepo.findOne({
       where: { id: idTransaccion },
       lock: { mode: 'pessimistic_write' },
@@ -750,11 +695,9 @@ WHERE v.Id = ${idViaje}
 
       const openList = await this.findOpenTransaccionesDebito(queryRunner.manager, monedero.numeroSerie);
 
-      // En caso de transacciones abiertas de otro viaje, cerrarlas en la misma transacción.
-      // Siempre pasar queryRunner para evitar lock conflict (update monedero vía manager).
+      // CRÍTICO: Cerrar transacciones abiertas de otro viaje en la misma transacción. Pasar queryRunner para evitar lock conflict.
       for (const open of openList) {
         if (Number(open.idViajes) !== createTransaccioneDebitoDto.idViaje) {
-          console.log('Cerrando transacciones abiertas de otro viaje');
           await this.viajeCierre(Number(open.idViajes), queryRunner);
         }
       }
@@ -790,8 +733,8 @@ WHERE v.Id = ${idViaje}
         }
 
         const elapsedMs = now - firstTime;
+        // CRÍTICO: Ventana 1m20s desde FHRegistro de la primera abierta. Si se supera, cerrar primera y retornar (no crear nueva).
         const mustCloseFirst = elapsedMs > TransaccionesService.VENTANA_ABIERTAS_MS;
-
 
         if (mustCloseFirst) {
           const closeDto = {
@@ -1038,14 +981,15 @@ WHERE v.Id = ${idViaje}
         try {
           await queryRunner.rollbackTransaction();
         } catch (e) {
-          console.error('Error al hacer rollback:', e);
+          console.error('[createOrCloseTransaccionDebito] Error al hacer rollback:', (e as Error)?.message ?? e);
         }
       }
       try {
         await queryRunner.release();
       } catch (e) {
-        console.error('Error al liberar QueryRunner:', e);
+        console.error('[createOrCloseTransaccionDebito] Error al liberar QueryRunner:', (e as Error)?.message ?? e);
       }
+      console.error('[createOrCloseTransaccionDebito]', (err as Error)?.message ?? err);
       if (err instanceof HttpException) throw err;
       await this.bitacoraLogger.logToBitacora(
         'Transacciones',
@@ -1135,6 +1079,11 @@ WHERE v.Id = ?
     return await this.viajesRepository.query(query, [idViaje]);
   }
 
+  /**
+   * CRÍTICO: Calcula monto y control (PAGADO/ABIERTA) según tarifa estacionaria o incremental.
+   * Incremental FINAL: distancia restante = distanciaInicial - DistanciaInicialKm; monto por tramos.
+   * Incremental INICIAL: distancia restante = total ruta - distancia hasta posición; ABIERTA.
+   */
   async montoTarifa(
     recorridoInterpolar: [],
     distanciaKm: number,
@@ -1158,154 +1107,62 @@ WHERE v.Id = ?
         case EnumTipoTarifa.ESTACIONARIA:
           montoCalculado = tarifaBase;
           controlTransaccion = EnumControlTransacciones.PAGADO;
-          distanciaInicial = 0; // Para tarifa estacionaria, no hay distancia inicial
-          console.log('Entro a tarifa estacionaria con tarifa base:', tarifaBase);
+          distanciaInicial = 0;
           break;
 
         case EnumTipoTarifa.INCREMENTAL:
           if (controlTarifaIncremental === EnumControlTarifaIncremental.FINAL) {
-            //Cuando se cierre la tarifa
-            //Creamos el arreglo de la posicion enviada por el dispositivo
             const posicionActual = { lat: latitud, lng: longitud };
-            console.log('posicionActual  lat tarifa incremental final: ', latitud);
-            console.log('posicionActual  lng tarifa incremental final: ', longitud);
-
-            //Buscamos el punto mas que se encuentre nuestro recorrido con snapToRoute
             const { index, distanciaMetros } = await snapToRoute(
               posicionActual,
               recorridoInterpolar
             );
-            console.log('index tarifa incremental final: ', index);
-            console.log('distanciaMetros tarifa incremental final: ', distanciaMetros);
-            //Calculamos la distancia en metros
-            //tomamos el penultimo punto mas cercano a la posicion actual
             const indexSeguro = Math.max(index - 1, 0);
-            console.log('indexSeguro tarifa incremental final: ', indexSeguro);
-            //Tomamos del inicio de la ruta hasta el penultimo punto mas cercano
             const metrosRecorridos = await calcularDistanciaHastaIndex(
               recorridoInterpolar,
               indexSeguro
             );
-            console.log('metrosRecorridos tarifa incremental final: ', metrosRecorridos);
-            //Creamos el arreglo del penultimo punto a la posicion actual
             const punto = [indexSeguro === 0 ? recorridoInterpolar[index] : recorridoInterpolar[index - 1], posicionActual];
-            //Calculamos la distancia del penultimo punto a la posicion actual con la funcion calcularDistanciaReal
             let ultimoIndex = await calcularDistanciaReal(punto);
-            //Si la distancia pasa mas de 150 metros solo se queda en 150 metros sino toma la calculada en calcularDistanciaReal
-            ultimoIndex = ultimoIndex > 150 ? 150 : ultimoIndex
-            //Sumamos para obtener el total de distancia desde el inicio de la ruta hasta la posicion actual
-            //Para esos sumamos las distacias del unicio de la ruta al penultimo punto + la distancia del penultimo punto a la posicion actual
-            //Redondeamos el valor a enteros
-            distanciaInicial = Math.round(metrosRecorridos + ultimoIndex)
-            console.log('distanciaInicial tarifa incremental final: ', distanciaInicial);
-            //Obtenemos la distacia restante para verificar el monto que se le hara al monedero
-            //Para restamos la distancia obtenida en distanciaInicial y le restamos DistanciaInicialKm que es la distancia que se realizo la primer transaccion
-            if (!DistanciaInicialKm) {
-              DistanciaInicialKm = 0
-            }
-            distancia = Math.round(distanciaInicial - DistanciaInicialKm)
-            console.log('distancia tarifa incremental final: ', distancia);
-            //Convertimos la distanciaBaseKm a metros
-            metrosBase = (distanciaBaseKm * 1000)
-            console.log('metrosBase tarifa incremental final: ', metrosBase);
-            //generamos la logica para calcular el monto
-            //Si la distancia (que es la distancia restante) es menor a la distanciaBaseKm el monto es la tarifa base
-            //Si la distancia (que es la distancia restante) es mayor a la distanciaBaseKm el monto es la distancia (que es la distancia restante) - distanciaBaseKm / incrementoCadaMetros * costoAdicional + tarifaBase
-            montoCalculado = distancia <= metrosBase ? tarifaBase : (tarifaBase + (Math.trunc((distancia - metrosBase) / (incrementoCadaMetros))) * costoAdicional);
-            console.log('distancia tarifa incremental final: ', distancia);
-            console.log('metrosBase tarifa incremental final: ', metrosBase);
-            console.log('incrementoCadaMetros tarifa incremental final: ', incrementoCadaMetros);
-            console.log('costoAdicional tarifa incremental final: ', costoAdicional);
-            console.log('tarifaBase tarifa incremental final: ', tarifaBase);
-            console.log('montoCalculado tarifa incremental final: ', montoCalculado);
-            controlTransaccion = EnumControlTransacciones.PAGADO
-            console.log(`Penultimo punto: ${indexSeguro}, Cordenadas del Penultimo punto: ${recorridoInterpolar[indexSeguro]},
-              Punto Mas cercano a la posicion recibida: ${index}, Distancia del punto mas cercano a la posicion recibida: ${distanciaMetros},
-              Distacia en metros del inicio de la ruta al penultimo punto: ${metrosRecorridos},
-              La distancia en metros del penultimo punto al posicion actual: ${ultimoIndex},
-              Distancia desde el inicio de la ruta a la posicion actual: ${distanciaInicial},
-              Distancia total de la ruta en metros: ${(distanciaKm * 1000)},
-              Distancia de la posicion inicial a la posicion actual: ${distancia},
-              Distancia base en km: ${distanciaBaseKm},
-              Distancia base en metros: ${metrosBase},
-              Distancia en metros para el incremento: ${incrementoCadaMetros},
-              Costo adicional por cada incremente: ${costoAdicional},
-              Monto con el calculo: ${montoCalculado}
-              `);
-          } else {
-            //Cuando se abre la tarifa
-
-            //Creamos el arreglo de la posicion enviada por el dispositivo
-            const posicionActual = { lat: latitud, lng: longitud };
-
-            //Buscamos el punto mas que se encuentre nuestro recorrido con snapToRoute
-            const { index, distanciaMetros } = await snapToRoute(
-              posicionActual,
-              recorridoInterpolar
-            );
-
-            //Calculamos la distancia en metros
-            //tomamos el penultimo punto mas cercano a la posicion actual
-            const indexSeguro = Math.max(index - 1, 0);
-            //Tomamos del inicio de la ruta hasta el penultimo punto mas cercano
-            const metrosRecorridos = await calcularDistanciaHastaIndex(
-              recorridoInterpolar,
-              indexSeguro
-            );
-
-            //Creamos el arreglo del penultimo punto a la posicion actual
-            const punto = [indexSeguro === 0 ? recorridoInterpolar[index] : recorridoInterpolar[index - 1], posicionActual];
-            //Calculamos la distancia del penultimo punto a la posicion actual con la funcion calcularDistanciaReal
-            let ultimoIndex = await calcularDistanciaReal(punto);
-            //Si la distancia pasa mas de 150 metros solo se queda en 150 metros sino toma la calculada en calcularDistanciaReal
-            ultimoIndex = ultimoIndex > 150 ? 150 : ultimoIndex
-            //Sumamos para obtener el total de distancia desde el inicio de la ruta hasta la posicion actual
-            //Para esos sumamos las distacias del unicio de la ruta al penultimo punto + la distancia del penultimo punto a la posicion actual
-            //Redondeamos el valor a enteros
-            distanciaInicial = Math.round(metrosRecorridos + ultimoIndex)
-            //Obtenemos la distacia restante para verificar el monto que maximo que debe tener el monedero
-            //Para eso distanciaKm lo convertimos en metros que el total de recorrido que tiene nuestra ruta
-            //y le restamos la distanciaInicial anteriormente calculada
-            distancia = Math.round((distanciaKm * 1000) - distanciaInicial);
-            //Convertimos la distanciaBaseKm a metros
+            ultimoIndex = ultimoIndex > 150 ? 150 : ultimoIndex;
+            distanciaInicial = Math.round(metrosRecorridos + ultimoIndex);
+            if (!DistanciaInicialKm) DistanciaInicialKm = 0;
+            distancia = Math.round(distanciaInicial - DistanciaInicialKm);
             metrosBase = (distanciaBaseKm * 1000);
-            //generamos la logica para calcular el monto
-            //Si la distancia (que es la distancia restante) es menor a la distanciaBaseKm el monto es la tarifa base
-            //Si la distancia (que es la distancia restante) es mayor a la distanciaBaseKm el monto es la distancia (que es la distancia restante) - distanciaBaseKm / incrementoCadaMetros * costoAdicional + tarifaBase
-            console.log('distancia: ', distancia);
-            console.log('metrosBase: ', metrosBase);
-            console.log('incrementoCadaMetros: ', incrementoCadaMetros);
-            console.log('costoAdicional: ', costoAdicional);
-            console.log('tarifaBase: ', tarifaBase);
             montoCalculado = distancia <= metrosBase ? tarifaBase : (tarifaBase + (Math.trunc((distancia - metrosBase) / (incrementoCadaMetros))) * costoAdicional);
-            console.log('montoCalculado: ', montoCalculado);
-            //montoCalculado = tarifaBase;
+            controlTransaccion = EnumControlTransacciones.PAGADO;
+          } else {
+            const posicionActual = { lat: latitud, lng: longitud };
+            const { index, distanciaMetros } = await snapToRoute(
+              posicionActual,
+              recorridoInterpolar
+            );
+            const indexSeguro = Math.max(index - 1, 0);
+            const metrosRecorridos = await calcularDistanciaHastaIndex(
+              recorridoInterpolar,
+              indexSeguro
+            );
+            const punto = [indexSeguro === 0 ? recorridoInterpolar[index] : recorridoInterpolar[index - 1], posicionActual];
+            let ultimoIndex = await calcularDistanciaReal(punto);
+            ultimoIndex = ultimoIndex > 150 ? 150 : ultimoIndex;
+            distanciaInicial = Math.round(metrosRecorridos + ultimoIndex);
+            distancia = Math.round((distanciaKm * 1000) - distanciaInicial);
+            metrosBase = (distanciaBaseKm * 1000);
+            montoCalculado = distancia <= metrosBase ? tarifaBase : (tarifaBase + (Math.trunc((distancia - metrosBase) / (incrementoCadaMetros))) * costoAdicional);
             controlTransaccion = EnumControlTransacciones.ABIERTA;
-            console.log(`Penultimo punto: ${indexSeguro}, Cordenadas del Penultimo punto: ${recorridoInterpolar[indexSeguro]},
-              Punto Mas cercano a la posicion recibida: ${index}, Distancia del punto mas cercano a la posicion recibida: ${distanciaMetros},
-              Distacia en metros del inicio de la ruta al penultimo punto: ${metrosRecorridos},
-              La distancia en metros del penultimo punto al posicion actual: ${ultimoIndex},
-              Distancia desde el inicio de la ruta a la posicion actual: ${distanciaInicial},
-              Distancia total de la ruta en metros: ${(distanciaKm * 1000)},
-              Distancia de la posicion inicial a la posicion actual: ${distancia},
-              Distancia base en km: ${distanciaBaseKm},
-              Distancia base en metros: ${metrosBase},
-              Distancia en metros para el incremento: ${incrementoCadaMetros},
-              Costo adicional por cada incremente: ${costoAdicional},
-              Monto con el calculo: ${montoCalculado}
-              `);
           }
           break;
+        default:
+          break;
       }
-      return { montoCalculado, controlTransaccion, distanciaInicial, }
+      return { montoCalculado, controlTransaccion, distanciaInicial };
     } catch (error) {
-      console.log(error);
-      console.log({ 'TransaccionesDebito': error })
+      console.error('[montoTarifa]', (error as Error)?.message ?? error);
       if (error instanceof HttpException) throw error;
 
       throw new InternalServerErrorException({
         message: 'Error al obtener el monto de la tarifa para transacciones débito',
-        error: error.message,
+        error: (error as Error).message,
       });
     }
   }
@@ -1313,6 +1170,10 @@ WHERE v.Id = ?
   // ========================================
   // 🔹 ACTUALIZAR SALDO DEL MONEDERO
   // ========================================
+  /**
+   * Actualiza el saldo de un monedero por número de serie.
+   * CRÍTICO: Validar que el monedero exista antes de actualizar. Registrar en bitácora.
+   */
   async updateMonederoSaldo(
     numeroSerie: string,
     idUser: number,
@@ -1329,7 +1190,6 @@ WHERE v.Id = ?
       }
       const id = Number(monedero.id);
 
-      //Actualizamos saldo
       await this.monederoRepository.update(id, { saldo: saldo });
 
       // --- Registro en la bitácora --- SUCCESS
@@ -1355,8 +1215,7 @@ WHERE v.Id = ?
       };
       return result;
     } catch (error) {
-      console.log(error);
-      // --- Registro en la bitácora --- ERROR
+      console.error('[updateMonederoSaldo]', (error as Error)?.message ?? error);
       const querylogger = { numeroSerie: numeroSerie, saldo: saldo };
       await this.bitacoraLogger.logToBitacora(
         'Monederos',
@@ -1366,19 +1225,19 @@ WHERE v.Id = ?
         idUser,
         EnumModulos.MONEDEROS,
         EstatusEnumBitcora.ERROR,
-        error.message,
+        (error as Error).message,
       );
       if (error instanceof HttpException) {
         throw error;
       }
       throw new InternalServerErrorException({
-        message: 'Error al crear ruta',
-        error: error.message,
+        message: 'Error al actualizar saldo del monedero',
+        error: (error as Error).message,
       });
     }
   }
 
-  //funcion para obtener los clientes hijos
+  /** CRÍTICO: Obtiene IDs de clientes hijos para filtrado por jerarquía. Usado en paginado y listados. */
   private async clienteHijos(cliente: number) {
     const clientesFiltrado = await this.clienteRepository.query(
       `CALL spGetClientes(?);`,
@@ -1453,7 +1312,7 @@ WHERE v.Id = ?
       };
       return result;
     } catch (error) {
-      console.log(error);
+      console.error('[paginado]', (error as Error)?.message ?? error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -2053,7 +1912,7 @@ FROM (
       const lastPage = Math.ceil(total / limit);
       return { data, total, page, lastPage };
     } catch (error) {
-      console.log(error);
+      console.error('[resolverPorRolDefault]', (error as Error)?.message ?? error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -2578,7 +2437,7 @@ FROM (
         };
         return result;
       } catch (error) {
-      console.log(error);
+        console.error('[findAllTransacciones]', (error as Error)?.message ?? error);
         if (error instanceof HttpException) {
           throw error;
         }
@@ -2943,7 +2802,7 @@ ORDER BY FechaHoraFinal DESC
       };
       return result;
     } catch (error) {
-      console.log(error);
+      console.error('[findAllListTransacciones]', (error as Error)?.message ?? error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -3019,7 +2878,7 @@ INNER JOIN Clientes c
       }));
       return { data: data };
     } catch (error) {
-      console.log(error);
+      console.error('[findOneTransaccionRecarga]', (error as Error)?.message ?? error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -3096,7 +2955,7 @@ INNER JOIN Clientes c
       }));
       return { data: data };
     } catch (error) {
-      console.log(error);
+      console.error('[findOneTransaccionDebito]', (error as Error)?.message ?? error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -3132,18 +2991,14 @@ INNER JOIN Clientes c
 
       //Si fechaInicio y fechaFin son null arroja las transacciones del dia de la tabla TransaccionesRecarga y TransaccionesDebito
       if (!fechaInicio && !fechaFin) {
-        fechaInicio = fechaActual
-        fechaFin = fechaActual
+        fechaInicio = fechaActual;
+        fechaFin = fechaActual;
         entidadRecarga = 'TransaccionesRecarga';
-        console.log(fechaInicio, fechaFin, fechaActual, entidadRecarga, rol);
         transacciones = await this.resolverPorRolRecargas(fechaInicio, fechaFin, idUser, email, cliente, rol, page, limit, entidadRecarga);
       } else {
-        //Si fechaInicio y fechaFin no son null arroja las transacciones del dia de la tabla HistoricoTransaccionesRecarga y HistoricoTransaccionesDebito
-        //asigna fechaActual solo si el valor de la izquierda es null o undefined
         fechaInicio = fechaInicio?.split("T")[0] ?? fechaActual;
         fechaFin = fechaFin?.split("T")[0] ?? fechaActual;
         entidadRecarga = 'HistoricoTransaccionesRecarga';
-        console.log(fechaInicio, fechaFin, fechaActual, entidadRecarga, rol);
         transacciones = await this.resolverPorRolRecargas(fechaInicio, fechaFin, idUser, email, cliente, rol, page, limit, entidadRecarga);
       }
 
@@ -3160,7 +3015,7 @@ INNER JOIN Clientes c
       };
       return result;
     } catch (error) {
-      console.log(error);
+      console.error('[paginadoRecarga]', (error as Error)?.message ?? error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -3527,7 +3382,7 @@ WHERE tr.IdUsuario = ?   -- 👈 filtro por usuario
       };
       return { data, total };
     } catch (error) {
-      console.log(error);
+      console.error('[resolverPorRolRecargas]', (error as Error)?.message ?? error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -3561,14 +3416,11 @@ WHERE tr.IdUsuario = ?   -- 👈 filtro por usuario
       const transaccionesRecarga = await transaccionesRecargaRepo.find();
 
       if (transaccionesRecarga.length === 0) {
-        // No hay registros que limpiar, finalizar sin transacción
         await queryRunner.release();
-        console.log('No hay registros en TransaccionesRecarga para limpiar.');
         return;
       }
 
-      // 2) Verificar que todos los registros ya existan en HistoricoTransaccionesRecarga
-      // Comparar por campos clave: numeroSerieMonedero, monto, fechaHoraFinal, fhRegistro
+      // CRÍTICO: No hacer TRUNCATE hasta confirmar que cada registro existe en histórico (evitar pérdida de datos).
       for (const transaccion of transaccionesRecarga) {
         const existeEnHistorico = await historicoTransaccionesRecargaRepo.findOne({
           where: {
@@ -3579,13 +3431,11 @@ WHERE tr.IdUsuario = ?   -- 👈 filtro por usuario
         });
 
         if (!existeEnHistorico) {
-          // Si algún registro no existe en histórico, no se puede limpiar
           await queryRunner.rollbackTransaction();
           await queryRunner.release();
           console.warn(
-            `No se puede limpiar TransaccionesRecarga: La transacción con ID ${transaccion.id} no existe en HistoricoTransaccionesRecarga.`,
+            `[limpiarTransaccionesRecarga] No se puede limpiar: transacción ID ${transaccion.id} no existe en histórico.`,
           );
-          // Registrar error en bitácora
           await this.bitacoraLogger.logToBitacora(
             'Transacciones',
             `Error al limpiar TransaccionesRecarga: La transacción con ID ${transaccion.id} no existe en histórico.`,
@@ -3606,25 +3456,18 @@ WHERE tr.IdUsuario = ?   -- 👈 filtro por usuario
       // Commit de la transacción
       await queryRunner.commitTransaction();
 
-      // 4) Registrar en bitácora la limpieza realizada
       await this.bitacoraLogger.logToBitacora(
         'Transacciones',
         `Limpieza automática de TransaccionesRecarga completada. Registros eliminados: ${transaccionesRecarga.length}`,
         'DELETE',
         { registrosEliminados: transaccionesRecarga.length },
-        1, // Usuario del sistema
+        1,
         EnumModulos.TRANSACCIONES,
         EstatusEnumBitcora.SUCCESS,
       );
-
-      console.log(
-        `Limpieza automática de TransaccionesRecarga completada. ${transaccionesRecarga.length} registros eliminados.`,
-      );
     } catch (error) {
-      // Rollback en caso de error
       await queryRunner.rollbackTransaction();
-
-      console.error('Error al limpiar TransaccionesRecarga:', error);
+      console.error('[limpiarTransaccionesRecarga]', (error as Error)?.message ?? error);
 
       // Registrar error en bitácora
       await this.bitacoraLogger.logToBitacora(
@@ -3651,7 +3494,12 @@ WHERE tr.IdUsuario = ?   -- 👈 filtro por usuario
   // ========================================
   // 🔹 Transacciones Debito Para Cierre de Viajes
   // ========================================
-
+  /**
+   * Cierra una transacción abierta de débito en el contexto de cierre de viaje.
+   * CRÍTICO: Calcula monto (montoTarifa), aplica descuentos, valida saldo. Si insuficiente → RECHAZO + histórico;
+   * si OK → update monedero (vía updateMonederoSaldoSafe), transacción a PAGADO, histórico.
+   * Usar manager/QueryRunner cuando se invoque desde flujo transaccional (viajeCierre, createOrClose) para evitar locks.
+   */
   async createTransaccionDebitoByViajes(
     montoCalculado: number,
     latitudInicial: number,
@@ -3751,12 +3599,10 @@ WHERE
 
           switch (tipoDescuento) {
             case Number(EnumTipoDescuento.PORCENTAJE):
-              console.log('Entro a porcentaje');
               montoConDescuento =
                 montoConDescuento - (montoConDescuento * cantidad) / 100;
               break;
             case EnumTipoDescuento.MONETARIO:
-              console.log('Monetario');
               montoConDescuento = montoConDescuento - cantidad;
               break;
             case EnumTipoDescuento.NULO:
@@ -3768,9 +3614,7 @@ WHERE
 
       let montoFinal = Number(monedero.saldo) - montoConDescuento;
 
-      console.log('Monto Final: ', montoFinal, 'Monedero Saldo: ', monedero.saldo, 'Monto Con Descuento: ', montoConDescuento)
-
-      // 4️⃣ Validación de saldo
+      // CRÍTICO: Validación de saldo antes de actualizar monedero y guardar transacción.
       if (montoFinal < 0) {
         estado = transicionarEstado(
           estado,
@@ -3914,10 +3758,9 @@ WHERE
         },
       };
     } catch (error) {
-      console.log(error);
+      console.error('[createTransaccionDebitoByViajes]', (error as Error)?.message ?? error);
       estado = EstadoTransaccion.ERROR;
       if (error instanceof HttpException) throw error;
-      console.log({ 'Create TransaccionesDebito By Viajes': error });
       throw new InternalServerErrorException(
         `Error al cerrar la transacción abiertas de débito de un viaje`,
       );
