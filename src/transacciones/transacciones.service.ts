@@ -102,7 +102,17 @@ export class TransaccionesService {
       const newTransaccion = await this.transaccionesrecargaRepository.create(
         createTransaccioneRecargaDto,
       );
-      newTransaccion.idTipoTransaccion = EnumTipoTransaccion.RECARGA
+      newTransaccion.idTipoTransaccion = EnumTipoTransaccion.RECARGA;
+
+      // Mensaje del contexto de la operación (máx. 100 caracteres)
+      const dispositivo =
+        createTransaccioneRecargaDto.numeroSerieDispositivo ?? 'N/A';
+      const mensajeContexto = `Recarga de $${createTransaccioneRecargaDto.monto} en monedero ${createTransaccioneRecargaDto.numeroSerieMonedero} desde dispositivo ${dispositivo}`.slice(
+        0,
+        100,
+      );
+      newTransaccion.contexto = mensajeContexto;
+
       const transaccionSave =
         await this.transaccionesrecargaRepository.save(newTransaccion);
 
@@ -222,6 +232,11 @@ export class TransaccionesService {
         const newTransaccion = this.transaccionesdebitoRepository.create(
           createTransaccioneDebitoDto,
         );
+        const mensajeContextoRechazo = `Débito rechazado por saldo insuficiente. Monedero ${createTransaccioneDebitoDto.numeroSerieMonedero}, monto $${createTransaccioneDebitoDto.monto}`.slice(
+          0,
+          100,
+        );
+        newTransaccion.contexto = mensajeContextoRechazo;
         await this.transaccionesdebitoRepository.save(newTransaccion);
         //se guarda en el historico
         await this.historicoTransaccionesDebitoRepository.save(newTransaccion);
@@ -263,7 +278,14 @@ export class TransaccionesService {
       const newTransaccion = this.transaccionesdebitoRepository.create(
         createTransaccioneDebitoDto,
       );
-      newTransaccion.idTipoTransaccion = EnumTipoTransaccion.DEBITO
+      newTransaccion.idTipoTransaccion = EnumTipoTransaccion.DEBITO;
+      const dispositivo =
+        createTransaccioneDebitoDto.numeroSerieDispositivo ?? 'N/A';
+      const mensajeContextoExito = `Débito de $${createTransaccioneDebitoDto.monto} en monedero ${createTransaccioneDebitoDto.numeroSerieMonedero} desde dispositivo ${dispositivo}`.slice(
+        0,
+        100,
+      );
+      newTransaccion.contexto = mensajeContextoExito;
       const transaccionSave =
         await this.transaccionesdebitoRepository.save(newTransaccion);
       let transaccionSaveHis;
@@ -615,6 +637,7 @@ SELECT
     td.FHRegistro AS fhRegistro,
     td.NumeroSerieMonedero AS numeroSerieMonedero,
     td.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    td.Contexto AS contexto,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -662,6 +685,7 @@ SELECT
     tr.FHRegistro AS fhRegistro,
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
     tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    tr.Contexto AS contexto,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -705,7 +729,7 @@ ORDER BY FechaHoraFinal DESC
 SELECT COUNT(*) AS total
 FROM (
     SELECT td.Id
-    FROM TransaccionesDebito td
+    FROM ${entidadDebito} td
 INNER JOIN CatTiposTransacciones ctt 
     ON td.IdTipoTransaccion = ctt.Id
 LEFT JOIN Dispositivos d 
@@ -723,7 +747,7 @@ WHERE td.FechaHoraFinal BETWEEN '${fechaInicio}T00:00:00Z' AND '${fechaFin}T23:5
     UNION ALL
 
     SELECT tr.Id
-    FROM TransaccionesRecarga tr
+    FROM ${entidadRecarga} tr
 INNER JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
 LEFT JOIN Dispositivos d 
@@ -759,6 +783,7 @@ SELECT
     td.FHRegistro AS fhRegistro,
     td.NumeroSerieMonedero AS numeroSerieMonedero,
     td.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    td.Contexto AS contexto,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -807,6 +832,7 @@ SELECT
     tr.FHRegistro AS fhRegistro,
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
     tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    tr.Contexto AS contexto,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -852,7 +878,7 @@ LIMIT ? OFFSET ?;
 SELECT COUNT(*) AS total
 FROM (
     SELECT td.Id
-    FROM TransaccionesDebito td
+    FROM ${entidadDebito} td
 INNER JOIN CatTiposTransacciones ctt 
     ON td.IdTipoTransaccion = ctt.Id
 LEFT JOIN Dispositivos d 
@@ -871,7 +897,7 @@ AND m.IdCliente = ?
     UNION ALL
 
     SELECT tr.Id
-    FROM TransaccionesRecarga tr
+    FROM ${entidadRecarga} tr
 INNER JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
 LEFT JOIN Dispositivos d 
@@ -912,6 +938,7 @@ SELECT
     td.FHRegistro AS fhRegistro,
     td.NumeroSerieMonedero AS numeroSerieMonedero,
     td.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    td.Contexto AS contexto,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -961,6 +988,7 @@ SELECT
     tr.FHRegistro AS fhRegistro,
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
     tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    tr.Contexto AS contexto,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -1007,7 +1035,7 @@ LIMIT ? OFFSET ?;
 SELECT COUNT(*) AS total
 FROM (
     SELECT td.Id
-    FROM TransaccionesDebito td
+    FROM ${entidadDebito} td
 INNER JOIN CatTiposTransacciones ctt 
     ON td.IdTipoTransaccion = ctt.Id
 LEFT JOIN Dispositivos d 
@@ -1027,7 +1055,7 @@ AND p.Id = ?
     UNION ALL
 
     SELECT tr.Id
-    FROM TransaccionesRecarga tr
+    FROM ${entidadRecarga} tr
 INNER JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
 LEFT JOIN Dispositivos d 
@@ -1070,6 +1098,7 @@ SELECT
     td.FHRegistro AS fhRegistro,
     td.NumeroSerieMonedero AS numeroSerieMonedero,
     td.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    td.Contexto AS contexto,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -1118,6 +1147,7 @@ SELECT
     tr.FHRegistro AS fhRegistro,
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
     tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    tr.Contexto AS contexto,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -1163,7 +1193,7 @@ LIMIT ? OFFSET ?;
 SELECT COUNT(*) AS total
 FROM (
     SELECT td.Id
-    FROM TransaccionesDebito td
+    FROM ${entidadDebito} td
 INNER JOIN CatTiposTransacciones ctt 
     ON td.IdTipoTransaccion = ctt.Id
 LEFT JOIN Dispositivos d 
@@ -1182,7 +1212,7 @@ AND m.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente q
     UNION ALL
 
     SELECT tr.Id
-    FROM TransaccionesRecarga tr
+    FROM ${entidadRecarga} tr
 INNER JOIN CatTiposTransacciones ctt 
     ON tr.IdTipoTransaccion = ctt.Id
 LEFT JOIN Dispositivos d 
@@ -1209,15 +1239,29 @@ AND m.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente q
 
       const total = Number(totalResult[0]?.total || 0);
 
-      // 🔥 Transformación de datos (ids → number, nombreCompleto)
+      // 🔥 Transformación: todos los atributos presentes; sin dato → null (estructura uniforme del UNION)
       const data = transacciones.map((item) => ({
-        ...item,
-        id: Number(item.id),
-        monto: Number(item.monto),
-        latitudFinal: Number(item.latitudFinal),
-        longitudFinal: Number(item.longitudFinal),
-        idCliente: Number(item.idCliente),
-        idPasajero: Number(item.idPasajero),
+        origenTabla: item.origenTabla ?? null,
+        id: item.id != null ? Number(item.id) : null,
+        tipoTransaccion: item.tipoTransaccion ?? null,
+        monto: item.monto != null ? Number(item.monto) : null,
+        latitudFinal: item.latitudFinal != null ? Number(item.latitudFinal) : null,
+        longitudFinal: item.longitudFinal != null ? Number(item.longitudFinal) : null,
+        fechaHoraFinal: item.fechaHoraFinal ?? null,
+        fhRegistro: item.fhRegistro ?? null,
+        numeroSerieMonedero: item.numeroSerieMonedero ?? null,
+        numeroSerieDispositivo: item.numeroSerieDispositivo ?? null,
+        contexto: item.contexto ?? null,
+        idCliente: item.idCliente != null ? Number(item.idCliente) : null,
+        nombreCliente: item.nombreCliente ?? null,
+        apellidoPaternoCliente: item.apellidoPaternoCliente ?? null,
+        apellidoMaternoCliente: item.apellidoMaternoCliente ?? null,
+        marcaDispositivo: item.marcaDispositivo ?? null,
+        modeloDispositivo: item.modeloDispositivo ?? null,
+        idPasajero: item.idPasajero != null ? Number(item.idPasajero) : null,
+        nombrePasajero: item.nombrePasajero ?? null,
+        apellidoPaternoPasajero: item.apellidoPaternoPasajero ?? null,
+        apellidoMaternoPasajero: item.apellidoMaternoPasajero ?? null,
       }));
 
       //API Response

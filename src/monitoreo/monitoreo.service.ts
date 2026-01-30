@@ -245,11 +245,24 @@ ORDER BY up.Id DESC;
       const ahora = new Date();
       const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas
       const fechaDesfasada = new Date(ahora.getTime() + desfaseMs);
-      // Solo la fecha del momento
       const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())}`;
-      let recorridoMonitoreo;
-      const { idCliente, NumeroSerieDispositivo } = recorridoMonitoreoDto
-      recorridoMonitoreo = await this.usuariosregionesRepository.query(
+
+      let fechaInicio: string;
+      let fechaFin: string;
+      // Si fechaInicio y fechaFin son null → usar fecha actual (recorrido del día)
+      if (!recorridoMonitoreoDto.fechaInicio && !recorridoMonitoreoDto.fechaFin) {
+        fechaInicio = fechaActual;
+        fechaFin = fechaActual;
+      } else {
+        // Si el usuario envía rango de fechas → normalizar (solo parte fecha) y usar ese rango
+        fechaInicio = recorridoMonitoreoDto.fechaInicio?.split('T')[0] ?? fechaActual;
+        fechaFin = recorridoMonitoreoDto.fechaFin?.split('T')[0] ?? fechaActual;
+      }
+      
+
+      const { idCliente, NumeroSerieDispositivo } = recorridoMonitoreoDto;
+      console.log(fechaInicio, fechaFin, NumeroSerieDispositivo);
+      const recorridoMonitoreo = await this.usuariosregionesRepository.query(
         `
 SELECT
   up.Id AS id,
@@ -296,15 +309,16 @@ INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 INNER JOIN Posiciones up ON d.NumeroSerie = up.NumeroSerieDispositivo
 
-WHERE c.Id IN (${idCliente})   -- 🔹 aquí colocas el/los ID(s) del cliente que quieres consultar
-AND up.FechaHora >= '${fechaActual}T00:00:00Z'
-AND up.FechaHora < '${fechaActual}T23:59:59Z'
+WHERE c.Id IN (${idCliente})
+AND up.FechaHora >= '${fechaInicio}T00:00:00Z'
+AND up.FechaHora < '${fechaFin}T23:59:59Z'
 AND up.NumeroSerieDispositivo = '${NumeroSerieDispositivo}'
   
 
-ORDER BY i.Id DESC
+ORDER BY up.FechaHora ASC
       `,
       );
+      console.log(recorridoMonitoreo);
 
       const posicion = recorridoMonitoreo.map(item => ({
         ...item,

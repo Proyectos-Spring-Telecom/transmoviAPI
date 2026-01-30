@@ -52,8 +52,11 @@ export class HistoricoTransaccionesDebito {
   })
   longitudFinal: number | null;
 
-  @Column('datetime', { name: 'FechaHoraFinal' })
-  fechaHoraFinal: Date;
+  @Column('datetime', { name: 'FechaHoraFinal', nullable: true })
+  fechaHoraFinal: Date | null;
+
+  @Column('varchar', { name: 'Contexto', length: 100, nullable: true })
+  contexto: string | null;
 
   @Column('datetime', {
     name: 'FHRegistro',

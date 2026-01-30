@@ -23,8 +23,8 @@ export class TransaccionesDebito {
   @Column('decimal', { name: 'Monto', precision: 10, scale: 2 })
   monto: number;
 
-  @Column('tinyint', { name: 'ControlTransaccion', unsigned: true })
-  controlTransaccion: number;
+  @Column('tinyint', { name: 'ControlTransaccion', unsigned: true, nullable: true })
+  controlTransaccion: number | null;
 
   @Column('decimal', { name: 'LatitudInicial', precision: 10, scale: 7, nullable: true })
   latitudInicial: number | null;
@@ -44,8 +44,11 @@ export class TransaccionesDebito {
   @Column('decimal', { name: 'LongitudFinal', precision: 10, scale: 7, nullable: true })
   longitudFinal: number | null;
 
-  @Column('datetime', { name: 'FechaHoraFinal' })
-  fechaHoraFinal: Date;
+  @Column('datetime', { name: 'FechaHoraFinal', nullable: true })
+  fechaHoraFinal: Date | null;
+
+  @Column('varchar', { name: 'Contexto', length: 100, nullable: true })
+  contexto: string | null;
 
   @Column('datetime', {
     name: 'FHRegistro',

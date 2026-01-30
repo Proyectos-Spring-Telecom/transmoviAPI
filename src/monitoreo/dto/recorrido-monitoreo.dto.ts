@@ -22,4 +22,22 @@ export class RecorridoMonitoreoDto {
     @IsNotEmpty({ message: 'El numero de serie del dispositivo es obligatorio' })
     NumeroSerieDispositivo: string;
 
+    @ApiProperty({
+        description: 'Fecha inicio del rango (opcional). Si no se envía con fechaFin, se usa la fecha actual',
+        example: '2025-01-15',
+        required: false,
+    })
+    @IsDateString({}, { message: 'Debe estar en formato ISO8601' })
+    @IsOptional()
+    fechaInicio?: string;
+
+    @ApiProperty({
+        description: 'Fecha fin del rango (opcional). Si no se envía con fechaInicio, se usa la fecha actual',
+        example: '2025-01-20',
+        required: false,
+    })
+    @IsDateString({}, { message: 'Debe estar en formato ISO8601' })
+    @IsOptional()
+    fechaFin?: string;
+
 }

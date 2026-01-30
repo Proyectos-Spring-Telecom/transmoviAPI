@@ -59,6 +59,9 @@ export class HistoricoTransaccionesRecarga {
   })
   numeroSerieDispositivo: string | null;
 
+  @Column('varchar', { name: 'Contexto', length: 100, nullable: true })
+  contexto: string | null;
+
   // -------- RELACIONES --------
 
 }
