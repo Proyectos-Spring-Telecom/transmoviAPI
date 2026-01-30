@@ -32,11 +32,14 @@ interface SessionData {
 
 @Injectable()
 @WebSocketGateway({
+  namespace: '/monitoreo',
   cors: {
-    origin: '*', // Configurar según tu frontend en producción
+    origin: '*',
+    methods: ['GET', 'POST'],
     credentials: true,
   },
-  namespace: '/monitoreo',
+  transports: ['websocket', 'polling'],
+  allowEIO3: true,
 })
 export class MonitoreoGateway
   implements OnGatewayConnection, OnGatewayDisconnect

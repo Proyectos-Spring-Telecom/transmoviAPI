@@ -3,16 +3,22 @@ import { AppModule } from './app.module';
 import { ValidationPipe} from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { HttpStringResponseFilter } from './utils/http-string-response.filter';
+import { SocketIOAdapter } from './common/socket-io.adapter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  
+  // Configurar el adaptador de Socket.IO
+  app.useWebSocketAdapter(new SocketIOAdapter(app));
 
   app.useGlobalFilters(new HttpStringResponseFilter());
 
+  // Configurar CORS global
   app.enableCors({
-    origin: '*', // Permitir todas las URLs; puedes poner un array de URLs específicas
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    origin: '*',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
+    allowedHeaders: 'Content-Type, Authorization, Accept',
   });
 
   const config = new DocumentBuilder()
