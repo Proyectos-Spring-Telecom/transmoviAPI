@@ -523,6 +523,7 @@ ORDER BY r.Id DESC;
 
         default:
           // Usuarios normales - solo sus zonas asignadas
+          console.log(rol);
           zonas = await this.zonasRepository.query(
             `
 SELECT
@@ -548,8 +549,7 @@ INNER JOIN UsuariosZonas ur ON ur.IdZona = r.Id
 INNER JOIN Usuarios u ON ur.IdUsuario = u.Id
 
 WHERE 
-  ur.IdUsuario = ?       -- 🔹 ID del usuario a filtrar
-  AND ur.Estatus = 1
+ ur.Estatus = 1
   AND r.Estatus = 1
   AND c.Estatus = 1
 
