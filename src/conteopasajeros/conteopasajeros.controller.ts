@@ -110,6 +110,25 @@ export class ConteopasajerosController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('rango-agrupado/:fechaInicio/:fechaFin')
+  async findByDateRangeAgrupado(
+    @Param('fechaInicio') fechaInicio: string,
+    @Param('fechaFin') fechaFin: string,
+    @Request() req,
+  ): Promise<ApiResponseCommon> {
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+    const idUser = req.user.userId;
+    return await this.conteopasajerosService.findByDateRangeAgrupadoPorViaje(
+      +idUser,
+      +cliente,
+      +rol,
+      fechaInicio,
+      fechaFin,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get('fecha-hora/:fecha/:hora')
   async findByDateTime(
     @Param('fecha') fecha: string,

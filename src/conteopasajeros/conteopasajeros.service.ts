@@ -1147,4 +1147,118 @@ WHERE cp.FechaHora BETWEEN '${fechaInicio}TT00:00:00' AND '${fechaFin}T23:59:00'
       });
     }
   }
+
+  // ========================================
+  // 🔹 OBTENER CONTEOS AGRUPADOS POR VIAJE EN RANGO DE FECHAS
+  // ========================================
+  async findByDateRangeAgrupadoPorViaje(
+    idUser: number,
+    cliente: number,
+    rol: number,
+    fechaInicio: string,
+    fechaFin: string,
+  ): Promise<ApiResponseCommon> {
+    try {
+      let resultados;
+      
+      switch (rol) {
+        case 1:
+          // Rol 1 (SuperAdministrador) puede ver todo
+          resultados = await this.conteopasajeroRepository.query(
+            `
+            SELECT 
+              cp.IdViaje AS idViaje,
+              SUM(cp.Diferencia) AS diferencia,
+              SUM(cp.Entradas) AS subidas,
+              SUM(cp.Salidas) AS bajadas,
+              COUNT(*) AS cantidadRegistros
+            FROM ConteoPasajeros cp
+            WHERE cp.FechaHora BETWEEN ? AND ?
+              AND cp.IdViaje IS NOT NULL
+            GROUP BY cp.IdViaje
+            ORDER BY cp.IdViaje DESC
+            `,
+            [`${fechaInicio} 00:00:00`, `${fechaFin} 23:59:59`],
+          );
+          break;
+
+        case 2:
+        case 8:
+        case 10:
+          // Roles que usan clientesHijos (Administrador, Reportes, Capturista)
+          const { ids, placeholders } = await this.clienteHijos(cliente);
+          if (ids.length === 0) {
+            return { data: [] };
+          }
+          
+          resultados = await this.conteopasajeroRepository.query(
+            `
+            SELECT 
+              cp.IdViaje AS idViaje,
+              SUM(cp.Diferencia) AS diferencia,
+              SUM(cp.Entradas) AS subidas,
+              SUM(cp.Salidas) AS bajadas,
+              COUNT(*) AS cantidadRegistros
+            FROM ConteoPasajeros cp
+            INNER JOIN Contadores bv ON cp.NumeroSerieContador = bv.NumeroSerie
+            INNER JOIN Clientes c ON bv.IdCliente = c.Id
+            WHERE cp.FechaHora BETWEEN ? AND ?
+              AND cp.IdViaje IS NOT NULL
+              AND c.Id IN (${placeholders})
+            GROUP BY cp.IdViaje
+            ORDER BY cp.IdViaje DESC
+            `,
+            [`${fechaInicio} 00:00:00`, `${fechaFin} 23:59:59`, ...ids],
+          );
+          break;
+
+        case 3:
+        default:
+          // Rol 3 (Operador) y otros: solo su cliente
+          resultados = await this.conteopasajeroRepository.query(
+            `
+            SELECT 
+              cp.IdViaje AS idViaje,
+              SUM(cp.Diferencia) AS diferencia,
+              SUM(cp.Entradas) AS subidas,
+              SUM(cp.Salidas) AS bajadas,
+              COUNT(*) AS cantidadRegistros
+            FROM ConteoPasajeros cp
+            INNER JOIN Contadores bv ON cp.NumeroSerieContador = bv.NumeroSerie
+            INNER JOIN Clientes c ON bv.IdCliente = c.Id
+            WHERE cp.FechaHora BETWEEN ? AND ?
+              AND cp.IdViaje IS NOT NULL
+              AND c.Id = ?
+            GROUP BY cp.IdViaje
+            ORDER BY cp.IdViaje DESC
+            `,
+            [`${fechaInicio} 00:00:00`, `${fechaFin} 23:59:59`, cliente],
+          );
+          break;
+      }
+
+      // Formatear los resultados
+      const data = resultados.map((item: any) => ({
+        idViaje: Number(item.idViaje),
+        diferencia: Number(item.diferencia || 0),
+        subidas: Number(item.subidas || 0),
+        bajadas: Number(item.bajadas || 0),
+        cantidadRegistros: Number(item.cantidadRegistros || 0),
+      }));
+
+      const result: ApiResponseCommon = {
+        data: data,
+      };
+
+      return result;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Error al obtener conteos agrupados por viaje',
+        error: error.message,
+      });
+    }
+  }
 }
