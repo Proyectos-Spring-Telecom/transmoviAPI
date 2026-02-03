@@ -31,9 +31,19 @@ export class CreateTransaccioneDebitoDto {
     example: 'MON-0001',
     description: 'Número de serie del monedero',
   })
+  @ValidateIf((o) => o.esQR === true)
   @IsString()
-  @IsNotEmpty()
-  numeroSerieMonedero: string;
+  @IsNotEmpty({ message: 'numeroSerieMonedero es obligatorio cuando esQR es true' })
+  numeroSerieMonedero?: string;
+
+  @ApiPropertyOptional({
+    example: '1234567890',
+    description: 'ID de la tarjeta del monedero',
+  })
+  @ValidateIf((o) => o.esQR === false)
+  @IsString()
+  @IsNotEmpty({ message: 'idCard es obligatorio cuando esQR es false' })
+  idCard?: string;
 
   @ApiProperty({
     example: 'DISP-0001',

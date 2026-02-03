@@ -30,6 +30,7 @@ import {
   EnumTipoTarifa,
   EnumTipoDescuentoTransbordo,
   EnumMetodoPago,
+  EstatusEnum,
 } from 'src/common/estatus.enum';
 import {
   transicionarEstado,
@@ -51,8 +52,7 @@ import { Instalaciones } from 'src/entities/Instalaciones';
 import { Pasajeros } from 'src/entities/Pasajeros';
 import { DireccionesTarjeta } from 'src/entities/DireccionesTarjeta';
 import { DatosTarjeta } from 'src/entities/DatosTarjeta';
-
-import { UpdateTransaccioneDebitoDto } from './dto/update-transaccione-debito.dto';
+import { QRCodes } from 'src/entities/QRCodes';
 import { GetTransaccioneDto } from './dto/get-transacciones.dto';
 import { GetHistoricoRecargasDto } from './dto/get-historico-recargas.dto';
 import haversine from 'haversine-distance';
@@ -100,6 +100,8 @@ export class TransaccionesService {
     private readonly direccionesTarjetaRepository: Repository<DireccionesTarjeta>,
     @InjectRepository(DatosTarjeta)
     private readonly datosTarjetaRepository: Repository<DatosTarjeta>,
+    @InjectRepository(QRCodes)
+    private readonly qrCodesRepository: Repository<QRCodes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
     private readonly monederosService: MonederosService,
     private readonly pasajeroService: PasajerosService,
@@ -867,22 +869,264 @@ export class TransaccionesService {
       estado = transicionarEstado(estado, EventoTransaccion.CREAR);
 
       // 2?? Buscamos el monedero
-      const monedero = await this.monederoRepository.findOne({
-        where: {
-          numeroSerie: createTransaccioneDebitoDto.numeroSerieMonedero,
-          estatus: 1,
-        },
-      });
+      let monedero;
+      if (createTransaccioneDebitoDto.esQR === true) {
+        // Si esQR es true, buscar por numeroSerieMonedero
+        monedero = await this.monederoRepository.findOne({
+          where: {
+            numeroSerie: createTransaccioneDebitoDto.numeroSerieMonedero,
+            estatus: 1,
+          },
+        });
+      } else {
+        // Si esQR es false, buscar por idCard
+        monedero = await this.monederoRepository.findOne({
+          where: {
+            idCard: createTransaccioneDebitoDto.idCard,
+            estatus: 1,
+          },
+        });
+      }
       if (!monedero) {
         estado = EstadoTransaccion.ERROR;
         throw new BadRequestException('Monedero no encontrado');
       }
 
+      // ===== NUEVA LÓGICA: Detectar y cerrar transacciones abiertas con esMultiple = true =====
+      // Buscar transacciones abiertas (controlTransaccion = 1) con esMultiple = true para este monedero
+      const transaccionesAbiertasMultiple = await this.transaccionesdebitoRepository.find({
+        where: {
+          numeroSerieMonedero: monedero.numeroSerie,
+          controlTransaccion: EnumControlTransacciones.ABIERTA,
+          esMultiple: 1, // esMultiple = true
+          latitudFinal: IsNull(),
+          longitudFinal: IsNull(),
+        },
+        order: {
+          id: 'ASC', // Ordenar por ID ascendente para procesar consecutivamente
+        },
+      });
+
+      let qrActualizado = false; // Flag para saber si se actualizó el QR
+
+      // Si hay transacciones abiertas con esMultiple = true, cerrarlas
+      if (transaccionesAbiertasMultiple && transaccionesAbiertasMultiple.length > 0) {
+        console.log(`[POST_DEBITO] Se encontraron ${transaccionesAbiertasMultiple.length} transacción(es) abierta(s) con esMultiple = true`);
+        
+        // Usar las coordenadas iniciales de la nueva transacción como coordenadas finales
+        const latitudFinal = createTransaccioneDebitoDto.latitud;
+        const longitudFinal = createTransaccioneDebitoDto.longitud;
+
+        // Procesar cada transacción abierta
+        for (const transaccionAbierta of transaccionesAbiertasMultiple) {
+          console.log(`[POST_DEBITO] Procesando transacción abierta ID: ${transaccionAbierta.id}`);
+
+          // Obtener variante y tarifa de la transacción existente usando idViaje
+          let varianteUpdate: Variantes | null = null;
+          let tarifaInfoUpdate: any = null;
+
+          if (transaccionAbierta.idViaje) {
+            const viaje = await this.viajesRepository.findOne({
+              where: { id: transaccionAbierta.idViaje },
+              relations: ['idVariante2'],
+            });
+
+            if (viaje && viaje.idVariante) {
+              varianteUpdate = await this.variantesRepository.findOne({
+                where: { id: viaje.idVariante },
+              });
+
+              if (varianteUpdate) {
+                const tarifa = await this.tarifasRepository.findOne({
+                  where: { idVariante: viaje.idVariante },
+                });
+
+                if (tarifa) {
+                  tarifaInfoUpdate = {
+                    TarifaBase: tarifa.tarifaBase,
+                    CostoAdicional: tarifa.costoAdicional,
+                    DistanciaBaseKm: tarifa.distanciaBaseKm,
+                    IncrementoCadaMetros: tarifa.incrementoCadaMetros,
+                    TipoTarifa: tarifa.tipoTarifa,
+                  };
+                }
+              }
+            }
+          }
+
+          // Calcular distancia desde punto inicial hasta punto final usando haversine
+          if (transaccionAbierta.latitudInicial && transaccionAbierta.longitudInicial) {
+            const puntoInicial = {
+              latitude: transaccionAbierta.latitudInicial,
+              longitude: transaccionAbierta.longitudInicial,
+            };
+            const puntoFinal = {
+              latitude: latitudFinal,
+              longitude: longitudFinal,
+            };
+
+            // Calcular distancia en metros usando haversine
+            const distanciaMetros = haversine(puntoInicial, puntoFinal);
+            const distanciaKm = distanciaMetros / 1000; // Convertir a kilómetros
+
+            // Calcular monto basado en la distancia
+            const tarifaBase = Number(transaccionAbierta.monto) || 0;
+            let montoCalculado = tarifaBase;
+
+            // Si es tarifa INCREMENTAL (tipoTarifa === 2) y hay configuración de costo adicional
+            if (tarifaInfoUpdate && tarifaInfoUpdate.TipoTarifa === 2) {
+              const costoAdicional = tarifaInfoUpdate.CostoAdicional ? Number(tarifaInfoUpdate.CostoAdicional) : 0;
+              const distanciaBaseKm = tarifaInfoUpdate.DistanciaBaseKm ? Number(tarifaInfoUpdate.DistanciaBaseKm) : 0;
+              const incrementoCadaMetros = tarifaInfoUpdate.IncrementoCadaMetros ? Number(tarifaInfoUpdate.IncrementoCadaMetros) : 0;
+
+              if (costoAdicional > 0 && incrementoCadaMetros > 0) {
+                const distanciaBaseMetros = distanciaBaseKm * 1000;
+
+                // Si la distancia recorrida excede la distancia base, calcular el extra
+                if (distanciaMetros > distanciaBaseMetros) {
+                  const distanciaExcedente = distanciaMetros - distanciaBaseMetros;
+                  const numeroIncrementos = Math.ceil(distanciaExcedente / incrementoCadaMetros);
+                  const extraPorDistancia = numeroIncrementos * costoAdicional;
+                  montoCalculado = tarifaBase + extraPorDistancia;
+                }
+              }
+            }
+
+            // Validar que el monto calculado no exceda el cobro máximo
+            if (transaccionAbierta.cobroMaximo) {
+              const cobroMaximoNum = Number(transaccionAbierta.cobroMaximo);
+              if (montoCalculado > cobroMaximoNum) {
+                montoCalculado = cobroMaximoNum;
+              }
+            }
+
+            // Aplicar descuentos (igual que en el PATCH)
+            let montoConDescuento = montoCalculado;
+
+            // PASO 1: Aplicar descuento por tipo de pasajero SOLO cuando tipoTarifa es ABIERTA (tipoTarifa === 2)
+            const tipoTarifaUpdate = tarifaInfoUpdate && tarifaInfoUpdate.TipoTarifa ? Number(tarifaInfoUpdate.TipoTarifa) : null;
+            
+            if (tipoTarifaUpdate === EnumTipoTarifa.ABIERTA && monedero.idTipoPasajero) {
+              const tipoPasajero = await this.CatTiposPasajerosRepository.findOne({
+                where: { id: monedero.idTipoPasajero },
+                relations: ['CatTipoDescuento'],
+              });
+
+              if (tipoPasajero && tipoPasajero.cantidad && tipoPasajero.cantidad > 0 && tipoPasajero.idCatTipoDescuento) {
+                const tipoDescuento = Number(tipoPasajero.idCatTipoDescuento);
+                const cantidad = Number(tipoPasajero.cantidad);
+
+                // idCatTipoDescuento: 1 = PORCENTAJE, 2 = MONETARIO
+                if (tipoDescuento === 1) {
+                  const descuentoPorcentual = (montoConDescuento * cantidad) / 100;
+                  montoConDescuento = montoConDescuento - descuentoPorcentual;
+                } else if (tipoDescuento === 2) {
+                  montoConDescuento = montoConDescuento - cantidad;
+                }
+
+                if (montoConDescuento < 0) {
+                  montoConDescuento = 0;
+                }
+              }
+            }
+
+            // PASO 2: Aplicar descuento de transbordo
+            if (transaccionAbierta.descuentoTransbordo !== null && transaccionAbierta.descuentoTransbordo !== undefined && transaccionAbierta.tipoDescuentoTransbordo !== null) {
+              const descuentoTransbordo = Number(transaccionAbierta.descuentoTransbordo);
+              const tipoDescuentoTransbordo = Number(transaccionAbierta.tipoDescuentoTransbordo);
+              
+              if (descuentoTransbordo > 0) {
+                if (tipoDescuentoTransbordo === EnumTipoDescuentoTransbordo.MONETARIO) {
+                  montoConDescuento = montoConDescuento - descuentoTransbordo;
+                } else if (tipoDescuentoTransbordo === EnumTipoDescuentoTransbordo.PORCENTAJE) {
+                  const descuentoPorcentual = (montoConDescuento * descuentoTransbordo) / 100;
+                  montoConDescuento = montoConDescuento - descuentoPorcentual;
+                }
+
+                if (montoConDescuento < 0) {
+                  montoConDescuento = 0;
+                }
+              }
+            }
+
+            // Validar saldo
+            const saldoActual = Number(monedero.saldo);
+            const montoFinal = saldoActual - montoConDescuento;
+
+            if (montoFinal < 0) {
+              throw new BadRequestException(`Saldo insuficiente para cerrar transacción abierta ID: ${transaccionAbierta.id}`);
+            }
+
+            // Actualizar saldo del monedero
+            await this.monederosService.updateMonederoSaldo(
+              monedero.numeroSerie,
+              idUser,
+              montoFinal,
+            );
+
+            // Actualizar monedero local para reflejar el nuevo saldo
+            monedero.saldo = montoFinal;
+
+            // Obtener fecha actual con desfase de -6 horas
+            const ahora = new Date();
+            const desfaseMs = -6 * 60 * 60 * 1000;
+            const fechaDesfasada = new Date(ahora.getTime() + desfaseMs);
+            const fechaHoraFinal = fechaDesfasada.toISOString().slice(0, 19).replace('T', ' ');
+
+            // Actualizar la transacción: cerrarla (controlTransaccion = 0)
+            await this.transaccionesdebitoRepository.update(transaccionAbierta.id, {
+              idTipoTransaccion: EnumTipoTransaccion.DEBITO,
+              monto: montoConDescuento,
+              controlTransaccion: EnumControlTransacciones.PAGADO,
+              latitudFinal: latitudFinal,
+              longitudFinal: longitudFinal,
+              fechaHoraFinal: fechaHoraFinal,
+              distanciaRecorrida: parseFloat(distanciaKm.toFixed(2)),
+            });
+
+            // Obtener la transacción actualizada para guardarla en histórico
+            const transaccionActualizada = await this.transaccionesdebitoRepository.findOne({
+              where: { id: transaccionAbierta.id },
+            });
+
+            if (transaccionActualizada) {
+              const { id: _, ...transaccionBody } = transaccionActualizada;
+              await this.historicoTransaccionesDebitoRepository.save(transaccionBody);
+            }
+
+            console.log(`[POST_DEBITO] Transacción abierta ID: ${transaccionAbierta.id} cerrada correctamente. Monto: $${montoConDescuento.toFixed(2)}`);
+          }
+        }
+
+        // Actualizar estatus del QR a 0 después de cerrar las transacciones
+        if (monedero.idPasajero) {
+          const qrActivo = await this.qrCodesRepository.findOne({
+            where: {
+              idPasajero: monedero.idPasajero,
+              estatus: 1, // ACTIVO
+            },
+            order: {
+              id: 'DESC', // Más reciente
+            },
+          });
+
+          if (qrActivo) {
+            await this.qrCodesRepository.update(qrActivo.id, {
+              estatus: 0, // INACTIVO
+            });
+            qrActualizado = true;
+            console.log(`[POST_DEBITO] QR ID: ${qrActivo.id} actualizado a estatus 0 (INACTIVO)`);
+          }
+        }
+      }
+
       // 2.1?? Validar que no exista una transacción abierta (controlTransaccion = 1) para este monedero
       const transaccionAbierta = await this.transaccionesdebitoRepository.findOne({
         where: {
-          numeroSerieMonedero: createTransaccioneDebitoDto.numeroSerieMonedero,
+          numeroSerieMonedero: monedero.numeroSerie,
           controlTransaccion: EnumControlTransacciones.ABIERTA,
+          latitudFinal: IsNull(),
+          longitudFinal: IsNull(),
         },
         order: {
           id: 'DESC', // Obtener la más reciente
@@ -1009,9 +1253,280 @@ export class TransaccionesService {
       const idViaje = tarifaInfo.idViaje ? Number(tarifaInfo.idViaje) : null;
 
       console.log('[TRANSACCIONES] ===== INFORMACIÓN DE TARIFA =====');
-      console.log(`[TRANSACCIONES] Tipo de tarifa: ${tipoTarifa} (${tipoTarifa === 1 ? 'FIJA' : tipoTarifa === 2 ? 'INCREMENTAL' : 'OTRO'})`);
+      console.log(`[TRANSACCIONES] Tipo de tarifa: ${tipoTarifa} (${tipoTarifa === 1 ? 'FIJA' : tipoTarifa === 2 ? 'ABIERTA' : 'OTRO'})`);
       console.log(`[TRANSACCIONES] Tarifa base: $${tarifaBase.toFixed(2)}`);
       console.log('[TRANSACCIONES] ==========================================');
+
+      // ===== NUEVA LÓGICA: Manejo de tarifas ABIERTAS con monedero físico (esQR = false) =====
+      // Si la tarifa es ABIERTA y el pago es con monedero físico (esQR = false)
+      if (tipoTarifa === EnumTipoTarifa.ABIERTA && !createTransaccioneDebitoDto.esQR) {
+        console.log('[POST_DEBITO] Tarifa ABIERTA con monedero físico (esQR = false) detectada');
+        
+        // Buscar la última transacción abierta con esQR = 0 (false) para este monedero
+        const ultimaTransaccionAbiertaFisica = await this.transaccionesdebitoRepository.findOne({
+          where: {
+            numeroSerieMonedero: monedero.numeroSerie,
+            controlTransaccion: EnumControlTransacciones.ABIERTA,
+            esQR: 0, // esQR = false (monedero físico)
+            latitudFinal: IsNull(),
+            longitudFinal: IsNull(),
+          },
+          order: {
+            id: 'DESC', // Más reciente primero
+          },
+        });
+
+        if (ultimaTransaccionAbiertaFisica) {
+          // Calcular el tiempo transcurrido desde fechaHoraInicio
+          const ahora = new Date();
+          const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas en milisegundos
+          const fechaHoraActual = new Date(ahora.getTime() + desfaseMs);
+          
+          const fechaHoraInicioTransaccion = ultimaTransaccionAbiertaFisica.fechaHoraInicio 
+            ? new Date(ultimaTransaccionAbiertaFisica.fechaHoraInicio)
+            : new Date(ultimaTransaccionAbiertaFisica.fhRegistro);
+          
+          const tiempoTranscurridoMs = fechaHoraActual.getTime() - fechaHoraInicioTransaccion.getTime();
+          const tiempoTranscurridoMinutos = tiempoTranscurridoMs / (1000 * 60); // Convertir a minutos
+
+          console.log(`[POST_DEBITO] Última transacción abierta física encontrada ID: ${ultimaTransaccionAbiertaFisica.id}`);
+          console.log(`[POST_DEBITO] Fecha/Hora inicio: ${fechaHoraInicioTransaccion.toISOString()}`);
+          console.log(`[POST_DEBITO] Fecha/Hora actual: ${fechaHoraActual.toISOString()}`);
+          console.log(`[POST_DEBITO] Tiempo transcurrido: ${tiempoTranscurridoMinutos.toFixed(2)} minutos`);
+
+          // Si ya pasó más de 1 minuto, cerrar todas las transacciones abiertas con esQR = false
+          if (tiempoTranscurridoMinutos >= 1) {
+            console.log(`[POST_DEBITO] Tiempo >= 1 minuto. Cerrando todas las transacciones abiertas con esQR = false`);
+            
+            // Buscar TODAS las transacciones abiertas con esQR = 0 (false) para este monedero
+            const todasTransaccionesAbiertasFisicas = await this.transaccionesdebitoRepository.find({
+              where: {
+                numeroSerieMonedero: monedero.numeroSerie,
+                controlTransaccion: EnumControlTransacciones.ABIERTA,
+                esQR: 0, // esQR = false (monedero físico)
+                latitudFinal: IsNull(),
+                longitudFinal: IsNull(),
+              },
+              order: {
+                id: 'ASC', // Ordenar por ID ascendente para procesar consecutivamente
+              },
+            });
+
+            if (todasTransaccionesAbiertasFisicas && todasTransaccionesAbiertasFisicas.length > 0) {
+              console.log(`[POST_DEBITO] Se encontraron ${todasTransaccionesAbiertasFisicas.length} transacción(es) abierta(s) con esQR = false para cerrar`);
+              
+              // Usar las coordenadas iniciales de la nueva transacción como coordenadas finales
+              const latitudFinal = createTransaccioneDebitoDto.latitud;
+              const longitudFinal = createTransaccioneDebitoDto.longitud;
+
+              // Procesar cada transacción abierta
+              for (const transaccionAbiertaFisica of todasTransaccionesAbiertasFisicas) {
+                console.log(`[POST_DEBITO] Procesando transacción abierta física ID: ${transaccionAbiertaFisica.id}`);
+
+                // Obtener variante y tarifa de la transacción existente usando idViaje
+                let varianteUpdate: Variantes | null = null;
+                let tarifaInfoUpdate: any = null;
+
+                if (transaccionAbiertaFisica.idViaje) {
+                  const viaje = await this.viajesRepository.findOne({
+                    where: { id: transaccionAbiertaFisica.idViaje },
+                    relations: ['idVariante2'],
+                  });
+
+                  if (viaje && viaje.idVariante) {
+                    varianteUpdate = await this.variantesRepository.findOne({
+                      where: { id: viaje.idVariante },
+                    });
+
+                    if (varianteUpdate) {
+                      const tarifa = await this.tarifasRepository.findOne({
+                        where: { idVariante: viaje.idVariante },
+                      });
+
+                      if (tarifa) {
+                        tarifaInfoUpdate = {
+                          TarifaBase: tarifa.tarifaBase,
+                          CostoAdicional: tarifa.costoAdicional,
+                          DistanciaBaseKm: tarifa.distanciaBaseKm,
+                          IncrementoCadaMetros: tarifa.incrementoCadaMetros,
+                          TipoTarifa: tarifa.tipoTarifa,
+                        };
+                      }
+                    }
+                  }
+                }
+
+                // Calcular distancia desde punto inicial hasta punto final usando haversine
+                if (transaccionAbiertaFisica.latitudInicial && transaccionAbiertaFisica.longitudInicial) {
+                  const puntoInicial = {
+                    latitude: transaccionAbiertaFisica.latitudInicial,
+                    longitude: transaccionAbiertaFisica.longitudInicial,
+                  };
+                  const puntoFinal = {
+                    latitude: latitudFinal,
+                    longitude: longitudFinal,
+                  };
+
+                  // Calcular distancia en metros usando haversine
+                  const distanciaMetros = haversine(puntoInicial, puntoFinal);
+                  const distanciaKm = distanciaMetros / 1000; // Convertir a kilómetros
+
+                  // Calcular monto basado en la distancia
+                  const tarifaBaseUpdate = Number(transaccionAbiertaFisica.monto) || 0;
+                  let montoCalculado = tarifaBaseUpdate;
+
+                  // Si es tarifa INCREMENTAL (tipoTarifa === 2) y hay configuración de costo adicional
+                  if (tarifaInfoUpdate && tarifaInfoUpdate.TipoTarifa === 2) {
+                    const costoAdicional = tarifaInfoUpdate.CostoAdicional ? Number(tarifaInfoUpdate.CostoAdicional) : 0;
+                    const distanciaBaseKm = tarifaInfoUpdate.DistanciaBaseKm ? Number(tarifaInfoUpdate.DistanciaBaseKm) : 0;
+                    const incrementoCadaMetros = tarifaInfoUpdate.IncrementoCadaMetros ? Number(tarifaInfoUpdate.IncrementoCadaMetros) : 0;
+
+                    if (costoAdicional > 0 && incrementoCadaMetros > 0) {
+                      const distanciaBaseMetros = distanciaBaseKm * 1000;
+
+                      // Si la distancia recorrida excede la distancia base, calcular el extra
+                      if (distanciaMetros > distanciaBaseMetros) {
+                        const distanciaExcedente = distanciaMetros - distanciaBaseMetros;
+                        const numeroIncrementos = Math.ceil(distanciaExcedente / incrementoCadaMetros);
+                        const extraPorDistancia = numeroIncrementos * costoAdicional;
+                        montoCalculado = tarifaBaseUpdate + extraPorDistancia;
+                      }
+                    }
+                  }
+
+                  // Validar que el monto calculado no exceda el cobro máximo
+                  if (transaccionAbiertaFisica.cobroMaximo) {
+                    const cobroMaximoNum = Number(transaccionAbiertaFisica.cobroMaximo);
+                    if (montoCalculado > cobroMaximoNum) {
+                      montoCalculado = cobroMaximoNum;
+                    }
+                  }
+
+                  // Aplicar descuentos (igual que en el PATCH)
+                  let montoConDescuento = montoCalculado;
+
+                  // PASO 1: Aplicar descuento por tipo de pasajero SOLO cuando tipoTarifa es ABIERTA (tipoTarifa === 2)
+                  const tipoTarifaUpdate = tarifaInfoUpdate && tarifaInfoUpdate.TipoTarifa ? Number(tarifaInfoUpdate.TipoTarifa) : null;
+                  
+                  if (tipoTarifaUpdate === EnumTipoTarifa.ABIERTA && monedero.idTipoPasajero) {
+                    const tipoPasajero = await this.CatTiposPasajerosRepository.findOne({
+                      where: { id: monedero.idTipoPasajero },
+                      relations: ['CatTipoDescuento'],
+                    });
+
+                    if (tipoPasajero && tipoPasajero.cantidad && tipoPasajero.cantidad > 0 && tipoPasajero.idCatTipoDescuento) {
+                      const tipoDescuento = Number(tipoPasajero.idCatTipoDescuento);
+                      const cantidad = Number(tipoPasajero.cantidad);
+
+                      // idCatTipoDescuento: 1 = PORCENTAJE, 2 = MONETARIO
+                      if (tipoDescuento === 1) {
+                        const descuentoPorcentual = (montoConDescuento * cantidad) / 100;
+                        montoConDescuento = montoConDescuento - descuentoPorcentual;
+                      } else if (tipoDescuento === 2) {
+                        montoConDescuento = montoConDescuento - cantidad;
+                      }
+
+                      if (montoConDescuento < 0) {
+                        montoConDescuento = 0;
+                      }
+                    }
+                  }
+
+                  // PASO 2: Aplicar descuento de transbordo
+                  if (transaccionAbiertaFisica.descuentoTransbordo !== null && transaccionAbiertaFisica.descuentoTransbordo !== undefined && transaccionAbiertaFisica.tipoDescuentoTransbordo !== null) {
+                    const descuentoTransbordo = Number(transaccionAbiertaFisica.descuentoTransbordo);
+                    const tipoDescuentoTransbordo = Number(transaccionAbiertaFisica.tipoDescuentoTransbordo);
+                    
+                    if (descuentoTransbordo > 0) {
+                      if (tipoDescuentoTransbordo === EnumTipoDescuentoTransbordo.MONETARIO) {
+                        montoConDescuento = montoConDescuento - descuentoTransbordo;
+                      } else if (tipoDescuentoTransbordo === EnumTipoDescuentoTransbordo.PORCENTAJE) {
+                        const descuentoPorcentual = (montoConDescuento * descuentoTransbordo) / 100;
+                        montoConDescuento = montoConDescuento - descuentoPorcentual;
+                      }
+
+                      if (montoConDescuento < 0) {
+                        montoConDescuento = 0;
+                      }
+                    }
+                  }
+
+                  // Validar saldo
+                  const saldoActual = Number(monedero.saldo);
+                  const montoFinal = saldoActual - montoConDescuento;
+
+                  if (montoFinal < 0) {
+                    throw new BadRequestException(`Saldo insuficiente para cerrar transacción abierta física ID: ${transaccionAbiertaFisica.id}`);
+                  }
+
+                  // Actualizar saldo del monedero
+                  await this.monederosService.updateMonederoSaldo(
+                    monedero.numeroSerie,
+                    idUser,
+                    montoFinal,
+                  );
+
+                  // Actualizar monedero local para reflejar el nuevo saldo
+                  monedero.saldo = montoFinal;
+
+                  // Obtener fecha actual con desfase de -6 horas
+                  const fechaHoraFinal = fechaHoraActual.toISOString().slice(0, 19).replace('T', ' ');
+
+                  // Actualizar la transacción: cerrarla (controlTransaccion = 0)
+                  await this.transaccionesdebitoRepository.update(transaccionAbiertaFisica.id, {
+                    idTipoTransaccion: EnumTipoTransaccion.DEBITO,
+                    monto: montoConDescuento,
+                    controlTransaccion: EnumControlTransacciones.PAGADO,
+                    latitudFinal: latitudFinal,
+                    longitudFinal: longitudFinal,
+                    fechaHoraFinal: fechaHoraFinal,
+                    distanciaRecorrida: parseFloat(distanciaKm.toFixed(2)),
+                  });
+
+                  // Obtener la transacción actualizada para guardarla en histórico
+                  const transaccionActualizada = await this.transaccionesdebitoRepository.findOne({
+                    where: { id: transaccionAbiertaFisica.id },
+                  });
+
+                  if (transaccionActualizada) {
+                    const { id: _, ...transaccionBody } = transaccionActualizada;
+                    await this.historicoTransaccionesDebitoRepository.save(transaccionBody);
+                  }
+
+                  console.log(`[POST_DEBITO] Transacción abierta física ID: ${transaccionAbiertaFisica.id} cerrada correctamente. Monto: $${montoConDescuento.toFixed(2)}`);
+                }
+              }
+
+              // Actualizar estatus del QR a 0 después de cerrar las transacciones
+              if (monedero.idPasajero) {
+                const qrActivo = await this.qrCodesRepository.findOne({
+                  where: {
+                    idPasajero: monedero.idPasajero,
+                    estatus: 1, // ACTIVO
+                  },
+                  order: {
+                    id: 'DESC', // Más reciente
+                  },
+                });
+
+                if (qrActivo) {
+                  await this.qrCodesRepository.update(qrActivo.id, {
+                    estatus: 0, // INACTIVO
+                  });
+                  qrActualizado = true;
+                  console.log(`[POST_DEBITO] QR ID: ${qrActivo.id} actualizado a estatus 0 (INACTIVO)`);
+                }
+              }
+            }
+          } else {
+            // Si el tiempo es < 1 minuto, continuar normalmente (se creará una nueva transacción abierta)
+            console.log(`[POST_DEBITO] Tiempo < 1 minuto (${tiempoTranscurridoMinutos.toFixed(2)} minutos). Continuando con creación de nueva transacción abierta`);
+          }
+        } else {
+          // No hay transacciones abiertas físicas previas, continuar normalmente
+          console.log(`[POST_DEBITO] No se encontraron transacciones abiertas físicas previas. Continuando con creación de nueva transacción`);
+        }
+      }
 
       // 2.5?? Determinamos controlTransaccion seg?n el tipo de tarifa
       // Si TipoTarifa = 1 (Fija), controlTransaccion = PAGADO
@@ -1069,7 +1584,7 @@ export class TransaccionesService {
         // Buscar la última transacción finalizada (controlTransaccion = 0 = PAGADO) del monedero
         const ultimaTransaccionFinalizada = await this.transaccionesdebitoRepository.findOne({
           where: {
-            numeroSerieMonedero: createTransaccioneDebitoDto.numeroSerieMonedero,
+            numeroSerieMonedero: monedero.numeroSerie,
             controlTransaccion: EnumControlTransacciones.PAGADO,
           },
           order: {
@@ -1097,7 +1612,7 @@ export class TransaccionesService {
             // Buscar todas las transacciones finalizadas del monedero
             const transaccionesEnRango = await this.transaccionesdebitoRepository.find({
               where: {
-                numeroSerieMonedero: createTransaccioneDebitoDto.numeroSerieMonedero,
+                numeroSerieMonedero: monedero.numeroSerie,
                 controlTransaccion: EnumControlTransacciones.PAGADO,
               },
               order: {
@@ -1377,7 +1892,7 @@ export class TransaccionesService {
           longitudInicial: createTransaccioneDebitoDto.longitud,
           distanciaInicialKm: distanciaInicialKmFinal,
           fechaHoraInicio: fechaHoraInicio,
-          numeroSerieMonedero: createTransaccioneDebitoDto.numeroSerieMonedero,
+          numeroSerieMonedero: monedero.numeroSerie,
           numeroSerieValidador: createTransaccioneDebitoDto.numeroSerieValidador,
           numeroTransbordo,
           idViaje: idViaje,
@@ -1434,12 +1949,12 @@ export class TransaccionesService {
       let montoAGuardar = 0;
       if (controlTransaccion === EnumControlTransacciones.PAGADO) {
         console.log('[TRANSACCIONES] ===== ACTUALIZANDO SALDO DEL MONEDERO =====');
-        console.log(`[TRANSACCIONES] Número de serie del monedero: ${createTransaccioneDebitoDto.numeroSerieMonedero}`);
+        console.log(`[TRANSACCIONES] Número de serie del monedero: ${monedero.numeroSerie}`);
         console.log(`[TRANSACCIONES] Saldo que se va a guardar en el monedero: $${montoFinalParaMonedero.toFixed(2)}`);
         console.log(`[TRANSACCIONES] Control transacción: PAGADO`);
         
         await this.monederosService.updateMonederoSaldo(
-          createTransaccioneDebitoDto.numeroSerieMonedero,
+          monedero.numeroSerie,
           idUser,
           montoFinalParaMonedero,
         );
@@ -1482,7 +1997,7 @@ export class TransaccionesService {
           longitudInicial: createTransaccioneDebitoDto.longitud,
           distanciaInicialKm: distanciaInicialKmFinal,
           fechaHoraInicio: fechaHoraInicio,
-          numeroSerieMonedero: createTransaccioneDebitoDto.numeroSerieMonedero,
+          numeroSerieMonedero: monedero.numeroSerie,
           numeroSerieValidador: createTransaccioneDebitoDto.numeroSerieValidador,
           numeroTransbordo,
           idViaje: idViaje,
@@ -1517,7 +2032,38 @@ export class TransaccionesService {
         EstatusEnumBitcora.SUCCESS,
       );
 
-      // 8?? Finalizamos la transacci?n
+      // 8?? Actualizar estatus del QR según las condiciones
+      // Si el pago es con QR y la tarifa es ABIERTA, NO cambiar el estatus del QR a 0, dejarlo en 1
+      // Si no se cumplen esas condiciones y no se actualizó el QR anteriormente, cambiar el QR a estatus 0
+      if (monedero.idPasajero && !qrActualizado) {
+        const qrActivo = await this.qrCodesRepository.findOne({
+          where: {
+            idPasajero: monedero.idPasajero,
+            estatus: EstatusEnum.ACTIVO, // 1 = ACTIVO
+          },
+          order: {
+            id: 'DESC', // Más reciente
+          },
+        });
+
+        if (qrActivo) {
+          // Si el pago es con QR (esQR = true) y la tarifa es ABIERTA, mantener el QR en estatus 1
+          const esPagoConQR = createTransaccioneDebitoDto.esQR === true;
+          const esTarifaAbierta = tipoTarifa === EnumTipoTarifa.ABIERTA;
+
+          if (esPagoConQR && esTarifaAbierta) {
+            console.log(`[POST_DEBITO] Pago con QR y tarifa ABIERTA: QR ID ${qrActivo.id} se mantiene en estatus 1 (ACTIVO)`);
+          } else {
+            // Cambiar el QR a estatus 0 (INACTIVO)
+            await this.qrCodesRepository.update(qrActivo.id, {
+              estatus: EstatusEnum.INACTIVO, // 0 = INACTIVO
+            });
+            console.log(`[POST_DEBITO] QR ID: ${qrActivo.id} actualizado a estatus 0 (INACTIVO)`);
+          }
+        }
+      }
+
+      // 9?? Finalizamos la transacci?n
       estado = transicionarEstado(estado, EventoTransaccion.FINALIZAR);
 
       const mensajeRespuesta = cantidadPasajes > 1 
@@ -1531,7 +2077,7 @@ export class TransaccionesService {
           id: transaccionesCreadas[0], // ID de la primera transacción
           ids: cantidadPasajes > 1 ? transaccionesCreadas : undefined, // IDs de todas las transacciones si hay múltiples
           cantidadPasajes: cantidadPasajes,
-          nombre: `${monedero?.numeroSerie || createTransaccioneDebitoDto.numeroSerieMonedero}`,
+          nombre: monedero?.numeroSerie || '',
         },
       };
     } catch (error) {
@@ -1557,429 +2103,6 @@ export class TransaccionesService {
 
       throw new InternalServerErrorException(
         `Error al generar la transacción de débito`,
-      );
-    }
-  }
-
-  //Funcion para transaccion Debito
-  async updateTransaccionDebito(
-    updateTransaccioneDebitoDto: UpdateTransaccioneDebitoDto,
-    idUser: number,
-  ): Promise<ApiCrudResponse> {
-    try {
-      //Buscamos el monedero
-      const monedero = await this.monederoRepository.findOne({
-        where: {
-          numeroSerie: updateTransaccioneDebitoDto.numeroSerieMonedero,
-          estatus: 1,
-        },
-      });
-      if (!monedero) {
-        throw new BadRequestException('Monedero no encontrado');
-      }
-
-      // Buscar la transacción más reciente del monedero con ControlTransaccion = 1 (ABIERTO)
-      // y latitudFinal/longitudFinal = null
-      const transaccionExistente = await this.transaccionesdebitoRepository.findOne({
-        where: {
-          numeroSerieMonedero: updateTransaccioneDebitoDto.numeroSerieMonedero,
-          controlTransaccion: EnumControlTransacciones.ABIERTA,
-          latitudFinal: IsNull(),
-          longitudFinal: IsNull(),
-        },
-        order: {
-          id: 'DESC', // Más reciente primero
-        },
-      });
-
-      if (!transaccionExistente) {
-        throw new NotFoundException(
-          'No se encontró una transacción abierta (ControlTransaccion = 1) con latitudFinal y longitudFinal nulos para este monedero',
-        );
-      }
-
-      const idTransaccionDebito = transaccionExistente.id;
-
-      // ===== LOGS DE DEBUG: Información de la transacción existente =====
-      console.log('[UPDATE_DEBITO] ===== INFORMACIÓN DE LA TRANSACCIÓN EXISTENTE =====');
-      console.log(`[UPDATE_DEBITO] ID Transacción: ${transaccionExistente.id}`);
-      console.log(`[UPDATE_DEBITO] Tarifa base guardada: ${transaccionExistente.monto}`);
-      console.log(`[UPDATE_DEBITO] Cobro máximo: ${transaccionExistente.cobroMaximo || 'NO DEFINIDO'}`);
-      console.log(`[UPDATE_DEBITO] ID Viaje: ${transaccionExistente.idViaje || 'NO DEFINIDO'}`);
-      console.log(`[UPDATE_DEBITO] Número de transbordo: ${transaccionExistente.numeroTransbordo || 'NO DEFINIDO'}`);
-      console.log(`[UPDATE_DEBITO] Descuento transbordo: ${transaccionExistente.descuentoTransbordo || 'NO DEFINIDO'}`);
-      console.log(`[UPDATE_DEBITO] Latitud inicial: ${transaccionExistente.latitudInicial}`);
-      console.log(`[UPDATE_DEBITO] Longitud inicial: ${transaccionExistente.longitudInicial}`);
-      console.log(`[UPDATE_DEBITO] Latitud final recibida: ${updateTransaccioneDebitoDto.latitudFinal}`);
-      console.log(`[UPDATE_DEBITO] Longitud final recibida: ${updateTransaccioneDebitoDto.longitudFinal}`);
-      console.log(`[UPDATE_DEBITO] Distancia inicial (Km): ${transaccionExistente.distanciaInicialKm || 'NO DEFINIDA'}`);
-      console.log('[UPDATE_DEBITO] ====================================================');
-
-      // Validar que se proporcionen coordenadas finales
-      if (
-        updateTransaccioneDebitoDto.latitudFinal === undefined ||
-        updateTransaccioneDebitoDto.longitudFinal === undefined
-      ) {
-        throw new BadRequestException(
-          'Las coordenadas finales (latitudFinal y longitudFinal) son obligatorias para calcular el monto',
-        );
-      }
-
-      // Obtener variante y tarifa de la transacción existente usando idViaje
-      let variante: Variantes | null = null;
-      let tarifaInfo: any = null;
-
-      if (transaccionExistente.idViaje) {
-        const viaje = await this.viajesRepository.findOne({
-          where: { id: transaccionExistente.idViaje },
-          relations: ['idVariante2'],
-        });
-
-        if (viaje && viaje.idVariante) {
-          variante = await this.variantesRepository.findOne({
-            where: { id: viaje.idVariante },
-          });
-
-          if (variante) {
-            const tarifa = await this.tarifasRepository.findOne({
-              where: { idVariante: viaje.idVariante },
-            });
-
-            if (tarifa) {
-              tarifaInfo = {
-                TarifaBase: tarifa.tarifaBase,
-                CostoAdicional: tarifa.costoAdicional,
-                DistanciaBaseKm: tarifa.distanciaBaseKm,
-                IncrementoCadaMetros: tarifa.incrementoCadaMetros,
-                TipoTarifa: tarifa.tipoTarifa,
-              };
-
-              console.log('[UPDATE_DEBITO] ===== INFORMACIÓN DE TARIFA =====');
-              console.log(`[UPDATE_DEBITO] Tarifa base: ${tarifaInfo.TarifaBase}`);
-              console.log(`[UPDATE_DEBITO] Costo adicional: ${tarifaInfo.CostoAdicional}`);
-              console.log(`[UPDATE_DEBITO] Distancia base (Km): ${tarifaInfo.DistanciaBaseKm}`);
-              console.log(`[UPDATE_DEBITO] Incremento cada (metros): ${tarifaInfo.IncrementoCadaMetros}`);
-              console.log(`[UPDATE_DEBITO] Tipo tarifa: ${tarifaInfo.TipoTarifa} (1=FIJA, 2=INCREMENTAL)`);
-              console.log('[UPDATE_DEBITO] ===================================');
-            }
-          }
-        }
-      }
-
-      // Calcular distancia desde punto inicial hasta punto final usando haversine
-      const puntoInicial = {
-        latitude: transaccionExistente.latitudInicial!,
-        longitude: transaccionExistente.longitudInicial!,
-      };
-      const puntoFinal = {
-        latitude: updateTransaccioneDebitoDto.latitudFinal!,
-        longitude: updateTransaccioneDebitoDto.longitudFinal!,
-      };
-
-      // Calcular distancia en metros usando haversine
-      const distanciaMetros = haversine(puntoInicial, puntoFinal);
-      const distanciaKm = distanciaMetros / 1000; // Convertir a kilómetros
-
-      console.log('[UPDATE_DEBITO] ===== CÁLCULO DE DISTANCIA RECORRIDA =====');
-      console.log(`[UPDATE_DEBITO] Punto inicial (latitudInicial, longitudInicial): (${puntoInicial.latitude}, ${puntoInicial.longitude})`);
-      console.log(`[UPDATE_DEBITO] Punto final (latitudFinal, longitudFinal): (${puntoFinal.latitude}, ${puntoFinal.longitude})`);
-      console.log(`[UPDATE_DEBITO] DISTANCIA RECORRIDA: ${distanciaMetros.toFixed(2)} metros`);
-      console.log(`[UPDATE_DEBITO] DISTANCIA RECORRIDA: ${distanciaKm.toFixed(4)} kilómetros`);
-      console.log('[UPDATE_DEBITO] ===========================================');
-
-      // 3?? Calcular monto basado en la distancia (igual que en /debito)
-      // La tarifa base está guardada en transaccionExistente.monto
-      const tarifaBase = Number(transaccionExistente.monto) || 0;
-      let montoCalculado = tarifaBase; // Empezar con la tarifa base
-
-      console.log('[UPDATE_DEBITO] ===== CÁLCULO DE MONTO POR DISTANCIA =====');
-      console.log(`[UPDATE_DEBITO] Tarifa base: $${tarifaBase.toFixed(2)}`);
-
-      // Si es tarifa INCREMENTAL (tipoTarifa === 2) y hay configuración de costo adicional
-      if (tarifaInfo && tarifaInfo.TipoTarifa === 2) {
-        const costoAdicional = tarifaInfo.CostoAdicional ? Number(tarifaInfo.CostoAdicional) : 0;
-        const distanciaBaseKm = tarifaInfo.DistanciaBaseKm ? Number(tarifaInfo.DistanciaBaseKm) : 0;
-        const incrementoCadaMetros = tarifaInfo.IncrementoCadaMetros ? Number(tarifaInfo.IncrementoCadaMetros) : 0;
-
-        if (costoAdicional > 0 && incrementoCadaMetros > 0) {
-          const distanciaBaseMetros = distanciaBaseKm * 1000;
-
-          // Si la distancia recorrida excede la distancia base, calcular el extra
-          if (distanciaMetros > distanciaBaseMetros) {
-            const distanciaExcedente = distanciaMetros - distanciaBaseMetros;
-            const numeroIncrementos = Math.ceil(distanciaExcedente / incrementoCadaMetros);
-            const extraPorDistancia = numeroIncrementos * costoAdicional;
-            montoCalculado = tarifaBase + extraPorDistancia;
-
-            console.log(`[UPDATE_DEBITO] Distancia base: ${distanciaBaseKm} km (${distanciaBaseMetros} metros)`);
-            console.log(`[UPDATE_DEBITO] Distancia recorrida: ${distanciaKm.toFixed(4)} km (${distanciaMetros.toFixed(2)} metros)`);
-            console.log(`[UPDATE_DEBITO] Distancia excedente: ${(distanciaExcedente / 1000).toFixed(4)} km (${distanciaExcedente.toFixed(2)} metros)`);
-            console.log(`[UPDATE_DEBITO] Incremento cada: ${incrementoCadaMetros} metros`);
-            console.log(`[UPDATE_DEBITO] Costo adicional por incremento: $${costoAdicional.toFixed(2)}`);
-            console.log(`[UPDATE_DEBITO] Número de incrementos: ${numeroIncrementos}`);
-            console.log(`[UPDATE_DEBITO] Extra por distancia: $${extraPorDistancia.toFixed(2)}`);
-            console.log(`[UPDATE_DEBITO] Monto calculado (tarifa base + extra): $${montoCalculado.toFixed(2)}`);
-          } else {
-            console.log(`[UPDATE_DEBITO] La distancia recorrida (${distanciaKm.toFixed(4)} km) está dentro de la distancia base (${distanciaBaseKm} km)`);
-            console.log(`[UPDATE_DEBITO] No se aplica costo adicional. Monto: $${tarifaBase.toFixed(2)} (solo tarifa base)`);
-          }
-        } else {
-          console.log(`[UPDATE_DEBITO] No hay configuración de costo adicional (costoAdicional: ${costoAdicional}, incrementoCadaMetros: ${incrementoCadaMetros})`);
-          console.log(`[UPDATE_DEBITO] Monto: $${tarifaBase.toFixed(2)} (solo tarifa base)`);
-        }
-      } else {
-        console.log(`[UPDATE_DEBITO] Tipo de tarifa no es INCREMENTAL o no hay información de tarifa`);
-        console.log(`[UPDATE_DEBITO] Monto: $${tarifaBase.toFixed(2)} (solo tarifa base)`);
-      }
-
-      // Validar que el monto calculado no exceda el cobro máximo
-      if (transaccionExistente.cobroMaximo) {
-        const cobroMaximoNum = Number(transaccionExistente.cobroMaximo);
-        if (montoCalculado > cobroMaximoNum) {
-          console.log(`[UPDATE_DEBITO] ⚠️ ALERTA: El monto calculado (${montoCalculado.toFixed(2)}) excede el cobro máximo (${cobroMaximoNum.toFixed(2)})`);
-          console.log(`[UPDATE_DEBITO] ⚠️ Se limitará el monto al cobro máximo`);
-          montoCalculado = cobroMaximoNum;
-        }
-        console.log(`[UPDATE_DEBITO] Cobro máximo permitido: $${cobroMaximoNum.toFixed(2)}`);
-        console.log(`[UPDATE_DEBITO] Monto final después de validación: $${montoCalculado.toFixed(2)}`);
-      }
-      console.log('[UPDATE_DEBITO] ===========================================');
-
-      // ORDEN DE APLICACIÓN: 1) Descuento por tipo de pasajero, 2) Descuento por transbordo
-      let montoConDescuento = montoCalculado;
-
-      // PASO 1: Aplicar descuento por tipo de pasajero SOLO cuando tipoTarifa es ABIERTA (tipoTarifa === 2)
-      const tipoTarifaUpdate = tarifaInfo && tarifaInfo.TipoTarifa ? Number(tarifaInfo.TipoTarifa) : null;
-      
-      if (tipoTarifaUpdate === EnumTipoTarifa.ABIERTA && monedero.idTipoPasajero) {
-        const tipoPasajero = await this.CatTiposPasajerosRepository.findOne({
-          where: { id: monedero.idTipoPasajero },
-          relations: ['CatTipoDescuento'],
-        });
-
-        if (tipoPasajero && tipoPasajero.cantidad && tipoPasajero.cantidad > 0 && tipoPasajero.idCatTipoDescuento) {
-          const tipoDescuento = Number(tipoPasajero.idCatTipoDescuento);
-          const cantidad = Number(tipoPasajero.cantidad);
-
-          console.log('[UPDATE_DEBITO] ===== PASO 1: DESCUENTO POR TIPO DE PASAJERO (ABIERTA) =====');
-          console.log(`[UPDATE_DEBITO] Tipo de descuento: ${tipoDescuento} (1=Porcentaje, 2=Monetario)`);
-          console.log(`[UPDATE_DEBITO] Cantidad: ${cantidad}`);
-          console.log(`[UPDATE_DEBITO] Monto antes de descuento por tipo de pasajero: $${montoConDescuento.toFixed(2)}`);
-
-          // idCatTipoDescuento: 1 = PORCENTAJE, 2 = MONETARIO
-          if (tipoDescuento === 1) {
-            // Tipo 1: PORCENTAJE - cantidad es el porcentaje a descontar
-            const descuentoPorcentual = (montoConDescuento * cantidad) / 100;
-            montoConDescuento = montoConDescuento - descuentoPorcentual;
-            console.log(`[UPDATE_DEBITO] Descuento en PORCENTAJE: ${cantidad}% = $${descuentoPorcentual.toFixed(2)}`);
-          } else if (tipoDescuento === 2) {
-            // Tipo 2: MONETARIO - cantidad es el monto a restar directamente
-            montoConDescuento = montoConDescuento - cantidad;
-            console.log(`[UPDATE_DEBITO] Descuento en PESOS: $${cantidad.toFixed(2)}`);
-          }
-
-          // Asegurar que el monto no sea negativo
-          if (montoConDescuento < 0) {
-            montoConDescuento = 0;
-          }
-
-          console.log(`[UPDATE_DEBITO] Monto después de descuento por tipo de pasajero: $${montoConDescuento.toFixed(2)}`);
-          console.log('[UPDATE_DEBITO] =============================================');
-        } else {
-          console.log('[UPDATE_DEBITO] No se aplica descuento por tipo de pasajero (cantidad <= 0 o no existe)');
-        }
-      } else if (tipoTarifaUpdate !== EnumTipoTarifa.ABIERTA) {
-        console.log('[UPDATE_DEBITO] Tipo de tarifa no es ABIERTA, no se aplica descuento por tipo de pasajero en el PATCH');
-      } else if (!monedero.idTipoPasajero) {
-        console.log('[UPDATE_DEBITO] No hay tipo de pasajero asociado al monedero, no se aplican descuentos');
-      }
-
-      // PASO 2: Aplicar descuento de transbordo sobre el monto ya descontado por tipo de pasajero
-      if (transaccionExistente.descuentoTransbordo !== null && transaccionExistente.descuentoTransbordo !== undefined && transaccionExistente.tipoDescuentoTransbordo !== null) {
-        const descuentoTransbordo = Number(transaccionExistente.descuentoTransbordo);
-        const tipoDescuentoTransbordo = Number(transaccionExistente.tipoDescuentoTransbordo);
-        
-        if (descuentoTransbordo > 0) {
-          console.log('[UPDATE_DEBITO] ===== PASO 2: DESCUENTO POR TRANSBORDO =====');
-          console.log(`[UPDATE_DEBITO] Descuento transbordo: $${descuentoTransbordo.toFixed(2)}, Tipo: ${tipoDescuentoTransbordo} (1=Pesos, 2=Porcentaje)`);
-          console.log(`[UPDATE_DEBITO] Monto antes de descuento por transbordo: $${montoConDescuento.toFixed(2)}`);
-          
-          // Evaluar el tipo de descuento: 1 = PESOS (resta directa), 2 = PORCENTAJE
-          if (tipoDescuentoTransbordo === 1) {
-            // Tipo 1: PESOS - resta directa sobre el monto ya descontado por tipo de pasajero
-            montoConDescuento = montoConDescuento - descuentoTransbordo;
-            console.log(`[UPDATE_DEBITO] Descuento en PESOS: $${descuentoTransbordo.toFixed(2)}`);
-          } else if (tipoDescuentoTransbordo === 2) {
-            // Tipo 2: PORCENTAJE - calcular porcentaje del monto ya descontado por tipo de pasajero
-            const descuentoPorcentual = (montoConDescuento * descuentoTransbordo) / 100;
-            montoConDescuento = montoConDescuento - descuentoPorcentual;
-            console.log(`[UPDATE_DEBITO] Descuento en PORCENTAJE: ${descuentoTransbordo}% = $${descuentoPorcentual.toFixed(2)}`);
-          } else {
-            // Tipo desconocido, no aplicar descuento
-            console.log(`[UPDATE_DEBITO] Tipo de descuento desconocido (${tipoDescuentoTransbordo}), no se aplica descuento`);
-          }
-          
-          // Asegurar que el monto no sea negativo
-          if (montoConDescuento < 0) {
-            montoConDescuento = 0;
-          }
-          
-          console.log(`[UPDATE_DEBITO] Monto después de descuento por transbordo: $${montoConDescuento.toFixed(2)}`);
-          console.log('[UPDATE_DEBITO] =============================================');
-        }
-      }
-
-      // ===== LOG FINAL: Resumen antes de validar saldo =====
-      console.log('[UPDATE_DEBITO] ===== RESUMEN FINAL =====');
-      console.log(`[UPDATE_DEBITO] Monto a cobrar (después de descuentos): ${montoConDescuento.toFixed(2)}`);
-      console.log(`[UPDATE_DEBITO] Cobro máximo permitido: ${transaccionExistente.cobroMaximo || 'NO DEFINIDO'}`);
-      if (transaccionExistente.cobroMaximo) {
-        const cobroMaximoNum = Number(transaccionExistente.cobroMaximo);
-        if (montoConDescuento > cobroMaximoNum) {
-          console.log(`[UPDATE_DEBITO] ❌ ERROR: El monto a cobrar (${montoConDescuento.toFixed(2)}) EXCEDE el cobro máximo (${cobroMaximoNum.toFixed(2)})`);
-          console.log(`[UPDATE_DEBITO] ❌ Exceso: ${(montoConDescuento - cobroMaximoNum).toFixed(2)}`);
-        } else {
-          console.log(`[UPDATE_DEBITO] ✓ El monto a cobrar (${montoConDescuento.toFixed(2)}) está dentro del límite (${cobroMaximoNum.toFixed(2)})`);
-        }
-      }
-      console.log(`[UPDATE_DEBITO] Saldo actual del monedero: ${monedero.saldo}`);
-      console.log(`[UPDATE_DEBITO] Saldo después del cobro: ${(Number(monedero.saldo) - montoConDescuento).toFixed(2)}`);
-      console.log('[UPDATE_DEBITO] =========================');
-
-      let montoFinal = Number(monedero.saldo) - montoConDescuento;
-
-      // 4?? Validaci?n de saldo
-      if (montoFinal < 0) {
-        updateTransaccioneDebitoDto.idTipoTransaccion =
-          EnumTipoTransaccion.RECHAZO;
-
-        // Obtener idViaje de la transacci?n existente
-        const idViajeUpdate = transaccionExistente?.idViaje || null;
-
-        // Obtener fecha actual con desfase de -6 horas
-        const ahora = new Date();
-        const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas en milisegundos
-        const fechaDesfasada = new Date(ahora.getTime() + desfaseMs);
-        const fechaHoraFinal = fechaDesfasada.toISOString().slice(0, 19).replace('T', ' ');
-
-        // Guardar transacci?n rechazada
-        const updateTransaccion = this.transaccionesdebitoRepository.create({
-          idTipoTransaccion: EnumTipoTransaccion.RECHAZO,
-          monto: montoFinal,
-          controlTransaccion: EnumControlTransacciones.PAGADO,
-          latitudFinal: updateTransaccioneDebitoDto.latitudFinal,
-          longitudFinal: updateTransaccioneDebitoDto.longitudFinal,
-          fechaHoraFinal: fechaHoraFinal,
-          numeroSerieMonedero: updateTransaccioneDebitoDto.numeroSerieMonedero,
-          numeroSerieValidador: updateTransaccioneDebitoDto.numeroSerieValidador,
-          idViaje: idViajeUpdate,
-          distanciaRecorrida: parseFloat(distanciaKm.toFixed(2)),
-        }
-        );
-        await this.transaccionesdebitoRepository.save(updateTransaccion);
-        //se guarda en el historico
-        await this.historicoTransaccionesDebitoRepository.save(updateTransaccion);
-
-        // Registrar en bit?cora
-        await this.bitacoraLogger.logToBitacora(
-          'Transacciones',
-          `Transacci?n de d?bito RECHAZADA por saldo insuficiente`,
-          'CREATE',
-          { updateTransaccioneDebitoDto },
-          idUser,
-          EnumModulos.TRANSACCIONES,
-          EstatusEnumBitcora.ERROR,
-          'Saldo insuficiente',
-        );
-
-        throw new BadRequestException('Saldo insuficiente');
-      }
-
-      // 5?? Si saldo OK, actualizamos el monedero y estado
-      await this.monederosService.updateMonederoSaldo(
-        updateTransaccioneDebitoDto.numeroSerieMonedero,
-        idUser,
-        montoFinal,
-      );
-
-      // 6?? Guardamos transacci?n aprobada
-      // Obtener fecha actual con desfase de -6 horas
-      const ahora = new Date();
-      const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas en milisegundos
-      const fechaDesfasada = new Date(ahora.getTime() + desfaseMs);
-      const fechaHoraFinal = fechaDesfasada.toISOString().slice(0, 19).replace('T', ' ');
-
-      // Construir objeto de actualizaci?n solo con los campos proporcionados
-      const updateData: any = {
-        idTipoTransaccion: EnumTipoTransaccion.DEBITO,
-        monto: montoConDescuento,
-        controlTransaccion: EnumControlTransacciones.PAGADO,
-        fechaHoraFinal: fechaHoraFinal, // Siempre usar fecha actual
-        distanciaRecorrida: parseFloat(distanciaKm.toFixed(2)), // Guardar distancia recorrida desde punto inicial hasta punto final
-      };
-
-      // Solo agregar campos opcionales si se proporcionan
-      if (updateTransaccioneDebitoDto.latitudFinal !== undefined) {
-        updateData.latitudFinal = updateTransaccioneDebitoDto.latitudFinal;
-      }
-      if (updateTransaccioneDebitoDto.longitudFinal !== undefined) {
-        updateData.longitudFinal = updateTransaccioneDebitoDto.longitudFinal;
-      }
-      if (updateTransaccioneDebitoDto.numeroSerieMonedero) {
-        updateData.numeroSerieMonedero = updateTransaccioneDebitoDto.numeroSerieMonedero;
-      }
-      if (updateTransaccioneDebitoDto.numeroSerieValidador) {
-        updateData.numeroSerieValidador = updateTransaccioneDebitoDto.numeroSerieValidador;
-      }
-
-      await this.transaccionesdebitoRepository.update(
-        idTransaccionDebito,
-        updateData
-      );
-      const transaccionSave =
-        await this.transaccionesdebitoRepository.findOne({
-          where: {
-            id: idTransaccionDebito
-          }
-        });
-
-      if (!transaccionSave) {
-        throw new NotFoundException('La transacci?n no existe');
-      }
-
-      const { id: _, ...transaccionBody } = transaccionSave
-
-      const transaccionSaveHis =
-        await this.historicoTransaccionesDebitoRepository.save(transaccionBody);
-
-
-      return {
-        status: 'success',
-        message: 'Transacci?n creada correctamente',
-        data: {
-          id: Number(transaccionSaveHis.id),
-          nombre: `${monedero.numeroSerie}`,
-        },
-      };
-    } catch (error) {
-      // --- Registro en la bit?cora --- ERROR
-      const querylogger = { updateTransaccioneDebitoDto };
-      await this.bitacoraLogger.logToBitacora(
-        'Transacciones',
-        `Se realizo una transaccion de tipo ${updateTransaccioneDebitoDto.idTipoTransaccion}`,
-        'CREATE',
-        querylogger,
-        idUser,
-        EnumModulos.TRANSACCIONES,
-        EstatusEnumBitcora.ERROR,
-        error.message,
-      );
-
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      throw new InternalServerErrorException(
-        `Error generar la transaccion de tipo ${updateTransaccioneDebitoDto.idTipoTransaccion}`,
       );
     }
   }
@@ -2012,8 +2135,8 @@ export class TransaccionesService {
     page: number,
     limit: number,
     fechaInicio?: string,
-    fechaFin?: string
-  ) {
+    fechaFin?: string,
+  ): Promise<ApiResponseCommon> {
     try {
       //Declaramos las variables para el consumo del api
       let entidadRecarga;

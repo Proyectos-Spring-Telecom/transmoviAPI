@@ -26,11 +26,12 @@ import { Usuarios } from 'src/entities/Usuarios';
 import { Pasajeros } from 'src/entities/Pasajeros';
 import { DireccionesTarjeta } from 'src/entities/DireccionesTarjeta';
 import { DatosTarjeta } from 'src/entities/DatosTarjeta';
+import { QRCodes } from 'src/entities/QRCodes';
 
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([TransaccionesRecarga, TransaccionesDebito, HistoricoTransaccionesDebito, HistoricoTransaccionesRecarga, Validadores, Clientes, Monederos, CatTiposPasajeros, TransbordosPermitidos, DetalleTransbordos, Viajes, Tarifas, Variantes, Turnos, Instalaciones, CatTiposTransacciones, Usuarios, Pasajeros, DireccionesTarjeta, DatosTarjeta]),
+    TypeOrmModule.forFeature([TransaccionesRecarga, TransaccionesDebito, HistoricoTransaccionesDebito, HistoricoTransaccionesRecarga, Validadores, Clientes, Monederos, CatTiposPasajeros, TransbordosPermitidos, DetalleTransbordos, Viajes, Tarifas, Variantes, Turnos, Instalaciones, CatTiposTransacciones, Usuarios, Pasajeros, DireccionesTarjeta, DatosTarjeta, QRCodes]),
     MonederosModule,
     BitacoraModule,
     PasajerosModule,

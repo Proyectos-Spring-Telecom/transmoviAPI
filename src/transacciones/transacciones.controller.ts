@@ -8,7 +8,6 @@ import {
   UseGuards,
   ParseIntPipe,
   Request,
-  Patch,
 } from '@nestjs/common';
 import { TransaccionesService } from './transacciones.service';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
@@ -16,7 +15,6 @@ import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { CreateTransaccioneDebitoDto } from './dto/create-transaccione-debito.dto';
 import { CreateTransaccioneRecargaDto } from './dto/create-transaccione-recarga.dto';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
-import { UpdateTransaccioneDebitoDto } from './dto/update-transaccione-debito.dto';
 import { GetTransaccioneDto } from './dto/get-transacciones.dto';
 import { GetHistoricoRecargasDto } from './dto/get-historico-recargas.dto';
 
@@ -150,18 +148,6 @@ export class TransaccionesController {
     );
   }
 
-  @Patch('debito')
-  @UseGuards(JwtAuthGuard)
-  updateTransaccionDebito(
-    @Body() updateTransaccioneDebitoDto: UpdateTransaccioneDebitoDto,
-    @Request() req,
-  ): Promise<ApiCrudResponse> {
-    const idUser = req.user.userId;
-    return this.transaccionesService.updateTransaccionDebito(
-      updateTransaccioneDebitoDto,
-      idUser,
-    );
-  }
 
   @Post('paginado')
   @UseGuards(JwtAuthGuard)
