@@ -1482,9 +1482,6 @@ ORDER BY v.Id DESC
         INNER JOIN Vehiculos veh ON i.IdVehiculo = veh.Id
         WHERE i.IdValidador = ?
           AND v.Inicio >= ?
-          AND v.Estatus = 1
-          AND t.Estatus = 1
-          AND i.Estatus = 1
         ORDER BY v.Inicio DESC
         `,
         [validador.id, fechaHaceUnaSemana],
