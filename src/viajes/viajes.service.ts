@@ -24,6 +24,10 @@ import { Instalaciones } from 'src/entities/Instalaciones';
 import { Contadores } from 'src/entities/Contadores';
 import { InstalacionContadores } from 'src/entities/InstalacionContadores';
 import { UpdateViajeDto } from './dto/update-viaje.dto';
+import { Validadores } from 'src/entities/Validadores';
+import { Variantes } from 'src/entities/Variantes';
+import { Vehiculos } from 'src/entities/Vehiculos';
+import { Posiciones } from 'src/entities/Posiciones';
 
 @Injectable()
 export class ViajesService {
@@ -43,6 +47,14 @@ export class ViajesService {
     private readonly contadoresRepository: Repository<Contadores>,
     @InjectRepository(InstalacionContadores)
     private readonly instalacionContadoresRepository: Repository<InstalacionContadores>,
+    @InjectRepository(Validadores)
+    private readonly validadoresRepository: Repository<Validadores>,
+    @InjectRepository(Variantes)
+    private readonly variantesRepository: Repository<Variantes>,
+    @InjectRepository(Vehiculos)
+    private readonly vehiculosRepository: Repository<Vehiculos>,
+    @InjectRepository(Posiciones)
+    private readonly posicionesRepository: Repository<Posiciones>,
   ) { }
   // ========================================
   // 🔹 CREAR UN VIAJE
@@ -1416,6 +1428,119 @@ ORDER BY v.Id DESC
       }
       throw new InternalServerErrorException({
         message: 'Error al obtener un viaje',
+        error: error.message,
+      });
+    }
+  }
+
+  async getViajesUltimaSemanaPorValidador(
+    numeroSerieValidador: string,
+  ): Promise<any> {
+    try {
+      // Validar que el validador existe
+      const validador = await this.validadoresRepository.findOne({
+        where: { numeroSerie: numeroSerieValidador },
+      });
+
+      if (!validador) {
+        throw new NotFoundException(
+          `Validador con número de serie ${numeroSerieValidador} no encontrado.`,
+        );
+      }
+
+      // Calcular fecha de hace una semana
+      const fechaActual = new Date();
+      const fechaHaceUnaSemana = new Date();
+      fechaHaceUnaSemana.setDate(fechaActual.getDate() - 7);
+
+      // Obtener la última posición del validador
+      const ultimaPosicion = await this.posicionesRepository.findOne({
+        where: { numeroSerieValidador: numeroSerieValidador },
+        order: { fechaHora: 'DESC' },
+      });
+
+      // Consulta SQL para obtener viajes de la última semana
+      const viajes = await this.viajesRepository.query(
+        `
+        SELECT 
+          v.Id AS idViaje,
+          v.Inicio AS fechaInicio,
+          v.Fin AS fechaFin,
+          va.Nombre AS nombreVariante,
+          t.Id AS idTurno,
+          t.Inicio AS fechaInicioTurno,
+          t.Fin AS fechaFinTurno,
+          i.Id AS idInstalacion,
+          veh.Id AS idVehiculo,
+          veh.Placa AS placaVehiculo,
+          veh.Marca AS marcaVehiculo,
+          veh.Modelo AS modeloVehiculo
+        FROM Viajes v
+        INNER JOIN Turnos t ON v.IdTurno = t.Id
+        INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
+        INNER JOIN Variantes va ON v.IdVariante = va.Id
+        INNER JOIN Vehiculos veh ON i.IdVehiculo = veh.Id
+        WHERE i.IdValidador = ?
+          AND v.Inicio >= ?
+          AND v.Estatus = 1
+          AND t.Estatus = 1
+          AND i.Estatus = 1
+        ORDER BY v.Inicio DESC
+        `,
+        [validador.id, fechaHaceUnaSemana],
+      );
+
+      // Formatear los datos
+      const viajesFormateados = viajes.map((viaje: any) => ({
+        idViaje: Number(viaje.idViaje),
+        fechaInicio: viaje.fechaInicio,
+        fechaFin: viaje.fechaFin,
+        nombreVariante: viaje.nombreVariante,
+        turno: {
+          idTurno: Number(viaje.idTurno),
+          fechaInicio: viaje.fechaInicioTurno,
+          fechaFin: viaje.fechaFinTurno,
+        },
+        instalacion: {
+          idInstalacion: Number(viaje.idInstalacion),
+          vehiculo: {
+            idVehiculo: Number(viaje.idVehiculo),
+            placa: viaje.placaVehiculo,
+            marca: viaje.marcaVehiculo,
+            modelo: viaje.modeloVehiculo,
+          },
+        },
+      }));
+
+      // Formatear la última posición
+      const ultimaPosicionFormateada = ultimaPosicion
+        ? {
+            id: Number(ultimaPosicion.id),
+            latitud: Number(ultimaPosicion.latitud),
+            longitud: Number(ultimaPosicion.longitud),
+            velocidad: Number(ultimaPosicion.velocidad),
+            direccion: Number(ultimaPosicion.direccion),
+            fechaHora: ultimaPosicion.fechaHora,
+            exactitud: ultimaPosicion.exactitud,
+            estado: Number(ultimaPosicion.estado),
+          }
+        : null;
+
+      const result = {
+        data: {
+          viajes: viajesFormateados,
+          ultimaPosicion: ultimaPosicionFormateada,
+        },
+      };
+
+      return result;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message:
+          'Error al obtener los viajes de la última semana por validador.',
         error: error.message,
       });
     }

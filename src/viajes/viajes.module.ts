@@ -10,9 +10,13 @@ import { ConteoPasajeros } from 'src/entities/ConteoPasajeros';
 import { Instalaciones } from 'src/entities/Instalaciones';
 import { Contadores } from 'src/entities/Contadores';
 import { InstalacionContadores } from 'src/entities/InstalacionContadores';
+import { Validadores } from 'src/entities/Validadores';
+import { Variantes } from 'src/entities/Variantes';
+import { Vehiculos } from 'src/entities/Vehiculos';
+import { Posiciones } from 'src/entities/Posiciones';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Viajes, Clientes, Turnos, ConteoPasajeros, Instalaciones, Contadores, InstalacionContadores]), BitacoraModule],
+  imports: [TypeOrmModule.forFeature([Viajes, Clientes, Turnos, ConteoPasajeros, Instalaciones, Contadores, InstalacionContadores, Validadores, Variantes, Vehiculos, Posiciones]), BitacoraModule],
   controllers: [ViajesController],
   providers: [ViajesService],
 })

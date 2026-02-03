@@ -12,8 +12,9 @@ import {
 import { ViajesService } from './viajes.service';
 import { CreateViajeDto } from './dto/create-viaje.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { UpdateViajeDto } from './dto/update-viaje.dto';
+import { ApiResponseCommon } from 'src/common/ApiResponse';
 
 @ApiTags('Viajes')
 @ApiBearerAuth('bearer-token')
@@ -50,6 +51,37 @@ export class ViajesController {
     const cliente = req.user.cliente;
     const rol = req.user.rol;
     return this.viajesService.findAllList(+cliente, +cliente,);
+  }
+
+  @Get('viajes-ultima-semana/:numeroSerieValidador')
+  @ApiOperation({
+    summary: 'Obtener viajes de la última semana por número de serie del validador',
+    description: 'Obtiene los viajes de la última semana asociados a un validador, incluyendo información del turno, variante, instalación y la última posición del validador.',
+  })
+  @ApiParam({
+    name: 'numeroSerieValidador',
+    type: String,
+    description: 'Número de serie del validador',
+    example: 'VAL-0001',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Viajes obtenidos exitosamente',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Validador no encontrado',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'No autorizado',
+  })
+  async getViajesUltimaSemanaPorValidador(
+    @Param('numeroSerieValidador') numeroSerieValidador: string,
+  ): Promise<ApiResponseCommon> {
+    return await this.viajesService.getViajesUltimaSemanaPorValidador(
+      numeroSerieValidador,
+    );
   }
 
   @Get(':page/:limit')
