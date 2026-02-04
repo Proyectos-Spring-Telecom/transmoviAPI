@@ -260,9 +260,9 @@ SELECT
 
   -- Contador
   i.IdContador AS idContador,
-  c.NumeroSerie AS numeroSerieContador,
-  c.Marca AS marcaContador,
-  c.Modelo AS modeloContador,
+  cont.NumeroSerie AS numeroSerieContador,
+  cont.Marca AS marcaContador,
+  cont.Modelo AS modeloContador,
   
   -- Vehículo
   i.IdVehiculo AS idVehiculo,
@@ -273,21 +273,21 @@ SELECT
   v.Foto AS foto,
 
     CONCAT(
-        c.Nombre,
-        IFNULL(CONCAT(' ', c.ApellidoPaterno), ''),
-        IFNULL(CONCAT(' ', c.ApellidoMaterno), '')
+        cli.Nombre,
+        IFNULL(CONCAT(' ', cli.ApellidoPaterno), ''),
+        IFNULL(CONCAT(' ', cli.ApellidoMaterno), '')
     ) AS nombreCompletoCliente
 
 FROM Instalaciones i
 INNER JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN Contadores c ON i.IdContador = c.Id AND i.IdCliente = c.IdCliente
+INNER JOIN Contadores cont ON i.IdContador = cont.Id AND i.IdCliente = cont.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
-INNER JOIN Clientes c ON i.IdCliente = c.Id
+INNER JOIN Clientes cli ON i.IdCliente = cli.Id
 INNER JOIN UltimaPosicion up ON d.NumeroSerie = up.NumeroSerieValidador
     
-WHERE c.Id IN (${cliente})   -- 🔹 aquí colocas el/los ID(s) del cliente que quieres consultar
+WHERE cli.Id IN (${cliente})   -- 🔹 aquí colocas el/los ID(s) del cliente que quieres consultar
 AND i.Estatus = 1  -- Solo instalaciones activas
-AND c.Estatus = 1
+AND cli.Estatus = 1
 
 ORDER BY up.Id DESC;
 
@@ -310,7 +310,12 @@ ORDER BY up.Id DESC;
       // Solo la fecha del momento
       const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())}`;
       let recorridoMonitoreo;
-      const { idCliente, NumeroSerieValidador } = recorridoMonitoreoDto
+      const { NumeroSerieValidador } = recorridoMonitoreoDto;
+      
+      // Usar parámetros preparados para evitar SQL injection
+      const fechaInicio = `${fechaActual} 00:00:00`;
+      const fechaFin = `${fechaActual} 23:59:59`;
+      
       recorridoMonitoreo = await this.usuarioszonasRepository.query(
         `
 SELECT
@@ -325,17 +330,22 @@ SELECT
     up.FHRegistro AS fhRegistro,
     up.NumeroSerieValidador AS numeroSerieValidador,
     
-    -- Dispositivo
+    -- Validador
   d.Id AS idDispositivo,
   d.NumeroSerie AS numeroSerieValidador,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
+  d.Marca AS marcaValidador,
+  d.Modelo AS modeloValidador,
 
-  -- Contador
-  i.IdContador AS idContador,
-  c.NumeroSerie AS numeroSerieContador,
-  c.Marca AS marcaContador,
-  c.Modelo AS modeloContador,
+  -- Contador (a través de InstalacionContadores - múltiples contadores concatenados)
+  GROUP_CONCAT(DISTINCT cont.Id ORDER BY cont.Id SEPARATOR ',') AS idContadores,
+  GROUP_CONCAT(DISTINCT cont.NumeroSerie ORDER BY cont.Id SEPARATOR ', ') AS numeroSerieContadores,
+  GROUP_CONCAT(DISTINCT cont.Marca ORDER BY cont.Id SEPARATOR ', ') AS marcaContadores,
+  GROUP_CONCAT(DISTINCT cont.Modelo ORDER BY cont.Id SEPARATOR ', ') AS modeloContadores,
+  -- Para compatibilidad (primer contador)
+  MIN(cont.Id) AS idContador,
+  GROUP_CONCAT(DISTINCT cont.NumeroSerie ORDER BY cont.Id SEPARATOR ', ') AS numeroSerieContador,
+  GROUP_CONCAT(DISTINCT cont.Marca ORDER BY cont.Id SEPARATOR ', ') AS marcaContador,
+  GROUP_CONCAT(DISTINCT cont.Modelo ORDER BY cont.Id SEPARATOR ', ') AS modeloContador,
   
   -- Vehículo
   i.IdVehiculo AS idVehiculo,
@@ -346,28 +356,36 @@ SELECT
   v.Foto AS foto,
 
     CONCAT(
-        c.Nombre,
-        IFNULL(CONCAT(' ', c.ApellidoPaterno), ''),
-        IFNULL(CONCAT(' ', c.ApellidoMaterno), '')
+        cli.Nombre,
+        IFNULL(CONCAT(' ', cli.ApellidoPaterno), ''),
+        IFNULL(CONCAT(' ', cli.ApellidoMaterno), '')
     ) AS nombreCompletoCliente
 
 FROM Instalaciones i
 INNER JOIN Validadores d ON i.IdValidador = d.Id AND i.IdCliente = d.IdCliente
-INNER JOIN Contadores c ON i.IdContador = c.Id AND i.IdCliente = c.IdCliente
+LEFT JOIN InstalacionContadores ic ON i.Id = ic.IdInstalacion AND ic.Estatus = 1
+LEFT JOIN Contadores cont ON ic.IdContador = cont.Id
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
-INNER JOIN Clientes c ON i.IdCliente = c.Id
+INNER JOIN Clientes cli ON i.IdCliente = cli.Id
 INNER JOIN Posiciones up ON d.NumeroSerie = up.NumeroSerieValidador
 
-WHERE c.Id IN (${idCliente})   -- 🔹 aquí colocas el/los ID(s) del cliente que quieres consultar
-AND up.FechaHora >= '${fechaActual}T00:00:00Z'
-AND up.FechaHora < '${fechaActual}T23:59:59Z'
-AND up.NumeroSerieValidador = '${NumeroSerieValidador}'
-  
+WHERE up.FechaHora >= ?
+AND up.FechaHora <= ?
+AND up.NumeroSerieValidador = ?
+AND i.Estatus = 1
+AND d.Estatus = 1
 
-ORDER BY i.Id DESC
+GROUP BY up.Id, up.Exactitud, up.Estado, up.Velocidad, up.Direccion, 
+         up.Latitud, up.Longitud, up.FechaHora, up.FHRegistro, up.NumeroSerieValidador,
+         d.Id, d.NumeroSerie, d.Marca, d.Modelo,
+         i.IdVehiculo, v.Marca, v.Modelo, v.Placa, v.NumeroEconomico, v.Foto,
+         cli.Nombre, cli.ApellidoPaterno, cli.ApellidoMaterno
+
+ORDER BY up.FechaHora ASC
       `,
+        [fechaInicio, fechaFin, NumeroSerieValidador],
       );
-
+      console.log(recorridoMonitoreo);
       const posicion = recorridoMonitoreo.map(item => ({
         ...item,
         id: Number(item.id),
@@ -385,9 +403,10 @@ ORDER BY i.Id DESC
 
       return { posicion };
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
-        message: 'Error al obtener listado variantes',
+        message: 'Error al obtener el recorrido del dispositivo',
         error: error.message,
       });
     }
