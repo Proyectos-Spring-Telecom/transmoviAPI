@@ -4,6 +4,7 @@ import { RecaudacionDiariaRutaDto } from './dto/recaudacion-diaria-ruta.dto';
 import { RecaudacionPorOperadorDto } from './dto/recaudacion-por-operador.dto';
 import { RecaudacionPorVehiculoDto } from './dto/recaudacion-por-vehiculo.dto';
 import { RecaudacionPorDispositivoDto } from './dto/recaudacion-por-dispositivo.dto';
+import { TransaccionesDebitoDto } from './dto/transacciones-debito.dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
@@ -140,6 +141,42 @@ export class ReportesController {
     return await this.reportesService.recaudacionPorDispositivo(
       filtros,
       Number(cliente),
+    );
+  }
+
+  @Post('transacciones-debito')
+  @ApiOperation({
+    summary: 'Reporte de transacciones débito detallado',
+    description: 'Genera un reporte detallado de transacciones débito con filtros por fecha, cliente, zona, ruta y variante. Incluye información del monedero, validador, ubicación, ruta, viaje y turno.',
+  })
+  @ApiBody({
+    type: TransaccionesDebitoDto,
+    description: 'Filtros para el reporte',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Reporte generado exitosamente',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Error de validación en los filtros',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'No autorizado',
+  })
+  async transaccionesDebito(
+    @Body() filtros: TransaccionesDebitoDto,
+    @Request() req,
+  ): Promise<ApiResponseCommon> {
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+    const idUser = req.user.userId;
+    return await this.reportesService.transaccionesDebito(
+      filtros,
+      Number(cliente),
+      Number(rol),
+      Number(idUser),
     );
   }
 }

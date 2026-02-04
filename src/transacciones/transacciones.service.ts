@@ -2192,6 +2192,448 @@ export class TransaccionesService {
     }
   }
 
+  async paginadoDebitoQR(
+    idUser: number,
+    email: string,
+    cliente: number,
+    rol: number,
+    page: number,
+    limit: number,
+    fechaInicio?: string,
+    fechaFin?: string,
+  ): Promise<ApiResponseCommon> {
+    try {
+      //Declaramos las variables para el consumo del api
+      let entidadDebito;
+      let transacciones;
+      //Generamos la fecha actual
+      function pad(n: number) {
+        return n < 10 ? '0' + n : n;
+      }
+      const ahora = new Date();
+      const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas
+      const fechaDesfasada = new Date(ahora.getTime() + desfaseMs);
+      // Solo la fecha del momento
+      const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())}`;
+
+      //Si fechaInicio y fechaFin son null arroja las transacciones del dia de la tabla TransaccionesDebito
+      if (!fechaInicio && !fechaFin) {
+        fechaInicio = fechaActual
+        fechaFin = fechaActual
+        entidadDebito = 'TransaccionesDebito';
+        transacciones = await this.resolverPorRolDebitoQR(fechaInicio, fechaFin, email, cliente, rol, page, limit, entidadDebito);
+      } else {
+        //Si fechaInicio y fechaFin no son null arroja las transacciones del dia de la tabla HistoricoTransaccionesDebito
+        //asigna fechaActual solo si el valor de la izquierda es null o undefined
+        fechaInicio = fechaInicio?.split("T")[0] ?? fechaActual;
+        fechaFin = fechaFin?.split("T")[0] ?? fechaActual;
+        entidadDebito = 'HistoricoTransaccionesDebito';
+        transacciones = await this.resolverPorRolDebitoQR(fechaInicio, fechaFin, email, cliente, rol, page, limit, entidadDebito);
+      }
+
+      const { data, total } = transacciones;
+
+      //API Response
+      const result: ApiResponseCommon = {
+        data: data,
+        paginated: {
+          total: total,
+          page,
+          lastPage: Math.ceil(total / limit),
+        },
+      };
+      return result;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new BadRequestException({
+        message: 'Error al obtener transacciones débito QR paginado.',
+        error: error.message,
+      });
+    }
+  }
+
+  async resolverPorRolDebitoQR(
+    fechaInicio: string,
+    fechaFin: string,
+    email: string,
+    cliente: number,
+    rol: number,
+    page: number,
+    limit: number,
+    entidadDebito: string
+  ) {
+    try {
+      let totalResult;
+      let transacciones;
+      const offset = (page - 1) * limit;
+      
+      switch (rol) {
+        case 1:
+          transacciones = await this.transaccionesrecargaRepository.query(
+            `
+SELECT 
+    'DEBITO' AS origenTabla,
+    td.Id AS id,
+    ctt.Nombre AS tipoTransaccion,
+    td.Monto AS monto,
+    td.LatitudInicial AS latitudInicial,
+    td.LongitudInicial AS longitudInicial,
+    td.LatitudFinal AS latitudFinal,
+    td.LongitudFinal AS longitudFinal,
+    td.FechaHoraInicio AS fechaHoraInicio,
+    td.FechaHoraFinal AS fechaHoraFinal,
+    td.FHRegistro AS fhRegistro,
+    td.NumeroSerieMonedero AS numeroSerieMonedero,
+    td.NumeroSerieValidador AS numeroSerieValidador,
+    td.EsQR AS esQR,
+    NULL AS nombreMetodoPago,
+    c.Id AS idCliente,
+    c.Nombre AS nombreCliente,
+    c.ApellidoPaterno AS apellidoPaternoCliente,
+    c.ApellidoMaterno AS apellidoMaternoCliente,
+    d.Marca AS marcaDispositivo,
+    d.Modelo AS modeloDispositivo,
+    p.Id AS idPasajero,
+    p.Nombre AS nombrePasajero,
+    p.ApellidoPaterno AS apellidoPaternoPasajero,
+    p.ApellidoMaterno AS apellidoMaternoPasajero
+FROM ${entidadDebito} td
+LEFT JOIN CatTiposTransacciones ctt 
+    ON td.IdTipoTransaccion = ctt.Id
+LEFT JOIN Validadores d 
+    ON td.NumeroSerieValidador = d.NumeroSerie
+LEFT JOIN Monederos m 
+    ON td.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Pasajeros p 
+    ON m.IdPasajero = p.Id
+LEFT JOIN Clientes c
+    ON m.IdCliente = c.Id
+WHERE DATE(td.FHRegistro) BETWEEN ? AND ?
+AND td.EsQR = 1
+ORDER BY td.FHRegistro DESC
+LIMIT ? OFFSET ?;
+        `,
+            [fechaInicio, fechaFin, Number(limit), Number(offset)],
+          );
+
+          // Query para total (sin paginación)
+          totalResult = await this.transaccionesrecargaRepository.query(
+            `
+SELECT COUNT(*) AS total
+FROM ${entidadDebito} td
+LEFT JOIN CatTiposTransacciones ctt 
+    ON td.IdTipoTransaccion = ctt.Id
+LEFT JOIN Validadores d 
+    ON td.NumeroSerieValidador = d.NumeroSerie
+LEFT JOIN Monederos m 
+    ON td.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Pasajeros p 
+    ON m.IdPasajero = p.Id
+LEFT JOIN Clientes c
+    ON m.IdCliente = c.Id
+WHERE DATE(td.FHRegistro) BETWEEN ? AND ?
+AND td.EsQR = 1;
+  `,
+            [fechaInicio, fechaFin],
+          );
+          break;
+
+        case 3:
+        default:
+          //Usuarios Operador
+          transacciones = await this.transaccionesrecargaRepository.query(
+            `
+SELECT 
+    'DEBITO' AS origenTabla,
+    td.Id AS id,
+    ctt.Nombre AS tipoTransaccion,
+    td.Monto AS monto,
+    td.LatitudInicial AS latitudInicial,
+    td.LongitudInicial AS longitudInicial,
+    td.LatitudFinal AS latitudFinal,
+    td.LongitudFinal AS longitudFinal,
+    td.FechaHoraInicio AS fechaHoraInicio,
+    td.FechaHoraFinal AS fechaHoraFinal,
+    td.FHRegistro AS fhRegistro,
+    td.NumeroSerieMonedero AS numeroSerieMonedero,
+    td.NumeroSerieValidador AS numeroSerieValidador,
+    td.EsQR AS esQR,
+    NULL AS nombreMetodoPago,
+    c.Id AS idCliente,
+    c.Nombre AS nombreCliente,
+    c.ApellidoPaterno AS apellidoPaternoCliente,
+    c.ApellidoMaterno AS apellidoMaternoCliente,
+    d.Marca AS marcaDispositivo,
+    d.Modelo AS modeloDispositivo,
+    p.Id AS idPasajero,
+    p.Nombre AS nombrePasajero,
+    p.ApellidoPaterno AS apellidoPaternoPasajero,
+    p.ApellidoMaterno AS apellidoMaternoPasajero
+FROM ${entidadDebito} td
+LEFT JOIN CatTiposTransacciones ctt 
+    ON td.IdTipoTransaccion = ctt.Id
+LEFT JOIN Validadores d 
+    ON td.NumeroSerieValidador = d.NumeroSerie
+LEFT JOIN Monederos m 
+    ON td.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Pasajeros p 
+    ON m.IdPasajero = p.Id
+LEFT JOIN Clientes c
+    ON m.IdCliente = c.Id
+WHERE DATE(td.FHRegistro) BETWEEN ? AND ?
+AND (m.IdCliente = ? OR m.IdCliente IS NULL)
+AND td.EsQR = 1
+ORDER BY td.FHRegistro DESC
+LIMIT ? OFFSET ?;
+        `,
+            [fechaInicio, fechaFin, Number(cliente), Number(limit), Number(offset)],
+          );
+
+          // Query para total (sin paginación)
+          totalResult = await this.transaccionesrecargaRepository.query(
+            `
+SELECT COUNT(*) AS total
+FROM ${entidadDebito} td
+LEFT JOIN CatTiposTransacciones ctt 
+    ON td.IdTipoTransaccion = ctt.Id
+LEFT JOIN Validadores d 
+    ON td.NumeroSerieValidador = d.NumeroSerie
+LEFT JOIN Monederos m 
+    ON td.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Pasajeros p 
+    ON m.IdPasajero = p.Id
+LEFT JOIN Clientes c
+    ON m.IdCliente = c.Id
+WHERE DATE(td.FHRegistro) BETWEEN ? AND ?
+AND (m.IdCliente = ? OR m.IdCliente IS NULL)
+AND td.EsQR = 1;
+  `,
+            [fechaInicio, fechaFin, Number(cliente)],
+          );
+          break;
+
+        case 9:
+          //Datos por usuario
+          const pasajero =
+            await this.pasajeroService.findOnePasajeroCorreo(email);
+
+          if (!pasajero || !pasajero.id) {
+            throw new NotFoundException('Pasajero no encontrado para el usuario');
+          }
+          
+          // Validar parámetros
+          if (!fechaInicio || !fechaFin) {
+            throw new BadRequestException('Las fechas de inicio y fin son requeridas');
+          }
+          if (!entidadDebito) {
+            throw new BadRequestException('La entidad de débito es requerida');
+          }
+          
+          const pasajeroId = Number(pasajero.id);
+          const limitNum = Number(limit);
+          const offsetNum = Number(offset);
+          
+          transacciones = await this.transaccionesrecargaRepository.query(
+            `
+SELECT 
+    'DEBITO' AS origenTabla,
+    td.Id AS id,
+    ctt.Nombre AS tipoTransaccion,
+    td.Monto AS monto,
+    td.LatitudInicial AS latitudInicial,
+    td.LongitudInicial AS longitudInicial,
+    td.LatitudFinal AS latitudFinal,
+    td.LongitudFinal AS longitudFinal,
+    td.FechaHoraInicio AS fechaHoraInicio,
+    td.FechaHoraFinal AS fechaHoraFinal,
+    td.FHRegistro AS fhRegistro,
+    td.NumeroSerieMonedero AS numeroSerieMonedero,
+    td.NumeroSerieValidador AS numeroSerieValidador,
+    td.EsQR AS esQR,
+    NULL AS nombreMetodoPago,
+    c.Id AS idCliente,
+    c.Nombre AS nombreCliente,
+    c.ApellidoPaterno AS apellidoPaternoCliente,
+    c.ApellidoMaterno AS apellidoMaternoCliente,
+    d.Marca AS marcaDispositivo,
+    d.Modelo AS modeloDispositivo,
+    p.Id AS idPasajero,
+    p.Nombre AS nombrePasajero,
+    p.ApellidoPaterno AS apellidoPaternoPasajero,
+    p.ApellidoMaterno AS apellidoMaternoPasajero
+FROM ${entidadDebito} td
+LEFT JOIN CatTiposTransacciones ctt 
+    ON td.IdTipoTransaccion = ctt.Id
+LEFT JOIN Validadores d 
+    ON td.NumeroSerieValidador = d.NumeroSerie
+LEFT JOIN Monederos m 
+    ON td.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Pasajeros p 
+    ON m.IdPasajero = p.Id
+LEFT JOIN Clientes c
+    ON m.IdCliente = c.Id
+WHERE DATE(td.FHRegistro) BETWEEN ? AND ?
+AND m.Estatus = 1
+AND p.Id = ?
+AND td.EsQR = 1
+ORDER BY td.FHRegistro DESC
+LIMIT ? OFFSET ?;
+        `,
+            [fechaInicio, fechaFin, pasajeroId, limitNum, offsetNum],
+          );
+
+          // Query para total (sin paginación)
+          totalResult = await this.transaccionesrecargaRepository.query(
+            `
+SELECT COUNT(*) AS total
+FROM ${entidadDebito} td
+LEFT JOIN CatTiposTransacciones ctt 
+    ON td.IdTipoTransaccion = ctt.Id
+LEFT JOIN Validadores d 
+    ON td.NumeroSerieValidador = d.NumeroSerie
+LEFT JOIN Monederos m 
+    ON td.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Pasajeros p 
+    ON m.IdPasajero = p.Id
+LEFT JOIN Clientes c
+    ON m.IdCliente = c.Id
+WHERE DATE(td.FHRegistro) BETWEEN ? AND ?
+AND m.Estatus = 1
+AND p.Id = ?
+AND td.EsQR = 1;
+  `,
+            [fechaInicio, fechaFin, Number(pasajero.id)],
+          );
+
+          break;
+
+        case 2:
+        case 8:
+        case 10:
+          // Administrador, Reportes, Capturista - usar clienteHijos
+          const { ids, placeholders } = await this.clienteHijos(cliente);
+          
+          if (ids.length === 0) {
+            return { data: [], total: 0 };
+          }
+          
+          transacciones = await this.transaccionesrecargaRepository.query(
+            `
+SELECT 
+    'DEBITO' AS origenTabla,
+    td.Id AS id,
+    ctt.Nombre AS tipoTransaccion,
+    td.Monto AS monto,
+    td.LatitudInicial AS latitudInicial,
+    td.LongitudInicial AS longitudInicial,
+    td.LatitudFinal AS latitudFinal,
+    td.LongitudFinal AS longitudFinal,
+    td.FechaHoraInicio AS fechaHoraInicio,
+    td.FechaHoraFinal AS fechaHoraFinal,
+    td.FHRegistro AS fhRegistro,
+    td.NumeroSerieMonedero AS numeroSerieMonedero,
+    td.NumeroSerieValidador AS numeroSerieValidador,
+    td.EsQR AS esQR,
+    NULL AS nombreMetodoPago,
+    c.Id AS idCliente,
+    c.Nombre AS nombreCliente,
+    c.ApellidoPaterno AS apellidoPaternoCliente,
+    c.ApellidoMaterno AS apellidoMaternoCliente,
+    d.Marca AS marcaDispositivo,
+    d.Modelo AS modeloDispositivo,
+    p.Id AS idPasajero,
+    p.Nombre AS nombrePasajero,
+    p.ApellidoPaterno AS apellidoPaternoPasajero,
+    p.ApellidoMaterno AS apellidoMaternoPasajero
+FROM ${entidadDebito} td
+LEFT JOIN CatTiposTransacciones ctt 
+    ON td.IdTipoTransaccion = ctt.Id
+LEFT JOIN Validadores d 
+    ON td.NumeroSerieValidador = d.NumeroSerie
+LEFT JOIN Monederos m 
+    ON td.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Pasajeros p 
+    ON m.IdPasajero = p.Id
+LEFT JOIN Clientes c
+    ON m.IdCliente = c.Id
+WHERE DATE(td.FHRegistro) BETWEEN ? AND ?
+AND m.IdCliente IN (${placeholders})
+AND td.EsQR = 1
+ORDER BY td.FHRegistro DESC
+LIMIT ? OFFSET ?;
+        `,
+            [fechaInicio, fechaFin, ...ids, Number(limit), Number(offset)],
+          );
+
+          // Query para total (sin paginación)
+          totalResult = await this.transaccionesrecargaRepository.query(
+            `
+SELECT COUNT(*) AS total
+FROM ${entidadDebito} td
+LEFT JOIN CatTiposTransacciones ctt 
+    ON td.IdTipoTransaccion = ctt.Id
+LEFT JOIN Validadores d 
+    ON td.NumeroSerieValidador = d.NumeroSerie
+LEFT JOIN Monederos m 
+    ON td.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Pasajeros p 
+    ON m.IdPasajero = p.Id
+LEFT JOIN Clientes c
+    ON m.IdCliente = c.Id
+WHERE DATE(td.FHRegistro) BETWEEN ? AND ?
+AND m.IdCliente IN (${placeholders})
+AND td.EsQR = 1;
+  `,
+            [fechaInicio, fechaFin, ...ids],
+          );
+          break;
+      }
+
+      const total = Number(totalResult[0]?.total || 0);
+
+      // Formatear resultados
+      const data = transacciones.map((row: any) => ({
+        origenTabla: row.origenTabla || 'DEBITO',
+        id: row.id ? Number(row.id) : null,
+        tipoTransaccion: row.tipoTransaccion || null,
+        monto: row.monto ? Number(parseFloat(String(row.monto)).toFixed(2)) : 0,
+        latitudInicial: row.latitudInicial ? Number(parseFloat(String(row.latitudInicial)).toFixed(7)) : null,
+        longitudInicial: row.longitudInicial ? Number(parseFloat(String(row.longitudInicial)).toFixed(7)) : null,
+        latitudFinal: row.latitudFinal ? Number(parseFloat(String(row.latitudFinal)).toFixed(7)) : null,
+        longitudFinal: row.longitudFinal ? Number(parseFloat(String(row.longitudFinal)).toFixed(7)) : null,
+        fechaHoraInicio: row.fechaHoraInicio || null,
+        fechaHoraFinal: row.fechaHoraFinal || null,
+        fhRegistro: row.fhRegistro || null,
+        numeroSerieMonedero: row.numeroSerieMonedero || null,
+        numeroSerieValidador: row.numeroSerieValidador || null,
+        esQR: row.esQR !== null && row.esQR !== undefined ? Number(row.esQR) : null,
+        nombreMetodoPago: row.nombreMetodoPago || null,
+        idCliente: row.idCliente ? Number(row.idCliente) : null,
+        nombreCliente: row.nombreCliente || null,
+        apellidoPaternoCliente: row.apellidoPaternoCliente || null,
+        apellidoMaternoCliente: row.apellidoMaternoCliente || null,
+        marcaDispositivo: row.marcaDispositivo || null,
+        modeloDispositivo: row.modeloDispositivo || null,
+        idPasajero: row.idPasajero ? Number(row.idPasajero) : null,
+        nombrePasajero: row.nombrePasajero || null,
+        apellidoPaternoPasajero: row.apellidoPaternoPasajero || null,
+        apellidoMaternoPasajero: row.apellidoMaternoPasajero || null,
+      }));
+
+      return { data, total };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new BadRequestException({
+        message: 'Error al obtener transacciones débito QR paginado.',
+        error: error.message,
+      });
+    }
+  }
+
   async resolverPorRolDefault(
     fechaInicio: string,
     fechaFin: string,

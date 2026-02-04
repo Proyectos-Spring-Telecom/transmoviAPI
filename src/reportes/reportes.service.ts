@@ -6,6 +6,7 @@ import { RecaudacionDiariaRutaDto } from './dto/recaudacion-diaria-ruta.dto';
 import { RecaudacionPorOperadorDto } from './dto/recaudacion-por-operador.dto';
 import { RecaudacionPorVehiculoDto } from './dto/recaudacion-por-vehiculo.dto';
 import { RecaudacionPorDispositivoDto } from './dto/recaudacion-por-dispositivo.dto';
+import { TransaccionesDebitoDto } from './dto/transacciones-debito.dto';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
 
 @Injectable()
@@ -634,6 +635,161 @@ ORDER BY datos.ingresos DESC, datos.serieDispositivo ASC;
       }
       throw new InternalServerErrorException({
         message: 'Error al generar el reporte de recaudación por dispositivo',
+        error: error.message,
+        stack: error.stack,
+      });
+    }
+  }
+
+  async transaccionesDebito(
+    filtros: TransaccionesDebitoDto,
+    cliente: number,
+    rol: number,
+    idUser?: number,
+  ): Promise<ApiResponseCommon> {
+    try {
+      let query: string = '';
+      let parametrosCompletos: any[] = [];
+      
+      // Convertir rol a número
+      const rolNumero = Number(rol);
+      
+      // Si idCliente es null o undefined, usar el cliente del usuario autenticado y sus hijos
+      // Si idCliente tiene valor, usar ese cliente y sus hijos
+      const clienteFiltro = filtros.idCliente !== null && filtros.idCliente !== undefined 
+        ? filtros.idCliente 
+        : cliente;
+      
+      // Preparar filtros de fecha
+      const fechaInicio = filtros.fechaInicio ? filtros.fechaInicio.split('T')[0] : null;
+      const fechaFin = filtros.fechaFin ? filtros.fechaFin.split('T')[0] : null;
+
+      // Construir condiciones WHERE
+      const condiciones: string[] = [];
+      const parametros: any[] = [];
+
+      switch (rolNumero) {
+        case 1:
+          // SuperAdministrador - puede ver todo
+          // No agregar filtro de cliente
+          break;
+
+        case 9:
+          // Pasajero - solo sus propias transacciones
+          if (!idUser) {
+            return { data: [] };
+          }
+          // Obtener el pasajero asociado al usuario
+          const pasajeroByUser = await this.clienteRepository.query(
+            `SELECT Id FROM Pasajeros WHERE IdUsuario = ?`,
+            [idUser],
+          );
+          
+          if (!pasajeroByUser || pasajeroByUser.length === 0) {
+            return { data: [] };
+          }
+          
+          const idPasajero = pasajeroByUser[0].Id;
+          condiciones.push(`m.IdPasajero = ?`);
+          parametros.push(idPasajero);
+          break;
+
+        case 2:
+        case 8:
+        case 10:
+        default:
+          // Administrador, Reportes, Capturista y otros - usar clienteHijos
+          const { ids: clienteIds, placeholders } = await this.clienteHijos(clienteFiltro);
+          
+          if (clienteIds.length === 0) {
+            return { data: [] };
+          }
+          
+          condiciones.push(`m.IdCliente IN (${placeholders})`);
+          parametros.push(...clienteIds);
+          break;
+      }
+
+      // Filtro de fecha
+      if (fechaInicio) {
+        condiciones.push(`DATE(td.FHRegistro) >= ?`);
+        parametros.push(fechaInicio);
+      }
+      if (fechaFin) {
+        condiciones.push(`DATE(td.FHRegistro) <= ?`);
+        parametros.push(fechaFin);
+      }
+
+      // Filtro de zona
+      if (filtros.idZona) {
+        condiciones.push(`z.Id = ?`);
+        parametros.push(filtros.idZona);
+      }
+
+      // Filtro de ruta
+      if (filtros.idRuta) {
+        condiciones.push(`r.Id = ?`);
+        parametros.push(filtros.idRuta);
+      }
+
+      // Filtro de variante
+      if (filtros.idVariante) {
+        condiciones.push(`v.IdVariante = ?`);
+        parametros.push(filtros.idVariante);
+      }
+
+      const whereClause = condiciones.length > 0 ? `WHERE ${condiciones.join(' AND ')}` : '';
+
+      query = `
+SELECT
+    td.Id AS id,
+    td.FechaHoraFinal AS fechaHora,
+    td.Monto AS monto,
+    td.NumeroSerieMonedero AS numeroSerieMonedero,
+    td.NumeroSerieValidador AS numeroSerieValidador,
+    td.LatitudFinal AS latitud,
+    td.LongitudFinal AS longitud,
+    r.Nombre AS nombreRuta,
+    v.Id AS numeroViaje,
+    t.Id AS numeroTurno
+FROM TransaccionesDebito td
+INNER JOIN Monederos m ON td.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Viajes v ON td.IdViaje = v.Id
+LEFT JOIN Variantes var ON v.IdVariante = var.Id
+LEFT JOIN Rutas r ON var.IdRuta = r.Id
+LEFT JOIN Zonas z ON r.IdZona = z.Id
+LEFT JOIN Turnos t ON v.IdTurno = t.Id
+${whereClause}
+ORDER BY td.FechaHoraFinal DESC, td.Id DESC;
+      `;
+
+      parametrosCompletos = [...parametros];
+
+      const resultados = await this.clienteRepository.query(query, parametrosCompletos);
+
+      // Formatear resultados
+      const data = resultados.map((row: any) => ({
+        id: row.id ? Number(row.id) : null,
+        fechaHora: row.fechaHora || null,
+        monto: row.monto ? Number(parseFloat(String(row.monto)).toFixed(2)) : 0,
+        numeroSerieMonedero: row.numeroSerieMonedero || null,
+        numeroSerieValidador: row.numeroSerieValidador || null,
+        latitud: row.latitud ? Number(parseFloat(String(row.latitud)).toFixed(7)) : null,
+        longitud: row.longitud ? Number(parseFloat(String(row.longitud)).toFixed(7)) : null,
+        nombreRuta: row.nombreRuta || null,
+        numeroViaje: row.numeroViaje ? Number(row.numeroViaje) : null,
+        numeroTurno: row.numeroTurno ? Number(row.numeroTurno) : null,
+      }));
+
+      return {
+        data,
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Error al generar el reporte de transacciones débito',
         error: error.message,
         stack: error.stack,
       });

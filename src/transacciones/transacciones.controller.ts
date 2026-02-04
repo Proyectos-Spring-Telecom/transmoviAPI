@@ -172,6 +172,40 @@ export class TransaccionesController {
     );
   }
 
+  @Post('paginado/debito-qr')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: 'Obtiene el listado de transacciones débito con QR paginado',
+    description:
+      'Obtiene el listado de transacciones débito que tienen esQR = true con paginación. Los filtros se aplican según el rol del usuario:\n' +
+      '- SA (rol 1): Todas las transacciones débito QR\n' +
+      '- ADMIN (rol 2): Sus transacciones y las de clientes hijos\n' +
+      '- Operador (rol 3): Solo sus transacciones\n' +
+      '- Pasajero (rol 9): Solo las transacciones de sus monederos',
+  })
+  @ApiResponse({ status: 200, description: 'Listado de transacciones débito QR obtenido exitosamente' })
+  @ApiResponse({ status: 400, description: 'Datos inválidos' })
+  async paginadoDebitoQR(
+    @Body() getTransaccioneDto: GetTransaccioneDto,
+    @Request() req,
+  ) {
+    const idUser = req.user.userId;
+    const email = req.user.email;
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+
+    return await this.transaccionesService.paginadoDebitoQR(
+      +idUser,
+      email,
+      +cliente,
+      +rol,
+      getTransaccioneDto.page,
+      getTransaccioneDto.limit,
+      getTransaccioneDto.fechaInicio,
+      getTransaccioneDto.fechaFin
+    );
+  }
+
   @Post('paginado/recargas')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({
