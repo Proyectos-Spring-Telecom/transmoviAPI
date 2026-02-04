@@ -852,6 +852,7 @@ LEFT JOIN LicenciasJSON lj ON lj.IdUsuario = du.IdUsuario;
           permisos: permisos,
           idTurno: idTurno,
           idViaje: idViaje,
+          validadorId: operador[0].validadorId,
         };
       }
       // Obtener logotipo del cliente o del padre si es null
