@@ -996,17 +996,20 @@ ORDER BY m.Id DESC;
   }
 
   // ========================================
-  // 🔹 OBTENER MONEDERO POR NUMERO DE SERIE
+  // 🔹 OBTENER MONEDERO POR NUMERO DE SERIE O IDCARD
   // ========================================
   async findOneMonederoBySerie(NumeroSerie: string) {
     try {
       const monedero = await this.monederoRepository.findOne({
-        where: { numeroSerie: NumeroSerie },
+        where: [
+          { numeroSerie: NumeroSerie },
+          { idCard: NumeroSerie },
+        ],
         relations: ['idPasajero2', 'idPasajero2.idUsuario2'],
       });
       if (!monedero) {
         throw new NotFoundException(
-          `El monedero con número de serie: ${NumeroSerie} no fue encontrado.`,
+          `El monedero con número de serie o ID de tarjeta: ${NumeroSerie} no fue encontrado.`,
         );
       }
       //Cambiamos los datos numericos a number
@@ -1028,7 +1031,7 @@ ORDER BY m.Id DESC;
         throw error;
       }
       throw new InternalServerErrorException(
-        'Hubo un error al obtener el monedero por número de serie.',
+        'Hubo un error al obtener el monedero por número de serie o ID de tarjeta.',
       );
     }
   }
