@@ -1071,12 +1071,29 @@ GROUP BY p.Id, u.Id, u.UserName, p.Nombre, p.ApellidoPaterno, p.ApellidoMaterno;
 
       const gastosPorMesCompleto = Array.from(gastosSoloMap.values());
 
+      // Conteo de QRCodes del día de hoy
+      const conteoQRCodesHoy = await this.pasajeroRepository.query(
+        `
+        SELECT COUNT(*) AS totalQRCodesHoy
+        FROM QRCodes qr
+        WHERE qr.IdPasajero = ?
+          AND qr.Estatus = 1
+          AND DATE(qr.FHRegistro) = CURDATE()
+        `,
+        [idPasajero],
+      );
+
+      const totalQRCodesHoy = conteoQRCodesHoy && conteoQRCodesHoy.length > 0 
+        ? Number(conteoQRCodesHoy[0].totalQRCodesHoy) 
+        : 0;
+
       const data = {
         ...item,
         idPasajero: idPasajero,
         idUsuario: Number(item.idUsuario),
         gastosYRecargasPorMes: gastosYRecargasPorMes,
         gastosPorMes: gastosPorMesCompleto,
+        totalQRCodesHoy: totalQRCodesHoy,
       };
 
       return {
