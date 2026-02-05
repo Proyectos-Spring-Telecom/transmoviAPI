@@ -139,11 +139,11 @@ export class ViajesService {
             },
             relations: ['contador'],
           });
-
           // Crear conteoPasajeros para cada contador de la instalación
           for (const ic of instalacionContadores) {
             const contador = ic.contador;
-            if (contador && contador.idCliente === cliente && contador.estatus === 1) {
+            // idCliente puede venir como string desde la entidad; comparar como número
+            if (contador && Number(contador.idCliente) === Number(cliente) && contador.estatus === 1) {
               const dataToCreate: any = {
                 numeroSerieContador: contador.numeroSerie,
                 idViaje: viajeSave.id,
@@ -152,7 +152,7 @@ export class ViajesService {
                 salidas: 0,
                 estatus: EstatusConteo.ACTIVO,
               };
-
+              
               const newConteoPasajero = this.conteoPasajerosRepository.create(dataToCreate);
               await this.conteoPasajerosRepository.save(newConteoPasajero);
             }

@@ -1077,7 +1077,7 @@ GROUP BY p.Id, u.Id, u.UserName, p.Nombre, p.ApellidoPaterno, p.ApellidoMaterno;
         SELECT COUNT(*) AS totalQRCodesHoy
         FROM QRCodes qr
         WHERE qr.IdPasajero = ?
-          AND qr.Estatus = 1
+          AND qr.Estatus = 0
           AND DATE(qr.FHRegistro) = CURDATE()
         `,
         [idPasajero],

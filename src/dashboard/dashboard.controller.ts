@@ -35,10 +35,10 @@ export class DashboardController {
     const idUser = req.user.userId;
     const rol = req.user.rol;
     return this.dashboardService.getDashboardMetrics(
-      +idUser, 
-      +cliente, 
+      +idUser,
+      +cliente,
       +rol,
-      metricsFilterDto.filtro || 1
+      Number(metricsFilterDto.filtro) || 1
     );
   }
 }

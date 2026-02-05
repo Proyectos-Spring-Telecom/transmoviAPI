@@ -324,7 +324,7 @@ SELECT
             SUM(CASE WHEN td.IdTipoTransaccion = 2 THEN td.Monto ELSE 0 END) /
             NULLIF(COUNT(DISTINCT CASE WHEN td.IdTipoTransaccion = 2 THEN td.NumeroSerieMonedero END), 0),
         0), 2) AS ticketPromedio,
-    SUM(CASE WHEN td.IdTipoTransaccion = 2 THEN 1 ELSE 0 END) AS validacionesExitosas,
+    SUM(CASE WHEN td.IdTipoTransaccion = 0 THEN 1 ELSE 0 END) AS validacionesExitosas,
     SUM(CASE WHEN td.IdTipoTransaccion = 3 THEN 1 ELSE 0 END) AS validacionesFallidas,
     COUNT(*) AS totalIntentos,
     ROUND(SUM(CASE WHEN td.IdTipoTransaccion = 2 THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0) * 100, 2) AS porcentajeExitosas,
@@ -1239,8 +1239,11 @@ ORDER BY periodo, ruta;
     filtro: number = 1,
   ) {
     try {
+      // Asegurar que filtro sea número (query params llegan como string, ej. "1")
+      const filtroNum = Number(filtro) || 1;
+
       // Calcular fechas según el filtro
-      const { fechaInicio, fechaFin } = this.calcularFechasPorFiltro(filtro);
+      const { fechaInicio, fechaFin } = this.calcularFechasPorFiltro(filtroNum);
 
       let clienteFilter = '';
       let clienteFilter2 = ''; // Para la segunda parte del UNION ALL
@@ -1272,7 +1275,7 @@ ORDER BY periodo, ruta;
       }
 
       // 1. Costo del ticket promedio (de TransaccionesDebito)
-      const ticketPromedioData = await this.getTicketPromedio(clienteFilter, clienteFilter2, clienteParams, fechaInicio, fechaFin);
+      const ticketPromedioData = await this.getTicketPromedio(clienteFilter, clienteFilter2, clienteParams, fechaInicio, fechaFin, filtroNum);
       
       // Extraer ingresosTotales del ticketPromedio
       const ingresosTotales = Number(ticketPromedioData.ingresosTotales) || 0;
@@ -1284,34 +1287,33 @@ ORDER BY periodo, ruta;
       };
 
       // 2. Porcentaje de débitos con monedero virtual (EsQR = 1)
-      const porcentajeMonederoVirtual = await this.getPorcentajeMonederoVirtual(clienteFilter, clienteFilter2, clienteParams, fechaInicio, fechaFin);
+      const porcentajeMonederoVirtual = await this.getPorcentajeMonederoVirtual(clienteFilter, clienteFilter2, clienteParams, fechaInicio, fechaFin, filtroNum);
 
       // 3. Viajes abiertos en últimos 15 minutos vs posibles según número de validadores
       const viajesAbiertos = await this.getViajesAbiertos(clienteFilter, clienteParams);
 
       // 4. Top 5 rutas con más ingresos
-      const top5Rutas = await this.getTop5RutasIngresos(clienteFilter, clienteFilter2, clienteParams, fechaInicio, fechaFin);
+      const top5Rutas = await this.getTop5RutasIngresos(clienteFilter, clienteFilter2, clienteParams, fechaInicio, fechaFin, filtroNum);
 
       // 5. Pasajeros por ruta según tipo de pasajero (gráfica apilada)
-      const pasajerosPorRutaTipo = await this.getPasajerosPorRutaTipo(clienteFilter, clienteFilter2, clienteParams, fechaInicio, fechaFin);
+      const pasajerosPorRutaTipo = await this.getPasajerosPorRutaTipo(clienteFilter, clienteFilter2, clienteParams, fechaInicio, fechaFin, filtroNum);
 
       // 6. Pasajeros validados (pasajeros únicos que debitaron)
-      const pasajerosValidados = await this.getPasajerosValidados(clienteFilter, clienteFilter2, clienteParams, fechaInicio, fechaFin);
+      const pasajerosValidados = await this.getPasajerosValidados(clienteFilter, clienteFilter2, clienteParams, fechaInicio, fechaFin, filtroNum);
 
       // 7. Unidades en servicio (viajes activos)
       const unidadesEnServicio = await this.getUnidadesEnServicio(clienteFilter, clienteParams);
 
       // 8. Validaciones exitosas y fallidas
-      const validaciones = await this.getValidaciones(clienteFilter, clienteFilter2, clienteParams, fechaInicio, fechaFin);
+      const validaciones = await this.getValidaciones(clienteFilter, clienteFilter2, clienteParams, fechaInicio, fechaFin, filtroNum);
 
       // 9. Gráfica Ascensos vs Boletos
-      const graficaAscensosVsBoletos = await this.getGraficaAscensosVsBoletos(clienteFilter, clienteFilter2, clienteParams, fechaInicio, fechaFin);
+      const graficaAscensosVsBoletos = await this.getGraficaAscensosVsBoletos(clienteFilter, clienteFilter2, clienteParams, fechaInicio, fechaFin, filtroNum);
 
-      // Si el filtro es "hoy" (1), calcular también los ingresos de ayer
+      // Si el filtro es "hoy" (1), calcular también los ingresos de ayer (usa CURDATE() en MySQL)
       let ingresoTotalAyer: number | null = null;
-      if (filtro === 1) {
-        const { fechaInicioAyer, fechaFinAyer } = this.calcularFechasAyer();
-        ingresoTotalAyer = await this.getIngresoTotalAyer(clienteFilter, clienteFilter2, clienteParams, fechaInicioAyer, fechaFinAyer);
+      if (filtroNum === 1) {
+        ingresoTotalAyer = await this.getIngresoTotalAyer(clienteFilter, clienteFilter2, clienteParams);
       }
 
       const resultado: any = {
@@ -1329,7 +1331,7 @@ ORDER BY periodo, ruta;
       };
 
       // Agregar ingresoTotalAyer solo si el filtro es "hoy" (1)
-      if (filtro === 1 && ingresoTotalAyer !== null) {
+      if (filtroNum === 1 && ingresoTotalAyer !== null) {
         resultado.ingresoTotalAyer = ingresoTotalAyer;
       }
 
@@ -1346,97 +1348,106 @@ ORDER BY periodo, ruta;
     }
   }
 
-  // Calcular fechas según el filtro
+  /** Zona horaria usada para "hoy" y "ayer" en el dashboard. */
+  private readonly ZONA_MEXICO = 'America/Mexico_City';
+
+  /**
+   * Obtiene la fecha actual en America/Mexico_City.
+   * No depende de la zona horaria del servidor.
+   */
+  private getFechaMexico(): { year: number; month: number; date: number } {
+    const ahora = new Date();
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: this.ZONA_MEXICO,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    const parts = formatter.formatToParts(ahora);
+    const year = parseInt(parts.find((p) => p.type === 'year')?.value ?? '0', 10);
+    const month = parseInt(parts.find((p) => p.type === 'month')?.value ?? '0', 10);
+    const date = parseInt(parts.find((p) => p.type === 'day')?.value ?? '0', 10);
+    return { year, month, date };
+  }
+
+  // Calcular fechas según el filtro (usa zona México UTC-6)
   private calcularFechasPorFiltro(filtro: number): { fechaInicio: string; fechaFin: string } {
     function pad(n: number) {
       return n < 10 ? '0' + n : n;
     }
-    
-    const ahora = new Date();
-    const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas
-    const fechaDesfasada = new Date(ahora.getTime() + desfaseMs);
-    
+
+    const hoy = this.getFechaMexico();
+    const hoyStr = `${hoy.year}-${pad(hoy.month)}-${pad(hoy.date)}`;
+
     let fechaInicio: string;
     let fechaFin: string;
 
     switch (filtro) {
       case 2: // Últimos 7 días
-        const hace7Dias = new Date(fechaDesfasada.getTime() - 7 * 24 * 60 * 60 * 1000);
-        fechaInicio = `${hace7Dias.getFullYear()}-${pad(hace7Dias.getMonth() + 1)}-${pad(hace7Dias.getDate())}`;
-        fechaFin = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())}`;
+        const hace7Dias = new Date(Date.UTC(hoy.year, hoy.month - 1, hoy.date) - 7 * 24 * 60 * 60 * 1000);
+        fechaInicio = `${hace7Dias.getUTCFullYear()}-${pad(hace7Dias.getUTCMonth() + 1)}-${pad(hace7Dias.getUTCDate())}`;
+        fechaFin = hoyStr;
         break;
-      
+
       case 3: // Mes actual
-        fechaInicio = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-01`;
-        fechaFin = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())}`;
+        fechaInicio = `${hoy.year}-${pad(hoy.month)}-01`;
+        fechaFin = hoyStr;
         break;
-      
+
       case 4: // Año actual
-        fechaInicio = `${fechaDesfasada.getFullYear()}-01-01`;
-        fechaFin = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())}`;
+        fechaInicio = `${hoy.year}-01-01`;
+        fechaFin = hoyStr;
         break;
-      
+
       default: // 1 - Hoy
-        fechaInicio = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())}`;
-        fechaFin = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())}`;
+        fechaInicio = hoyStr;
+        fechaFin = hoyStr;
         break;
     }
 
     return { fechaInicio, fechaFin };
   }
 
-  // Calcular fechas de ayer
+  // Calcular fechas de ayer en zona México (UTC-6)
   private calcularFechasAyer(): { fechaInicioAyer: string; fechaFinAyer: string } {
     function pad(n: number) {
       return n < 10 ? '0' + n : n;
     }
-    
-    const ahora = new Date();
-    const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas
-    const fechaDesfasada = new Date(ahora.getTime() + desfaseMs);
-    
-    // Restar 1 día para obtener ayer
-    const ayer = new Date(fechaDesfasada.getTime() - 24 * 60 * 60 * 1000);
-    
-    const fechaInicioAyer = `${ayer.getFullYear()}-${pad(ayer.getMonth() + 1)}-${pad(ayer.getDate())}`;
-    const fechaFinAyer = `${ayer.getFullYear()}-${pad(ayer.getMonth() + 1)}-${pad(ayer.getDate())}`;
-    
+
+    const hoy = this.getFechaMexico();
+    const ayerDate = new Date(Date.UTC(hoy.year, hoy.month - 1, hoy.date) - 24 * 60 * 60 * 1000);
+    const fechaInicioAyer = `${ayerDate.getUTCFullYear()}-${pad(ayerDate.getUTCMonth() + 1)}-${pad(ayerDate.getUTCDate())}`;
+    const fechaFinAyer = fechaInicioAyer;
+
     return { fechaInicioAyer, fechaFinAyer };
   }
 
-  // Obtener ingresos totales de ayer
+  // Obtener ingresos totales del día (hoy) usando CURDATE() de MySQL.
   private async getIngresoTotalAyer(
-    clienteFilter: string, 
-    clienteFilter2: string, 
+    clienteFilter: string,
+    _clienteFilter2: string,
     clienteParams: any[],
-    fechaInicioAyer: string,
-    fechaFinAyer: string,
   ) {
+    const [fechaRow] = await this.clienteRepository.query<{ hoy: string }[]>('SELECT CURDATE() AS hoy');
+    const fechaSolicitada = fechaRow?.hoy ?? 'N/A';
+    console.log('[getIngresoTotalAyer] Fechas solicitadas: hoy =', fechaSolicitada);
+
     const query = `
-      SELECT 
-        COALESCE(SUM(monto), 0) AS ingresoTotalAyer
-      FROM (
-        SELECT td.Monto AS monto
-        FROM TransaccionesDebito td
-        INNER JOIN Validadores v ON td.NumeroSerieValidador = v.NumeroSerie
-        INNER JOIN Clientes c ON v.IdCliente = c.Id
-        WHERE td.IdTipoTransaccion = 2
-          AND DATE(td.FHRegistro) BETWEEN ? AND ?
-          ${clienteFilter}
-        UNION ALL
-        SELECT htd.Monto AS monto
-        FROM HistoricoTransaccionesDebito htd
-        INNER JOIN Validadores v2 ON htd.NumeroSerieValidador = v2.NumeroSerie
-        INNER JOIN Clientes c2 ON v2.IdCliente = c2.Id
-        WHERE htd.IdTipoTransaccion = 2
-          AND DATE(htd.FHRegistro) BETWEEN ? AND ?
-          ${clienteFilter2}
-      ) AS todas_transacciones
+      SELECT COALESCE(SUM(htd.Monto), 0) AS ingresoTotalAyer
+      FROM HistoricoTransaccionesDebito htd
+      INNER JOIN Validadores v ON htd.NumeroSerieValidador = v.NumeroSerie
+      INNER JOIN Clientes c ON v.IdCliente = c.Id
+      WHERE htd.IdTipoTransaccion = 2
+        AND DATE(htd.FHRegistro) = CURDATE()
+        ${clienteFilter}
     `;
-    const params = clienteParams.length > 0 
-      ? [fechaInicioAyer, fechaFinAyer, ...clienteParams, fechaInicioAyer, fechaFinAyer, ...clienteParams]
-      : [fechaInicioAyer, fechaFinAyer, fechaInicioAyer, fechaFinAyer];
+    const params = clienteParams.length > 0 ? [...clienteParams] : [];
+    const queryEnviado = query.replace(/\s+/g, ' ').trim();
+    console.log('[getIngresoTotalAyer] Query enviado a la base:', queryEnviado);
+    console.log('[getIngresoTotalAyer] Params:', params);
     const result = await this.clienteRepository.query(query, params);
+    console.log('[getIngresoTotalAyer] Resultado de la consulta:', result);
+    console.log('[getIngresoTotalAyer] Ingreso total ayer:', Number(result[0]?.ingresoTotalAyer) || 0);
     return Number(result[0]?.ingresoTotalAyer) || 0;
   }
 
@@ -1447,8 +1458,22 @@ ORDER BY periodo, ruta;
     clienteParams: any[],
     fechaInicio: string,
     fechaFin: string,
+    filtro: number,
   ) {
-    const query = `
+    const soloHoy = filtro === 1;
+    const querySolo = `
+      SELECT 
+        ROUND(AVG(td.Monto), 2) AS ticketPromedio,
+        COUNT(*) AS totalTransacciones,
+        SUM(td.Monto) AS ingresosTotales
+      FROM TransaccionesDebito td
+      INNER JOIN Validadores v ON td.NumeroSerieValidador = v.NumeroSerie
+      INNER JOIN Clientes c ON v.IdCliente = c.Id
+      WHERE td.IdTipoTransaccion = 2
+        AND DATE(td.FHRegistro) BETWEEN ? AND ?
+        ${clienteFilter}
+    `;
+    const queryUnion = `
       SELECT 
         ROUND(AVG(monto), 2) AS ticketPromedio,
         COUNT(*) AS totalTransacciones,
@@ -1471,22 +1496,48 @@ ORDER BY periodo, ruta;
           ${clienteFilter2}
       ) AS todas_transacciones
     `;
-    const params = clienteParams.length > 0 
-      ? [fechaInicio, fechaFin, ...clienteParams, fechaInicio, fechaFin, ...clienteParams]
-      : [fechaInicio, fechaFin, fechaInicio, fechaFin];
+    const query = soloHoy ? querySolo : queryUnion;
+    const params = soloHoy
+      ? (clienteParams.length > 0 ? [fechaInicio, fechaFin, ...clienteParams] : [fechaInicio, fechaFin])
+      : (clienteParams.length > 0 ? [fechaInicio, fechaFin, ...clienteParams, fechaInicio, fechaFin, ...clienteParams] : [fechaInicio, fechaFin, fechaInicio, fechaFin]);
     const result = await this.clienteRepository.query(query, params);
     return result[0] || { ticketPromedio: 0, totalTransacciones: 0, ingresosTotales: 0 };
   }
 
   // 2. Porcentaje de débitos: Tarjeta (EsQR = 0) y Pago electrónico (EsQR = 1)
+  // Cuando filtro es "hoy" (1) solo consulta TransaccionesDebito; para 7 días, mes o año usa UNION con histórico.
   private async getPorcentajeMonederoVirtual(
-    clienteFilter: string, 
-    clienteFilter2: string, 
+    clienteFilter: string,
+    clienteFilter2: string,
     clienteParams: any[],
     fechaInicio: string,
     fechaFin: string,
+    filtro: number,
   ) {
-    const query = `
+    const soloHoy = filtro === 1;
+
+    const querySoloTransacciones = `
+      SELECT 
+        COUNT(*) AS totalDebitos,
+        SUM(CASE WHEN td.EsQR = 0 THEN 1 ELSE 0 END) AS debitosTarjeta,
+        SUM(CASE WHEN td.EsQR = 1 THEN 1 ELSE 0 END) AS debitosPagoElectronico,
+        ROUND(
+          SUM(CASE WHEN td.EsQR = 0 THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) * 100,
+          2
+        ) AS porcentajeTarjeta,
+        ROUND(
+          SUM(CASE WHEN td.EsQR = 1 THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) * 100,
+          2
+        ) AS porcentajePagoElectronico
+      FROM TransaccionesDebito td
+      INNER JOIN Validadores v ON td.NumeroSerieValidador = v.NumeroSerie
+      INNER JOIN Clientes c ON v.IdCliente = c.Id
+      WHERE td.IdTipoTransaccion = 2
+        AND DATE(td.FHRegistro) BETWEEN ? AND ?
+        ${clienteFilter}
+    `;
+
+    const queryConUnion = `
       SELECT 
         COUNT(*) AS totalDebitos,
         SUM(CASE WHEN esQR = 0 THEN 1 ELSE 0 END) AS debitosTarjeta,
@@ -1517,16 +1568,21 @@ ORDER BY periodo, ruta;
           ${clienteFilter2}
       ) AS todas_transacciones
     `;
-    const params = clienteParams.length > 0 
-      ? [fechaInicio, fechaFin, ...clienteParams, fechaInicio, fechaFin, ...clienteParams]
-      : [fechaInicio, fechaFin, fechaInicio, fechaFin];
+
+    const query = soloHoy ? querySoloTransacciones : queryConUnion;
+    const params = soloHoy
+      ? (clienteParams.length > 0 ? [fechaInicio, fechaFin, ...clienteParams] : [fechaInicio, fechaFin])
+      : (clienteParams.length > 0
+          ? [fechaInicio, fechaFin, ...clienteParams, fechaInicio, fechaFin, ...clienteParams]
+          : [fechaInicio, fechaFin, fechaInicio, fechaFin]);
+
     const result = await this.clienteRepository.query(query, params);
-    return result[0] || { 
-      totalDebitos: 0, 
-      debitosTarjeta: 0, 
-      debitosPagoElectronico: 0, 
-      porcentajeTarjeta: 0, 
-      porcentajePagoElectronico: 0 
+    return result[0] || {
+      totalDebitos: 0,
+      debitosTarjeta: 0,
+      debitosPagoElectronico: 0,
+      porcentajeTarjeta: 0,
+      porcentajePagoElectronico: 0,
     };
   }
 
@@ -1566,18 +1622,44 @@ ORDER BY periodo, ruta;
 
   // 4. Top 5 rutas con más ingresos
   private async getTop5RutasIngresos(
-    clienteFilter: string, 
-    clienteFilter2: string, 
+    clienteFilter: string,
+    clienteFilter2: string,
     clienteParams: any[],
     fechaInicio: string,
     fechaFin: string,
+    filtro: number,
   ) {
-    const query = `
+    const soloHoy = filtro === 1;
+    const querySolo = `
+      SELECT 
+        r.Id AS idRuta,
+        r.Nombre AS nombreRuta,
+        SUM(td.Monto) AS ingresosTotales,
+        COUNT(DISTINCT td.IdViaje) AS totalViajes,
+        COUNT(*) AS totalTransacciones,
+        ROUND(SUM(td.Monto) / NULLIF(COUNT(*), 0), 2) AS ticketPromedio
+      FROM TransaccionesDebito td
+      INNER JOIN Validadores val ON td.NumeroSerieValidador = val.NumeroSerie
+      INNER JOIN Clientes c ON val.IdCliente = c.Id
+      INNER JOIN Viajes v ON td.IdViaje = v.Id
+      INNER JOIN Variantes var ON v.IdVariante = var.Id
+      INNER JOIN Rutas r ON var.IdRuta = r.Id
+      WHERE td.IdTipoTransaccion = 2
+        AND td.IdViaje IS NOT NULL
+        AND DATE(td.FHRegistro) BETWEEN ? AND ?
+        ${clienteFilter}
+      GROUP BY r.Id, r.Nombre
+      ORDER BY ingresosTotales DESC
+      LIMIT 5
+    `;
+    const queryUnion = `
       SELECT 
         r.Id AS idRuta,
         r.Nombre AS nombreRuta,
         SUM(monto) AS ingresosTotales,
-        COUNT(DISTINCT idViaje) AS totalViajes
+        COUNT(DISTINCT idViaje) AS totalViajes,
+        COUNT(*) AS totalTransacciones,
+        ROUND(SUM(monto) / NULLIF(COUNT(*), 0), 2) AS ticketPromedio
       FROM (
         SELECT td.Monto AS monto, td.IdViaje AS idViaje, td.NumeroSerieValidador
         FROM TransaccionesDebito td
@@ -1604,21 +1686,45 @@ ORDER BY periodo, ruta;
       ORDER BY ingresosTotales DESC
       LIMIT 5
     `;
-    const params = clienteParams.length > 0 
-      ? [fechaInicio, fechaFin, ...clienteParams, fechaInicio, fechaFin, ...clienteParams]
-      : [fechaInicio, fechaFin, fechaInicio, fechaFin];
+    const query = soloHoy ? querySolo : queryUnion;
+    const params = soloHoy
+      ? (clienteParams.length > 0 ? [fechaInicio, fechaFin, ...clienteParams] : [fechaInicio, fechaFin])
+      : (clienteParams.length > 0 ? [fechaInicio, fechaFin, ...clienteParams, fechaInicio, fechaFin, ...clienteParams] : [fechaInicio, fechaFin, fechaInicio, fechaFin]);
     return await this.clienteRepository.query(query, params);
   }
 
   // 5. Pasajeros por ruta según tipo de pasajero (gráfica apilada)
   private async getPasajerosPorRutaTipo(
-    clienteFilter: string, 
-    clienteFilter2: string, 
+    clienteFilter: string,
+    clienteFilter2: string,
     clienteParams: any[],
     fechaInicio: string,
     fechaFin: string,
+    filtro: number,
   ) {
-    const query = `
+    const soloHoy = filtro === 1;
+    const querySolo = `
+      SELECT 
+        r.Id AS idRuta,
+        r.Nombre AS nombreRuta,
+        ctp.Id AS idTipoPasajero,
+        ctp.Nombre AS tipoPasajero,
+        COUNT(DISTINCT td.NumeroSerieMonedero) AS cantidadPasajeros
+      FROM TransaccionesDebito td
+      INNER JOIN Monederos m ON td.NumeroSerieMonedero = m.NumeroSerie
+      INNER JOIN Clientes c ON m.IdCliente = c.Id
+      INNER JOIN Viajes v ON td.IdViaje = v.Id
+      INNER JOIN Variantes var ON v.IdVariante = var.Id
+      INNER JOIN Rutas r ON var.IdRuta = r.Id
+      INNER JOIN CatTiposPasajeros ctp ON m.IdTipoPasajero = ctp.Id
+      WHERE td.IdTipoTransaccion = 2
+        AND td.IdViaje IS NOT NULL
+        AND DATE(td.FHRegistro) BETWEEN ? AND ?
+        ${clienteFilter}
+      GROUP BY r.Id, r.Nombre, ctp.Id, ctp.Nombre
+      ORDER BY r.Nombre, ctp.Nombre
+    `;
+    const queryUnion = `
       SELECT 
         r.Id AS idRuta,
         r.Nombre AS nombreRuta,
@@ -1651,21 +1757,34 @@ ORDER BY periodo, ruta;
       GROUP BY r.Id, r.Nombre, ctp.Id, ctp.Nombre
       ORDER BY r.Nombre, ctp.Nombre
     `;
-    const params = clienteParams.length > 0 
-      ? [fechaInicio, fechaFin, ...clienteParams, fechaInicio, fechaFin, ...clienteParams]
-      : [fechaInicio, fechaFin, fechaInicio, fechaFin];
+    const query = soloHoy ? querySolo : queryUnion;
+    const params = soloHoy
+      ? (clienteParams.length > 0 ? [fechaInicio, fechaFin, ...clienteParams] : [fechaInicio, fechaFin])
+      : (clienteParams.length > 0 ? [fechaInicio, fechaFin, ...clienteParams, fechaInicio, fechaFin, ...clienteParams] : [fechaInicio, fechaFin, fechaInicio, fechaFin]);
     return await this.clienteRepository.query(query, params);
   }
 
   // 6. Pasajeros validados (transacciones de débito exitosas - ControlTransaccion = 1)
   private async getPasajerosValidados(
-    clienteFilter: string, 
-    clienteFilter2: string, 
+    clienteFilter: string,
+    clienteFilter2: string,
     clienteParams: any[],
     fechaInicio: string,
     fechaFin: string,
+    filtro: number,
   ) {
-    const query = `
+    const soloHoy = filtro === 1;
+    const querySolo = `
+      SELECT COUNT(DISTINCT td.NumeroSerieMonedero) AS pasajerosValidados
+      FROM TransaccionesDebito td
+      INNER JOIN Validadores v ON td.NumeroSerieValidador = v.NumeroSerie
+      INNER JOIN Clientes c ON v.IdCliente = c.Id
+      WHERE td.IdTipoTransaccion = 2
+        AND td.ControlTransaccion = 1
+        AND DATE(td.FHRegistro) BETWEEN ? AND ?
+        ${clienteFilter}
+    `;
+    const queryUnion = `
       SELECT COUNT(*) AS pasajerosValidados
       FROM (
         SELECT td.NumeroSerieMonedero AS numeroSerieMonedero
@@ -1687,9 +1806,10 @@ ORDER BY periodo, ruta;
           ${clienteFilter2}
       ) AS todas_transacciones
     `;
-    const params = clienteParams.length > 0 
-      ? [fechaInicio, fechaFin, ...clienteParams, fechaInicio, fechaFin, ...clienteParams]
-      : [fechaInicio, fechaFin, fechaInicio, fechaFin];
+    const query = soloHoy ? querySolo : queryUnion;
+    const params = soloHoy
+      ? (clienteParams.length > 0 ? [fechaInicio, fechaFin, ...clienteParams] : [fechaInicio, fechaFin])
+      : (clienteParams.length > 0 ? [fechaInicio, fechaFin, ...clienteParams, fechaInicio, fechaFin, ...clienteParams] : [fechaInicio, fechaFin, fechaInicio, fechaFin]);
     const result = await this.clienteRepository.query(query, params);
     return Number(result[0]?.pasajerosValidados) || 0;
   }
@@ -1709,13 +1829,26 @@ ORDER BY periodo, ruta;
 
   // 8. Validaciones exitosas (ControlTransaccion = 1) y fallidas (ControlTransaccion = 3)
   private async getValidaciones(
-    clienteFilter: string, 
-    clienteFilter2: string, 
+    clienteFilter: string,
+    clienteFilter2: string,
     clienteParams: any[],
     fechaInicio: string,
     fechaFin: string,
+    filtro: number,
   ) {
-    const query = `
+    const soloHoy = filtro === 1;
+    const querySolo = `
+      SELECT 
+        SUM(CASE WHEN td.ControlTransaccion = 0 THEN 1 ELSE 0 END) AS exitosas,
+        SUM(CASE WHEN td.ControlTransaccion = 3 THEN 1 ELSE 0 END) AS fallidas
+      FROM TransaccionesDebito td
+      INNER JOIN Validadores v ON td.NumeroSerieValidador = v.NumeroSerie
+      INNER JOIN Clientes c ON v.IdCliente = c.Id
+      WHERE td.IdTipoTransaccion = 2
+        AND DATE(td.FHRegistro) BETWEEN ? AND ?
+        ${clienteFilter}
+    `;
+    const queryUnion = `
       SELECT 
         SUM(CASE WHEN controlTransaccion = 1 THEN 1 ELSE 0 END) AS exitosas,
         SUM(CASE WHEN controlTransaccion = 3 THEN 1 ELSE 0 END) AS fallidas
@@ -1737,9 +1870,10 @@ ORDER BY periodo, ruta;
           ${clienteFilter2}
       ) AS todas_transacciones
     `;
-    const params = clienteParams.length > 0 
-      ? [fechaInicio, fechaFin, ...clienteParams, fechaInicio, fechaFin, ...clienteParams]
-      : [fechaInicio, fechaFin, fechaInicio, fechaFin];
+    const query = soloHoy ? querySolo : queryUnion;
+    const params = soloHoy
+      ? (clienteParams.length > 0 ? [fechaInicio, fechaFin, ...clienteParams] : [fechaInicio, fechaFin])
+      : (clienteParams.length > 0 ? [fechaInicio, fechaFin, ...clienteParams, fechaInicio, fechaFin, ...clienteParams] : [fechaInicio, fechaFin, fechaInicio, fechaFin]);
     const result = await this.clienteRepository.query(query, params);
     return {
       exitosas: Number(result[0]?.exitosas) || 0,
@@ -1749,14 +1883,29 @@ ORDER BY periodo, ruta;
 
   // 9. Gráfica Ascensos vs Boletos (por viaje)
   private async getGraficaAscensosVsBoletos(
-    clienteFilter: string, 
-    clienteFilter2: string, 
+    clienteFilter: string,
+    clienteFilter2: string,
     clienteParams: any[],
     fechaInicio: string,
     fechaFin: string,
+    filtro: number,
   ) {
-    // Primero obtener los boletos por viaje
-    const queryBoletos = `
+    const soloHoy = filtro === 1;
+    // Boletos: hoy solo TransaccionesDebito; otro período UNION con histórico
+    const queryBoletosSolo = `
+      SELECT 
+        td.IdViaje AS idViaje,
+        COUNT(DISTINCT CASE WHEN td.ControlTransaccion = 1 THEN td.Id END) AS boletos
+      FROM TransaccionesDebito td
+      INNER JOIN Validadores v ON td.NumeroSerieValidador = v.NumeroSerie
+      INNER JOIN Clientes c ON v.IdCliente = c.Id
+      WHERE td.IdTipoTransaccion = 2
+        AND td.IdViaje IS NOT NULL
+        AND DATE(td.FHRegistro) BETWEEN ? AND ?
+        ${clienteFilter}
+      GROUP BY td.IdViaje
+    `;
+    const queryBoletosUnion = `
       SELECT 
         idViaje,
         COUNT(DISTINCT CASE WHEN controlTransaccion = 1 THEN idTransaccion END) AS boletos
@@ -1781,8 +1930,12 @@ ORDER BY periodo, ruta;
       ) AS todas_transacciones
       GROUP BY idViaje
     `;
+    const queryBoletos = soloHoy ? queryBoletosSolo : queryBoletosUnion;
+    const paramsBoletos = soloHoy
+      ? (clienteParams.length > 0 ? [fechaInicio, fechaFin, ...clienteParams] : [fechaInicio, fechaFin])
+      : (clienteParams.length > 0 ? [fechaInicio, fechaFin, ...clienteParams, fechaInicio, fechaFin, ...clienteParams] : [fechaInicio, fechaFin, fechaInicio, fechaFin]);
 
-    // Luego obtener los ascensos por viaje desde ConteoPasajeros
+    // Ascensos por viaje desde ConteoPasajeros (sin cambio por filtro)
     const queryAscensos = `
       SELECT 
         cp.IdViaje AS idViaje,
@@ -1796,10 +1949,6 @@ ORDER BY periodo, ruta;
       GROUP BY cp.IdViaje
     `;
 
-    const paramsBoletos = clienteParams.length > 0 
-      ? [fechaInicio, fechaFin, ...clienteParams, fechaInicio, fechaFin, ...clienteParams]
-      : [fechaInicio, fechaFin, fechaInicio, fechaFin];
-    
     const paramsAscensos = clienteParams.length > 0 
       ? [fechaInicio, fechaFin, ...clienteParams]
       : [fechaInicio, fechaFin];
