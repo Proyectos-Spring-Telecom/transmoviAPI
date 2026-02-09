@@ -19,6 +19,7 @@ import {
 } from 'src/common/ApiResponse';
 import { Clientes } from 'src/entities/Clientes';
 import { Licencias } from 'src/entities/Licencias';
+import { Usuarios } from 'src/entities/Usuarios';
 import { EnumModulos, EstatusEnum } from 'src/common/estatus.enum';
 
 @Injectable()
@@ -30,6 +31,8 @@ export class OperadoresService {
     private readonly clienteRepository: Repository<Clientes>,
     @InjectRepository(Licencias)
     private readonly licenciasRepository: Repository<Licencias>,
+    @InjectRepository(Usuarios)
+    private readonly usuariosRepository: Repository<Usuarios>,
     private readonly bitacoraLogger: BitacoraLoggerService,
   ) {}
 
@@ -874,12 +877,25 @@ ORDER BY o.Id DESC
       const operador = await this.operadoresRepository.findOne({
         where: { id: id },
       });
+      console.log(operador?.idUsuario, { fotoPerfil: updateOperadoreDto.foto });
+
       if (!operador) {
         throw new NotFoundException(`Operador con id: ${id} no encontrado`);
       }
-      const operadorData =
-        await this.operadoresRepository.create(updateOperadoreDto);
-      await this.operadoresRepository.update(id, operadorData);
+      // Asignar solo los campos enviados al operador y guardar (save persiste correctamente)
+      if (updateOperadoreDto.fechaNacimiento !== undefined) operador.fechaNacimiento = updateOperadoreDto.fechaNacimiento;
+      if (updateOperadoreDto.identificacion !== undefined) operador.identificacion = updateOperadoreDto.identificacion;
+      if (updateOperadoreDto.comprobanteDomicilio !== undefined) operador.comprobanteDomicilio = updateOperadoreDto.comprobanteDomicilio;
+      if (updateOperadoreDto.certificadoMedico !== undefined) operador.certificadoMedico = updateOperadoreDto.certificadoMedico;
+      if (updateOperadoreDto.antecedentesNoPenales !== undefined) operador.antecedentesNoPenales = updateOperadoreDto.antecedentesNoPenales;
+      if (updateOperadoreDto.foto !== undefined) operador.foto = updateOperadoreDto.foto;
+      if (updateOperadoreDto.estatus !== undefined) operador.estatus = updateOperadoreDto.estatus;
+      if (updateOperadoreDto.idUsuario !== undefined) operador.idUsuario = updateOperadoreDto.idUsuario;
+      await this.operadoresRepository.save(operador);
+      // Sincronizar la foto en Usuarios.FotoPerfil usando el idUsuario del operador
+      if (updateOperadoreDto.foto !== undefined && updateOperadoreDto.foto !== '') {
+        await this.usuariosRepository.update(operador.idUsuario, { fotoPerfil: updateOperadoreDto.foto });
+      }
 
       //-----Registro en la bitacora-----SUCCESS
       const querylogger = { updateOperadoreDto };

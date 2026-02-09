@@ -55,6 +55,9 @@ export class Operadores {
   })
   antecedentesNoPenales: string | null;
 
+  @Column("varchar", { name: "Foto", nullable: true, length: 500 })
+  foto: string | null;
+
   @Column("datetime", {
     name: "FechaCreacion",
     default: () => "CURRENT_TIMESTAMP",
