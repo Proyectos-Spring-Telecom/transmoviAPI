@@ -250,9 +250,18 @@ ORDER BY up.Id DESC
       const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas
       const fechaDesfasada = new Date(ahora.getTime() + desfaseMs);
       const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())}`;
+
       const { idCliente, NumeroSerieDispositivo } = recorridoMonitoreoDto;
-      const fechaInicio = `${fechaActual}T00:00:00`;
-      const fechaFin = `${fechaActual}T23:59:59`;
+
+      let fechaInicio: string;
+      let fechaFin: string;
+      if (recorridoMonitoreoDto.fechaInicio == null && recorridoMonitoreoDto.fechaFin == null) {
+        fechaInicio = fechaActual;
+        fechaFin = fechaActual;
+      } else {
+        fechaInicio = recorridoMonitoreoDto.fechaInicio?.split('T')[0] ?? fechaActual;
+        fechaFin = recorridoMonitoreoDto.fechaFin?.split('T')[0] ?? fechaActual;
+      }
 
       const query = `
 SELECT
@@ -305,16 +314,14 @@ INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 INNER JOIN Posiciones up ON d.NumeroSerie = up.NumeroSerieDispositivo
 WHERE c.Id = ?
-  AND up.FechaHora >= ?
-  AND up.FechaHora < ?
+  AND up.FechaHora >= '${fechaInicio}T00:00:00Z'
+  AND up.FechaHora < '${fechaFin}T23:59:59Z'
   AND up.NumeroSerieDispositivo = ?
-ORDER BY up.Id DESC
+ORDER BY up.FechaHora ASC
       `;
 
       const recorridoMonitoreo = await this.usuariosregionesRepository.query(query, [
         idCliente,
-        fechaInicio,
-        fechaFin,
         NumeroSerieDispositivo,
       ]);
 
