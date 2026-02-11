@@ -51,7 +51,9 @@ export class TransaccionesRecarga {
   @Column('varchar', { name: 'NumeroSerieDispositivo', length: 100, nullable: true })
   numeroSerieDispositivo: string | null;
 
-  @Column('bigint', { name: 'IdUsuario', nullable: true  })
-  idUsuario: number;
+  @Column('bigint', { name: 'IdUsuario', nullable: true })
+  idUsuario: number | null;
 
+  @Column('varchar', { name: 'Contexto', nullable: true, length: 100 })
+  contexto: string | null;
 }

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TransaccionesService } from './transacciones.service';
 import { TransaccionesCronService } from './transacciones-cron.service';
@@ -17,10 +17,14 @@ import { HistoricoTransaccionesDebito } from 'src/entities/HistoricoTransaccione
 import { HistoricoTransaccionesRecarga } from 'src/entities/HistoricoTransaccionesRecarga';
 import { Viajes } from 'src/entities/Viajes';
 import { CatMetodoPago } from 'src/entities/CatMetodoPago';
+import { ViajesModule } from 'src/viajes/viajes.module';
+import { TurnosModule } from 'src/turnos/turnos.module';
 
 @Module({
   imports: [
     ScheduleModule.forRoot(),
+    forwardRef(() => ViajesModule),
+    forwardRef(() => TurnosModule),
     TypeOrmModule.forFeature([TransaccionesRecarga, TransaccionesDebito, HistoricoTransaccionesDebito, HistoricoTransaccionesRecarga, Dispositivos, Clientes, Monederos, CatTiposPasajeros, Viajes, CatMetodoPago, Monederos]),
     MonederosModule,
     BitacoraModule,

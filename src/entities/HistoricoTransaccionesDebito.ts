@@ -73,6 +73,6 @@ export class HistoricoTransaccionesDebito {
   @Column('bigint', { name: 'IdUsuario', nullable: true })
   idUsuario: number | null;
 
-  // -------- RELACIONES --------
-
+  @Column('varchar', { name: 'Contexto', nullable: true, length: 100 })
+  contexto: string | null;
 }

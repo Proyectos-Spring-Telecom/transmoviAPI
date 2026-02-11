@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ViajesService } from './viajes.service';
 import { ViajesController } from './viajes.controller';
 import { BitacoraModule } from 'src/bitacora/bitacora.module';
@@ -10,8 +10,9 @@ import { TransaccionesDebito } from 'src/entities/TransaccionesDebito';
 import { TransaccionesModule } from 'src/transacciones/transacciones.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Viajes, Clientes, ConteoPasajeros, TransaccionesDebito]), BitacoraModule, TransaccionesModule],
+  imports: [TypeOrmModule.forFeature([Viajes, Clientes, ConteoPasajeros, TransaccionesDebito]), BitacoraModule, forwardRef(() => TransaccionesModule)],
   controllers: [ViajesController],
   providers: [ViajesService],
+  exports: [ViajesService],
 })
 export class ViajesModule {}

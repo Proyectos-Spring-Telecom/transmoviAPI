@@ -47,7 +47,7 @@ import { Viajes } from 'src/entities/Viajes';
 import { calcularDistanciaHastaIndex, calcularDistanciaReal, snapToRoute } from 'src/utils/recorrido.utils';
 import { CatMetodoPago } from 'src/entities/CatMetodoPago';
 import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource, EntityManager, QueryRunner } from 'typeorm';
+import { DataSource, EntityManager, IsNull, QueryRunner } from 'typeorm';
 
 @Injectable()
 export class TransaccionesService {
@@ -181,6 +181,7 @@ export class TransaccionesService {
         ...createTransaccioneRecargaDto,
         idTipoTransaccion: EnumTipoTransaccion.RECARGA,
         idUsuario: idUser,
+        contexto: 'Transaccion realizada de manera correcta',
       });
       const transaccionSave = await transaccionesRecargaRepo.save(newTransaccion);
 
@@ -201,6 +202,7 @@ export class TransaccionesService {
         numeroSerieMonedero: transaccionSave.numeroSerieMonedero,
         numeroSerieDispositivo: transaccionSave.numeroSerieDispositivo ?? null,
         idUsuario: transaccionSave.idUsuario ?? null,
+        contexto: 'Transaccion realizada de manera correcta',
       });
       await historicoTransaccionesRecargaRepo.save(historicoRecarga);
 
@@ -224,6 +226,7 @@ export class TransaccionesService {
         montoFinal: montoFinal,
         fechaFinal: transaccionSave.fhRegistro,
         metodoPago: metodoPago.nombre,
+        contexto: 'Transaccion realizada de manera correcta',
       };
       return result;
     } catch (error) {
@@ -584,6 +587,7 @@ WHERE v.Id = ${idViaje}
         latitudFinal: dto.latitud,
         longitudFinal: dto.longitud,
         fechaHoraFinal: fechaDesfasada,
+        contexto: 'Transaccion rechazada: saldo insuficiente',
       });
       const transaccionRechazo = await transaccionesDebitoRepo.findOne({
         where: { id: idTransaccion },
@@ -604,6 +608,7 @@ WHERE v.Id = ${idViaje}
         numeroSerieDispositivo: transaccionRechazo.numeroSerieDispositivo,
         idViajes: transaccionRechazo.idViajes,
         idUsuario: transaccionRechazo.idUsuario,
+        contexto: 'Transaccion rechazada: saldo insuficiente',
       });
       const histRechazo = await historicoTransaccionesDebitoRepo.save(historicoRechazo);
       return { closedAsPagado: false, historicoId: Number(histRechazo.id) };
@@ -617,6 +622,7 @@ WHERE v.Id = ${idViaje}
       latitudFinal: dto.latitud,
       longitudFinal: dto.longitud,
       fechaHoraFinal: fechaDesfasada,
+      contexto: 'Transaccion realizada de manera correcta',
     });
     const transaccionSave = await transaccionesDebitoRepo.findOne({
       where: { id: idTransaccion },
@@ -637,6 +643,7 @@ WHERE v.Id = ${idViaje}
       numeroSerieDispositivo: transaccionSave.numeroSerieDispositivo,
       idViajes: transaccionSave.idViajes,
       idUsuario: transaccionSave.idUsuario,
+      contexto: 'Transaccion realizada de manera correcta',
     });
     const histSaved = await historicoTransaccionesDebitoRepo.save(historicoTransaccion);
     return { closedAsPagado: true, historicoId: Number(histSaved.id), historicoTransaccion: histSaved || null };
@@ -773,6 +780,7 @@ WHERE v.Id = ${idViaje}
             data: {
               id: historicoId ?? first.id,
               nombre: `${monedero.numeroSerie}`,
+              contexto: 'Transaccion cerrada: tiempo excedido (ventana 1m20s superada)',
             },
           };
         }
@@ -852,6 +860,7 @@ WHERE v.Id = ${idViaje}
           numeroSerieDispositivo: createTransaccioneDebitoDto.numeroSerieDispositivo,
           idViajes: createTransaccioneDebitoDto.idViaje,
           idUsuario: idUsuario,
+          contexto: 'Transaccion rechazada: saldo insuficiente',
         });
         const transaccionRechazoSave = await transaccionesDebitoRepo.save(transaccionRechazo);
         const historicoRechazo = historicoTransaccionesDebitoRepo.create({
@@ -866,6 +875,7 @@ WHERE v.Id = ${idViaje}
           numeroSerieDispositivo: transaccionRechazoSave.numeroSerieDispositivo,
           idViajes: transaccionRechazoSave.idViajes,
           idUsuario: transaccionRechazoSave.idUsuario,
+          contexto: 'Transaccion rechazada: saldo insuficiente',
         });
         await historicoTransaccionesDebitoRepo.save(historicoRechazo);
         await queryRunner.commitTransaction();
@@ -895,6 +905,9 @@ WHERE v.Id = ${idViaje}
         numeroSerieDispositivo: createTransaccioneDebitoDto.numeroSerieDispositivo,
         idViajes: createTransaccioneDebitoDto.idViaje,
         idUsuario: idUsuario,
+        contexto: controlTransaccion === EnumControlTransacciones.PAGADO
+          ? 'Transaccion realizada de manera correcta'
+          : 'Transaccion abierta correctamente',
       };
 
       if (controlTransaccion === EnumControlTransacciones.ABIERTA) {
@@ -929,6 +942,7 @@ WHERE v.Id = ${idViaje}
           numeroSerieDispositivo: transaccionSave.numeroSerieDispositivo,
           idViajes: transaccionSave.idViajes,
           idUsuario: transaccionSave.idUsuario,
+          contexto: 'Transaccion realizada de manera correcta',
         });
         transaccionSaveHis = await historicoTransaccionesDebitoRepo.save(historicoTransaccion);
 
@@ -951,6 +965,7 @@ WHERE v.Id = ${idViaje}
           data: {
             id: Number(transaccionSaveHis.id) || Number(transaccionSave.id),
             nombre: `${monedero.numeroSerie}`,
+            contexto: 'Transaccion realizada de manera correcta',
           },
         };
       }
@@ -974,6 +989,7 @@ WHERE v.Id = ${idViaje}
         data: {
           id: Number(transaccionSave.id),
           nombre: `${monedero.numeroSerie}`,
+          contexto: 'Transaccion abierta correctamente',
         },
       };
     } catch (err) {
@@ -1374,8 +1390,11 @@ SELECT * FROM (
       td.FechaHoraFinal AS fechaHoraFinal,
       td.FHRegistro AS fhRegistro,
       td.IdControlTransaccion AS idControlTransaccion,
+      NULL AS controlTransaccion,
+      NULL AS idMetodoPago,
       td.NumeroSerieMonedero AS numeroSerieMonedero,
       td.NumeroSerieDispositivo AS numeroSerieDispositivo,
+      td.Contexto AS contexto,
       c.Id AS idCliente,
       c.Nombre AS nombreCliente,
       c.ApellidoPaterno AS apellidoPaternoCliente,
@@ -1420,10 +1439,12 @@ SELECT * FROM (
       tr.LongitudFinal AS longitudFinal,
       tr.FechaHoraFinal AS fechaHoraFinal,
       tr.FHRegistro AS fhRegistro,
+      NULL AS idControlTransaccion,
       tr.ControlTransaccion AS controlTransaccion,
       tr.IdMetodoPago AS idMetodoPago,
       tr.NumeroSerieMonedero AS numeroSerieMonedero,
       tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+      tr.Contexto AS contexto,
       c.Id AS idCliente,
       c.Nombre AS nombreCliente,
       c.ApellidoPaterno AS apellidoPaternoCliente,
@@ -1499,8 +1520,11 @@ SELECT * FROM (
       td.FechaHoraFinal AS fechaHoraFinal,
       td.FHRegistro AS fhRegistro,
       td.IdControlTransaccion AS idControlTransaccion,
+      NULL AS controlTransaccion,
+      NULL AS idMetodoPago,
       td.NumeroSerieMonedero AS numeroSerieMonedero,
       td.NumeroSerieDispositivo AS numeroSerieDispositivo,
+      td.Contexto AS contexto,
       c.Id AS idCliente,
       c.Nombre AS nombreCliente,
       c.ApellidoPaterno AS apellidoPaternoCliente,
@@ -1546,10 +1570,12 @@ SELECT * FROM (
       tr.LongitudFinal AS longitudFinal,
       tr.FechaHoraFinal AS fechaHoraFinal,
       tr.FHRegistro AS fhRegistro,
+      NULL AS idControlTransaccion,
       tr.ControlTransaccion AS controlTransaccion,
       tr.IdMetodoPago AS idMetodoPago,
       tr.NumeroSerieMonedero AS numeroSerieMonedero,
       tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+      tr.Contexto AS contexto,
       c.Id AS idCliente,
       c.Nombre AS nombreCliente,
       c.ApellidoPaterno AS apellidoPaternoCliente,
@@ -1633,8 +1659,11 @@ SELECT * FROM (
       td.FechaHoraFinal AS fechaHoraFinal,
       td.FHRegistro AS fhRegistro,
       td.IdControlTransaccion AS idControlTransaccion,
+      NULL AS controlTransaccion,
+      NULL AS idMetodoPago,
       td.NumeroSerieMonedero AS numeroSerieMonedero,
       td.NumeroSerieDispositivo AS numeroSerieDispositivo,
+      td.Contexto AS contexto,
       c.Id AS idCliente,
       c.Nombre AS nombreCliente,
       c.ApellidoPaterno AS apellidoPaternoCliente,
@@ -1681,10 +1710,12 @@ SELECT * FROM (
       tr.LongitudFinal AS longitudFinal,
       tr.FechaHoraFinal AS fechaHoraFinal,
       tr.FHRegistro AS fhRegistro,
+      NULL AS idControlTransaccion,
       tr.ControlTransaccion AS controlTransaccion,
       tr.IdMetodoPago AS idMetodoPago,
       tr.NumeroSerieMonedero AS numeroSerieMonedero,
       tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+      tr.Contexto AS contexto,
       c.Id AS idCliente,
       c.Nombre AS nombreCliente,
       c.ApellidoPaterno AS apellidoPaternoCliente,
@@ -1777,8 +1808,11 @@ SELECT * FROM (
       td.FechaHoraFinal AS fechaHoraFinal,
       td.FHRegistro AS fhRegistro,
       td.IdControlTransaccion AS idControlTransaccion,
+      NULL AS controlTransaccion,
+      NULL AS idMetodoPago,
       td.NumeroSerieMonedero AS numeroSerieMonedero,
       td.NumeroSerieDispositivo AS numeroSerieDispositivo,
+      td.Contexto AS contexto,
       c.Id AS idCliente,
       c.Nombre AS nombreCliente,
       c.ApellidoPaterno AS apellidoPaternoCliente,
@@ -1824,10 +1858,12 @@ SELECT * FROM (
       tr.LongitudFinal AS longitudFinal,
       tr.FechaHoraFinal AS fechaHoraFinal,
       tr.FHRegistro AS fhRegistro,
+      NULL AS idControlTransaccion,
       tr.ControlTransaccion AS controlTransaccion,
       tr.IdMetodoPago AS idMetodoPago,
       tr.NumeroSerieMonedero AS numeroSerieMonedero,
       tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+      tr.Contexto AS contexto,
       c.Id AS idCliente,
       c.Nombre AS nombreCliente,
       c.ApellidoPaterno AS apellidoPaternoCliente,
@@ -1993,8 +2029,9 @@ FROM (
       tr.FechaHora AS fechaHora,
       tr.FHRegistro AS fhRegistro,
       tr.NumeroSerieMonedero AS numeroSerieMonedero,
-      tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
-      tr.ControlTransaccion AS controlTransaccion,
+    tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    tr.Contexto AS contexto,
+    tr.ControlTransaccion AS controlTransaccion,
   
       -- Datos del cliente
       c.Id AS idCliente,
@@ -2080,6 +2117,7 @@ FROM (
         td.FHRegistro AS fhRegistro,
         td.NumeroSerieMonedero AS numeroSerieMonedero,
         td.NumeroSerieDispositivo AS numeroSerieDispositivo,
+        td.Contexto AS contexto,
         td.ControlTransaccion AS controlTransaccion,
   
         -- Datos del cliente
@@ -2123,8 +2161,9 @@ FROM (
         tr.FechaHora AS fechaHora,
         tr.FHRegistro AS fhRegistro,
         tr.NumeroSerieMonedero AS numeroSerieMonedero,
-        tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
-        tr.ControlTransaccion AS controlTransaccion,
+    tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    tr.Contexto AS contexto,
+    tr.ControlTransaccion AS controlTransaccion,
   
         -- Datos del cliente
       c.Id AS idCliente,
@@ -2203,6 +2242,7 @@ FROM (
         td.FHRegistro AS fhRegistro,
         td.NumeroSerieMonedero AS numeroSerieMonedero,
         td.NumeroSerieDispositivo AS numeroSerieDispositivo,
+        td.Contexto AS contexto,
         td.ControlTransaccion AS controlTransaccion,
   
         d.Marca AS marcaDispositivo,
@@ -2233,8 +2273,9 @@ FROM (
         tr.FechaHora AS fechaHora,
         tr.FHRegistro AS fhRegistro,
         tr.NumeroSerieMonedero AS numeroSerieMonedero,
-        tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
-        tr.ControlTransaccion AS controlTransaccion,
+    tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    tr.Contexto AS contexto,
+    tr.ControlTransaccion AS controlTransaccion,
   
         d.Marca AS marcaDispositivo,
         d.Modelo AS modeloDispositivo,
@@ -2308,6 +2349,7 @@ FROM (
         td.FHRegistro AS fhRegistro,
         td.NumeroSerieMonedero AS numeroSerieMonedero,
         td.NumeroSerieDispositivo AS numeroSerieDispositivo,
+        td.Contexto AS contexto,
         td.ControlTransaccion AS controlTransaccion,
   
         -- Datos del cliente
@@ -2351,8 +2393,9 @@ FROM (
         tr.FechaHora AS fechaHora,
         tr.FHRegistro AS fhRegistro,
         tr.NumeroSerieMonedero AS numeroSerieMonedero,
-        tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
-        tr.ControlTransaccion AS controlTransaccion,
+    tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    tr.Contexto AS contexto,
+    tr.ControlTransaccion AS controlTransaccion,
   
         -- Datos del cliente
       c.Id AS idCliente,
@@ -2487,6 +2530,7 @@ SELECT
     td.IdControlTransaccion AS idControlTransaccion,
     td.NumeroSerieMonedero AS numeroSerieMonedero,
     td.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    td.Contexto AS contexto,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -2536,6 +2580,7 @@ SELECT
     tr.IdMetodoPago AS idMetodoPago,
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
     tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    tr.Contexto AS contexto,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -2591,6 +2636,7 @@ SELECT
     td.IdControlTransaccion AS idControlTransaccion,
     td.NumeroSerieMonedero AS numeroSerieMonedero,
     td.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    td.Contexto AS contexto,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -2641,6 +2687,7 @@ SELECT
     tr.IdMetodoPago AS idMetodoPago,
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
     tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    tr.Contexto AS contexto,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -2696,6 +2743,7 @@ SELECT
     td.IdControlTransaccion AS idControlTransaccion,
     td.NumeroSerieMonedero AS numeroSerieMonedero,
     td.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    td.Contexto AS contexto,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -2746,6 +2794,7 @@ SELECT
     tr.IdMetodoPago AS idMetodoPago,
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
     tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    tr.Contexto AS contexto,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -2831,6 +2880,7 @@ SELECT
     tr.IdMetodoPago AS idMetodoPago,
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
     tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    tr.Contexto AS contexto,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -2906,6 +2956,7 @@ SELECT
     td.IdControlTransaccion AS idControlTransaccion,
     td.NumeroSerieMonedero AS numeroSerieMonedero,
     td.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    td.Contexto AS contexto,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -3058,6 +3109,7 @@ SELECT
     tr.IdMetodoPago AS idMetodoPago,
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
     tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    tr.Contexto AS contexto,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -3133,6 +3185,7 @@ SELECT
     tr.IdMetodoPago AS idMetodoPago,
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
     tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    tr.Contexto AS contexto,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -3213,6 +3266,7 @@ SELECT
     tr.IdMetodoPago AS idMetodoPago,
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
     tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    tr.Contexto AS contexto,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -3296,6 +3350,7 @@ SELECT
     tr.IdMetodoPago AS idMetodoPago,
     tr.NumeroSerieMonedero AS numeroSerieMonedero,
     tr.NumeroSerieDispositivo AS numeroSerieDispositivo,
+    tr.Contexto AS contexto,
 
     -- Datos del cliente
     c.Id AS idCliente,
@@ -3492,8 +3547,119 @@ WHERE tr.IdUsuario = ?   -- 👈 filtro por usuario
   }
 
   // ========================================
+  // 🔹 LIMPIAR TABLA TransaccionesDebito
+  // ========================================
+  /**
+   * Limpia la tabla TransaccionesDebito verificando que todos los registros
+   * existan en HistoricoTransaccionesDebito. Luego hace TRUNCATE (elimina datos y reinicia contador a 0).
+   */
+  async limpiarTransaccionesDebito(): Promise<void> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const transaccionesDebitoRepo = queryRunner.manager.getRepository(TransaccionesDebito);
+      const historicoRepo = queryRunner.manager.getRepository(HistoricoTransaccionesDebito);
+
+      const transaccionesDebito = await transaccionesDebitoRepo.find();
+
+      if (transaccionesDebito.length === 0) {
+        await queryRunner.release();
+        return;
+      }
+
+      for (const trans of transaccionesDebito) {
+        const where: any = {
+          numeroSerieMonedero: trans.numeroSerieMonedero,
+          monto: trans.monto,
+          fechaHoraFinal: trans.fechaHoraFinal,
+          idViajes: trans.idViajes != null ? trans.idViajes : IsNull(),
+        };
+        const existeEnHistorico = await historicoRepo.findOne({ where });
+
+        if (!existeEnHistorico) {
+          await queryRunner.rollbackTransaction();
+          await queryRunner.release();
+          console.warn(
+            `[limpiarTransaccionesDebito] No se puede limpiar: transacción ID ${trans.id} no existe en histórico.`,
+          );
+          await this.bitacoraLogger.logToBitacora(
+            'Transacciones',
+            `Error al limpiar TransaccionesDebito: La transacción con ID ${trans.id} no existe en histórico.`,
+            'DELETE',
+            { transaccionId: trans.id },
+            1,
+            EnumModulos.TRANSACCIONES,
+            EstatusEnumBitcora.ERROR,
+            'La transacción no existe en histórico',
+          );
+          return;
+        }
+      }
+
+      await queryRunner.query('TRUNCATE TABLE TransaccionesDebito;');
+      await queryRunner.commitTransaction();
+
+      await this.bitacoraLogger.logToBitacora(
+        'Transacciones',
+        `Limpieza automática de TransaccionesDebito completada. Registros eliminados: ${transaccionesDebito.length}`,
+        'DELETE',
+        { registrosEliminados: transaccionesDebito.length },
+        1,
+        EnumModulos.TRANSACCIONES,
+        EstatusEnumBitcora.SUCCESS,
+      );
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      console.error('[limpiarTransaccionesDebito]', (error as Error)?.message ?? error);
+      await this.bitacoraLogger.logToBitacora(
+        'Transacciones',
+        `Error al limpiar TransaccionesDebito`,
+        'DELETE',
+        {},
+        1,
+        EnumModulos.TRANSACCIONES,
+        EstatusEnumBitcora.ERROR,
+        (error as Error).message,
+      );
+      throw new InternalServerErrorException({
+        message: 'Error al limpiar la tabla TransaccionesDebito',
+        error: (error as Error).message,
+      });
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  // ========================================
   // 🔹 Transacciones Debito Para Cierre de Viajes
   // ========================================
+  /**
+   * Cierra todas las transacciones débito abiertas.
+   * Usado por el cron de cierre automático: busca TransaccionesDebito con idControlTransaccion=ABIERTA,
+   * agrupa por idViajes y ejecuta viajeCierre (que usa createTransaccionDebitoByViajes) para cada viaje.
+   */
+  async cerrarTransaccionesDebitoAbiertasCron(): Promise<{ viajesProcesados: number; errores: string[] }> {
+    const errores: string[] = [];
+    let viajesProcesados = 0;
+    const transacciones = await this.transaccionesdebitoRepository.find({
+      where: { idControlTransaccion: EnumControlTransacciones.ABIERTA },
+      select: ['idViajes'],
+    });
+    const idViajesUnicos = [...new Set(transacciones.map((t) => t.idViajes).filter(Boolean))] as number[];
+    for (const idViaje of idViajesUnicos) {
+      try {
+        await this.viajeCierre(idViaje);
+        viajesProcesados++;
+      } catch (err) {
+        const msg = (err as Error)?.message ?? String(err);
+        errores.push(`Viaje ${idViaje}: ${msg}`);
+      }
+    }
+    return { viajesProcesados, errores };
+  }
+
   /**
    * Cierra una transacción abierta de débito en el contexto de cierre de viaje.
    * CRÍTICO: Calcula monto (montoTarifa), aplica descuentos, valida saldo. Si insuficiente → RECHAZO + histórico;

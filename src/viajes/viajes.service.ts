@@ -359,6 +359,30 @@ WHERE v.Id = ?
     }
   }
 
+  /**
+   * Cierra todos los viajes abiertos (estatus=ACTIVO).
+   * Usado por el cron de cierre automático.
+   * @param idUserSistema ID de usuario sistema para bitácora (ej. 0)
+   */
+  async cerrarViajesAbiertosCron(idUserSistema: number): Promise<{ viajesCerrados: number; errores: string[] }> {
+    const errores: string[] = [];
+    let viajesCerrados = 0;
+    const viajesAbiertos = await this.viajesRepository.find({
+      where: { estatus: EstatusEnum.ACTIVO },
+      select: ['id', 'idCliente', 'idOperador'],
+    });
+    for (const viaje of viajesAbiertos) {
+      try {
+        await this.update(idUserSistema, viaje.idCliente, viaje.idOperador, viaje.id, {});
+        viajesCerrados++;
+      } catch (err) {
+        const msg = (err as Error)?.message ?? String(err);
+        errores.push(`Viaje ${viaje.id}: ${msg}`);
+      }
+    }
+    return { viajesCerrados, errores };
+  }
+
   // ========================================
   // 🔹 Cerrar transacciones abiertas de un viaje
   // ========================================

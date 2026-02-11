@@ -31,11 +31,13 @@ export interface ApiCrudTransaccionRecarga {
   montoFinal?: number;
   fechaFinal?: Date;
   metodoPago?: string;
+  contexto?: string;
 }
 
 export interface ApiData {
   id: number;
   nombre: string;
+  contexto?: string;
 }
 
 export interface ApiEstatus {

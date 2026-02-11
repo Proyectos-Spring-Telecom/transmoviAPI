@@ -19,8 +19,10 @@ import {
 } from 'src/common/ApiResponse';
 import { UpdateTurnosEstatusDto } from './dto/update-turno-estatus.dto';
 import { Clientes } from 'src/entities/Clientes';
+import { Viajes } from 'src/entities/Viajes';
 import { EnumModulos, EstatusEnum } from 'src/common/estatus.enum';
 import { horaDesfasada } from 'src/utils/correccion-hora';
+import { ViajesService } from 'src/viajes/viajes.service';
 
 @Injectable()
 export class TurnosService {
@@ -29,8 +31,11 @@ export class TurnosService {
     private readonly turnosRepository: Repository<Turnos>,
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
+    @InjectRepository(Viajes)
+    private readonly viajesRepository: Repository<Viajes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
-  ) { }
+    private readonly viajesService: ViajesService,
+  ) {}
 
   async create(
     idUser: number,
@@ -1124,11 +1129,30 @@ ORDER BY t.Inicio DESC;
     updateTurnosEstatusDto: UpdateTurnosEstatusDto,
   ): Promise<ApiCrudResponse> {
     try {
-      //obtenemos estatus
       const estatus = updateTurnosEstatusDto.estatus;
-      
-      //actualizamos
-      await this.turnosRepository.update(id, { estatus: estatus });
+
+      // Al cerrar el turno (estatus = 0), verificar y cerrar todos los viajes abiertos del turno
+      if (estatus === EstatusEnum.INACTIVO) {
+        const viajesAbiertos = await this.viajesRepository.find({
+          where: { idTurno: id, estatus: EstatusEnum.ACTIVO },
+        });
+        for (const viaje of viajesAbiertos) {
+          try {
+            await this.viajesService.update(
+              idUser,
+              viaje.idCliente,
+              viaje.idOperador,
+              viaje.id,
+              {},
+            );
+          } catch (err) {
+            console.error(`[updateEstatus Turno] Error al cerrar viaje ${viaje.id}:`, (err as Error)?.message ?? err);
+            // Se registra pero se sigue cerrando el resto de viajes y el turno
+          }
+        }
+      }
+
+      await this.turnosRepository.update(id, { estatus });
 
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { updateTurnosEstatusDto };
@@ -1175,6 +1199,31 @@ ORDER BY t.Inicio DESC;
         error,
       });
     }
+  }
+
+  /**
+   * Cierra todos los turnos abiertos (estatus=ACTIVO).
+   * Usado por el cron de cierre automático. Cierra primero los viajes abiertos de cada turno.
+   * @param idUserSistema ID de usuario sistema para bitácora (ej. 0)
+   */
+  async cerrarTurnosAbiertosCron(idUserSistema: number): Promise<{ turnosCerrados: number; errores: string[] }> {
+    const errores: string[] = [];
+    let turnosCerrados = 0;
+    const turnosAbiertos = await this.turnosRepository.find({
+      where: { estatus: EstatusEnum.ACTIVO },
+      select: ['id'],
+    });
+    const updateDto = { estatus: EstatusEnum.INACTIVO };
+    for (const turno of turnosAbiertos) {
+      try {
+        await this.updateEstatus(turno.id, idUserSistema, updateDto);
+        turnosCerrados++;
+      } catch (err) {
+        const msg = (err as Error)?.message ?? String(err);
+        errores.push(`Turno ${turno.id}: ${msg}`);
+      }
+    }
+    return { turnosCerrados, errores };
   }
 
   async update(id: number, idUser: number,
