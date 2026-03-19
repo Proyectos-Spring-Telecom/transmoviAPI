@@ -13,7 +13,14 @@ import * as multer from 'multer';
 import { S3Service } from './s3.service';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { UploadDto } from './dto/update-s3.dto';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiConsumes,
+} from '@nestjs/swagger';
 
 @ApiTags('S3 - archivos')
 @ApiBearerAuth('bearer-token')
@@ -23,6 +30,52 @@ export class S3Controller {
   constructor(private readonly s3Service: S3Service) {}
 
   @Post('upload')
+  @ApiOperation({
+    summary: 'Subir archivo a S3',
+    description:
+      'Sube un archivo al bucket S3. Formatos permitidos: PNG, JPG, JPEG, PDF. Tamaño máximo: 10 MB. El campo file debe contener el archivo y el body debe incluir folder e idModule.',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file', 'folder', 'idModule'],
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'Archivo a subir (PNG, JPG, JPEG o PDF)',
+        },
+        folder: {
+          type: 'string',
+          enum: ['clientes', 'operadores', 'usuarios', 'vehiculos', 'pasajeros'],
+          description: 'Carpeta destino en el bucket',
+        },
+        idModule: {
+          type: 'string',
+          description: 'ID del módulo asociado',
+          example: '1',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Archivo subido correctamente',
+    schema: {
+      type: 'object',
+      properties: {
+        url: {
+          type: 'string',
+          description: 'URL pública del archivo en S3',
+          example: 'https://bucket.s3.region.amazonaws.com/clientes/uuid.png',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Archivo requerido, tipo no permitido o tamaño excedido' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @ApiResponse({ status: 500, description: 'Error al subir el archivo a S3' })
   @UseInterceptors(
     FileInterceptor('file', {
       storage: multer.memoryStorage(),

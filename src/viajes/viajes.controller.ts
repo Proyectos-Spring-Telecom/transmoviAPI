@@ -18,6 +18,7 @@ import {
   ApiOperation,
   ApiParam,
   ApiResponse,
+  ApiBody,
 } from '@nestjs/swagger';
 import { UpdateViajeDto } from './dto/update-viaje.dto';
 
@@ -30,9 +31,13 @@ export class ViajesController {
 
   @Post()
   @ApiOperation({
-    summary: 'Crear un nuevo viaje',
+    summary: 'Crear viaje',
     description:
-      'Crea un nuevo viaje asociado a un turno, derrotero y operador. Solo usuarios con rol operador pueden crear viajes. La fecha de inicio se establece automáticamente con el desfase de horario (-6 horas).',
+      'Crea un nuevo viaje asociado a un turno, derrotero y operador. Solo usuarios con rol operador pueden crear viajes. La fecha de inicio se establece automáticamente.',
+  })
+  @ApiBody({
+    type: CreateViajeDto,
+    description: 'idTurno, idDerrotero (y otros campos según el DTO)',
   })
   @ApiResponse({
     status: 201,
@@ -57,7 +62,7 @@ export class ViajesController {
   })
   @ApiResponse({
     status: 401,
-    description: 'No autorizado - Usuario sin rol operador',
+    description: 'No autorizado',
   })
   @ApiResponse({
     status: 500,
@@ -73,9 +78,13 @@ export class ViajesController {
 
   @Patch(':id')
   @ApiOperation({
-    summary: 'Actualizar un viaje',
+    summary: 'Actualizar viaje',
     description:
-      'Actualiza un viaje existente, generalmente para finalizarlo. Solo usuarios con rol operador pueden actualizar viajes. La fecha de fin se establece automáticamente y el estatus se cambia a INACTIVO. El viaje debe pertenecer al mismo cliente y operador del usuario.',
+      'Actualiza un viaje existente, generalmente para finalizarlo. Solo usuarios con rol operador pueden actualizar viajes. La fecha de fin se establece automáticamente y el estatus se cambia a INACTIVO.',
+  })
+  @ApiBody({
+    type: UpdateViajeDto,
+    description: 'Campos a actualizar del viaje',
   })
   @ApiParam({
     name: 'id',
@@ -110,7 +119,7 @@ export class ViajesController {
   })
   @ApiResponse({
     status: 401,
-    description: 'No autorizado - Usuario sin rol operador',
+    description: 'No autorizado',
   })
   @ApiResponse({
     status: 404,
@@ -237,35 +246,31 @@ export class ViajesController {
 
   @Get(':id')
   @ApiOperation({
-    summary: 'Obtener un viaje por ID',
+    summary: 'Obtener viaje por ID',
     description:
-      'Obtiene la información detallada de un viaje específico por su ID. Incluye información completa de turno, instalación, dispositivo, BlueVox, vehículo, operador y derrotero.',
+      'Obtiene la información detallada de un viaje específico por su ID. Incluye turno, instalación, dispositivo, vehículo, operador y derrotero.',
   })
   @ApiParam({
     name: 'id',
-    type: Number,
-    description: 'ID del viaje a consultar',
+    description: 'ID del viaje',
     example: 1,
   })
   @ApiResponse({
     status: 200,
-    description: 'Viaje obtenido exitosamente',
+    description: 'Detalle del viaje',
     schema: {
       type: 'object',
       properties: {
         data: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              id: { type: 'number', example: 1 },
-              inicio: { type: 'string', format: 'date-time' },
-              fin: { type: 'string', format: 'date-time', nullable: true },
-              estatus: { type: 'number', example: 1 },
-              idCliente: { type: 'number', example: 5 },
-              idTurno: { type: 'number', example: 10 },
-              idDerrotero: { type: 'number', example: 20 },
-            },
+          type: 'object',
+          properties: {
+            id: { type: 'number', example: 1 },
+            inicio: { type: 'string', format: 'date-time' },
+            fin: { type: 'string', format: 'date-time', nullable: true },
+            estatus: { type: 'number', example: 1 },
+            idCliente: { type: 'number', example: 5 },
+            idTurno: { type: 'number', example: 10 },
+            idDerrotero: { type: 'number', example: 20 },
           },
         },
       },

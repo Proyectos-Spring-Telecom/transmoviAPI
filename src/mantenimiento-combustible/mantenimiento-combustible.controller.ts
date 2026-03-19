@@ -44,6 +44,17 @@ export class MantenimientoCombustibleController {
   @ApiResponse({
     status: 201,
     description: 'Mantenimiento de combustible creado exitosamente',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', example: 'success' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: { id: { type: 'number' }, nombre: { type: 'string' } },
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 400,
@@ -69,21 +80,21 @@ export class MantenimientoCombustibleController {
     summary: 'Obtener mantenimientos de combustible paginados',
     description: 'Obtiene un listado paginado de registros de abastecimiento de combustible con sus relaciones.',
   })
-  @ApiParam({
-    name: 'page',
-    type: Number,
-    description: 'Número de página',
-    example: 1,
-  })
-  @ApiParam({
-    name: 'limit',
-    type: Number,
-    description: 'Cantidad de registros por página',
-    example: 10,
-  })
+  @ApiParam({ name: 'page', description: 'Número de página (desde 1)' })
+  @ApiParam({ name: 'limit', description: 'Registros por página' })
   @ApiResponse({
     status: 200,
-    description: 'Listado paginado de mantenimientos de combustible obtenido exitosamente',
+    description: 'Lista paginada de mantenimientos de combustible',
+    schema: {
+      type: 'object',
+      properties: {
+        data: { type: 'array', items: { type: 'object' } },
+        paginated: {
+          type: 'object',
+          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 401,

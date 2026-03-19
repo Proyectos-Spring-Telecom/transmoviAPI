@@ -69,21 +69,21 @@ export class MantenimientoKilometrajeController {
     summary: 'Obtener mantenimientos por kilometraje paginados',
     description: 'Obtiene un listado paginado de registros de mantenimiento por kilometraje con su relación de instalación.',
   })
-  @ApiParam({
-    name: 'page',
-    type: Number,
-    description: 'Número de página',
-    example: 1,
-  })
-  @ApiParam({
-    name: 'limit',
-    type: Number,
-    description: 'Cantidad de registros por página',
-    example: 10,
-  })
+  @ApiParam({ name: 'page', description: 'Número de página (desde 1)' })
+  @ApiParam({ name: 'limit', description: 'Registros por página' })
   @ApiResponse({
     status: 200,
-    description: 'Listado paginado de mantenimientos por kilometraje obtenido exitosamente',
+    description: 'Lista paginada de mantenimientos por kilometraje',
+    schema: {
+      type: 'object',
+      properties: {
+        data: { type: 'array', items: { type: 'object' } },
+        paginated: {
+          type: 'object',
+          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 401,

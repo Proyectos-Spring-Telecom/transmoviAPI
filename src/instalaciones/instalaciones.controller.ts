@@ -17,7 +17,7 @@ import { UpdateInstalacioneDto } from './dto/update-instalacione.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { UpdateInstalacioneEstatusDto } from './dto/update-instalacione-estatus.dto';
-import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags, ApiBody } from '@nestjs/swagger';
 
 @ApiTags('Instalaciones')
 @ApiBearerAuth('bearer-token')
@@ -27,8 +27,31 @@ export class InstalacionesController {
   constructor(private readonly instalacionesService: InstalacionesService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Crear instalación' })
-  @ApiResponse({ status: 201, description: 'Instalación creada' })
+  @ApiOperation({
+    summary: 'Crear instalación',
+    description: 'Asocia un dispositivo, vehículo y BlueVoxs en una instalación. Requiere al menos 1 BlueVox en idsBlueVoxs.',
+  })
+  @ApiBody({
+    type: CreateInstalacionesDto,
+    description: 'idDispositivo, idVehiculo, idsBlueVoxs (array, al menos 1), idCliente',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Instalación creada exitosamente',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', example: 'success' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: { id: { type: 'number' }, nombre: { type: 'string' } },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Componentes inválidos o no disponibles' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
   async create(
     @Body() createInstalacioneDto: CreateInstalacionesDto,
     @Request() req,
@@ -44,9 +67,23 @@ export class InstalacionesController {
 
   @Get(':page/:limit')
   @ApiOperation({ summary: 'Obtener instalaciones paginadas' })
-  @ApiParam({ name: 'page', type: Number })
-  @ApiParam({ name: 'limit', type: Number })
-  @ApiResponse({ status: 200, description: 'Paginación de instalaciones' })
+  @ApiParam({ name: 'page', description: 'Número de página (desde 1)' })
+  @ApiParam({ name: 'limit', description: 'Registros por página' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista paginada de instalaciones',
+    schema: {
+      type: 'object',
+      properties: {
+        data: { type: 'array', items: { type: 'object' } },
+        paginated: {
+          type: 'object',
+          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
   async findAll(
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,
@@ -59,8 +96,19 @@ export class InstalacionesController {
   }
 
   @Get('list')
-  @ApiOperation({ summary: 'Obtener listado de instalaciones' })
-  @ApiResponse({ status: 200, description: 'Listado de instalaciones' })
+  @ApiOperation({
+    summary: 'Listar instalaciones',
+    description: 'Obtiene el listado de instalaciones sin paginación. El acceso depende del rol.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de instalaciones',
+    schema: {
+      type: 'object',
+      properties: { data: { type: 'array', items: { type: 'object' } } },
+    },
+  })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
   async findAllList(@Request() req): Promise<ApiResponseCommon> {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
@@ -69,9 +117,21 @@ export class InstalacionesController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Obtener una instalación por ID' })
-  @ApiParam({ name: 'id', type: Number })
-  @ApiResponse({ status: 200, description: 'Instalación' })
+  @ApiOperation({
+    summary: 'Obtener instalación por ID',
+    description: 'Obtiene el detalle de una instalación por su ID.',
+  })
+  @ApiParam({ name: 'id', description: 'ID de la instalación' })
+  @ApiResponse({
+    status: 200,
+    description: 'Detalle de la instalación',
+    schema: {
+      type: 'object',
+      properties: { data: { type: 'array', items: { type: 'object' } } },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Instalación no encontrada' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
   async findOne(@Param('id') id: string, @Request() req) {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
@@ -192,6 +252,28 @@ export class InstalacionesController {
   }
 
   @Delete(':id')
+  @ApiOperation({
+    summary: 'Eliminar instalación',
+    description: 'Elimina una instalación del sistema.',
+  })
+  @ApiParam({ name: 'id', description: 'ID de la instalación a eliminar' })
+  @ApiResponse({
+    status: 200,
+    description: 'Instalación eliminada correctamente',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: { id: { type: 'number' }, nombre: { type: 'string' } },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Instalación no encontrada' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
   remove(@Param('id') id: string, @Request() req) {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;

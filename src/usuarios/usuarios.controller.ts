@@ -35,9 +35,6 @@ import { UpdateUsuarioDispositivoDto } from './dto/update-usuario-dispositivo.dt
 export class UsuariosController {
   constructor(private readonly usuariosService: UsuariosService) { }
 
-  // ========================================
-  // 🔹 POST ROUTES (crear recursos)
-  // ========================================
   @Post()
   @ApiOperation({ summary: 'Registrar un nuevo usuario' })
   @ApiResponse({
@@ -56,9 +53,6 @@ export class UsuariosController {
     return await this.usuariosService.createUsuario(createUsuarioDto, idUser);
   }
 
-  // ========================================
-  // 🔹 GET ROUTES - Rutas específicas primero
-  // ========================================
   @Get('list')
   @ApiOperation({ summary: 'Obtener todos los usuarios sin paginación' })
   @ApiResponse({ status: 200, description: 'Lista completa de usuarios' })
@@ -123,10 +117,6 @@ export class UsuariosController {
     return this.usuariosService.getUsuarioByID(+id, +cliente, +rol);
   }
 
-  // ========================================
-  // 🔹 PUT ROUTES (actualización completa)
-  // ========================================
-
   @Put('actualizar/contrasena/:id')
   @ApiOperation({ summary: 'Cambiar contraseña de usuario' })
   @ApiResponse({
@@ -148,10 +138,6 @@ export class UsuariosController {
     );
   }
 
-  // ========================================
-  // 🔹 PUT ACTUALIZAR USUARIO
-  // ========================================
-
   @Put(':id')
   @ApiOperation({ summary: 'Actualizar información completa del usuario' })
   @ApiResponse({ status: 200, description: 'Usuario actualizado exitosamente' })
@@ -169,10 +155,6 @@ export class UsuariosController {
       idUser,
     );
   }
-
-  // ========================================
-  // 🔹 PATCH ROUTES (actualización parcial)
-  // ========================================
 
   @Patch('generar/pin')
   @ApiOperation({ summary: 'Actualizar o crear PIN de operador' })
@@ -224,10 +206,6 @@ export class UsuariosController {
       idUser,
     );
   }
-
-  // ========================================
-  // 🔹 DELETE ROUTES
-  // ========================================
 
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar usuario' })
