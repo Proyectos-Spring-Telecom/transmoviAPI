@@ -35,20 +35,32 @@ export class CatTipoVerificacionesController {
 
   @Post()
   @ApiOperation({
-    summary: 'Crear un nuevo tipo de verificación',
-    description: 'Crea un nuevo registro de tipo de verificación en el catálogo.',
+    summary: 'Crear tipo de verificación',
+    description:
+      'Registra un nuevo tipo de verificación en el catálogo (ej: Verificación Técnica, Verificación Física). El nombre debe ser único.',
   })
   @ApiBody({
     type: CreateCatTipoVerificacionesDto,
-    description: 'Datos del tipo de verificación a crear',
+    description: 'nombre (obligatorio, máx. 100 caracteres)',
   })
   @ApiResponse({
     status: 201,
     description: 'Tipo de verificación creado exitosamente',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', example: 'success' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: { id: { type: 'number' }, nombre: { type: 'string' } },
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 400,
-    description: 'Error de validación o el tipo de verificación ya existe',
+    description: 'El tipo de verificación ya existe o error de validación',
   })
   @ApiResponse({
     status: 401,
@@ -67,12 +79,28 @@ export class CatTipoVerificacionesController {
 
   @Get('list')
   @ApiOperation({
-    summary: 'Obtener listado de tipos de verificación',
-    description: 'Obtiene un listado completo de todos los tipos de verificación sin paginación.',
+    summary: 'Listar tipos de verificación',
+    description:
+      'Obtiene el catálogo completo de tipos de verificación sin paginación. Ordenado por nombre ascendente.',
   })
   @ApiResponse({
     status: 200,
-    description: 'Listado de tipos de verificación obtenido exitosamente',
+    description: 'Lista de tipos de verificación',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'number' },
+              nombre: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 401,
@@ -84,24 +112,37 @@ export class CatTipoVerificacionesController {
 
   @Get(':page/:limit')
   @ApiOperation({
-    summary: 'Obtener tipos de verificación paginados',
-    description: 'Obtiene un listado paginado de tipos de verificación.',
+    summary: 'Listar tipos de verificación paginados',
+    description: 'Obtiene el catálogo paginado de tipos de verificación. Ordenado por nombre ascendente.',
   })
-  @ApiParam({
-    name: 'page',
-    type: Number,
-    description: 'Número de página',
-    example: 1,
-  })
-  @ApiParam({
-    name: 'limit',
-    type: Number,
-    description: 'Cantidad de registros por página',
-    example: 10,
-  })
+  @ApiParam({ name: 'page', description: 'Número de página (desde 1)' })
+  @ApiParam({ name: 'limit', description: 'Registros por página' })
   @ApiResponse({
     status: 200,
-    description: 'Listado paginado de tipos de verificación obtenido exitosamente',
+    description: 'Lista paginada de tipos de verificación',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'number' },
+              nombre: { type: 'string' },
+            },
+          },
+        },
+        paginated: {
+          type: 'object',
+          properties: {
+            total: { type: 'number' },
+            page: { type: 'number' },
+            lastPage: { type: 'number' },
+          },
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 401,
@@ -116,18 +157,28 @@ export class CatTipoVerificacionesController {
 
   @Get(':id')
   @ApiOperation({
-    summary: 'Obtener un tipo de verificación por ID',
-    description: 'Obtiene los detalles de un tipo de verificación específico por su ID.',
+    summary: 'Obtener tipo de verificación por ID',
+    description: 'Obtiene el detalle de un tipo de verificación por su ID.',
   })
-  @ApiParam({
-    name: 'id',
-    type: Number,
-    description: 'ID del tipo de verificación',
-    example: 1,
-  })
+  @ApiParam({ name: 'id', description: 'ID del tipo de verificación' })
   @ApiResponse({
     status: 200,
-    description: 'Tipo de verificación encontrado exitosamente',
+    description: 'Tipo de verificación encontrado',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'number' },
+              nombre: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 404,
@@ -143,26 +194,32 @@ export class CatTipoVerificacionesController {
 
   @Patch(':id')
   @ApiOperation({
-    summary: 'Actualizar un tipo de verificación',
-    description: 'Actualiza los datos de un tipo de verificación existente.',
+    summary: 'Actualizar tipo de verificación',
+    description: 'Modifica el nombre de un tipo de verificación existente. El nombre debe seguir siendo único.',
   })
-  @ApiParam({
-    name: 'id',
-    type: Number,
-    description: 'ID del tipo de verificación a actualizar',
-    example: 1,
-  })
+  @ApiParam({ name: 'id', description: 'ID del tipo de verificación a actualizar' })
   @ApiBody({
     type: UpdateCatTipoVerificacionesDto,
-    description: 'Datos del tipo de verificación a actualizar',
+    description: 'nombre (opcional, máx. 100 caracteres)',
   })
   @ApiResponse({
     status: 200,
-    description: 'Tipo de verificación actualizado exitosamente',
+    description: 'Tipo de verificación actualizado correctamente',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', example: 'success' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: { id: { type: 'number' }, nombre: { type: 'string' } },
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 400,
-    description: 'Error de validación o el nombre ya existe',
+    description: 'El nombre ya existe o error de validación',
   })
   @ApiResponse({
     status: 404,
@@ -187,18 +244,24 @@ export class CatTipoVerificacionesController {
 
   @Delete(':id')
   @ApiOperation({
-    summary: 'Eliminar un tipo de verificación',
+    summary: 'Eliminar tipo de verificación',
     description: 'Elimina permanentemente un tipo de verificación del catálogo.',
   })
-  @ApiParam({
-    name: 'id',
-    type: Number,
-    description: 'ID del tipo de verificación a eliminar',
-    example: 1,
-  })
+  @ApiParam({ name: 'id', description: 'ID del tipo de verificación a eliminar' })
   @ApiResponse({
     status: 200,
-    description: 'Tipo de verificación eliminado exitosamente',
+    description: 'Tipo de verificación eliminado correctamente',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', example: 'success' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: { id: { type: 'number' }, nombre: { type: 'string' } },
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 404,

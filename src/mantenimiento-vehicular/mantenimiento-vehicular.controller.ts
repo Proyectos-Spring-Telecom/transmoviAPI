@@ -93,21 +93,21 @@ export class MantenimientoVehicularController {
     summary: 'Obtener mantenimientos vehiculares paginados',
     description: 'Obtiene un listado paginado de mantenimientos vehiculares con sus relaciones.',
   })
-  @ApiParam({
-    name: 'page',
-    type: Number,
-    description: 'Número de página',
-    example: 1,
-  })
-  @ApiParam({
-    name: 'limit',
-    type: Number,
-    description: 'Cantidad de registros por página',
-    example: 10,
-  })
+  @ApiParam({ name: 'page', description: 'Número de página (desde 1)' })
+  @ApiParam({ name: 'limit', description: 'Registros por página' })
   @ApiResponse({
     status: 200,
-    description: 'Listado paginado de mantenimientos vehiculares obtenido exitosamente',
+    description: 'Lista paginada de mantenimientos vehiculares',
+    schema: {
+      type: 'object',
+      properties: {
+        data: { type: 'array', items: { type: 'object' } },
+        paginated: {
+          type: 'object',
+          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 401,

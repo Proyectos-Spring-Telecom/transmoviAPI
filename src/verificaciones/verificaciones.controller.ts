@@ -68,15 +68,20 @@ export class VerificacionesController {
   @ApiResponse({
     status: 201,
     description: 'Verificación creada exitosamente',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', example: 'success' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: { id: { type: 'number' }, nombre: { type: 'string' } },
+        },
+      },
+    },
   })
-  @ApiResponse({
-    status: 400,
-    description: 'Error de validación',
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'No autorizado',
-  })
+  @ApiResponse({ status: 400, description: 'Error de validación' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
   async create(
     @Body() createVerificacionesDto: CreateVerificacionesDto,
     @UploadedFile() notaVerificacionFile: Express.Multer.File,
@@ -111,12 +116,25 @@ export class VerificacionesController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Listado paginado de verificaciones obtenido exitosamente',
+    description: 'Listado paginado de verificaciones',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: { id: { type: 'number' }, idVehiculo: { type: 'number' }, fechaVerificacion: { type: 'string' }, estatus: { type: 'number' } },
+          },
+        },
+        paginated: {
+          type: 'object',
+          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+        },
+      },
+    },
   })
-  @ApiResponse({
-    status: 401,
-    description: 'No autorizado',
-  })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
   findAll(
     @Query('page', ParseIntPipe) page: number,
     @Query('limit', ParseIntPipe) limit: number,
@@ -134,12 +152,21 @@ export class VerificacionesController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Categorías de mantenimiento mecánico obtenidas exitosamente',
+    description: 'Categorías de mantenimiento mecánico con características de evaluación',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: { id: { type: 'number' }, nombre: { type: 'string' }, caracteristicas: { type: 'array' } },
+          },
+        },
+      },
+    },
   })
-  @ApiResponse({
-    status: 401,
-    description: 'No autorizado',
-  })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
   getCategoriasMantenimientoMecanico(): Promise<ApiResponseCommon> {
     return this.verificacionesService.getCategoriasMantenimientoMecanico();
   }
@@ -157,16 +184,19 @@ export class VerificacionesController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Verificación encontrada exitosamente',
+    description: 'Detalle de la verificación',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'object',
+          properties: { id: { type: 'number' }, idVehiculo: { type: 'number' }, fechaVerificacion: { type: 'string' }, notaVerificacion: { type: 'string' }, estatus: { type: 'number' } },
+        },
+      },
+    },
   })
-  @ApiResponse({
-    status: 404,
-    description: 'Verificación no encontrada',
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'No autorizado',
-  })
+  @ApiResponse({ status: 404, description: 'Verificación no encontrada' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
   findOne(@Param('id', ParseIntPipe) id: number, @Request() req): Promise<ApiResponseCommon> {
     const idCliente = req.user.cliente;
     const rol = req.user.rol;
@@ -190,20 +220,22 @@ export class VerificacionesController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Verificación actualizada exitosamente',
+    description: 'Verificación actualizada correctamente',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', example: 'success' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: { id: { type: 'number' }, nombre: { type: 'string' } },
+        },
+      },
+    },
   })
-  @ApiResponse({
-    status: 400,
-    description: 'Error de validación',
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'Verificación no encontrada',
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'No autorizado',
-  })
+  @ApiResponse({ status: 400, description: 'Error de validación' })
+  @ApiResponse({ status: 404, description: 'Verificación no encontrada' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateVerificacionesDto: UpdateVerificacionesDto,
@@ -230,16 +262,21 @@ export class VerificacionesController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Verificación desactivada exitosamente',
+    description: 'Verificación desactivada correctamente',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', example: 'success' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: { id: { type: 'number' }, nombre: { type: 'string' } },
+        },
+      },
+    },
   })
-  @ApiResponse({
-    status: 404,
-    description: 'Verificación no encontrada',
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'No autorizado',
-  })
+  @ApiResponse({ status: 404, description: 'Verificación no encontrada' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
   async desactivar(
     @Param('id', ParseIntPipe) id: number,
     @Request() req,
@@ -261,20 +298,22 @@ export class VerificacionesController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Verificación activada exitosamente',
+    description: 'Verificación activada correctamente',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', example: 'success' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: { id: { type: 'number' }, nombre: { type: 'string' } },
+        },
+      },
+    },
   })
-  @ApiResponse({
-    status: 400,
-    description: 'La verificación ya está activa',
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'Verificación no encontrada',
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'No autorizado',
-  })
+  @ApiResponse({ status: 400, description: 'La verificación ya está activa' })
+  @ApiResponse({ status: 404, description: 'Verificación no encontrada' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
   async activar(
     @Param('id', ParseIntPipe) id: number,
     @Request() req,

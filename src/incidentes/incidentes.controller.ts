@@ -68,6 +68,17 @@ export class IncidentesController {
   @ApiResponse({
     status: 201,
     description: 'Incidente creado exitosamente',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', example: 'success' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: { id: { type: 'number' }, nombre: { type: 'string' } },
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 400,
@@ -111,12 +122,19 @@ export class IncidentesController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Listado paginado de incidentes obtenido exitosamente',
+    description: 'Lista paginada de incidentes',
+    schema: {
+      type: 'object',
+      properties: {
+        data: { type: 'array', items: { type: 'object' } },
+        paginated: {
+          type: 'object',
+          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+        },
+      },
+    },
   })
-  @ApiResponse({
-    status: 401,
-    description: 'No autorizado',
-  })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
   findAll(
     @Query('page', ParseIntPipe) page: number,
     @Query('limit', ParseIntPipe) limit: number,
@@ -140,16 +158,14 @@ export class IncidentesController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Incidente encontrado exitosamente',
+    description: 'Detalle del incidente',
+    schema: {
+      type: 'object',
+      properties: { data: { type: 'array', items: { type: 'object' } } },
+    },
   })
-  @ApiResponse({
-    status: 404,
-    description: 'Incidente no encontrado',
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'No autorizado',
-  })
+  @ApiResponse({ status: 404, description: 'Incidente no encontrado' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
   findOne(@Param('id', ParseIntPipe) id: number, @Request() req): Promise<ApiResponseCommon> {
     const idCliente = req.user.cliente;
     const rol = req.user.rol;
@@ -174,19 +190,21 @@ export class IncidentesController {
   @ApiResponse({
     status: 200,
     description: 'Incidente actualizado exitosamente',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', example: 'success' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: { id: { type: 'number' }, nombre: { type: 'string' } },
+        },
+      },
+    },
   })
-  @ApiResponse({
-    status: 400,
-    description: 'Error de validación',
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'Incidente no encontrado',
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'No autorizado',
-  })
+  @ApiResponse({ status: 400, description: 'Error de validación' })
+  @ApiResponse({ status: 404, description: 'Incidente no encontrado' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateIncidentesDto: UpdateIncidentesDto,

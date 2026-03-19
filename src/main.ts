@@ -56,7 +56,6 @@ async function bootstrap() {
     .addTag('Incidentes', 'Registro y gestión de incidentes')
     .addTag('Instalaciones', 'Gestión de instalaciones')
     .addTag('Licencias', 'Gestión de licencias')
-    .addTag('Mail', 'Servicio de correo electrónico')
     .addTag('Mantenimiento combustible', 'Registro de mantenimiento de combustible')
     .addTag('Mantenimiento kilometraje', 'Registro de mantenimiento por kilometraje')
     .addTag('Mantenimiento vehicular', 'Gestión de mantenimiento vehicular')
@@ -82,8 +81,6 @@ async function bootstrap() {
     .addTag('Vehiculos', 'Gestión de vehículos')
     .addTag('Verificaciones', 'Gestión de verificaciones vehiculares')
     .addTag('Viajes', 'Gestión de viajes')
-    .addTag('Viajes conteos', 'Relación viajes-conteos')
-    .addTag('Viajes transacciones', 'Relación viajes-transacciones')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

@@ -29,8 +29,6 @@ import { UsuariosinstalacionesModule } from './usuariosinstalaciones/usuariosins
 import { DerroterosModule } from './derroteros/derroteros.module';
 import { TarifasModule } from './tarifas/tarifas.module';
 import { ViajesModule } from './viajes/viajes.module';
-import { ViajesconteosModule } from './viajesconteos/viajesconteos.module';
-import { ViajestransaccionesModule } from './viajestransacciones/viajestransacciones.module';
 import { MailModule } from './mail/mail.module';
 import { HistoricoinstalacionesModule } from './historicoinstalaciones/historicoinstalaciones.module';
 import { MonitoreoModule } from './monitoreo/monitoreo.module';
@@ -149,10 +147,6 @@ import Joi from 'joi';
     TarifasModule,
 
     ViajesModule,
-
-    ViajesconteosModule,
-
-    ViajestransaccionesModule,
 
     MailModule,
 

@@ -44,22 +44,24 @@ export class UsuariosinstalacionesController {
     type: CreateUsuariosInstalacionesDto,
     description: 'Datos para crear la relación usuario-instalación'
   })
-  @ApiResponse({ 
-    status: 201, 
+  @ApiResponse({
+    status: 201,
     description: 'Relación usuario-instalación creada exitosamente',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', example: 'success' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: { id: { type: 'number' }, nombre: { type: 'string' } },
+        },
+      },
+    },
   })
-  @ApiResponse({ 
-    status: 400, 
-    description: 'Datos de entrada inválidos' 
-  })
-  @ApiResponse({ 
-    status: 401, 
-    description: 'Token de autorización inválido o faltante' 
-  })
-  @ApiResponse({ 
-    status: 500, 
-    description: 'Error interno del servidor' 
-  })
+  @ApiResponse({ status: 400, description: 'Datos de entrada inválidos' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @ApiResponse({ status: 500, description: 'Error interno del servidor' })
   async create(
     @Body() createUsuariosInstalacionesDto: CreateUsuariosInstalacionesDto,
     @Request() req,
@@ -77,14 +79,23 @@ export class UsuariosinstalacionesController {
     summary: 'Obtener lista completa',
     description: 'Obtiene una lista completa de todas las relaciones usuario-instalación activas'
   })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Lista obtenida exitosamente'
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de relaciones usuario-instalación',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: { id: { type: 'number' }, idUsuario: { type: 'number' }, idInstalacion: { type: 'number' }, estatus: { type: 'number' } },
+          },
+        },
+      },
+    },
   })
-  @ApiResponse({ 
-    status: 401, 
-    description: 'Token de autorización inválido o faltante' 
-  })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
   async findAllList() {
     return this.usuariosinstalacionesService.findAllList();
   }
@@ -100,18 +111,24 @@ export class UsuariosinstalacionesController {
     description: 'ID del usuario',
     example: 123
   })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Instalaciones del usuario obtenidas exitosamente'
+  @ApiResponse({
+    status: 200,
+    description: 'Instalaciones asociadas al usuario',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: { id: { type: 'number' }, idUsuario: { type: 'number' }, idInstalacion: { type: 'number' } },
+          },
+        },
+      },
+    },
   })
-  @ApiResponse({ 
-    status: 404, 
-    description: 'Usuario no encontrado' 
-  })
-  @ApiResponse({ 
-    status: 401, 
-    description: 'Token de autorización inválido o faltante' 
-  })
+  @ApiResponse({ status: 404, description: 'Usuario no encontrado' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
   async findOneUsuario(@Param('idUsuario', ParseIntPipe) id: number) {
     return await this.usuariosinstalacionesService.findOneUsuario(id);
   }
@@ -133,18 +150,28 @@ export class UsuariosinstalacionesController {
     description: 'Cantidad de registros por página',
     example: 10
   })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Lista paginada obtenida exitosamente'
+  @ApiResponse({
+    status: 200,
+    description: 'Lista paginada de relaciones usuario-instalación',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: { id: { type: 'number' }, idUsuario: { type: 'number' }, idInstalacion: { type: 'number' }, estatus: { type: 'number' } },
+          },
+        },
+        paginated: {
+          type: 'object',
+          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+        },
+      },
+    },
   })
-  @ApiResponse({ 
-    status: 400, 
-    description: 'Parámetros de paginación inválidos' 
-  })
-  @ApiResponse({ 
-    status: 401, 
-    description: 'Token de autorización inválido o faltante' 
-  })
+  @ApiResponse({ status: 400, description: 'Parámetros de paginación inválidos' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
   async findAll(
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,
@@ -164,57 +191,58 @@ export class UsuariosinstalacionesController {
     description: 'ID de la relación usuario-instalación',
     example: 1
   })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Relación encontrada exitosamente'
+  @ApiResponse({
+    status: 200,
+    description: 'Detalle de la relación usuario-instalación',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'object',
+          properties: { id: { type: 'number' }, idUsuario: { type: 'number' }, idInstalacion: { type: 'number' }, estatus: { type: 'number' } },
+        },
+      },
+    },
   })
-  @ApiResponse({ 
-    status: 404, 
-    description: 'Relación no encontrada' 
-  })
-  @ApiResponse({ 
-    status: 401, 
-    description: 'Token de autorización inválido o faltante' 
-  })
+  @ApiResponse({ status: 404, description: 'Relación no encontrada' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
   async findOne(@Param('id', ParseIntPipe) id: number) {
     return this.usuariosinstalacionesService.findOne(id);
   }
 
   @Put(':idUsuario')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Actualizar relación usuario-instalación',
-    description: 'Actualiza completamente las instalaciones asociadas a un usuario'
+    description: 'Actualiza completamente las instalaciones asociadas a un usuario.',
   })
-  @ApiParam({ 
-    name: 'id', 
-    type: 'number', 
-    description: 'ID del usuario',
-    example: 123
+  @ApiParam({
+    name: 'idUsuario',
+    description: 'ID del usuario cuyas instalaciones se actualizan',
+    example: 123,
   })
   @ApiBody({ 
     type: UpdateUsuariosinstalacioneDto,
     description: 'Nuevos datos de instalaciones para el usuario'
   })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Instalaciones del usuario actualizadas exitosamente',
+  @ApiResponse({
+    status: 200,
+    description: 'Instalaciones del usuario actualizadas correctamente',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', example: 'success' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: { id: { type: 'number' }, nombre: { type: 'string' } },
+        },
+      },
+    },
   })
-  @ApiResponse({ 
-    status: 400, 
-    description: 'Datos de entrada inválidos' 
-  })
-  @ApiResponse({ 
-    status: 404, 
-    description: 'Usuario no encontrado' 
-  })
-  @ApiResponse({ 
-    status: 401, 
-    description: 'Token de autorización inválido o faltante' 
-  })
-  @ApiResponse({ 
-    status: 500, 
-    description: 'Error interno del servidor' 
-  })
+  @ApiResponse({ status: 400, description: 'Datos de entrada inválidos' })
+  @ApiResponse({ status: 404, description: 'Usuario no encontrado' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @ApiResponse({ status: 500, description: 'Error interno del servidor' })
   async update(
     @Param('idUsuario', ParseIntPipe) id: number,
     @Body() updateUsuariosinstalacioneDto: UpdateUsuariosinstalacioneDto,
@@ -243,26 +271,25 @@ export class UsuariosinstalacionesController {
     type: UpdateUsuariosInstalacionesEstatusDto,
     description: 'Nuevo estatus de la relación'
   })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Estatus actualizado exitosamente',
+  @ApiResponse({
+    status: 200,
+    description: 'Estatus actualizado correctamente',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', example: 'success' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: { id: { type: 'number' }, nombre: { type: 'string' } },
+        },
+      },
+    },
   })
-  @ApiResponse({ 
-    status: 400, 
-    description: 'Datos de entrada inválidos' 
-  })
-  @ApiResponse({ 
-    status: 404, 
-    description: 'Relación no encontrada' 
-  })
-  @ApiResponse({ 
-    status: 401, 
-    description: 'Token de autorización inválido o faltante' 
-  })
-  @ApiResponse({ 
-    status: 500, 
-    description: 'Error interno del servidor' 
-  })
+  @ApiResponse({ status: 400, description: 'Datos de entrada inválidos' })
+  @ApiResponse({ status: 404, description: 'Relación no encontrada' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @ApiResponse({ status: 500, description: 'Error interno del servidor' })
   async updateEstatus(
     @Param('id', ParseIntPipe) id: number,
     @Body()
@@ -288,22 +315,24 @@ export class UsuariosinstalacionesController {
     description: 'ID de la relación usuario-instalación a eliminar',
     example: 1
   })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Relación eliminada exitosamente',
+  @ApiResponse({
+    status: 200,
+    description: 'Relación eliminada correctamente',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', example: 'success' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: { id: { type: 'number' }, nombre: { type: 'string' } },
+        },
+      },
+    },
   })
-  @ApiResponse({ 
-    status: 404, 
-    description: 'Relación no encontrada' 
-  })
-  @ApiResponse({ 
-    status: 401, 
-    description: 'Token de autorización inválido o faltante' 
-  })
-  @ApiResponse({ 
-    status: 500, 
-    description: 'Error interno del servidor' 
-  })
+  @ApiResponse({ status: 404, description: 'Relación no encontrada' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @ApiResponse({ status: 500, description: 'Error interno del servidor' })
   async remove(
     @Param('id', ParseIntPipe) id: number,
     @Request() req,

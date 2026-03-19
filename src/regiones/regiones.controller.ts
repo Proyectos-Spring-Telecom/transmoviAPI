@@ -16,7 +16,7 @@ import { CreateRegionesDto } from './dto/create-regione.dto';
 import { UpdateRegioneDto } from './dto/update-regione.dto';
 import { UpdateRegionesEstatusDto } from './dto/update-regione-estatus.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
 
 @ApiTags('Regiones')
 @ApiBearerAuth('bearer-token')
@@ -26,6 +26,31 @@ export class RegionesController {
   constructor(private readonly regionesService: RegionesService) {}
 
   @Post()
+  @ApiOperation({
+    summary: 'Crear región',
+    description: 'Registra una nueva región geográfica asociada a un cliente.',
+  })
+  @ApiBody({
+    type: CreateRegionesDto,
+    description: 'nombre, descripción, idCliente, coordenadas, estatus, etc.',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Región creada exitosamente',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', example: 'success' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: { id: { type: 'number' }, nombre: { type: 'string' } },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Error de validación' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
   create(@Body() createRegionesDto: CreateRegionesDto, @Request() req) {
     const idUser = req.user.userId;
     const cliente = req.user.cliente;
@@ -39,6 +64,27 @@ export class RegionesController {
   }
 
   @Get('list')
+  @ApiOperation({
+    summary: 'Listar regiones',
+    description: 'Obtiene el listado de regiones activas. El acceso depende del rol del usuario.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de regiones',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: { id: { type: 'number' }, nombre: { type: 'string' }, idCliente: { type: 'number' } },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
   async findAllList(@Request() req) {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
@@ -59,7 +105,19 @@ export class RegionesController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Regiones obtenidas exitosamente',
+    description: 'Lista de regiones del cliente',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: { id: { type: 'number' }, nombre: { type: 'string' }, idCliente: { type: 'number' }, estatus: { type: 'number' } },
+          },
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 401,
@@ -79,6 +137,33 @@ export class RegionesController {
   }
 
   @Get(':page/:limit')
+  @ApiOperation({
+    summary: 'Listar regiones paginadas',
+    description: 'Obtiene el catálogo paginado de regiones. El acceso depende del rol del usuario.',
+  })
+  @ApiParam({ name: 'page', description: 'Número de página (desde 1)' })
+  @ApiParam({ name: 'limit', description: 'Registros por página' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista paginada de regiones',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: { id: { type: 'number' }, nombre: { type: 'string' }, idCliente: { type: 'number' }, estatus: { type: 'number' } },
+          },
+        },
+        paginated: {
+          type: 'object',
+          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
   findAll(
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,
@@ -91,6 +176,26 @@ export class RegionesController {
   }
 
   @Get(':id')
+  @ApiOperation({
+    summary: 'Obtener región por ID',
+    description: 'Obtiene el detalle de una región por su ID.',
+  })
+  @ApiParam({ name: 'id', description: 'ID de la región' })
+  @ApiResponse({
+    status: 200,
+    description: 'Detalle de la región',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'object',
+          properties: { id: { type: 'number' }, nombre: { type: 'string' }, idCliente: { type: 'number' }, estatus: { type: 'number' } },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Región no encontrada' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
   findOne(@Param('id') id: string, @Request() req) {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
@@ -99,6 +204,32 @@ export class RegionesController {
   }
 
   @Patch('estatus/:id')
+  @ApiOperation({
+    summary: 'Actualizar estatus de la región',
+    description: 'Cambia el estatus de una región (0=Inactivo, 1=Activo).',
+  })
+  @ApiParam({ name: 'id', description: 'ID de la región' })
+  @ApiBody({
+    type: UpdateRegionesEstatusDto,
+    description: 'estatus (0 ó 1)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Estatus actualizado correctamente',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', example: 'success' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: { id: { type: 'number' }, nombre: { type: 'string' } },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Región no encontrada' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
   async updateEstatus(
     @Param('id') id: string,
     @Body() updateRegionesEstatusDto: UpdateRegionesEstatusDto,
@@ -117,6 +248,32 @@ export class RegionesController {
   }
 
   @Put(':id')
+  @ApiOperation({
+    summary: 'Actualizar región',
+    description: 'Modifica los datos de una región existente.',
+  })
+  @ApiParam({ name: 'id', description: 'ID de la región a actualizar' })
+  @ApiBody({
+    type: UpdateRegioneDto,
+    description: 'Campos a actualizar: nombre, descripción, coordenadas, estatus',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Región actualizada correctamente',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', example: 'success' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: { id: { type: 'number' }, nombre: { type: 'string' } },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Región no encontrada' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
   update(
     @Param('id') id: string,
     @Body() updateRegioneDto: UpdateRegioneDto,
@@ -135,6 +292,28 @@ export class RegionesController {
   }
 
   @Delete(':id')
+  @ApiOperation({
+    summary: 'Eliminar región',
+    description: 'Eliminación lógica: cambia el estatus de la región a inactivo.',
+  })
+  @ApiParam({ name: 'id', description: 'ID de la región a eliminar' })
+  @ApiResponse({
+    status: 200,
+    description: 'Región eliminada correctamente',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', example: 'success' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: { id: { type: 'number' }, nombre: { type: 'string' } },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Región no encontrada' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
   remove(@Param('id') id: string, @Request() req) {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;

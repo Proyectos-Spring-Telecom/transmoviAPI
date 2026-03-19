@@ -27,6 +27,18 @@ export class ReportesController {
   @ApiResponse({
     status: 200,
     description: 'Reporte generado exitosamente',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: { ruta: { type: 'string' }, viajes: { type: 'number' }, validaciones: { type: 'number' }, ingresos: { type: 'number' }, ticketPromedio: { type: 'number' }, porcentajeElectronico: { type: 'number' }, evasion: { type: 'number' } },
+          },
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 400,
@@ -59,6 +71,18 @@ export class ReportesController {
   @ApiResponse({
     status: 200,
     description: 'Reporte generado exitosamente',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: { operador: { type: 'string' }, turnos: { type: 'number' }, viajes: { type: 'number' }, validaciones: { type: 'number' }, ingresos: { type: 'number' }, ticketPromedio: { type: 'number' }, evasion: { type: 'number' }, ultimoTurno: { type: 'string' } },
+          },
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 400,
@@ -91,6 +115,18 @@ export class ReportesController {
   @ApiResponse({
     status: 200,
     description: 'Reporte generado exitosamente',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: { vehiculo: { type: 'string' }, turnos: { type: 'number' }, viajes: { type: 'number' }, validaciones: { type: 'number' }, ingresos: { type: 'number' }, ticketPromedio: { type: 'number' }, horasServicio: { type: 'number' } },
+          },
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 400,
@@ -123,6 +159,18 @@ export class ReportesController {
   @ApiResponse({
     status: 200,
     description: 'Reporte generado exitosamente',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: { dispositivo: { type: 'string' }, instalacion: { type: 'string' }, validaciones: { type: 'number' }, ingresos: { type: 'number' }, ultimaPosicion: { type: 'object' }, estado: { type: 'string' } },
+          },
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 400,
