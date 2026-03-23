@@ -50,7 +50,7 @@ export class PosicionesService {
         });
 
         // Registro en la bitácora----- SUCCESS
-        const querylogger = { createPosicionesDto };
+        /*const querylogger = { createPosicionesDto };
         await this.bitacoraLogger.logToBitacora(
           'Posiciones',
           `Se creó una Posicion con Numero de serie Dispositivo: ${posicionSave.numeroSerieDispositivo}`,
@@ -59,7 +59,7 @@ export class PosicionesService {
           usuario?.id || 1,
           EnumModulos.POSICIONES,
           EstatusEnumBitcora.SUCCESS,
-        );
+        );*/
       }
 
       //APis Response

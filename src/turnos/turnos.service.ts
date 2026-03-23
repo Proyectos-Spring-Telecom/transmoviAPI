@@ -1260,6 +1260,25 @@ ORDER BY t.Inicio DESC;
       if (cliente != turnoFind.idCliente || idOperador != turnoFind.idOperador || idInstalacion != turnoFind.idInstalacion) {
         throw new BadRequestException(`El turno con ID: ${id} no coincide los valores del turno con el del usuario.`)
       }
+
+      // Validar y cerrar viajes abiertos asociados al turno
+      const viajesAbiertos = await this.viajesRepository.find({
+        where: { idTurno: id, estatus: EstatusEnum.ACTIVO },
+      });
+      console.log('viajesAbiertos', viajesAbiertos);
+      if (viajesAbiertos.length > 0) {
+        for (const viaje of viajesAbiertos) {
+          await this.viajesService.update(
+            idUser,
+            turnoFind.idCliente,
+            turnoFind.idOperador,
+            viaje.id,
+            {},
+          );
+        }
+      }
+      
+
       const body = {
         fin: fechaDesfasada,
         estatus: EstatusEnum.INACTIVO,
