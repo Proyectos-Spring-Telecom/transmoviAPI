@@ -235,7 +235,7 @@ INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
 
-WHERE t.Estatus = 1 AND c.Estatus = 1 AND c.Id IN (${placeholders})
+WHERE c.Estatus = 1 AND c.Id IN (${placeholders})
 ORDER BY t.Id DESC
 LIMIT ? OFFSET ?
    `;
@@ -255,7 +255,7 @@ INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
-WHERE t.Estatus = 1 AND c.Estatus = 1 AND c.Id IN (${placeholders})
+WHERE c.Estatus = 1 AND c.Id IN (${placeholders})
 `;
     return await this.turnosRepository.query(query, [...ids]);
   }
@@ -345,7 +345,6 @@ INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
-WHERE t.Estatus = 1 AND c.Estatus = 1
 ORDER BY t.Id DESC
 LIMIT ? OFFSET ?
             `,
@@ -362,7 +361,6 @@ INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
-WHERE t.Estatus = 1 AND c.Estatus = 1
             `,
           );
           break;
@@ -464,8 +462,6 @@ LEFT JOIN Usuarios u ON o.IdUsuario = u.Id
 
 WHERE ui.IdUsuario = ?
   AND ui.Estatus = 1
-  AND i.Estatus = 1
-  AND t.Estatus = 1
   AND c.Estatus = 1
 ORDER BY t.Inicio DESC
 LIMIT ? OFFSET ?
@@ -486,8 +482,6 @@ INNER JOIN Operadores o ON t.IdOperador = o.Id
 INNER JOIN Usuarios u ON o.IdUsuario = u.Id
 WHERE ui.IdUsuario = ?
   AND ui.Estatus = 1
-  AND i.Estatus = 1
-  AND t.Estatus = 1
   AND c.Estatus = 1
             `,
             [idUser],
@@ -787,7 +781,6 @@ INNER JOIN Usuarios u ON o.IdUsuario = u.Id
 
 WHERE ui.IdUsuario = ?
   AND ui.Estatus = 1
-  AND i.Estatus = 1
   AND t.Estatus = 1
   AND c.Estatus = 1
 
