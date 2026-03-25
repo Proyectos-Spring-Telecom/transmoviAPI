@@ -17,7 +17,6 @@ import {
   EstatusEnumBitcora,
 } from 'src/common/ApiResponse';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
-import { Dispositivos } from 'src/entities/Dispositivos';
 import { MonederosService } from 'src/monederos/monederos.service';
 import { PasajerosService } from 'src/pasajeros/pasajeros.service';
 import { Clientes } from 'src/entities/Clientes';
@@ -996,6 +995,8 @@ WHERE v.Id = ${idViaje}
         transaccionSaveHis = await historicoTransaccionesDebitoRepo.save(historicoTransaccion);
 
         await transaccionesDebitoRepo.update(transaccionSave.id, {
+          latitudFinal: createTransaccioneDebitoDto.latitud,
+          longitudFinal: createTransaccioneDebitoDto.longitud,
           fechaHoraFinal: fechaDesfasada,
         });
 
