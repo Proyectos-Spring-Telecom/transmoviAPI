@@ -56,6 +56,13 @@ export class TransaccionesController {
     @Request() req,
   ): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
+    console.log('[POST /transacciones/debito] Inicio', {
+      idUser,
+      idViaje: createTransaccioneDebitoDto.idViaje,
+      numeroSerieDispositivo: createTransaccioneDebitoDto.numeroSerieDispositivo,
+      tieneIdCard: !!createTransaccioneDebitoDto.idCardMonedero,
+      tieneNumeroSerieMonedero: !!createTransaccioneDebitoDto.numeroSerieMonedero,
+    });
     return this.transaccionesService.createOrCloseTransaccionDebito(
       createTransaccioneDebitoDto,
       idUser,
