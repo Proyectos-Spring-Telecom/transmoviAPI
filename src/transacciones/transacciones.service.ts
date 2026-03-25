@@ -601,9 +601,9 @@ WHERE v.Id = ${idViaje}
         longitudInicial: transaccionRechazo.longitudInicial,
         fechaHoraInicio: transaccionRechazo.fechaHoraInicio,
         distanciaInicialKm: transaccionRechazo.distanciaInicialKm,
-        latitudFinal: transaccionRechazo.latitudFinal,
-        longitudFinal: transaccionRechazo.longitudFinal,
-        fechaHoraFinal: transaccionRechazo.fechaHoraFinal,
+        latitudFinal: dto.latitud,
+        longitudFinal: dto.longitud,
+        fechaHoraFinal: fechaDesfasada,
         numeroSerieMonedero: transaccionRechazo.numeroSerieMonedero,
         numeroSerieDispositivo: transaccionRechazo.numeroSerieDispositivo,
         idViajes: transaccionRechazo.idViajes,
@@ -666,6 +666,10 @@ WHERE v.Id = ${idViaje}
     createTransaccioneDebitoDto: CreateTransaccioneDebitoDto,
     idUser: number,
   ): Promise<ApiCrudResponse> {
+    console.log('[createOrCloseTransaccionDebito] 1. Iniciando QueryRunner y transacción BD', {
+      idUser,
+      idViaje: createTransaccioneDebitoDto.idViaje,
+    });
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -677,6 +681,11 @@ WHERE v.Id = ${idViaje}
 
     try {
       const viajeFlag = await this.findTarifa(createTransaccioneDebitoDto.idViaje);
+      console.log('[createOrCloseTransaccionDebito] 2. Validación viaje/dispositivo', {
+        estatusViaje: viajeFlag[0]?.estatusViaje,
+        numeroSerieViaje: viajeFlag[0]?.numeroSerieDispositivo,
+        numeroSerieRequest: createTransaccioneDebitoDto.numeroSerieDispositivo,
+      });
       if (viajeFlag[0].estatusViaje === EstatusEnum.INACTIVO || viajeFlag[0].numeroSerieDispositivo !== createTransaccioneDebitoDto.numeroSerieDispositivo) {
         throw new BadRequestException(`El viaje ${createTransaccioneDebitoDto.idViaje} no esta activo o el dispositivo ${createTransaccioneDebitoDto.numeroSerieDispositivo} no es el mismo que el dispositivo del viaje`);
       }
@@ -698,13 +707,27 @@ WHERE v.Id = ${idViaje}
       if (!monedero) {
         throw new BadRequestException('Monedero no encontrado');
       }
+      console.log('[createOrCloseTransaccionDebito] 3. Monedero bloqueado (pessimistic_write)', {
+        idMonedero: monedero.id,
+        numeroSerie: monedero.numeroSerie,
+        saldo: monedero.saldo,
+      });
       createTransaccioneDebitoDto.numeroSerieMonedero = monedero.numeroSerie;
 
       const openList = await this.findOpenTransaccionesDebito(queryRunner.manager, monedero.numeroSerie);
+      console.log('[createOrCloseTransaccionDebito] 4. Transacciones débito ABIERTAS del monedero', {
+        cantidad: openList.length,
+        ids: openList.map((o) => o.id),
+        idViajes: openList.map((o) => o.idViajes),
+      });
 
       // CRÍTICO: Cerrar transacciones abiertas de otro viaje en la misma transacción. Pasar queryRunner para evitar lock conflict.
       for (const open of openList) {
         if (Number(open.idViajes) !== createTransaccioneDebitoDto.idViaje) {
+          console.log('[createOrCloseTransaccionDebito] 5. Cerrando viaje distinto al actual (viajeCierre)', {
+            idViajeAbierto: open.idViajes,
+            idViajeActual: createTransaccioneDebitoDto.idViaje,
+          });
           await this.viajeCierre(Number(open.idViajes), queryRunner);
         }
       }
@@ -712,11 +735,13 @@ WHERE v.Id = ${idViaje}
       //En caso de que la transacciones encontradas sean diferentes al viaje actual, se manda un error
       for (const open of openList) {
         if (Number(open.idViajes) !== createTransaccioneDebitoDto.idViaje) {
+          console.log('[createOrCloseTransaccionDebito] 6. Error: aún hay abiertas de otro viaje tras cierre', {
+            idViajeConflicto: open.idViajes,
+          });
           throw new BadRequestException(`Usted tenia transacciónes del viaje ${open.idViajes} abiertas, estas han sido cerradas correctamente, Pase de nuevo su monedero para poder viajar`);
         }
         continue;
       }
-
 
       if (openList.length > 0) {
         const { fechaDesfasada, fechaActual } = await horaDesfasada();
@@ -742,6 +767,12 @@ WHERE v.Id = ${idViaje}
         const elapsedMs = now - firstTime;
         // CRÍTICO: Ventana 1m20s desde FHRegistro de la primera abierta. Si se supera, cerrar primera y retornar (no crear nueva).
         const mustCloseFirst = elapsedMs > TransaccionesService.VENTANA_ABIERTAS_MS;
+        console.log('[createOrCloseTransaccionDebito] 7. Ventana tiempo primera transacción abierta (mismo viaje)', {
+          idPrimeraAbierta: first.id,
+          elapsedMs,
+          ventanaMaxMs: TransaccionesService.VENTANA_ABIERTAS_MS,
+          mustCloseFirst,
+        });
 
         if (mustCloseFirst) {
           const closeDto = {
@@ -763,6 +794,10 @@ WHERE v.Id = ${idViaje}
           }
 
           // Si pasa de 1 min 20 s, cerrar la primera y retornar (no crear nueva)
+          console.log('[createOrCloseTransaccionDebito] 8. Cierre por tiempo excedido — COMMIT y retorno (no crea nueva)', {
+            historicoId,
+            closedAsPagado,
+          });
           await queryRunner.commitTransaction();
           await queryRunner.release();
           await this.bitacoraLogger.logToBitacora(
@@ -786,6 +821,7 @@ WHERE v.Id = ${idViaje}
         }
       }
 
+      console.log('[createOrCloseTransaccionDebito] 9. Calculando tarifa (montoTarifa) y descuentos');
       const idUsuario = await this.obtenerIdUsuarioPasajero(monedero.numeroSerie);
       const viajeData = await this.findTarifa(createTransaccioneDebitoDto.idViaje);
       if (!viajeData || viajeData.length === 0) {
@@ -843,11 +879,19 @@ WHERE v.Id = ${idViaje}
       }
 
       const montoFinal = Number(monedero.saldo) - montoConDescuento;
+      console.log('[createOrCloseTransaccionDebito] 10. Montos', {
+        montoCalculado: montoCalculado,
+        montoConDescuento,
+        saldoMonedero: monedero.saldo,
+        montoFinal,
+        controlTransaccion,
+      });
 
       // Obtenemos la fecha con desfase de 6 horas
       const { fechaDesfasada } = await horaDesfasada();
 
       if (montoFinal < 0) {
+        console.log('[createOrCloseTransaccionDebito] 11. Saldo insuficiente — rechazo + histórico');
         const transaccionRechazo = transaccionesDebitoRepo.create({
           idTipoTransaccion: EnumTipoTransaccion.RECHAZO,
           monto: montoConDescuento,
@@ -922,6 +966,11 @@ WHERE v.Id = ${idViaje}
       const newTransaccion = transaccionesDebitoRepo.create(bodyTransaccionDebito as Partial<TransaccionesDebito>);
       (newTransaccion as any).idTipoTransaccion = EnumTipoTransaccion.DEBITO;
       const transaccionSave = await transaccionesDebitoRepo.save(newTransaccion);
+      console.log('[createOrCloseTransaccionDebito] 12. Transacción débito guardada', {
+        id: transaccionSave.id,
+        idControlTransaccion: transaccionSave.idControlTransaccion,
+        monto: transaccionSave.monto,
+      });
 
       let transaccionSaveHis;
 
@@ -946,7 +995,13 @@ WHERE v.Id = ${idViaje}
         });
         transaccionSaveHis = await historicoTransaccionesDebitoRepo.save(historicoTransaccion);
 
-        // Bitácora de éxito (controlTransaccion PAGADO)
+        await transaccionesDebitoRepo.update(transaccionSave.id, {
+          fechaHoraFinal: fechaDesfasada,
+        });
+
+        console.log('[createOrCloseTransaccionDebito] 13. Éxito PAGADO — histórico + update + COMMIT', {
+          idHistorico: transaccionSaveHis?.id,
+        });
         await queryRunner.commitTransaction();
         await queryRunner.release();
         await this.bitacoraLogger.logToBitacora(
@@ -971,6 +1026,7 @@ WHERE v.Id = ${idViaje}
       }
 
       // Bitácora de éxito (controlTransaccion ABIERTA)
+      console.log('[createOrCloseTransaccionDebito] 14. Éxito ABIERTA — COMMIT (sin histórico completo de cierre)');
       await queryRunner.commitTransaction();
       await queryRunner.release();
       await this.bitacoraLogger.logToBitacora(
@@ -1898,7 +1954,6 @@ LIMIT ? OFFSET ?;
         `,
             [fechaInicioParam, fechaFinParam, ...ids, fechaInicioParam, fechaFinParam, ...ids, limit, offset],
           );
-
           // Query para total (sin paginación)
           totalResult = await this.transaccionesrecargaRepository.query(
             `

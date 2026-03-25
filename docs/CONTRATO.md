@@ -245,7 +245,7 @@
 | GET | `/turnos/list` | Listar turnos |
 | GET | `/turnos/:page/:limit` | Listar paginado |
 | GET | `/turnos/:id` | Obtener por ID |
-| PATCH | `/turnos/:id` | Actualizar turno (cierre) |
+| PATCH | `/turnos/:id` | Actualizar turno (cierre). Cierra automáticamente todos los viajes abiertos del turno antes de cerrarlo. Body: `numeroSerieDispositivo` |
 | PATCH | `/turnos/estatus/:id` | Cambiar estatus |
 | DELETE | `/turnos/:id` | Eliminar turno |
 
@@ -591,3 +591,4 @@
 3. **Eliminación:** La mayoría de DELETE son lógicos (cambio de estatus).
 4. **Multipart:** S3 y Verificaciones usan `multipart/form-data`.
 5. **Fechas:** Formato ISO 8601 / YYYY-MM-DD según el endpoint.
+6. **Cierre de turno:** Al cerrar un turno (`PATCH /turnos/:id`), se cierran automáticamente todos los viajes abiertos del turno (incluidas transacciones y conteos asociados).

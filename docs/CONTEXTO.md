@@ -47,7 +47,7 @@ Flujo operativo:
 1. **Autenticación:** Usuario/operador/pasajero con JWT o PIN.  
 2. **Recarga:** Pasajero recarga monedero (efectivo/tarjeta).  
 3. **Validación:** Pasajero valida en dispositivo; se debita tarifa del monedero.  
-4. **Turnos:** Operador abre/cierra turno, asocia vehículo y dispositivo.  
+4. **Turnos:** Operador abre/cierra turno, asocia vehículo y dispositivo. Al cerrar un turno, se cierran automáticamente todos los viajes abiertos asociados (y sus transacciones/conteos).  
 5. **Viajes:** Apertura/cierre de viaje por derrotero.  
 6. **Conteo:** BlueVox registra pasajeros por viaje.  
 7. **Monitoreo:** Posiciones GPS en tiempo real para flota.  
@@ -219,6 +219,13 @@ src/
 1. `GET /monitoreo/list/:cliente` → última posición por dispositivo.  
 2. `POST /monitoreo/recorrido` → posiciones por dispositivo y fecha.  
 
+### 8.4 Cierre de turno
+
+1. Operador envía `PATCH /turnos/:id` con `numeroSerieDispositivo` para cerrar turno.  
+2. API valida instalación, turno y permisos.  
+3. **Si existen viajes abiertos** (estatus ACTIVO) del turno → se cierran uno a uno (transacciones abiertas, conteos, fin, estatus INACTIVO).  
+4. Se cierra el turno (fin, estatus INACTIVO).  
+
 ---
 
 ## 9. Entidades principales
@@ -233,13 +240,19 @@ src/
 | Monederos                  | Pasajeros, CatTiposPasajeros, Clientes         |
 | TransaccionesRecarga/Debito| Monederos, Dispositivos, Derroteros            |
 | Viajes                     | Turnos, Derroteros, Operadores                 |
-| Turnos                     | Operadores, Vehículos, Dispositivos, Rutas     |
+| Turnos                     | Operadores, Vehículos, Dispositivos, Rutas. Al cerrar, cierra viajes abiertos automáticamente |
 | ConteoPasajeros            | BlueVox, Viajes                                |
 | Posiciones                 | Dispositivos                                   |
 
 ---
 
-## 10. Consideraciones para desarrollo
+## 10. Módulos eliminados
+
+Los módulos **viajesconteos** y **viajestransacciones** fueron eliminados. No existen endpoints API para estas entidades. Las tablas/entidades pueden seguir en BD para compatibilidad.
+
+---
+
+## 11. Consideraciones para desarrollo
 
 - Usar **Swagger** (`/docs`) como referencia de contratos.  
 - Respetar **nombres de variables** y DTOs existentes.  
