@@ -1242,14 +1242,8 @@ ORDER BY t.Inicio DESC;
         throw new NotFoundException('No se ha encontrado la instalación asignada al dispositivo.');
       }
       const idInstalacion = instalacion[0].Id;
-      //Generamos el desfase de horarios
-      function pad(n: number) {
-        return n < 10 ? '0' + n : n;
-      }
-      const ahora = new Date();
-      const desfaseMs = -6 * 60 * 60 * 1000; // -6 horas
-      const fechaDesfasada = new Date(ahora.getTime() + desfaseMs);
-      const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())} ${pad(fechaDesfasada.getHours())}:${pad(fechaDesfasada.getMinutes())}:${pad(fechaDesfasada.getSeconds())}`;
+      
+      const { fechaDesfasada, fechaActual } = await horaDesfasada();
       // buscamos el turno
       const turnoFind = await this.turnosRepository.findOne({ where: { id: id } })
 
@@ -1285,7 +1279,7 @@ ORDER BY t.Inicio DESC;
       }
 
       //actualizamos
-      await this.turnosRepository.update(id, body);
+      await this.turnosRepository.update(id, { fin: fechaDesfasada, estatus: EstatusEnum.INACTIVO });
 
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { updateTurnoDto };
