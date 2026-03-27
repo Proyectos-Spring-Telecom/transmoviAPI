@@ -7,8 +7,7 @@ import { throwError } from 'rxjs';
 
 @Injectable()
 export class DireccionesService {
-  private readonly apiUrl: string = 'https://api.tau.com.mx/dipomex/v1/codigo_postal';
-  private readonly apiKey: string = '56d7a6da1c873c83c818f89e4b0f37fba8c63c36';
+  private readonly apiUrl: string = 'https://tecsautilities.mx/api-sepomex/api-sepomex/codigos-postales/';
 
   constructor(
     private readonly configService: ConfigService,
@@ -18,16 +17,13 @@ export class DireccionesService {
   async findByCodigoPostal(cp: string): Promise<any> {
     try {
       // La API de tau.com.mx espera el token como header APIKEY
-      const url = `${this.apiUrl}?cp=${cp}`;
+      const url = `${this.apiUrl}${cp}`;
 
       console.log('[DIRECCIONES] URL:', url);
-      console.log('[DIRECCIONES] API Key presente:', !!this.apiKey);
       console.log('[DIRECCIONES] Código postal:', cp);
 
       const response = await firstValueFrom(
-        this.httpService.get<any>(url, {
-          headers: { 'APIKEY': this.apiKey },
-        }).pipe(
+        this.httpService.get<any>(url).pipe(
           map(response => response.data),
           catchError(error => {
             console.error('[DIRECCIONES] Error completo:', {

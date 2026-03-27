@@ -78,6 +78,7 @@ export class MonitoreoService {
     d.PuntoInicio AS puntoInicio,
     d.PuntoFin AS puntoFin,
     d.RecorridoDetallado AS recorridoDetallado,
+    d.RecorridoInterpolar AS recorridoInterpolar,
     d.DistanciaKm AS distanciaKm,
     d.FechaCreacion AS fechaCreacionVariante,
     d.Estatus AS estatusVariante,
@@ -124,6 +125,7 @@ ORDER BY d.Id DESC;
     d.Nombre AS nombreVariante,
     d.PuntoInicio AS puntoInicio,
     d.PuntoFin AS puntoFin,
+    d.RecorridoDetallado AS recorridoDetallado,
     d.RecorridoInterpolar AS recorridoInterpolar,
     d.DistanciaKm AS distanciaKm,
     d.Estatus AS estatusVariante,
@@ -175,6 +177,7 @@ ORDER BY d.Id DESC;
   d.PuntoInicio AS puntoInicio,
   d.PuntoFin AS puntoFin,
   d.RecorridoDetallado AS recorridoDetallado,
+  d.RecorridoInterpolar AS recorridoInterpolar,
   d.DistanciaKm AS distanciaKm,
   d.Estatus AS estatusVariante,
 
