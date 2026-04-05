@@ -50,6 +50,37 @@ export class MonitoreoService {
     }));
   }
 
+  private async consultarDerroteroListadoRoot() {
+    const query = `
+SELECT
+  d.Id AS id,
+  d.Nombre AS nombreDerrotero,
+  d.PuntoInicio AS puntoInicio,
+  d.PuntoFin AS puntoFin,
+  d.RecorridoDetallado AS recorridoDetallado,
+  d.DistanciaKm AS distanciaKm,
+  d.FechaCreacion AS fechaCreacionDerrotero,
+  d.Estatus AS estatusDerrotero,
+  c.Id AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  c.Estatus AS estatusCliente
+FROM Derroteros d
+INNER JOIN Rutas ru ON d.IdRuta = ru.Id
+INNER JOIN Regiones r ON ru.IdRegion = r.Id
+LEFT JOIN Regiones rf ON ru.IdRegionFin = rf.Id
+INNER JOIN Clientes c ON r.IdCliente = c.Id
+WHERE c.Estatus = 1
+  AND ru.Estatus = 1
+  AND r.Estatus = 1
+  AND d.Estatus = 1
+ORDER BY d.Id DESC
+    `;
+    return this.usuariosregionesRepository.query(query);
+  }
+
+
   private async consultarDerroteroListado(cliente: number) {
     const query = `
 SELECT
@@ -90,13 +121,15 @@ ORDER BY d.Id DESC
       let ultimaPosicion;
       switch (rol) {
         case 1:
+          derroterosList = await this.consultarDerroteroListadoRoot();
+          ultimaPosicion = await this.ultimaPosicionRoot();
+          break;
         case 2:
         case 3:
         case 8:
         case 9:
         case 10:
         case 11:
-        case 13:
           derroterosList = await this.consultarDerroteroListado(cliente);
           ultimaPosicion = await this.ultimaPosicion(cliente);
           break;
@@ -176,6 +209,64 @@ ORDER BY d.Id DESC
         error: error.message,
       });
     }
+  }
+
+  private async ultimaPosicionRoot() {
+    const query = `
+SELECT
+  up.Id AS id,
+  up.Exactitud AS exactitud,
+  up.Estado AS estado,
+  up.Velocidad AS velocidad,
+  up.Direccion AS direccion,
+  up.Latitud AS latitud,
+  up.Longitud AS longitud,
+  up.FechaHora AS fechaHora,
+  up.FHRegistro AS fhRegistro,
+  up.NumeroSerieDispositivo AS numeroSerieDispositivo,
+  d.Id AS idDispositivo,
+  d.NumeroSerie AS numeroSerieDispositivo,
+  d.Marca AS marcaDispositivo,
+  d.Modelo AS modeloDispositivo,
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idBlueVox', bx.Id,
+          'numeroSerieBlueVox', bx.NumeroSerie,
+          'marcaBlueVox', bx.Marca,
+          'modeloBlueVox', bx.Modelo
+        )
+      )
+      FROM InstalacionesBlueVoxs ibv
+      INNER JOIN BlueVoxs bx ON ibv.IdBlueVox = bx.Id
+      WHERE ibv.IdInstalacion = i.Id
+        AND ibv.Estatus = 1
+        AND bx.IdCliente = i.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS blueVoxs,
+  i.IdVehiculo AS idVehiculo,
+  v.Marca AS marcaVehiculo,
+  v.Modelo AS modeloVehiculo,
+  v.Placa AS placaVehiculo,
+  v.NumeroEconomico AS numeroEconomicoVehiculo,
+  v.Foto AS foto,
+  CONCAT(
+    c.Nombre,
+    IFNULL(CONCAT(' ', c.ApellidoPaterno), ''),
+    IFNULL(CONCAT(' ', c.ApellidoMaterno), '')
+  ) AS nombreCompletoCliente
+FROM Instalaciones i
+INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
+INNER JOIN Clientes c ON i.IdCliente = c.Id
+INNER JOIN UltimaPosicion up ON d.NumeroSerie = up.NumeroSerieDispositivo
+WHERE i.Estatus = 1
+  AND c.Estatus = 1
+ORDER BY up.Id DESC
+    `;
+    return this.usuariosregionesRepository.query(query);
   }
 
   private async ultimaPosicion(cliente: number) {
