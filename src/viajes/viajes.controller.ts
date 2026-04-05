@@ -241,7 +241,7 @@ export class ViajesController {
     const idUser = req.user.userId;
     const cliente = req.user.cliente;
     const rol = req.user.rol;
-    return this.viajesService.findAll(+cliente, +rol, page, limit);
+    return this.viajesService.findAll(+cliente, +rol, page, limit, +idUser);
   }
 
   @Get(':id')

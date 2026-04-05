@@ -40,14 +40,15 @@ export class ReportesService {
     try {
       // Obtener jerarquía de clientes
       const { ids: clienteIds, placeholders } = await this.clienteHijos(cliente);
-      
+
+      console.log('clienteIds', clienteIds);
       if (clienteIds.length === 0) {
         return {
           data: [],
         };
       }
 
-      // Construir condiciones WHERE para transacciones
+      // Construir condiciones WHERE (HistoricoTransaccionesDebito + Monederos + ruta vía Viajes)
       const condiciones: string[] = [];
       const parametros: any[] = [];
 
@@ -55,15 +56,15 @@ export class ReportesService {
       condiciones.push(`m.IdCliente IN (${placeholders})`);
       parametros.push(...clienteIds);
 
-      // Filtro de fecha - SOLO EN TRANSACCIONES
+      // Filtro de fecha — FHRegistro en HistoricoTransaccionesDebito
       if (filtros.fechaInicio) {
         const fechaInicio = filtros.fechaInicio.split('T')[0];
-        condiciones.push(`DATE(td.FHRegistro) >= ?`);
+        condiciones.push(`DATE(htd.FHRegistro) >= ?`);
         parametros.push(fechaInicio);
       }
       if (filtros.fechaFin) {
         const fechaFin = filtros.fechaFin.split('T')[0];
-        condiciones.push(`DATE(td.FHRegistro) <= ?`);
+        condiciones.push(`DATE(htd.FHRegistro) <= ?`);
         parametros.push(fechaFin);
       }
 
@@ -89,7 +90,7 @@ export class ReportesService {
 
       const query = `
 SELECT
-    DATE(td.FHRegistro) AS fecha,
+    DATE(htd.FHRegistro) AS fecha,
     reg.Id AS idRegion,
     reg.Nombre AS nombreRegion,
     r.Id AS idRuta,
@@ -97,39 +98,36 @@ SELECT
     d.Id AS idDerrotero,
     d.Nombre AS nombreDerrotero,
     COUNT(DISTINCT v.Id) AS viajes,
-    COUNT(DISTINCT td.Id) AS validaciones,
-    COALESCE(SUM(td.Monto), 0) AS ingresos,
+    COUNT(DISTINCT htd.Id) AS validaciones,
+    COALESCE(SUM(htd.Monto), 0) AS ingresos,
     CASE 
-        WHEN COUNT(DISTINCT td.Id) > 0 
-        THEN COALESCE(SUM(td.Monto), 0) / COUNT(DISTINCT td.Id)
+        WHEN COUNT(DISTINCT htd.Id) > 0 
+        THEN COALESCE(SUM(htd.Monto), 0) / COUNT(DISTINCT htd.Id)
         ELSE 0 
     END AS ticketPromedio,
     CASE 
-        WHEN COUNT(DISTINCT td.Id) > 0
-        THEN (COUNT(DISTINCT CASE WHEN td.IdControlTransaccion = 1 THEN td.Id END) * 100.0) / COUNT(DISTINCT td.Id)
+        WHEN COUNT(DISTINCT htd.Id) > 0
+        THEN (COUNT(DISTINCT CASE WHEN htd.IdControlTransaccion = 1 THEN htd.Id END) * 100.0) / COUNT(DISTINCT htd.Id)
         ELSE 0
     END AS porcentajeElectronico,
     COALESCE(SUM(vc.Diferencia), 0) AS ascensos,
-    GREATEST(COALESCE(SUM(vc.Diferencia), 0) - COUNT(DISTINCT td.Id), 0) AS evasionAbsoluta,
+    GREATEST(COALESCE(SUM(vc.Diferencia), 0) - COUNT(DISTINCT htd.Id), 0) AS evasionAbsoluta,
     CASE 
         WHEN COALESCE(SUM(vc.Diferencia), 0) > 0
-        THEN (GREATEST(COALESCE(SUM(vc.Diferencia), 0) - COUNT(DISTINCT td.Id), 0) * 100.0) / COALESCE(SUM(vc.Diferencia), 0)
+        THEN (GREATEST(COALESCE(SUM(vc.Diferencia), 0) - COUNT(DISTINCT htd.Id), 0) * 100.0) / COALESCE(SUM(vc.Diferencia), 0)
         ELSE 0
     END AS evasionPorcentual
-FROM TransaccionesDebito td
-INNER JOIN Monederos m ON td.NumeroSerieMonedero = m.NumeroSerie
-INNER JOIN Clientes c ON m.IdCliente = c.Id
-LEFT JOIN ViajesTransacciones vt ON vt.IdTransaccionDebito = td.Id
-LEFT JOIN Viajes v ON vt.IdViaje = v.Id
+FROM HistoricoTransaccionesDebito htd
+INNER JOIN Monederos m ON htd.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Viajes v ON htd.IdViajes = v.Id
 LEFT JOIN Derroteros d ON v.IdDerrotero = d.Id
 LEFT JOIN Rutas r ON d.IdRuta = r.Id
 LEFT JOIN Regiones reg ON r.IdRegion = reg.Id
-LEFT JOIN ViajesConteos vc_rel ON vc_rel.IdViaje = v.Id
-LEFT JOIN ConteoPasajeros vc ON vc_rel.IdConteo = vc.Id
+LEFT JOIN ConteoPasajeros vc ON vc.IdViaje = v.Id
 ${whereClause}
-GROUP BY DATE(td.FHRegistro), reg.Id, reg.Nombre, r.Id, r.Nombre, d.Id, d.Nombre
-HAVING COUNT(DISTINCT td.Id) > 0
-ORDER BY DATE(td.FHRegistro) DESC, reg.Nombre, r.Nombre, d.Nombre;
+GROUP BY DATE(htd.FHRegistro), reg.Id, reg.Nombre, r.Id, r.Nombre, d.Id, d.Nombre
+HAVING COUNT(DISTINCT htd.Id) > 0
+ORDER BY DATE(htd.FHRegistro) DESC, reg.Nombre, r.Nombre, d.Nombre;
       `;
 
       console.log('=== DEBUG REPORTE RECAUDACIÓN DIARIA POR RUTA ===');
@@ -192,14 +190,15 @@ ORDER BY DATE(td.FHRegistro) DESC, reg.Nombre, r.Nombre, d.Nombre;
         };
       }
 
-      // Preparar filtros de fecha - SOLO PARA TRANSACCIONES
+      // Preparar filtros de fecha — FHRegistro en HistoricoTransaccionesDebito
       const fechaInicio = filtros.fechaInicio ? filtros.fechaInicio.split('T')[0] : null;
       const fechaFin = filtros.fechaFin ? filtros.fechaFin.split('T')[0] : null;
 
-      // Consulta: empezar desde transacciones y agrupar por operador
-      // Las subconsultas de turnos y viajes NO tienen filtro de fecha
+      // HistoricoTransaccionesDebito → Viajes (IdViajes) → Operador; agrupado por día + operador
+      // Turnos/viajes: mismos criterios de fecha (día calendario de Inicio) para alinear con datos
       const query = `
 SELECT
+    datos.fecha,
     datos.idOperador,
     datos.operador,
     datos.licencia,
@@ -212,6 +211,7 @@ SELECT
     turnos_data.ultimoTurno AS ultimoTurno
 FROM (
     SELECT
+        DATE(htd.FHRegistro) AS fecha,
         COALESCE(o.Id, 0) AS idOperador,
         COALESCE(
             CONCAT(
@@ -223,57 +223,56 @@ FROM (
             'Sin operador asignado'
         ) AS operador,
         GROUP_CONCAT(DISTINCT l.NumeroLicencia SEPARATOR ', ') AS licencia,
-        COUNT(DISTINCT td.Id) AS validaciones,
-        COALESCE(SUM(td.Monto), 0) AS ingresos,
+        COUNT(DISTINCT htd.Id) AS validaciones,
+        COALESCE(SUM(htd.Monto), 0) AS ingresos,
         CASE 
-            WHEN COUNT(DISTINCT td.Id) > 0 
-            THEN COALESCE(SUM(td.Monto), 0) / COUNT(DISTINCT td.Id)
+            WHEN COUNT(DISTINCT htd.Id) > 0 
+            THEN COALESCE(SUM(htd.Monto), 0) / COUNT(DISTINCT htd.Id)
             ELSE 0 
         END AS ticketPromedio,
         CASE 
             WHEN COALESCE(SUM(vc.Diferencia), 0) > 0
-            THEN (GREATEST(COALESCE(SUM(vc.Diferencia), 0) - COUNT(DISTINCT td.Id), 0) * 100.0) / COALESCE(SUM(vc.Diferencia), 0)
+            THEN (GREATEST(COALESCE(SUM(vc.Diferencia), 0) - COUNT(DISTINCT htd.Id), 0) * 100.0) / COALESCE(SUM(vc.Diferencia), 0)
             ELSE 0
         END AS evasionPorcentual
-    FROM TransaccionesDebito td
-    INNER JOIN Monederos m ON td.NumeroSerieMonedero = m.NumeroSerie
-    INNER JOIN Clientes c ON m.IdCliente = c.Id
-    LEFT JOIN ViajesTransacciones vt ON vt.IdTransaccionDebito = td.Id
-    LEFT JOIN Viajes v ON vt.IdViaje = v.Id
+    FROM HistoricoTransaccionesDebito htd
+    INNER JOIN Monederos m ON htd.NumeroSerieMonedero = m.NumeroSerie
+    LEFT JOIN Viajes v ON htd.IdViajes = v.Id
     LEFT JOIN Operadores o ON v.IdOperador = o.Id
     LEFT JOIN Usuarios u ON o.IdUsuario = u.Id
     LEFT JOIN Licencias l ON l.IdOperador = o.Id
-    LEFT JOIN ViajesConteos vc_rel ON vc_rel.IdViaje = v.Id
-    LEFT JOIN ConteoPasajeros vc ON vc_rel.IdConteo = vc.Id
-    WHERE c.Id IN (${placeholders})
-    ${fechaInicio ? `AND DATE(td.FHRegistro) >= ?` : ''}
-    ${fechaFin ? `AND DATE(td.FHRegistro) <= ?` : ''}
+    LEFT JOIN ConteoPasajeros vc ON vc.IdViaje = v.Id
+    WHERE m.IdCliente IN (${placeholders})
+    ${fechaInicio ? `AND DATE(htd.FHRegistro) >= ?` : ''}
+    ${fechaFin ? `AND DATE(htd.FHRegistro) <= ?` : ''}
     ${filtros.idOperador ? 'AND (o.Id = ? OR o.Id IS NULL)' : ''}
-    GROUP BY COALESCE(o.Id, 0), u.Nombre, u.ApellidoPaterno, u.ApellidoMaterno
+    GROUP BY DATE(htd.FHRegistro), COALESCE(o.Id, 0), u.Nombre, u.ApellidoPaterno, u.ApellidoMaterno
 ) AS datos
 LEFT JOIN (
     SELECT 
+        DATE(t.Inicio) AS fecha,
         COALESCE(t.IdOperador, 0) AS IdOperador,
         COUNT(DISTINCT t.Id) AS totalTurnos,
         MAX(t.Inicio) AS ultimoTurno
     FROM Turnos t
-    GROUP BY COALESCE(t.IdOperador, 0)
-) AS turnos_data ON turnos_data.IdOperador = datos.idOperador
+    GROUP BY DATE(t.Inicio), COALESCE(t.IdOperador, 0)
+) AS turnos_data ON turnos_data.IdOperador = datos.idOperador AND turnos_data.fecha = datos.fecha
 LEFT JOIN (
     SELECT 
+        DATE(v2.Inicio) AS fecha,
         COALESCE(v2.IdOperador, 0) AS IdOperador,
         COUNT(DISTINCT v2.Id) AS totalViajes
     FROM Viajes v2
-    GROUP BY COALESCE(v2.IdOperador, 0)
-) AS viajes_data ON viajes_data.IdOperador = datos.idOperador
-ORDER BY datos.ingresos DESC, datos.operador ASC;
+    GROUP BY DATE(v2.Inicio), COALESCE(v2.IdOperador, 0)
+) AS viajes_data ON viajes_data.IdOperador = datos.idOperador AND viajes_data.fecha = datos.fecha
+ORDER BY datos.fecha DESC, datos.ingresos DESC, datos.operador ASC;
       `;
 
       // Construir parámetros para la consulta principal
-      // Orden: clienteIds, fechas WHERE principal (solo transacciones), idOperador
+      // Orden: clienteIds, fechas WHERE principal (histórico débito), idOperador
       const parametrosCompletos = [...clienteIds];
       
-      // Parámetros de fecha para el WHERE principal (solo transacciones)
+      // Parámetros de fecha para el WHERE principal (HistoricoTransaccionesDebito.FHRegistro)
       if (fechaInicio) {
         parametrosCompletos.push(fechaInicio);
       }
@@ -296,10 +295,11 @@ ORDER BY datos.ingresos DESC, datos.operador ASC;
       console.log('Resultados obtenidos:', resultados.length);
       console.log('=== FIN DEBUG ===');
 
-      // Formatear resultados
+      // Formatear resultados (una fila por día y operador según agrupación del query)
       const data = resultados.map((row: any) => {
         const idOperador = Number(row.idOperador);
         return {
+          fecha: row.fecha || null,
           idOperador: idOperador === 0 ? null : idOperador,
           operador: row.operador || 'Sin operador asignado',
           licencia: row.licencia || null,
@@ -344,14 +344,15 @@ ORDER BY datos.ingresos DESC, datos.operador ASC;
         };
       }
 
-      // Preparar filtros de fecha - SOLO PARA TRANSACCIONES
+      // Preparar filtros de fecha — FHRegistro en HistoricoTransaccionesDebito
       const fechaInicio = filtros.fechaInicio ? filtros.fechaInicio.split('T')[0] : null;
       const fechaFin = filtros.fechaFin ? filtros.fechaFin.split('T')[0] : null;
 
-      // Consulta principal: empezar desde transacciones y agrupar por vehículo
-      // Las subconsultas de turnos y viajes NO tienen filtro de fecha
+      // HistoricoTransaccionesDebito → Viajes (IdViajes) → Turnos → Instalaciones → Vehículo; ruta: Viajes → Derroteros → Rutas
+      // Agrupación por día + vehículo; turnos/viajes alineados por DATE(Inicio) y mismo vehículo (vía instalación)
       const query = `
 SELECT
+    datos.fecha,
     datos.idVehiculo,
     datos.numeroEconomico,
     datos.placa,
@@ -366,38 +367,38 @@ SELECT
     COALESCE(turnos_data.horasServicio, 0) AS horasServicio
 FROM (
     SELECT
+        DATE(htd.FHRegistro) AS fecha,
         veh.Id AS idVehiculo,
         veh.NumeroEconomico AS numeroEconomico,
         veh.Placa AS placa,
         veh.Marca AS marca,
         veh.Modelo AS modelo,
         veh.Ano AS ano,
-        COUNT(DISTINCT td.Id) AS validaciones,
-        COALESCE(SUM(td.Monto), 0) AS ingresos,
+        COUNT(DISTINCT htd.Id) AS validaciones,
+        COALESCE(SUM(htd.Monto), 0) AS ingresos,
         CASE 
-            WHEN COUNT(DISTINCT td.Id) > 0 
-            THEN COALESCE(SUM(td.Monto), 0) / COUNT(DISTINCT td.Id)
+            WHEN COUNT(DISTINCT htd.Id) > 0 
+            THEN COALESCE(SUM(htd.Monto), 0) / COUNT(DISTINCT htd.Id)
             ELSE 0 
         END AS ticketPromedio
-    FROM TransaccionesDebito td
-    INNER JOIN Monederos m ON td.NumeroSerieMonedero = m.NumeroSerie
-    INNER JOIN Clientes c ON m.IdCliente = c.Id
-    LEFT JOIN ViajesTransacciones vt ON vt.IdTransaccionDebito = td.Id
-    LEFT JOIN Viajes v ON vt.IdViaje = v.Id
+    FROM HistoricoTransaccionesDebito htd
+    INNER JOIN Monederos m ON htd.NumeroSerieMonedero = m.NumeroSerie
+    LEFT JOIN Viajes v ON htd.IdViajes = v.Id
     LEFT JOIN Turnos t ON v.IdTurno = t.Id
     LEFT JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
     LEFT JOIN Vehiculos veh ON ins.IdVehiculo = veh.Id
     LEFT JOIN Derroteros d ON v.IdDerrotero = d.Id
     LEFT JOIN Rutas r ON d.IdRuta = r.Id
-    WHERE c.Id IN (${placeholders})
-    ${fechaInicio ? `AND DATE(td.FHRegistro) >= ?` : ''}
-    ${fechaFin ? `AND DATE(td.FHRegistro) <= ?` : ''}
+    WHERE m.IdCliente IN (${placeholders})
+    ${fechaInicio ? `AND DATE(htd.FHRegistro) >= ?` : ''}
+    ${fechaFin ? `AND DATE(htd.FHRegistro) <= ?` : ''}
     ${filtros.idVehiculo ? 'AND veh.Id = ?' : ''}
     ${filtros.idRuta ? 'AND r.Id = ?' : ''}
-    GROUP BY veh.Id, veh.NumeroEconomico, veh.Placa, veh.Marca, veh.Modelo, veh.Ano
+    GROUP BY DATE(htd.FHRegistro), veh.Id, veh.NumeroEconomico, veh.Placa, veh.Marca, veh.Modelo, veh.Ano
 ) AS datos
 LEFT JOIN (
     SELECT 
+        DATE(t2.Inicio) AS fecha,
         veh2.Id AS IdVehiculo,
         COUNT(DISTINCT t2.Id) AS totalTurnos,
         COALESCE(SUM(
@@ -410,26 +411,27 @@ LEFT JOIN (
     FROM Vehiculos veh2
     INNER JOIN Instalaciones ins2 ON ins2.IdVehiculo = veh2.Id
     INNER JOIN Turnos t2 ON t2.IdInstalacion = ins2.Id
-    GROUP BY veh2.Id
-) AS turnos_data ON turnos_data.IdVehiculo = datos.idVehiculo
+    GROUP BY DATE(t2.Inicio), veh2.Id
+) AS turnos_data ON turnos_data.IdVehiculo = datos.idVehiculo AND turnos_data.fecha = datos.fecha
 LEFT JOIN (
     SELECT 
+        DATE(v3.Inicio) AS fecha,
         veh3.Id AS IdVehiculo,
         COUNT(DISTINCT v3.Id) AS totalViajes
     FROM Vehiculos veh3
     INNER JOIN Instalaciones ins3 ON ins3.IdVehiculo = veh3.Id
     INNER JOIN Turnos t3 ON t3.IdInstalacion = ins3.Id
     INNER JOIN Viajes v3 ON v3.IdTurno = t3.Id
-    GROUP BY veh3.Id
-) AS viajes_data ON viajes_data.IdVehiculo = datos.idVehiculo
-ORDER BY datos.ingresos DESC, datos.numeroEconomico ASC;
+    GROUP BY DATE(v3.Inicio), veh3.Id
+) AS viajes_data ON viajes_data.IdVehiculo = datos.idVehiculo AND viajes_data.fecha = datos.fecha
+ORDER BY datos.fecha DESC, datos.ingresos DESC, datos.numeroEconomico ASC;
       `;
 
       // Construir parámetros para la consulta principal
-      // Orden: clienteIds, fechas (solo transacciones), idVehiculo, idRuta
+      // Orden: clienteIds, fechas (HistoricoTransaccionesDebito), idVehiculo, idRuta
       const parametrosCompletos = [...clienteIds];
       
-      // Parámetros de fecha (solo para transacciones)
+      // Parámetros de fecha (HistoricoTransaccionesDebito.FHRegistro)
       if (fechaInicio) {
         parametrosCompletos.push(fechaInicio);
       }
@@ -457,8 +459,9 @@ ORDER BY datos.ingresos DESC, datos.numeroEconomico ASC;
       console.log('Resultados obtenidos:', resultados.length);
       console.log('=== FIN DEBUG ===');
 
-      // Formatear resultados
+      // Formatear resultados (una fila por día y vehículo)
       const data = resultados.map((row: any) => ({
+        fecha: row.fecha || null,
         idVehiculo: row.idVehiculo ? Number(row.idVehiculo) : null,
         numeroEconomico: row.numeroEconomico || null,
         placa: row.placa || null,
@@ -505,12 +508,12 @@ ORDER BY datos.ingresos DESC, datos.numeroEconomico ASC;
         };
       }
 
-      // Preparar filtros de fecha - SOLO PARA TRANSACCIONES
+      // Preparar filtros de fecha — FHRegistro en HistoricoTransaccionesDebito
       const fechaInicio = filtros.fechaInicio ? filtros.fechaInicio.split('T')[0] : null;
       const fechaFin = filtros.fechaFin ? filtros.fechaFin.split('T')[0] : null;
 
-      // Consulta principal: empezar desde transacciones y agrupar por instalación/dispositivo
-      // IMPORTANTE: La relación con BlueVoxs se gestiona mediante la tabla intermedia InstalacionesBlueVoxs
+      // HistoricoTransaccionesDebito → Viajes (IdViajes) → Turnos → Instalación/vehículo; dispositivo validador vía NumeroSerieDispositivo
+      // BlueVox: InstalacionesBlueVoxs (cuando hay instalación por turno)
       const query = `
 SELECT
     datos.idInstalacion,
@@ -528,7 +531,7 @@ SELECT
 FROM (
     SELECT
         ins.Id AS idInstalacion,
-        disp.NumeroSerie AS serieDispositivo,
+        dispTxn.NumeroSerie AS serieDispositivo,
         COALESCE(
             (SELECT GROUP_CONCAT(bv.NumeroSerie SEPARATOR ', ')
              FROM InstalacionesBlueVoxs ibv
@@ -541,24 +544,22 @@ FROM (
         veh.NumeroEconomico AS numeroEconomico,
         veh.Placa AS placa,
         CONCAT(veh.NumeroEconomico, ' - ', veh.Placa) AS vehiculo,
-        COUNT(DISTINCT td.Id) AS validaciones,
-        COALESCE(SUM(td.Monto), 0) AS ingresos,
-        disp.EstadoActual AS estadoDispositivo
-    FROM TransaccionesDebito td
-    INNER JOIN Monederos m ON td.NumeroSerieMonedero = m.NumeroSerie
-    INNER JOIN Clientes c ON m.IdCliente = c.Id
-    LEFT JOIN ViajesTransacciones vt ON vt.IdTransaccionDebito = td.Id
-    LEFT JOIN Viajes v ON vt.IdViaje = v.Id
+        COUNT(DISTINCT htd.Id) AS validaciones,
+        COALESCE(SUM(htd.Monto), 0) AS ingresos,
+        dispTxn.EstadoActual AS estadoDispositivo
+    FROM HistoricoTransaccionesDebito htd
+    INNER JOIN Monederos m ON htd.NumeroSerieMonedero = m.NumeroSerie
+    INNER JOIN Dispositivos dispTxn ON dispTxn.NumeroSerie = htd.NumeroSerieDispositivo
+    LEFT JOIN Viajes v ON htd.IdViajes = v.Id
     LEFT JOIN Turnos t ON v.IdTurno = t.Id
     LEFT JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
-    LEFT JOIN Dispositivos disp ON ins.IdDispositivo = disp.Id
     LEFT JOIN Vehiculos veh ON ins.IdVehiculo = veh.Id
-    WHERE c.Id IN (${placeholders})
-    ${fechaInicio ? `AND DATE(td.FHRegistro) >= ?` : ''}
-    ${fechaFin ? `AND DATE(td.FHRegistro) <= ?` : ''}
-    ${filtros.idDispositivo ? 'AND disp.Id = ?' : ''}
+    WHERE m.IdCliente IN (${placeholders})
+    ${fechaInicio ? `AND DATE(htd.FHRegistro) >= ?` : ''}
+    ${fechaFin ? `AND DATE(htd.FHRegistro) <= ?` : ''}
+    ${filtros.idDispositivo ? 'AND dispTxn.Id = ?' : ''}
     ${filtros.idInstalacion ? 'AND ins.Id = ?' : ''}
-    GROUP BY ins.Id, disp.NumeroSerie, veh.NumeroEconomico, veh.Placa, disp.EstadoActual
+    GROUP BY ins.Id, dispTxn.NumeroSerie, veh.NumeroEconomico, veh.Placa, dispTxn.EstadoActual
 ) AS datos
 LEFT JOIN (
     SELECT 
@@ -580,10 +581,10 @@ ORDER BY datos.ingresos DESC, datos.serieDispositivo ASC;
       `;
 
       // Construir parámetros para la consulta principal
-      // Orden: clienteIds, fechas (solo transacciones), idDispositivo, idInstalacion
+      // Orden: clienteIds, fechas (HistoricoTransaccionesDebito), idDispositivo, idInstalacion
       const parametrosCompletos = [...clienteIds];
       
-      // Parámetros de fecha (solo para transacciones)
+      // Parámetros de fecha (HistoricoTransaccionesDebito.FHRegistro)
       if (fechaInicio) {
         parametrosCompletos.push(fechaInicio);
       }

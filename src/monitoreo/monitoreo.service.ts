@@ -124,7 +124,6 @@ ORDER BY d.Id DESC
           derroterosList = await this.consultarDerroteroListadoRoot();
           ultimaPosicion = await this.ultimaPosicionRoot();
           break;
-        case 2:
         case 3:
         case 8:
         case 9:

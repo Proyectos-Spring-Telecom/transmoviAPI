@@ -720,7 +720,7 @@ ORDER BY v.Id DESC
   /**
    * Consulta SQL privada: Obtiene viajes de clientes hijos (con jerarquía).
    * 
-   * Utilizada por roles Administrador (rol 2), Reportes (rol 8) y Capturista (rol 10).
+   * Utilizada por roles 2, 8, 10 y 13 (jerarquía de clientes).
    * Incluye viajes del cliente y todos sus clientes hijos (jerarquía completa).
    * 
    * @param cliente ID del cliente padre del cual se obtendrán los viajes (incluyendo hijos)
@@ -912,8 +912,8 @@ ORDER BY v.Id DESC
         case 2:
         case 8:
         case 10:
-          // 🔹 ROL 2, 8, 10 (Administrador, Reportes, Capturista): Obtiene viajes de clientes hijos
-          // Se incluyen viajes del cliente y todos sus clientes hijos (jerarquía)
+        case 13:
+          // 🔹 ROL 2, 8, 10, 13: jerarquía de clientes
           viajes = await this.consultarViajesListado(cliente);
           break;
 
@@ -969,7 +969,7 @@ ORDER BY v.Id DESC
   /**
    * Consulta SQL privada: Obtiene viajes de clientes hijos (con jerarquía) paginados.
    * 
-   * Utilizada por roles Administrador (rol 2), Reportes (rol 8) y Capturista (rol 10).
+   * Utilizada por roles 2, 8, 10 y 13 (jerarquía de clientes).
    * Incluye viajes del cliente y todos sus clientes hijos (jerarquía completa).
    * 
    * @param cliente ID del cliente padre del cual se obtendrán los viajes (incluyendo hijos)
@@ -1059,8 +1059,7 @@ JOIN Derroteros der ON v.IdDerrotero = der.Id
 JOIN Rutas r ON der.IdRuta = r.Id
 LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
 LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
-WHERE v.Estatus = 1
-  AND c.Estatus = 1
+WHERE c.Estatus = 1
   AND c.Id IN (${placeholders})
 ORDER BY v.Id DESC
 LIMIT ? OFFSET ?
@@ -1072,7 +1071,7 @@ LIMIT ? OFFSET ?
    * Consulta SQL privada: Cuenta el total de viajes de clientes hijos (con jerarquía).
    * 
    * Utilizada para calcular la paginación en findAll() para roles Administrador,
-   * Reportes y Capturista. Cuenta solo los viajes activos.
+   * Reportes y Capturista. Respeta solo clientes activos (c.Estatus = 1).
    * 
    * @param cliente ID del cliente padre del cual se contarán los viajes (incluyendo hijos)
    * @returns Total de viajes (número entero)
@@ -1095,14 +1094,112 @@ JOIN Derroteros der ON v.IdDerrotero = der.Id
 JOIN Rutas r ON der.IdRuta = r.Id
 LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
 LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
-WHERE v.Estatus = 1
-  AND c.Estatus = 1
+WHERE c.Estatus = 1
   AND c.Id IN (${placeholders})
 `;
     return await this.viajesRepository.query(query, [...ids]);
   }
 
+  /**
+   * Viajes del operador vinculado al usuario (Operadores.IdUsuario), paginado.
+   * Solo clientes activos. El estatus del viaje no filtra.
+   */
+  private async consultarViajesPaginadoPorOperador(
+    idUsuario: number,
+    limit: number,
+    offset: number,
+  ) {
+    const query = `
+SELECT
+  v.Id AS id,
+  v.Inicio AS inicio,
+  v.Fin AS fin,
+  v.Estatus AS estatus,
+  c.Id AS idCliente,
+  c.Nombre AS nombreCliente,
+  c.ApellidoPaterno AS apellidoPaternoCliente,
+  c.ApellidoMaterno AS apellidoMaternoCliente,
+  t.Id AS idTurno,
+  t.Inicio AS inicioTurno,
+  t.IdInstalacion AS idInstalacion,
+  ins.IdDispositivo AS idDispositivo,
+  d.NumeroSerie AS numeroSerieDispositivo,
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idBlueVox', bx.Id,
+          'numeroSerieBlueVox', bx.NumeroSerie,
+          'marcaBlueVox', bx.Marca,
+          'modeloBlueVox', bx.Modelo
+        )
+      )
+      FROM InstalacionesBlueVoxs ibv
+      INNER JOIN BlueVoxs bx ON ibv.IdBlueVox = bx.Id
+      WHERE ibv.IdInstalacion = ins.Id
+        AND ibv.Estatus = 1
+        AND bx.IdCliente = ins.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS blueVoxs,
+  ins.IdVehiculo AS idVehiculo,
+  vhl.Placa AS placaVehiculo,
+  o.Id AS idOperador,
+  o.IdUsuario AS idUsuario,
+  u.Nombre AS nombreOperador,
+  u.ApellidoPaterno AS apellidoPaternoOperador,
+  u.ApellidoMaterno AS apellidoMaternoOperador,
+  der.Id AS idDerrotero,
+  der.Nombre AS nombreDerrotero,
+  der.PuntoInicio AS puntoInicioDerrotero,
+  der.PuntoFin AS puntoFinDerrotero,
+  der.DistanciaKm AS distanciaKmDerrotero,
+  r.Id AS idRuta,
+  r.Nombre AS nombreRuta,
+  r.IdRegion AS idRegion,
+  regInicio.Nombre AS nombreRegionInicio,
+  r.IdRegionFin AS idRegionFin,
+  regFin.Nombre AS nombreRegionFin
+FROM Viajes v
+JOIN Clientes c ON v.IdCliente = c.Id
+JOIN Turnos t ON v.IdTurno = t.Id
+JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
+JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
+JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
+JOIN Operadores o ON v.IdOperador = o.Id
+JOIN Usuarios u ON o.IdUsuario = u.Id
+JOIN Derroteros der ON v.IdDerrotero = der.Id
+JOIN Rutas r ON der.IdRuta = r.Id
+LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
+LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
+WHERE c.Estatus = 1
+  AND o.IdUsuario = ?
+ORDER BY v.Id DESC
+LIMIT ? OFFSET ?
+    `;
+    return this.viajesRepository.query(query, [idUsuario, limit, offset]);
+  }
 
+  private async consultarTotalRutasPaginadoPorOperador(idUsuario: number) {
+    const query = `
+SELECT COUNT(*) AS total
+FROM Viajes v
+JOIN Clientes c ON v.IdCliente = c.Id
+JOIN Turnos t ON v.IdTurno = t.Id
+JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
+JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
+JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
+JOIN Operadores o ON v.IdOperador = o.Id
+JOIN Usuarios u ON o.IdUsuario = u.Id
+JOIN Derroteros der ON v.IdDerrotero = der.Id
+JOIN Rutas r ON der.IdRuta = r.Id
+LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
+LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
+WHERE c.Estatus = 1
+  AND o.IdUsuario = ?
+`;
+    return await this.viajesRepository.query(query, [idUsuario]);
+  }
 
   /**
    * Consulta SQL privada: Obtiene viajes de un cliente específico (sin jerarquía) paginados.
@@ -1184,8 +1281,7 @@ JOIN Derroteros der ON v.IdDerrotero = der.Id
 JOIN Rutas r ON der.IdRuta = r.Id
 LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
 LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
-WHERE v.Estatus = 1
-  AND c.Estatus = 1
+WHERE c.Estatus = 1
   AND c.Id = ?
 ORDER BY v.Id DESC
 LIMIT ? OFFSET ?
@@ -1196,8 +1292,7 @@ LIMIT ? OFFSET ?
   /**
    * Consulta SQL privada: Cuenta el total de viajes de un cliente específico (sin jerarquía).
    * 
-   * Utilizada para calcular la paginación en findAll() para roles Cliente.
-   * Cuenta solo los viajes activos del cliente especificado.
+   * Utilizada por findAllList y otros flujos de cliente único. Solo clientes activos.
    * 
    * @param cliente ID del cliente del cual se contarán los viajes
    * @returns Total de viajes (número entero)
@@ -1217,8 +1312,7 @@ JOIN Derroteros der ON v.IdDerrotero = der.Id
 JOIN Rutas r ON der.IdRuta = r.Id
 LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
 LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
-WHERE v.Estatus = 1
-  AND c.Estatus = 1
+WHERE c.Estatus = 1
   AND c.Id = ?
 `;
     return await this.viajesRepository.query(query, [cliente]);
@@ -1229,27 +1323,21 @@ WHERE v.Estatus = 1
   // ========================================
   /**
    * Obtiene un listado paginado de viajes según el rol del usuario.
-   * 
-   * Reglas de acceso por rol:
-   * - Rol 1 (SuperAdministrador): Obtiene todos los viajes activos del sistema (paginados)
-   * - Rol 2, 8, 10 (Administrador, Reportes, Capturista): Obtiene viajes de clientes hijos (paginados)
-   * - Rol 3 (Cliente): Obtiene solo viajes del cliente específico (paginados)
-   * 
-   * Los viajes incluyen información detallada y se retorna información de paginación
-   * (total de registros, página actual, última página).
-   * 
-   * @param cliente ID del cliente (obtenido del token)
-   * @param rol Rol del usuario (obtenido del token)
-   * @param page Número de página (inicia en 1)
-   * @param limit Cantidad de registros por página
-   * @returns Listado paginado de viajes con información de paginación
-   * @throws InternalServerErrorException Si ocurre un error al obtener los viajes
+   *
+   * - Rol 1: todos los viajes cuyo cliente tiene estatus activo (sin filtrar estatus del viaje).
+   * - Roles 2, 8, 10, 13: viajes de la jerarquía de clientes (cliente activo).
+   * - Rol 3 (operador): viajes donde el operador corresponde a `idUsuario` (Operadores.IdUsuario).
+   * - Roles 9 y 11: sin datos (lista vacía).
+   * - Otros roles: lista vacía.
+   *
+   * @param idUsuario ID de usuario JWT; usado para rol 3 (operador).
    */
   async findAll(
     cliente: number,
     rol: number,
     page: number,
     limit: number,
+    idUsuario: number,
   ): Promise<ApiResponseCommon> {
     try {
       // 🔹 CÁLCULO DE OFFSET: Se calcula el desplazamiento para la paginación
@@ -1326,7 +1414,7 @@ JOIN Derroteros der ON v.IdDerrotero = der.Id
 JOIN Rutas r ON der.IdRuta = r.Id
 LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
 LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
-WHERE v.Estatus = 1 AND c.Estatus = 1
+WHERE c.Estatus = 1
 ORDER BY v.Id DESC
 LIMIT ? OFFSET ?
             `,
@@ -1348,27 +1436,34 @@ JOIN Derroteros der ON v.IdDerrotero = der.Id
 JOIN Rutas r ON der.IdRuta = r.Id
 LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
 LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
-WHERE v.Estatus = 1 AND c.Estatus = 1
+WHERE c.Estatus = 1
             `,
           );
           break;
         case 2: // Administrador
-        case 8:  // Reportes
-        case 10:  // Capturista
-          // 🔹 ROL 2, 8, 10 (Administrador, Reportes, Capturista): Obtiene viajes de clientes hijos (paginados)
-          // Se incluyen viajes del cliente y todos sus clientes hijos (jerarquía)
+        case 8: // Reportes
+        case 10: // Capturista
+        case 13:
           viajes = await this.consultarViajesPaginado(cliente, limit, offset);
-          // Se obtiene el total de viajes para calcular la paginación
           totalResult = await this.consultarTotalRutasPaginados(cliente);
           break;
 
         case 3:
+          viajes = await this.consultarViajesPaginadoPorOperador(
+            idUsuario,
+            limit,
+            offset,
+          );
+          totalResult = await this.consultarTotalRutasPaginadoPorOperador(
+            idUsuario,
+          );
+          break;
+
+        case 9:
+        case 11:
         default:
-          // 🔹 ROL 3 (Cliente) o default: Obtiene solo viajes del cliente específico (paginados)
-          // No se incluyen clientes hijos, solo los viajes del cliente autenticado
-          viajes = await this.consultarViajesPaginadoCL(cliente, limit, offset);
-          // Se obtiene el total de viajes para calcular la paginación
-          totalResult = await this.consultarTotalRutasPaginadosCL(cliente);
+          viajes = [];
+          totalResult = [{ total: 0 }];
           break;
       }
 
