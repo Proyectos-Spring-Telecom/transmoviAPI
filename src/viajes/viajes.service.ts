@@ -1053,8 +1053,7 @@ JOIN Derroteros der ON v.IdDerrotero = der.Id
 JOIN Rutas r ON der.IdRuta = r.Id
 LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
 LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
-WHERE v.Estatus = 1
-  AND c.Estatus = 1
+WHERE c.Estatus = 1
   AND c.Id IN (${placeholders})
 ORDER BY v.Id DESC
 LIMIT ? OFFSET ?
@@ -1089,8 +1088,7 @@ JOIN Derroteros der ON v.IdDerrotero = der.Id
 JOIN Rutas r ON der.IdRuta = r.Id
 LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
 LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
-WHERE v.Estatus = 1
-  AND c.Estatus = 1
+WHERE c.Estatus = 1
   AND c.Id IN (${placeholders})
 `;
     return await this.viajesRepository.query(query, [...ids]);
@@ -1487,8 +1485,7 @@ JOIN Derroteros der ON v.IdDerrotero = der.Id
 JOIN Rutas r ON der.IdRuta = r.Id
 LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
 LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
-WHERE v.Estatus = 1
-  AND c.Estatus = 1
+WHERE c.Estatus = 1
 ORDER BY v.Id DESC
 LIMIT ? OFFSET ?
             `,
@@ -1510,8 +1507,7 @@ JOIN Derroteros der ON v.IdDerrotero = der.Id
 JOIN Rutas r ON der.IdRuta = r.Id
 LEFT JOIN Regiones regInicio ON r.IdRegion = regInicio.Id
 LEFT JOIN Regiones regFin ON r.IdRegionFin = regFin.Id
-WHERE v.Estatus = 1
-  AND c.Estatus = 1
+WHERE c.Estatus = 1
             `,
           );
           break;
