@@ -1143,6 +1143,73 @@ WHERE cp.FechaHora BETWEEN ? AND ?
         }
       }
 
+      // 🔹 RESOLUCIÓN AUTOMÁTICA DE idViaje (misma lógica que create):
+      // BlueVox del registro -> Instalación -> Turno activo de hoy -> Viaje activo de hoy
+      const instalacionResult = await this.conteopasajeroRepository.query(
+        `
+SELECT i.Id AS idInstalacion
+FROM BlueVoxs bx
+INNER JOIN InstalacionesBlueVoxs ibv ON ibv.IdBlueVox = bx.Id
+INNER JOIN Instalaciones i ON i.Id = ibv.IdInstalacion
+WHERE bx.NumeroSerie = ?
+  AND ibv.Estatus = 1
+  AND i.Estatus = 1
+ORDER BY i.Id DESC
+LIMIT 1
+        `,
+        [conteoPasajero.numeroSerieBlueVox],
+      );
+
+      if (!instalacionResult.length) {
+        throw new NotFoundException(
+          `No se encontró instalación activa para el BlueVox: ${conteoPasajero.numeroSerieBlueVox}.`,
+        );
+      }
+
+      const idInstalacion = Number(instalacionResult[0].idInstalacion);
+
+      const turnoResult = await this.conteopasajeroRepository.query(
+        `
+SELECT t.Id AS idTurno
+FROM Turnos t
+WHERE t.IdInstalacion = ?
+  AND t.Estatus = 1
+  AND DATE(t.Inicio) = CURDATE()
+ORDER BY t.Inicio DESC, t.Id DESC
+LIMIT 1
+        `,
+        [idInstalacion],
+      );
+
+      if (!turnoResult.length) {
+        throw new NotFoundException(
+          `No se encontró turno activo del día para la instalación: ${idInstalacion}.`,
+        );
+      }
+
+      const idTurno = Number(turnoResult[0].idTurno);
+
+      const viajeResult = await this.conteopasajeroRepository.query(
+        `
+SELECT v.Id AS idViaje
+FROM Viajes v
+WHERE v.IdTurno = ?
+  AND v.Estatus = 1
+  AND DATE(v.Inicio) = CURDATE()
+ORDER BY v.Inicio DESC, v.Id DESC
+LIMIT 1
+        `,
+        [idTurno],
+      );
+
+      if (!viajeResult.length) {
+        throw new NotFoundException(
+          `No se encontró viaje activo del día para el turno: ${idTurno}.`,
+        );
+      }
+
+      updateConteoPasajerosDto.idViaje = Number(viajeResult[0].idViaje);
+
       // 🔹 VALIDACIÓN: Si se proporciona idViaje en el DTO, se verifica que el viaje exista y no esté INACTIVO
       // Esto previene la asociación a viajes finalizados o inexistentes
       if (updateConteoPasajerosDto.idViaje !== undefined && updateConteoPasajerosDto.idViaje !== null) {

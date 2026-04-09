@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsDateString, IsInt, IsOptional, IsString } from 'class-validator';
+import { EstatusEnum } from 'src/common/estatus.enum';
 
 export class UpdateConteoPasajerosDto {
     @ApiProperty({
@@ -44,7 +45,7 @@ export class UpdateConteoPasajerosDto {
     })
     @IsInt()
     @IsOptional()
-    estatus?: number;
+    estatus?: EstatusEnum.ACTIVO;
 
     @ApiProperty({
         description: 'ID del viaje asociado al conteo',
