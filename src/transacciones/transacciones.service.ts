@@ -2156,17 +2156,19 @@ export class TransaccionesService {
       if (!fechaInicio && !fechaFin) {
         fechaInicio = fechaActual
         fechaFin = fechaActual
-        entidadRecarga = 'TransaccionesRecarga';
+        // Rol 11 (Cajero): solo recargas por IdUsuario (disponible en histórico)
+        entidadRecarga = rol === 11 ? 'HistoricoTransaccionesRecarga' : 'TransaccionesRecarga';
         entidadDebito = 'TransaccionesDebito';
-        transacciones = await this.resolverPorRolDefault(fechaInicio, fechaFin, email, cliente, rol, page, limit, entidadDebito, entidadRecarga);
+        transacciones = await this.resolverPorRolDefault(idUser, fechaInicio, fechaFin, email, cliente, rol, page, limit, entidadDebito, entidadRecarga);
       } else {
         //Si fechaInicio y fechaFin no son null arroja las transacciones del dia de la tabla HistoricoTransaccionesRecarga y HistoricoTransaccionesDebito
         //asigna fechaActual solo si el valor de la izquierda es null o undefined
         fechaInicio = fechaInicio?.split("T")[0] ?? fechaActual;
         fechaFin = fechaFin?.split("T")[0] ?? fechaActual;
-        entidadRecarga = 'HistoricoTransaccionesRecarga';
+        // Rol 11 (Cajero): solo recargas por IdUsuario (histórico)
+        entidadRecarga = rol === 11 ? 'HistoricoTransaccionesRecarga' : 'HistoricoTransaccionesRecarga';
         entidadDebito = 'HistoricoTransaccionesDebito';
-        transacciones = await this.resolverPorRolDefault(fechaInicio, fechaFin, email, cliente, rol, page, limit, entidadDebito, entidadRecarga);
+        transacciones = await this.resolverPorRolDefault(idUser, fechaInicio, fechaFin, email, cliente, rol, page, limit, entidadDebito, entidadRecarga);
       }
 
       const { data, total } = transacciones;
@@ -2635,6 +2637,7 @@ AND td.EsQR = 1;
   }
 
   async resolverPorRolDefault(
+    idUser: number,
     fechaInicio: string,
     fechaFin: string,
     email: string,
@@ -2774,6 +2777,96 @@ WHERE DATE(tr.FHRegistro) BETWEEN ? AND ?
 ) AS todas;
   `,
             [fechaInicio, fechaFin, fechaInicio, fechaFin],
+          );
+          break;
+
+        case 11:
+          // Cajero: solo recargas donde IdUsuario = idUser (token)
+          // Nota: este filtro solo está disponible en la tabla histórica de recargas.
+          const queryRecargasRol11 = `
+SELECT 
+    'RECARGA' AS origenTabla,
+    htr.Id AS id,
+    ctt.Nombre AS tipoTransaccion,
+    htr.Monto AS monto,
+    NULL AS latitudInicial,
+    NULL AS longitudInicial,
+    htr.LatitudFinal AS latitudFinal,
+    htr.LongitudFinal AS longitudFinal,
+    NULL AS fechaHoraInicio,
+    htr.FechaHoraFinal AS fechaHoraFinal,
+    htr.FHRegistro AS fhRegistro,
+    htr.NumeroSerieMonedero AS numeroSerieMonedero,
+    htr.NumeroSerieValidador AS numeroSerieValidador,
+    NULL AS esQR,
+    COALESCE(cmp.Nombre, 'Efectivo') AS nombreMetodoPago,
+    c.Id AS idCliente,
+    c.Nombre AS nombreCliente,
+    c.ApellidoPaterno AS apellidoPaternoCliente,
+    c.ApellidoMaterno AS apellidoMaternoCliente,
+    d.Marca AS marcaDispositivo,
+    d.Modelo AS modeloDispositivo,
+    p.Id AS idPasajero,
+    p.Nombre AS nombrePasajero,
+    p.ApellidoPaterno AS apellidoPaternoPasajero,
+    p.ApellidoMaterno AS apellidoMaternoPasajero
+FROM ${entidadRecarga} htr
+LEFT JOIN CatTiposTransacciones ctt 
+    ON htr.IdTipoTransaccion = ctt.Id
+LEFT JOIN CatMetodoPago cmp 
+    ON htr.IdMetodoPago = cmp.Id
+LEFT JOIN Validadores d 
+    ON htr.NumeroSerieValidador = d.NumeroSerie
+LEFT JOIN Monederos m 
+    ON htr.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Pasajeros p 
+    ON m.IdPasajero = p.Id
+LEFT JOIN Clientes c
+    ON m.IdCliente = c.Id
+WHERE DATE(htr.FHRegistro) BETWEEN ? AND ?
+AND htr.IdUsuario = ?
+ORDER BY htr.FHRegistro DESC
+LIMIT ? OFFSET ?;
+          `;
+
+          const queryRecargasRol11Params = [
+            fechaInicio,
+            fechaFin,
+            Number(idUser),
+            Number(limit),
+            Number(offset),
+          ];
+
+          console.log('[paginado][rol=11] Query recargas:', queryRecargasRol11);
+          console.log('[paginado][rol=11] Params recargas:', queryRecargasRol11Params);
+
+          transacciones = await this.historicoTransaccionesRecargaRepository.query(
+            queryRecargasRol11,
+            queryRecargasRol11Params,
+          );
+
+          const queryRecargasRol11Total = `
+SELECT COUNT(*) AS total
+FROM ${entidadRecarga} htr
+LEFT JOIN Monederos m 
+    ON htr.NumeroSerieMonedero = m.NumeroSerie
+LEFT JOIN Clientes c
+    ON m.IdCliente = c.Id
+WHERE DATE(htr.FHRegistro) BETWEEN ? AND ?
+AND htr.IdUsuario = ?;
+          `;
+
+          const queryRecargasRol11TotalParams = [
+            fechaInicio,
+            fechaFin,
+            Number(idUser),
+          ];
+
+      
+
+          totalResult = await this.historicoTransaccionesRecargaRepository.query(
+            queryRecargasRol11Total,
+            queryRecargasRol11TotalParams,
           );
           break;
 
