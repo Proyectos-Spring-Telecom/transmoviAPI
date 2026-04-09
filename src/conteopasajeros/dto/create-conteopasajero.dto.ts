@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsDateString, IsInt, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { EstatusEnum } from 'src/common/estatus.enum';
 
 /**
  * DTO para crear un registro de conteo de pasajeros
@@ -52,20 +53,10 @@ export class CreateConteoPasajerosDto {
   @IsNotEmpty()
   numeroSerieBlueVox: string;
 
-  @ApiProperty({
-    description: 'Estatus del registro de conteo (opcional)',
-    example: 1,
-    required: false,
-  })
   @IsInt()
   @IsOptional()
-  estatus?: number;
+  estatus?: EstatusEnum.ACTIVO;
 
-  @ApiProperty({
-    description: 'ID del viaje asociado al conteo (opcional)',
-    example: 123,
-    required: false,
-  })
   @IsInt()
   @IsOptional()
   idViaje?: number;

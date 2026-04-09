@@ -70,17 +70,75 @@ export class ConteopasajerosService {
         throw new NotFoundException('No se encontró el número de serie de Bluevox.')
       }
 
-      // 🔹 VALIDACIÓN: Si se proporciona idViaje, se verifica que el viaje exista
-      // El idViaje es opcional, pero si se proporciona debe ser válido
-      if (createConteopasajeroDto.idViaje !== undefined && createConteopasajeroDto.idViaje !== null) {
-        const viaje = await this.viajesRepository.findOne({
-          where: { id: createConteopasajeroDto.idViaje }
-        });
+      // 🔹 RESOLUCIÓN AUTOMÁTICA DE idViaje:
+      // 1) Obtener instalación activa del BlueVox
+      const instalacionResult = await this.conteopasajeroRepository.query(
+        `
+SELECT i.Id AS idInstalacion
+FROM BlueVoxs bx
+INNER JOIN InstalacionesBlueVoxs ibv ON ibv.IdBlueVox = bx.Id
+INNER JOIN Instalaciones i ON i.Id = ibv.IdInstalacion
+WHERE bx.NumeroSerie = ?
+  AND ibv.Estatus = 1
+  AND i.Estatus = 1
+ORDER BY i.Id DESC
+LIMIT 1
+        `,
+        [createConteopasajeroDto.numeroSerieBlueVox],
+      );
 
-        if (!viaje) {
-          throw new NotFoundException(`No se encontró el viaje con ID: ${createConteopasajeroDto.idViaje}.`)
-        }
+      if (!instalacionResult.length) {
+        throw new NotFoundException(
+          `No se encontró instalación activa para el BlueVox: ${createConteopasajeroDto.numeroSerieBlueVox}.`,
+        );
       }
+
+      const idInstalacion = Number(instalacionResult[0].idInstalacion);
+
+      // 2) Obtener turno activo del día actual para esa instalación
+      const turnoResult = await this.conteopasajeroRepository.query(
+        `
+SELECT t.Id AS idTurno
+FROM Turnos t
+WHERE t.IdInstalacion = ?
+  AND t.Estatus = 1
+  AND DATE(t.Inicio) = CURDATE()
+ORDER BY t.Inicio DESC, t.Id DESC
+LIMIT 1
+        `,
+        [idInstalacion],
+      );
+
+      if (!turnoResult.length) {
+        throw new NotFoundException(
+          `No se encontró turno activo del día para la instalación: ${idInstalacion}.`,
+        );
+      }
+
+      const idTurno = Number(turnoResult[0].idTurno);
+
+      // 3) Obtener viaje activo del día actual para ese turno
+      const viajeResult = await this.conteopasajeroRepository.query(
+        `
+SELECT v.Id AS idViaje
+FROM Viajes v
+WHERE v.IdTurno = ?
+  AND v.Estatus = 1
+  AND DATE(v.Inicio) = CURDATE()
+ORDER BY v.Inicio DESC, v.Id DESC
+LIMIT 1
+        `,
+        [idTurno],
+      );
+
+      if (!viajeResult.length) {
+        throw new NotFoundException(
+          `No se encontró viaje activo del día para el turno: ${idTurno}.`,
+        );
+      }
+
+      // 4) Asignar idViaje resuelto al DTO antes de guardar
+      createConteopasajeroDto.idViaje = Number(viajeResult[0].idViaje);
 
       // 🔹 CREACIÓN DEL REGISTRO: Se crea una instancia de ConteoPasajeros con los datos del DTO
       const newConteoPasajero = await this.conteopasajeroRepository.create(
