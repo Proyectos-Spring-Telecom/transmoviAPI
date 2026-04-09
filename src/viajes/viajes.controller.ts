@@ -179,7 +179,7 @@ export class ViajesController {
     const idUser = req.user.userId;
     const cliente = req.user.cliente;
     const rol = req.user.rol;
-    return this.viajesService.findAllList(+cliente, +cliente,);
+    return this.viajesService.findAllList(+cliente, +rol, +idUser);
   }
 
   @Get(':page/:limit')
