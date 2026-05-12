@@ -1,4 +1,9 @@
-import { BadRequestException, HttpException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
 import { CatMetodoPago } from 'src/entities/CatMetodoPago';
@@ -6,19 +11,19 @@ import { Repository } from 'typeorm';
 
 @Injectable()
 export class CatMetodoPagoService {
-
   constructor(
     @InjectRepository(CatMetodoPago)
     private readonly catMetodoPagoRepository: Repository<CatMetodoPago>,
-  ) { }
+  ) {}
 
   async findAll(): Promise<ApiResponseCommon> {
     try {
-
-      const catMetodoPago = await this.catMetodoPagoRepository.find()
+      const catMetodoPago = await this.catMetodoPagoRepository.find();
 
       if (catMetodoPago.length === 0) {
-        throw new NotFoundException(`No fue posible encontrar el listado de metodos de pago.`)
+        throw new NotFoundException(
+          `No fue posible encontrar el listado de metodos de pago.`,
+        );
       }
       //Forzamos los BigInt a number
       const data = catMetodoPago.map((item) => ({
@@ -40,5 +45,4 @@ export class CatMetodoPagoService {
       );
     }
   }
-
 }

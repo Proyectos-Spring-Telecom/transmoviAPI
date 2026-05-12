@@ -43,7 +43,10 @@ export class CatEstatusMantenimientoController {
     type: CreateCatEstatusMantenimientoDto,
     description: 'Nombre del estatus (máx. 50 caracteres)',
     examples: {
-      ejemplo: { value: { nombre: 'En Proceso' }, summary: 'Estatus en proceso' },
+      ejemplo: {
+        value: { nombre: 'En Proceso' },
+        summary: 'Estatus en proceso',
+      },
     },
   })
   @ApiResponse({
@@ -53,7 +56,10 @@ export class CatEstatusMantenimientoController {
       type: 'object',
       properties: {
         status: { type: 'string', example: 'success' },
-        message: { type: 'string', example: 'Estatus de mantenimiento creado correctamente' },
+        message: {
+          type: 'string',
+          example: 'Estatus de mantenimiento creado correctamente',
+        },
         data: {
           type: 'object',
           properties: { id: { type: 'number' }, nombre: { type: 'string' } },
@@ -61,7 +67,10 @@ export class CatEstatusMantenimientoController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Nombre ya existe o error de validación' })
+  @ApiResponse({
+    status: 400,
+    description: 'Nombre ya existe o error de validación',
+  })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   async create(
     @Body() createCatEstatusMantenimientoDto: CreateCatEstatusMantenimientoDto,
@@ -107,7 +116,8 @@ export class CatEstatusMantenimientoController {
   @Get(':page/:limit')
   @ApiOperation({
     summary: 'Listar estatus de mantenimiento paginados',
-    description: 'Obtiene el catálogo paginado. Ordenado por nombre ascendente.',
+    description:
+      'Obtiene el catálogo paginado. Ordenado por nombre ascendente.',
   })
   @ApiParam({ name: 'page', description: 'Número de página (desde 1)' })
   @ApiParam({ name: 'limit', description: 'Registros por página' })
@@ -177,7 +187,8 @@ export class CatEstatusMantenimientoController {
   @Patch(':id')
   @ApiOperation({
     summary: 'Actualizar estatus de mantenimiento',
-    description: 'Modifica el nombre de un estatus existente. El nombre debe seguir siendo único.',
+    description:
+      'Modifica el nombre de un estatus existente. El nombre debe seguir siendo único.',
   })
   @ApiParam({ name: 'id', description: 'ID del estatus a actualizar' })
   @ApiBody({
@@ -202,7 +213,10 @@ export class CatEstatusMantenimientoController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Nombre ya existe o error de validación' })
+  @ApiResponse({
+    status: 400,
+    description: 'Nombre ya existe o error de validación',
+  })
   @ApiResponse({ status: 404, description: 'Estatus no encontrado' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   async update(

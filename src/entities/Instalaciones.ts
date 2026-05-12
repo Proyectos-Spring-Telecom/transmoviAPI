@@ -6,86 +6,65 @@ import {
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
-} from "typeorm";
-import { BlueVoxs } from "./BlueVoxs";
-import { Clientes } from "./Clientes";
-import { Dispositivos } from "./Dispositivos";
-import { Vehiculos } from "./Vehiculos";
-import { Turnos } from "./Turnos";
-import { UsuariosInstalaciones } from "./UsuariosInstalaciones";
-import { Verificaciones } from "./Verificaciones";
-import { MantenimientoVehicular } from "./MantenimientoVehicular";
-import { MantenimientoKilometraje } from "./MantenimientoKilometraje";
-import { MantenimientoCombustible } from "./MantenimientoCombustible";
-import { Incidentes } from "./Incidentes";
-import { InstalacionesBlueVoxs } from "./InstalacionesBlueVoxs";
-import { applySchema } from "src/common/apply-schema.decorator";
+} from 'typeorm';
+import { BlueVoxs } from './BlueVoxs';
+import { Clientes } from './Clientes';
+import { Vehiculos } from './Vehiculos';
+import { Turnos } from './Turnos';
+import { UsuariosInstalaciones } from './UsuariosInstalaciones';
+import { Verificaciones } from './Verificaciones';
+import { MantenimientoVehicular } from './MantenimientoVehicular';
+import { MantenimientoKilometraje } from './MantenimientoKilometraje';
+import { MantenimientoCombustible } from './MantenimientoCombustible';
+import { Incidentes } from './Incidentes';
+import { InstalacionesBlueVoxs } from './InstalacionesBlueVoxs';
+import { InstalacionesDispositivos } from './InstalacionesDispositivos';
+import { applySchema } from 'src/common/apply-schema.decorator';
 
 @applySchema
-@Index(
-  "IX_Instalaciones_IdCliente_IdDispositivo",
-  ["idDispositivo", "idCliente"],
-  {}
-)
-@Index("IX_Instalaciones_IdCliente_IdVehiculo", ["idVehiculo", "idCliente"], {})
-@Index("FK_Instalaciones_Clientes", ["idCliente"], {})
-@Entity("Instalaciones")
+@Index('IX_Instalaciones_IdCliente_IdVehiculo', ['idCliente', 'idVehiculo'], {})
+@Index('FK_Instalaciones_Clientes', ['idCliente'], {})
+@Entity('Instalaciones')
 export class Instalaciones {
-  @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
+  @PrimaryGeneratedColumn({ type: 'bigint', name: 'Id' })
   id: number;
 
-  @Column("datetime", {
-    name: "FechaCreacion",
-    default: () => "CURRENT_TIMESTAMP",
+  @Column('datetime', {
+    name: 'FechaCreacion',
+    default: () => 'CURRENT_TIMESTAMP',
   })
   fechaCreacion: Date;
 
-  @Column("datetime", {
-    name: "FechaActualizacion",
-    default: () => "CURRENT_TIMESTAMP",
+  @Column('datetime', {
+    name: 'FechaActualizacion',
+    default: () => 'CURRENT_TIMESTAMP',
+    onUpdate: 'CURRENT_TIMESTAMP',
   })
   fechaActualizacion: Date;
 
-  @Column("tinyint", { name: "Estatus", default: () => "'1'" })
+  @Column('tinyint', { name: 'Estatus', default: () => "'1'" })
   estatus: number;
 
-  @Column("bigint", { name: "IdDispositivo" })
-  idDispositivo: number;
-
-
-  @Column("bigint", { name: "IdVehiculo" })
+  @Column('bigint', { name: 'IdVehiculo' })
   idVehiculo: number;
 
-  @Column("bigint", { name: "IdCliente" })
+  @Column('bigint', { name: 'IdCliente' })
   idCliente: number;
 
-  // Relación correcta según BD:
-  // BlueVoxs tiene FK BlueVoxs.IdInstalaciones -> Instalaciones.Id (1 instalación, N bluevoxs).
-
   @ManyToOne(() => Clientes, (clientes) => clientes.instalaciones, {
-    onDelete: "NO ACTION",
-    onUpdate: "NO ACTION",
+    onDelete: 'NO ACTION',
+    onUpdate: 'NO ACTION',
   })
-  @JoinColumn([{ name: "IdCliente", referencedColumnName: "id" }])
+  @JoinColumn([{ name: 'IdCliente', referencedColumnName: 'id' }])
   idCliente2: Clientes;
 
-  @ManyToOne(() => Dispositivos, (dispositivos) => dispositivos.instalaciones, {
-    onDelete: "NO ACTION",
-    onUpdate: "NO ACTION",
-  })
-  @JoinColumn([
-    { name: "IdCliente", referencedColumnName: "idCliente" },
-    { name: "IdDispositivo", referencedColumnName: "id" },
-  ])
-  dispositivos: Dispositivos;
-
   @ManyToOne(() => Vehiculos, (vehiculos) => vehiculos.instalaciones, {
-    onDelete: "NO ACTION",
-    onUpdate: "NO ACTION",
+    onDelete: 'NO ACTION',
+    onUpdate: 'NO ACTION',
   })
   @JoinColumn([
-    { name: "IdCliente", referencedColumnName: "idCliente" },
-    { name: "IdVehiculo", referencedColumnName: "id" },
+    { name: 'IdCliente', referencedColumnName: 'idCliente' },
+    { name: 'IdVehiculo', referencedColumnName: 'id' },
   ])
   vehiculos: Vehiculos;
 
@@ -94,25 +73,46 @@ export class Instalaciones {
 
   @OneToMany(
     () => UsuariosInstalaciones,
-    (usuariosInstalaciones) => usuariosInstalaciones.idInstalacion2
+    (usuariosInstalaciones) => usuariosInstalaciones.idInstalacion2,
   )
   usuariosInstalaciones: UsuariosInstalaciones[];
 
-  @OneToMany(() => Verificaciones, (verificaciones) => verificaciones.instalacion)
+  @OneToMany(
+    () => Verificaciones,
+    (verificaciones) => verificaciones.instalacion,
+  )
   verificaciones: Verificaciones[];
 
-  @OneToMany(() => MantenimientoVehicular, (mantenimientoVehicular) => mantenimientoVehicular.instalacion)
+  @OneToMany(
+    () => MantenimientoVehicular,
+    (mantenimientoVehicular) => mantenimientoVehicular.instalacion,
+  )
   mantenimientosVehiculares: MantenimientoVehicular[];
 
-  @OneToMany(() => MantenimientoKilometraje, (mantenimientoKilometraje) => mantenimientoKilometraje.instalacion)
+  @OneToMany(
+    () => MantenimientoKilometraje,
+    (mantenimientoKilometraje) => mantenimientoKilometraje.instalacion,
+  )
   mantenimientosKilometraje: MantenimientoKilometraje[];
 
-  @OneToMany(() => MantenimientoCombustible, (mantenimientoCombustible) => mantenimientoCombustible.instalacion)
+  @OneToMany(
+    () => MantenimientoCombustible,
+    (mantenimientoCombustible) => mantenimientoCombustible.instalacion,
+  )
   mantenimientosCombustible: MantenimientoCombustible[];
 
   @OneToMany(() => Incidentes, (incidentes) => incidentes.instalacion)
   incidentes: Incidentes[];
 
-  @OneToMany(() => InstalacionesBlueVoxs, (instalacionesBlueVoxs) => instalacionesBlueVoxs.idInstalacion2)
+  @OneToMany(
+    () => InstalacionesBlueVoxs,
+    (instalacionesBlueVoxs) => instalacionesBlueVoxs.idInstalacion2,
+  )
   instalacionesBlueVoxs: InstalacionesBlueVoxs[];
+
+  @OneToMany(
+    () => InstalacionesDispositivos,
+    (instalacionesDispositivos) => instalacionesDispositivos.idInstalacion2,
+  )
+  instalacionesDispositivos: InstalacionesDispositivos[];
 }

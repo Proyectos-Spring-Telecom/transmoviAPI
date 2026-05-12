@@ -5,14 +5,14 @@ import {
   PrimaryColumn,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { applySchema } from "src/common/apply-schema.decorator";
+import { applySchema } from 'src/common/apply-schema.decorator';
 import { TransaccionesDebito } from './TransaccionesDebito';
 
 @applySchema
 @Entity('ViajesTransacciones')
 export class ViajesTransacciones {
   @PrimaryGeneratedColumn({ type: 'bigint', name: 'Id' })
-    id: number;
+  id: number;
 
   @Column('bigint', { name: 'IdViaje' })
   idViaje: number;

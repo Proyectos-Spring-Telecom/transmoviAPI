@@ -20,7 +20,11 @@ import { UpdateBlueVoxEstatusDto } from './dto/update-bluevox-estatus.dto';
 import { Instalaciones } from 'src/entities/Instalaciones';
 import { Clientes } from 'src/entities/Clientes';
 import { UpdateBluevoxEstadoDto } from './dto/update-bluevox.estado.dto';
-import { EnumModulos, EstadoComponente, EstatusEnum } from 'src/common/estatus.enum';
+import {
+  EnumModulos,
+  EstadoComponente,
+  EstatusEnum,
+} from 'src/common/estatus.enum';
 
 @Injectable()
 export class BluevoxService {
@@ -131,7 +135,6 @@ export class BluevoxService {
           estadoActual: EstadoComponente.DISPONIBLE,
         },
       });
-      
 
       //Forzamos a cambiar el id a number
       const data = bluevox.map((item) => ({

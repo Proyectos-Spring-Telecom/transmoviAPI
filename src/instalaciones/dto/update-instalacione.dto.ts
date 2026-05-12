@@ -96,7 +96,8 @@ export class UpdateInstalacioneDto extends PartialType(CreateInstalacionesDto) {
   idCliente?: number;
 
   @ApiProperty({
-    description: 'Lista de BlueVoxs anteriores que se van a cambiar con su estatus anterior',
+    description:
+      'Lista de BlueVoxs anteriores que se van a cambiar con su estatus anterior',
     example: [
       { idBlueVox: 5, estatusAnterior: 5 },
       { idBlueVox: 7, estatusAnterior: 1 },

@@ -15,7 +15,7 @@ export class TransaccionesCronService {
     private readonly transaccionesService: TransaccionesService,
     private readonly viajesService: ViajesService,
     private readonly turnosService: TurnosService,
-  ) { }
+  ) {}
 
   /**
    * Cron job que se ejecuta diariamente a las 01:30 AM.
@@ -27,25 +27,34 @@ export class TransaccionesCronService {
     timeZone: 'America/Mexico_City',
   })
   async handleCierreAutomatico() {
-    this.logger.log('Iniciando cierre automático de transacciones, viajes y turnos abiertos...');
+    this.logger.log(
+      'Iniciando cierre automático de transacciones, viajes y turnos abiertos...',
+    );
 
     try {
       // 1) Cerrar transacciones débito abiertas (via viajeCierre -> createTransaccionDebitoByViajes)
-      const resTrans = await this.transaccionesService.cerrarTransaccionesDebitoAbiertasCron();
-      this.logger.log(`Transacciones débito cerradas: ${resTrans.viajesProcesados} viajes procesados.`);
+      const resTrans =
+        await this.transaccionesService.cerrarTransaccionesDebitoAbiertasCron();
+      this.logger.log(
+        `Transacciones débito cerradas: ${resTrans.viajesProcesados} viajes procesados.`,
+      );
       if (resTrans.errores.length > 0) {
-        resTrans.errores.forEach((e) => this.logger.warn(`[Transacciones] ${e}`));
+        resTrans.errores.forEach((e) =>
+          this.logger.warn(`[Transacciones] ${e}`),
+        );
       }
 
       // 2) Cerrar viajes abiertos
-      const resViajes = await this.viajesService.cerrarViajesAbiertosCron(ID_USUARIO_SISTEMA);
+      const resViajes =
+        await this.viajesService.cerrarViajesAbiertosCron(ID_USUARIO_SISTEMA);
       this.logger.log(`Viajes cerrados: ${resViajes.viajesCerrados}.`);
       if (resViajes.errores.length > 0) {
         resViajes.errores.forEach((e) => this.logger.warn(`[Viajes] ${e}`));
       }
 
       // 3) Cerrar turnos abiertos (incluye cierre de viajes asociados)
-      const resTurnos = await this.turnosService.cerrarTurnosAbiertosCron(ID_USUARIO_SISTEMA);
+      const resTurnos =
+        await this.turnosService.cerrarTurnosAbiertosCron(ID_USUARIO_SISTEMA);
       this.logger.log(`Turnos cerrados: ${resTurnos.turnosCerrados}.`);
       if (resTurnos.errores.length > 0) {
         resTurnos.errores.forEach((e) => this.logger.warn(`[Turnos] ${e}`));
@@ -53,7 +62,9 @@ export class TransaccionesCronService {
 
       // 4) Verificar que todas las TransaccionesDebito estén en histórico, luego vaciar tabla y reiniciar contador
       await this.transaccionesService.limpiarTransaccionesDebito();
-      this.logger.log('TransaccionesDebito: limpieza y reinicio de contador completados.');
+      this.logger.log(
+        'TransaccionesDebito: limpieza y reinicio de contador completados.',
+      );
 
       this.logger.log('Cierre automático completado.');
     } catch (error) {
@@ -78,7 +89,9 @@ export class TransaccionesCronService {
 
     try {
       await this.transaccionesService.limpiarTransaccionesRecarga();
-      this.logger.log('Limpieza automática de TransaccionesRecarga completada exitosamente.');
+      this.logger.log(
+        'Limpieza automática de TransaccionesRecarga completada exitosamente.',
+      );
     } catch (error) {
       this.logger.error(
         `Error en limpieza automática de TransaccionesRecarga: ${(error as Error).message}`,

@@ -5,11 +5,11 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
-import { Clientes } from 'src/entities/Clientes';
 import { Derroteros } from 'src/entities/Derroteros';
 import { UsuariosRegiones } from 'src/entities/UsuariosRegiones';
 import { Repository } from 'typeorm';
 import { RecorridoMonitoreoDto } from './dto/recorrido-monitoreo.dto';
+import { ClientesJerarquiaService } from 'src/clientes-jerarquia/clientes-jerarquia.service';
 
 @Injectable()
 export class MonitoreoService {
@@ -18,27 +18,8 @@ export class MonitoreoService {
     private readonly usuariosregionesRepository: Repository<UsuariosRegiones>,
     @InjectRepository(Derroteros)
     private readonly derroterosRepository: Repository<Derroteros>,
-    @InjectRepository(Clientes)
-    private readonly clienteRepository: Repository<Clientes>,
-  ) { }
-
-  private async clienteHijos(cliente: number) {
-    const clientesFiltrado = await this.clienteRepository.query(
-      `CALL spGetClientes(?);`,
-      [cliente],
-    );
-
-    const idsFiltrados = clientesFiltrado[0];
-    const ids = idsFiltrados
-      .map((row: any) => Number(row.Id))
-      .filter(Boolean);
-    if (ids.length === 0) {
-      return { data: [] };
-    }
-
-    const placeholders = ids.map(() => '?').join(', ');
-    return { ids, placeholders };
-  }
+    private readonly clientesJerarquia: ClientesJerarquiaService,
+  ) {}
 
   private parseBlueVoxs(raw: any): any[] {
     if (raw == null) return [];
@@ -79,7 +60,6 @@ ORDER BY d.Id DESC
     `;
     return this.usuariosregionesRepository.query(query);
   }
-
 
   private async consultarDerroteroListado(cliente: number) {
     const query = `
@@ -134,8 +114,8 @@ ORDER BY d.Id DESC
           break;
 
         default: {
-          const hijos = await this.clienteHijos(cliente);
-          if ('data' in hijos && !('ids' in hijos)) {
+          const hijos = await this.clientesJerarquia.obtenerJerarquia(cliente);
+          if (hijos.ids.length === 0) {
             derroterosList = [];
             ultimaPosicion = [];
             break;
@@ -327,11 +307,14 @@ ORDER BY up.Id DESC
     return this.usuariosregionesRepository.query(query, [cliente]);
   }
 
-
   // ========================================
   // 🔹 OBTENER EL RECORRIDO DE UN DISPOSITIVO
   // ========================================
-  async monitoreoRecorrido(recorridoMonitoreoDto: RecorridoMonitoreoDto, cliente: number, rol: number) {
+  async monitoreoRecorrido(
+    recorridoMonitoreoDto: RecorridoMonitoreoDto,
+    cliente: number,
+    rol: number,
+  ) {
     try {
       function pad(n: number) {
         return n < 10 ? '0' + n : n;
@@ -345,11 +328,15 @@ ORDER BY up.Id DESC
 
       let fechaInicio: string;
       let fechaFin: string;
-      if (recorridoMonitoreoDto.fechaInicio == null && recorridoMonitoreoDto.fechaFin == null) {
+      if (
+        recorridoMonitoreoDto.fechaInicio == null &&
+        recorridoMonitoreoDto.fechaFin == null
+      ) {
         fechaInicio = fechaActual;
         fechaFin = fechaActual;
       } else {
-        fechaInicio = recorridoMonitoreoDto.fechaInicio?.split('T')[0] ?? fechaActual;
+        fechaInicio =
+          recorridoMonitoreoDto.fechaInicio?.split('T')[0] ?? fechaActual;
         fechaFin = recorridoMonitoreoDto.fechaFin?.split('T')[0] ?? fechaActual;
       }
 
@@ -410,10 +397,10 @@ WHERE c.Id = ?
 ORDER BY up.FechaHora ASC
       `;
 
-      const recorridoMonitoreo = await this.usuariosregionesRepository.query(query, [
-        idCliente,
-        NumeroSerieDispositivo,
-      ]);
+      const recorridoMonitoreo = await this.usuariosregionesRepository.query(
+        query,
+        [idCliente, NumeroSerieDispositivo],
+      );
 
       const posicion = recorridoMonitoreo.map((item: any) => ({
         ...item,
@@ -422,8 +409,6 @@ ORDER BY up.FechaHora ASC
         blueVoxs: this.parseBlueVoxs(item.blueVoxs),
         idVehiculo: item.idVehiculo != null ? Number(item.idVehiculo) : null,
       }));
-
-
 
       // Transformación de resultados
       const result: ApiResponseCommon = {

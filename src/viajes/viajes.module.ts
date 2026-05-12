@@ -10,7 +10,16 @@ import { TransaccionesDebito } from 'src/entities/TransaccionesDebito';
 import { TransaccionesModule } from 'src/transacciones/transacciones.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Viajes, Clientes, ConteoPasajeros, TransaccionesDebito]), BitacoraModule, forwardRef(() => TransaccionesModule)],
+  imports: [
+    TypeOrmModule.forFeature([
+      Viajes,
+      Clientes,
+      ConteoPasajeros,
+      TransaccionesDebito,
+    ]),
+    BitacoraModule,
+    forwardRef(() => TransaccionesModule),
+  ],
   controllers: [ViajesController],
   providers: [ViajesService],
   exports: [ViajesService],

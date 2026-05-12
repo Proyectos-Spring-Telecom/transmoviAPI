@@ -9,7 +9,11 @@ import { CreateConteoPasajerosDto } from './dto/create-conteopasajero.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConteoPasajeros } from 'src/entities/ConteoPasajeros';
 import { Between, MoreThanOrEqual, Repository } from 'typeorm';
-import { ApiCrudResponse, ApiResponseCommon, EstatusEnumBitcora } from 'src/common/ApiResponse';
+import {
+  ApiCrudResponse,
+  ApiResponseCommon,
+  EstatusEnumBitcora,
+} from 'src/common/ApiResponse';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import { BlueVoxs } from 'src/entities/BlueVoxs';
 import { Usuarios } from 'src/entities/Usuarios';
@@ -32,19 +36,19 @@ export class ConteopasajerosService {
     @InjectRepository(Viajes)
     private readonly viajesRepository: Repository<Viajes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
-  ) { }
+  ) {}
 
   // ========================================
   // 🔹 CREAR DATOS DE CONTEOPASAJEROS
   // ========================================
   /**
    * Crea un nuevo registro de conteo de pasajeros.
-   * 
+   *
    * Reglas de negocio:
    * - El número de serie del BlueVox debe existir en la base de datos
    * - Si se proporciona idViaje, el viaje debe existir
    * - El estatus es opcional (puede ser null)
-   * 
+   *
    * @param idUser ID del usuario que realiza la operación (para bitácora)
    * @param cliente ID del cliente (obtenido del token, para validaciones si aplica)
    * @param rol Rol del usuario (obtenido del token, para validaciones si aplica)
@@ -63,11 +67,13 @@ export class ConteopasajerosService {
       // 🔹 VALIDACIÓN: Se verifica que el BlueVox exista mediante su número de serie
       // El BlueVox es obligatorio ya que el conteo debe estar asociado a un dispositivo
       const bluevox = await this.bluevoxsRepository.findOne({
-        where: { numeroSerie: createConteopasajeroDto.numeroSerieBlueVox }
+        where: { numeroSerie: createConteopasajeroDto.numeroSerieBlueVox },
       });
 
       if (!bluevox) {
-        throw new NotFoundException('No se encontró el número de serie de Bluevox.')
+        throw new NotFoundException(
+          'No se encontró el número de serie de Bluevox.',
+        );
       }
 
       // 🔹 RESOLUCIÓN AUTOMÁTICA DE idViaje:
@@ -145,7 +151,8 @@ LIMIT 1
         createConteopasajeroDto,
       );
       // 🔹 GUARDADO EN LA BASE DE DATOS: Se guarda el registro (genera el ID automático)
-      const conteoPasajeroSave = await this.conteopasajeroRepository.save(newConteoPasajero);
+      const conteoPasajeroSave =
+        await this.conteopasajeroRepository.save(newConteoPasajero);
 
       // 🔹 REGISTRO EN BITÁCORA: Se registra la operación exitosa
       // Se guarda el DTO completo para auditoría
@@ -166,7 +173,9 @@ LIMIT 1
         message: 'El registro de ConteoPasajero se realizó con éxito.',
         data: {
           id: Number(conteoPasajeroSave.id),
-          nombre: `${conteoPasajeroSave.id} ${conteoPasajeroSave.numeroSerieBlueVox}` || '',
+          nombre:
+            `${conteoPasajeroSave.id} ${conteoPasajeroSave.numeroSerieBlueVox}` ||
+            '',
         },
       };
       return result;
@@ -363,7 +372,7 @@ WHERE c.Id = ?
     cliente: number,
     rol: number,
     page: number,
-    limit: number
+    limit: number,
   ): Promise<ApiResponseCommon> {
     try {
       let conteoPasajeros;
@@ -438,28 +447,53 @@ INNER JOIN Clientes c
           break;
 
         case 2:
-          conteoPasajeros = await this.consultarConteoPasajerosPaginado(cliente, limit, offset);
-          totalResult = await this.consultarTotalConteoPasajerosPaginados(cliente);
+          conteoPasajeros = await this.consultarConteoPasajerosPaginado(
+            cliente,
+            limit,
+            offset,
+          );
+          totalResult =
+            await this.consultarTotalConteoPasajerosPaginados(cliente);
           break;
 
         case 3:
-          conteoPasajeros = await this.consultarConteoPasajerosPaginadoCL(cliente, limit, offset);
-          totalResult = await this.consultarTotalConteoPasajerosPaginadosCl(cliente);
+          conteoPasajeros = await this.consultarConteoPasajerosPaginadoCL(
+            cliente,
+            limit,
+            offset,
+          );
+          totalResult =
+            await this.consultarTotalConteoPasajerosPaginadosCl(cliente);
           break;
 
         case 8:
-          conteoPasajeros = await this.consultarConteoPasajerosPaginado(cliente, limit, offset);
-          totalResult = await this.consultarTotalConteoPasajerosPaginados(cliente);
+          conteoPasajeros = await this.consultarConteoPasajerosPaginado(
+            cliente,
+            limit,
+            offset,
+          );
+          totalResult =
+            await this.consultarTotalConteoPasajerosPaginados(cliente);
           break;
 
         case 10:
-          conteoPasajeros = await this.consultarConteoPasajerosPaginado(cliente, limit, offset);
-          totalResult = await this.consultarTotalConteoPasajerosPaginados(cliente);
+          conteoPasajeros = await this.consultarConteoPasajerosPaginado(
+            cliente,
+            limit,
+            offset,
+          );
+          totalResult =
+            await this.consultarTotalConteoPasajerosPaginados(cliente);
           break;
 
         default:
-          conteoPasajeros = await this.consultarConteoPasajerosPaginadoCL(cliente, limit, offset);
-          totalResult = await this.consultarTotalConteoPasajerosPaginadosCl(cliente);
+          conteoPasajeros = await this.consultarConteoPasajerosPaginadoCL(
+            cliente,
+            limit,
+            offset,
+          );
+          totalResult =
+            await this.consultarTotalConteoPasajerosPaginadosCl(cliente);
           break;
       }
 
@@ -564,7 +598,11 @@ INNER JOIN Clientes c
 WHERE cp.FechaHora BETWEEN ? AND ?
 AND c.Id IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente que quieres consultar
 `;
-    return await this.conteopasajeroRepository.query(query, [fechaInicioParam, fechaFinParam, ...ids]);
+    return await this.conteopasajeroRepository.query(query, [
+      fechaInicioParam,
+      fechaFinParam,
+      ...ids,
+    ]);
   }
 
   private async consultarConteoPasajerosPaginadoRangoCL(
@@ -624,7 +662,8 @@ LIMIT ? OFFSET ?;
   private async consultarTotalConteoPasajerosPaginadosRangoCl(
     fechaInicio: string,
     fechaFin: string,
-    cliente: number) {
+    cliente: number,
+  ) {
     const fechaInicioParam = `${fechaInicio}T00:00:00`;
     const fechaFinParam = `${fechaFin}T23:59:59`;
     const query = `  
@@ -637,7 +676,11 @@ INNER JOIN Clientes c
 WHERE cp.FechaHora BETWEEN ? AND ?
 AND c.Id = ?   -- 🔹 aquí colocas el ID del cliente que quieres consultar
 `;
-    return await this.conteopasajeroRepository.query(query, [fechaInicioParam, fechaFinParam, cliente]);
+    return await this.conteopasajeroRepository.query(query, [
+      fechaInicioParam,
+      fechaFinParam,
+      cliente,
+    ]);
   }
 
   async findAllList(): Promise<ApiResponseCommon> {
@@ -694,7 +737,11 @@ AND c.Id = ?   -- 🔹 aquí colocas el ID del cliente que quieres consultar
   }
 
   // MÉTODOS CON PAGINACIÓN
-  async findByDatePaginated(fecha: string, page: number, limit: number): Promise<ApiResponseCommon> {
+  async findByDatePaginated(
+    fecha: string,
+    page: number,
+    limit: number,
+  ): Promise<ApiResponseCommon> {
     try {
       const startDate = new Date(`${fecha}T00:00:00`);
       const endDate = new Date(`${fecha}T23:59:59`);
@@ -807,42 +854,94 @@ WHERE cp.FechaHora BETWEEN ? AND ?
 
         case 2:
           // Consulta de datos paginados Usuario Administrador
-          conteoPasajeros = await this.consultarConteoPasajerosPaginadoRango(fechaInicio, fechaFin, cliente, limit, offset);
+          conteoPasajeros = await this.consultarConteoPasajerosPaginadoRango(
+            fechaInicio,
+            fechaFin,
+            cliente,
+            limit,
+            offset,
+          );
 
           // Query para total (sin paginación)
-          totalResult = await this.consultarTotalConteoPasajerosPaginadosRango(fechaInicio, fechaFin, cliente);
+          totalResult = await this.consultarTotalConteoPasajerosPaginadosRango(
+            fechaInicio,
+            fechaFin,
+            cliente,
+          );
           break;
 
         case 3:
           // Consulta de datos paginados Usuario Operador
-          conteoPasajeros = await this.consultarConteoPasajerosPaginadoRangoCL(fechaInicio, fechaFin, cliente, limit, offset);
+          conteoPasajeros = await this.consultarConteoPasajerosPaginadoRangoCL(
+            fechaInicio,
+            fechaFin,
+            cliente,
+            limit,
+            offset,
+          );
 
           // Query para total (sin paginación)
-          totalResult = await this.consultarTotalConteoPasajerosPaginadosRangoCl(fechaInicio, fechaFin, cliente);
+          totalResult =
+            await this.consultarTotalConteoPasajerosPaginadosRangoCl(
+              fechaInicio,
+              fechaFin,
+              cliente,
+            );
           break;
 
         case 8:
           // Consulta de datos paginados Usuario Reportes
-          conteoPasajeros = await this.consultarConteoPasajerosPaginadoRango(fechaInicio, fechaFin, cliente, limit, offset);
+          conteoPasajeros = await this.consultarConteoPasajerosPaginadoRango(
+            fechaInicio,
+            fechaFin,
+            cliente,
+            limit,
+            offset,
+          );
 
           // Query para total (sin paginación)
-          totalResult = await this.consultarTotalConteoPasajerosPaginadosRango(fechaInicio, fechaFin, cliente);
+          totalResult = await this.consultarTotalConteoPasajerosPaginadosRango(
+            fechaInicio,
+            fechaFin,
+            cliente,
+          );
           break;
 
         case 10:
           // Consulta de datos paginados Usuario Capturista
-          conteoPasajeros = await this.consultarConteoPasajerosPaginadoRango(fechaInicio, fechaFin, cliente, limit, offset);
+          conteoPasajeros = await this.consultarConteoPasajerosPaginadoRango(
+            fechaInicio,
+            fechaFin,
+            cliente,
+            limit,
+            offset,
+          );
 
           // Query para total (sin paginación)
-          totalResult = await this.consultarTotalConteoPasajerosPaginadosRango(fechaInicio, fechaFin, cliente);
+          totalResult = await this.consultarTotalConteoPasajerosPaginadosRango(
+            fechaInicio,
+            fechaFin,
+            cliente,
+          );
           break;
 
         default:
           // Consulta de datos paginados Usuario Operador
-          conteoPasajeros = await this.consultarConteoPasajerosPaginadoRangoCL(fechaInicio, fechaFin, cliente, limit, offset);
+          conteoPasajeros = await this.consultarConteoPasajerosPaginadoRangoCL(
+            fechaInicio,
+            fechaFin,
+            cliente,
+            limit,
+            offset,
+          );
 
           // Query para total (sin paginación)
-          totalResult = await this.consultarTotalConteoPasajerosPaginadosRangoCl(fechaInicio, fechaFin, cliente);
+          totalResult =
+            await this.consultarTotalConteoPasajerosPaginadosRangoCl(
+              fechaInicio,
+              fechaFin,
+              cliente,
+            );
           break;
       }
 
@@ -853,7 +952,6 @@ WHERE cp.FechaHora BETWEEN ? AND ?
         id: Number(item.id),
         idCliente: Number(item.idCliente),
       }));
-
 
       const result: ApiResponseCommon = {
         data: data,
@@ -875,7 +973,6 @@ WHERE cp.FechaHora BETWEEN ? AND ?
       });
     }
   }
-
 
   // ⏰ 3. OBTENER DATOS DE UNA HORA ESPECÍFICA
   async findByDateTimePaginated(
@@ -918,7 +1015,10 @@ WHERE cp.FechaHora BETWEEN ? AND ?
   }
 
   // 📊 4. OBTENER DATOS DE HOY
-  async findTodayPaginated(page: number, limit: number): Promise<ApiResponseCommon> {
+  async findTodayPaginated(
+    page: number,
+    limit: number,
+  ): Promise<ApiResponseCommon> {
     try {
       const today = new Date();
       const startOfDay = new Date(today.setHours(0, 0, 0, 0));
@@ -954,18 +1054,21 @@ WHERE cp.FechaHora BETWEEN ? AND ?
   }
 
   // 📅 5. OBTENER DATOS DE LA ÚLTIMA SEMANA
-  async findLastWeekPaginated(page: number, limit: number): Promise<ApiResponseCommon> {
+  async findLastWeekPaginated(
+    page: number,
+    limit: number,
+  ): Promise<ApiResponseCommon> {
     try {
       const today = new Date();
       const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
 
       const [data, total] = await this.conteopasajeroRepository.findAndCount({
         where: {
-          fechaHora: MoreThanOrEqual(lastWeek)
+          fechaHora: MoreThanOrEqual(lastWeek),
         },
         skip: (page - 1) * limit,
         take: limit,
-        order: { fechaHora: 'DESC' }
+        order: { fechaHora: 'DESC' },
       });
 
       const conteoPasajeros = data.map((item) => ({
@@ -1083,14 +1186,14 @@ WHERE cp.FechaHora BETWEEN ? AND ?
   // ========================================
   /**
    * Actualiza un registro de conteo de pasajeros existente.
-   * 
+   *
    * Reglas de negocio:
    * - El registro de conteo debe existir
    * - NO se puede actualizar si el registro de conteo tiene estatus = 0 (inactivo)
    * - Si el conteo tiene un viaje asociado (idViaje), NO se puede actualizar si el viaje tiene estatus INACTIVO
    * - Si se proporciona idViaje en el DTO, el viaje debe existir y no estar INACTIVO
    * - Todos los campos del DTO son opcionales (solo se actualizan los proporcionados)
-   * 
+   *
    * @param id ID del registro de conteo a actualizar
    * @param idUser ID del usuario que realiza la operación (para bitácora)
    * @param cliente ID del cliente (obtenido del token, para validaciones si aplica)
@@ -1106,39 +1209,47 @@ WHERE cp.FechaHora BETWEEN ? AND ?
     idUser: number,
     cliente: number,
     rol: number,
-    updateConteoPasajerosDto: UpdateConteoPasajerosDto) {
+    updateConteoPasajerosDto: UpdateConteoPasajerosDto,
+  ) {
     try {
       // 🔹 BÚSQUEDA DEL REGISTRO: Se valida que el registro de conteo exista
       const conteoPasajero = await this.conteopasajeroRepository.findOne({
-        where: { id: id }
+        where: { id: id },
       });
-      if (!conteoPasajero) throw new NotFoundException('Conteo Pasajero no encontrada.');
+      if (!conteoPasajero)
+        throw new NotFoundException('Conteo Pasajero no encontrada.');
 
       // 🔹 VALIDACIÓN: No se puede actualizar si el conteo tiene estatus = 0 (inactivo)
       // Esto previene la modificación de registros que ya han sido finalizados
       if (conteoPasajero.estatus === 0) {
         throw new BadRequestException(
-          `No se puede actualizar el conteo de pasajeros con ID: ${id} porque tiene estatus inactivo (0).`
+          `No se puede actualizar el conteo de pasajeros con ID: ${id} porque tiene estatus inactivo (0).`,
         );
       }
 
       // 🔹 VALIDACIÓN: Si el conteo tiene un viaje asociado, verificar que el viaje no esté INACTIVO
       // Si el viaje está finalizado (INACTIVO), no se deben modificar los conteos asociados
-      if (conteoPasajero.idViaje !== null && conteoPasajero.idViaje !== undefined) {
+      if (
+        conteoPasajero.idViaje !== null &&
+        conteoPasajero.idViaje !== undefined
+      ) {
         const viajeAsociado = await this.viajesRepository.findOne({
-          where: { id: conteoPasajero.idViaje }
+          where: { id: conteoPasajero.idViaje },
         });
 
         if (!viajeAsociado) {
           throw new NotFoundException(
-            `No se encontró el viaje asociado con ID: ${conteoPasajero.idViaje}.`
+            `No se encontró el viaje asociado con ID: ${conteoPasajero.idViaje}.`,
           );
         }
 
         // Verificar si el viaje está INACTIVO (estatus = 0 o EstatusEnum.INACTIVO)
-        if (viajeAsociado.estatus === EstatusEnum.INACTIVO || viajeAsociado.estatus === 0) {
+        if (
+          viajeAsociado.estatus === EstatusEnum.INACTIVO ||
+          viajeAsociado.estatus === 0
+        ) {
           throw new BadRequestException(
-            `No se puede actualizar el conteo de pasajeros con ID: ${id} porque el viaje asociado (ID: ${conteoPasajero.idViaje}) está inactivo.`
+            `No se puede actualizar el conteo de pasajeros con ID: ${id} porque el viaje asociado (ID: ${conteoPasajero.idViaje}) está inactivo.`,
           );
         }
       }
@@ -1212,19 +1323,24 @@ LIMIT 1
 
       // 🔹 VALIDACIÓN: Si se proporciona idViaje en el DTO, se verifica que el viaje exista y no esté INACTIVO
       // Esto previene la asociación a viajes finalizados o inexistentes
-      if (updateConteoPasajerosDto.idViaje !== undefined && updateConteoPasajerosDto.idViaje !== null) {
+      if (
+        updateConteoPasajerosDto.idViaje !== undefined &&
+        updateConteoPasajerosDto.idViaje !== null
+      ) {
         const viaje = await this.viajesRepository.findOne({
-          where: { id: updateConteoPasajerosDto.idViaje }
+          where: { id: updateConteoPasajerosDto.idViaje },
         });
 
         if (!viaje) {
-          throw new NotFoundException(`No se encontró el viaje con ID: ${updateConteoPasajerosDto.idViaje}.`)
+          throw new NotFoundException(
+            `No se encontró el viaje con ID: ${updateConteoPasajerosDto.idViaje}.`,
+          );
         }
 
         // Verificar si el viaje nuevo está INACTIVO
         if (viaje.estatus === EstatusEnum.INACTIVO || viaje.estatus === 0) {
           throw new BadRequestException(
-            `No se puede actualizar el conteo de pasajeros para asociarlo al viaje con ID: ${updateConteoPasajerosDto.idViaje} porque el viaje está inactivo.`
+            `No se puede actualizar el conteo de pasajeros para asociarlo al viaje con ID: ${updateConteoPasajerosDto.idViaje} porque el viaje está inactivo.`,
           );
         }
       }

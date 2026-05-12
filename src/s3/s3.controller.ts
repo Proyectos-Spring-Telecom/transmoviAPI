@@ -48,7 +48,13 @@ export class S3Controller {
         },
         folder: {
           type: 'string',
-          enum: ['clientes', 'operadores', 'usuarios', 'vehiculos', 'pasajeros'],
+          enum: [
+            'clientes',
+            'operadores',
+            'usuarios',
+            'vehiculos',
+            'pasajeros',
+          ],
           description: 'Carpeta destino en el bucket',
         },
         idModule: {
@@ -73,7 +79,10 @@ export class S3Controller {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Archivo requerido, tipo no permitido o tamaño excedido' })
+  @ApiResponse({
+    status: 400,
+    description: 'Archivo requerido, tipo no permitido o tamaño excedido',
+  })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   @ApiResponse({ status: 500, description: 'Error al subir el archivo a S3' })
   @UseInterceptors(
@@ -83,10 +92,7 @@ export class S3Controller {
       fileFilter: (req, file, cb) => {
         const allowedTypes = ['image/png', 'image/jpeg', 'application/pdf'];
         if (!allowedTypes.includes(file.mimetype)) {
-          return cb(
-            new Error('Solo se permiten PNG, JPG, JPEG o PDF'),
-            false,
-          );
+          return cb(new Error('Solo se permiten PNG, JPG, JPEG o PDF'), false);
         }
         cb(null, true);
       },

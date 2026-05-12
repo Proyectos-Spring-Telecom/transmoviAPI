@@ -9,8 +9,11 @@ import { Usuarios } from 'src/entities/Usuarios';
 import { Clientes } from 'src/entities/Clientes';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Posiciones, Dispositivos, Usuarios, Clientes]), BitacoraModule],
+  imports: [
+    TypeOrmModule.forFeature([Posiciones, Dispositivos, Usuarios, Clientes]),
+    BitacoraModule,
+  ],
   controllers: [PosicionesController],
   providers: [PosicionesService],
 })
-export class PosicionesModule { }
+export class PosicionesModule {}

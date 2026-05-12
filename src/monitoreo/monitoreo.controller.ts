@@ -1,7 +1,23 @@
-import { Controller, Get, Param, UseGuards, Request, ParseIntPipe, Post, Body } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  UseGuards,
+  Request,
+  ParseIntPipe,
+  Post,
+  Body,
+} from '@nestjs/common';
 import { MonitoreoService } from './monitoreo.service';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags, ApiParam, ApiBody } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+  ApiParam,
+  ApiBody,
+} from '@nestjs/swagger';
 import { RecorridoMonitoreoDto } from './dto/recorrido-monitoreo.dto';
 
 @ApiTags('Monitoreo')
@@ -14,7 +30,8 @@ export class MonitoreoController {
   @Get('list/:cliente')
   @ApiOperation({
     summary: 'Listar posiciones en monitoreo',
-    description: 'Obtiene el listado de dispositivos/posiciones en tiempo real para el cliente especificado.',
+    description:
+      'Obtiene el listado de dispositivos/posiciones en tiempo real para el cliente especificado.',
   })
   @ApiParam({ name: 'cliente', description: 'ID del cliente' })
   @ApiResponse({
@@ -27,7 +44,12 @@ export class MonitoreoController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, latitud: { type: 'number' }, longitud: { type: 'number' }, idDispositivo: { type: 'number' } },
+            properties: {
+              id: { type: 'number' },
+              latitud: { type: 'number' },
+              longitud: { type: 'number' },
+              idDispositivo: { type: 'number' },
+            },
           },
         },
       },
@@ -36,7 +58,8 @@ export class MonitoreoController {
   @ApiResponse({ status: 401, description: 'No autorizado' })
   findListPosiciones(
     @Param('cliente', ParseIntPipe) cliente: number,
-    @Request() req) {
+    @Request() req,
+  ) {
     const idUser = req.user.userId;
     const rol = req.user.rol;
     return this.monitoreoService.monitoreoListado(+idUser, +cliente, +rol);
@@ -45,7 +68,8 @@ export class MonitoreoController {
   @Post('recorrido')
   @ApiOperation({
     summary: 'Obtener recorrido del día de un dispositivo',
-    description: 'Obtiene las posiciones/recorrido del día de un dispositivo para el monitoreo.',
+    description:
+      'Obtiene las posiciones/recorrido del día de un dispositivo para el monitoreo.',
   })
   @ApiBody({
     type: RecorridoMonitoreoDto,
@@ -61,18 +85,28 @@ export class MonitoreoController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { latitud: { type: 'number' }, longitud: { type: 'number' }, fechaHora: { type: 'string' } },
+            properties: {
+              latitud: { type: 'number' },
+              longitud: { type: 'number' },
+              fechaHora: { type: 'string' },
+            },
           },
         },
       },
     },
   })
   @ApiResponse({ status: 401, description: 'No autorizado' })
-  findKpi(@Body() recorridoMonitoreoDto: RecorridoMonitoreoDto, @Request() req) {
-      const cliente = req.user.cliente;
-      const idUser = req.user.userId;
-      const rol = req.user.rol;
-      return this.monitoreoService.monitoreoRecorrido(recorridoMonitoreoDto, +cliente, +rol);
-    }
-
+  findKpi(
+    @Body() recorridoMonitoreoDto: RecorridoMonitoreoDto,
+    @Request() req,
+  ) {
+    const cliente = req.user.cliente;
+    const idUser = req.user.userId;
+    const rol = req.user.rol;
+    return this.monitoreoService.monitoreoRecorrido(
+      recorridoMonitoreoDto,
+      +cliente,
+      +rol,
+    );
+  }
 }

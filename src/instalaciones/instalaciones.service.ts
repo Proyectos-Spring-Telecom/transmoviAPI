@@ -25,7 +25,11 @@ import { Clientes } from 'src/entities/Clientes';
 import { HistoricoInstalaciones } from 'src/entities/historico-instalaciones';
 import { InstalacionesBlueVoxs } from 'src/entities/InstalacionesBlueVoxs';
 import { HistoricoinstalacionesService } from 'src/historicoinstalaciones/historicoinstalaciones.service';
-import { EnumModulos, EstadoComponente, EstatusEnum } from 'src/common/estatus.enum';
+import {
+  EnumModulos,
+  EstadoComponente,
+  EstatusEnum,
+} from 'src/common/estatus.enum';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, In } from 'typeorm';
 
@@ -49,7 +53,7 @@ export class InstalacionesService {
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly bitacoraLogger: BitacoraLoggerService,
     private readonly historicoinstalacionesService: HistoricoinstalacionesService,
-  ) { }
+  ) {}
 
   // ========================================
   // 🔹 CREAR INSTALACIÓN
@@ -69,7 +73,9 @@ export class InstalacionesService {
       ).filter((id) => Number.isFinite(id) && id > 0);
 
       if (idsBlueVoxs.length === 0) {
-        throw new BadRequestException('Debe enviar al menos 1 BlueVox en idsBlueVoxs.');
+        throw new BadRequestException(
+          'Debe enviar al menos 1 BlueVox en idsBlueVoxs.',
+        );
       }
 
       // Transacción para evitar estados inconsistentes (componentes “asignados” sin instalación, etc.).
@@ -78,11 +84,15 @@ export class InstalacionesService {
       await queryRunner.startTransaction();
 
       try {
-        const instalacionesRepo = queryRunner.manager.getRepository(Instalaciones);
-        const dispositivosRepo = queryRunner.manager.getRepository(Dispositivos);
+        const instalacionesRepo =
+          queryRunner.manager.getRepository(Instalaciones);
+        const dispositivosRepo =
+          queryRunner.manager.getRepository(Dispositivos);
         const vehiculosRepo = queryRunner.manager.getRepository(Vehiculos);
         const blueVoxsRepo = queryRunner.manager.getRepository(BlueVoxs);
-        const instalacionesBlueVoxsRepo = queryRunner.manager.getRepository(InstalacionesBlueVoxs);
+        const instalacionesBlueVoxsRepo = queryRunner.manager.getRepository(
+          InstalacionesBlueVoxs,
+        );
 
         // 1) Validar Dispositivo (existencia + cliente + estatus/estado + no asignado)
         const dispositivo = await dispositivosRepo.findOne({
@@ -216,7 +226,9 @@ export class InstalacionesService {
         await dispositivosRepo.update(dispositivo.id, {
           estadoActual: EstadoComponente.ASIGNADO,
         });
-        await vehiculosRepo.update(vehiculo.id, { estadoActual: EstadoComponente.ASIGNADO });
+        await vehiculosRepo.update(vehiculo.id, {
+          estadoActual: EstadoComponente.ASIGNADO,
+        });
 
         // 5.1) Crear registros en InstalacionesBlueVoxs para asociar los BlueVoxs con la instalación.
         // IMPORTANTE: Esta es la forma correcta de asociar BlueVoxs con Instalaciones usando la tabla intermedia.
@@ -1204,17 +1216,17 @@ ORDER BY i.Id DESC;
   // ========================================
   /**
    * Actualiza el estatus de una instalación y ajusta automáticamente el estado de los componentes asociados.
-   * 
+   *
    * Flujo según el estatus objetivo:
    * - Estatus = 1 (activa): Componentes (Dispositivo, Vehículo, BlueVoxs) pasan a ASIGNADO (EstadoActual = 2)
    * - Estatus = 0 (inactiva): Componentes pasan a DISPONIBLE (EstadoActual = 1), manteniendo registros en InstalacionesBlueVoxs
-   * 
+   *
    * Soporte para múltiples BlueVoxs:
    * - La relación se gestiona mediante la tabla intermedia InstalacionesBlueVoxs (M..N)
    * - Todas las operaciones sobre BlueVoxs consultan primero InstalacionesBlueVoxs para obtener los IDs asociados
    * - Esto permite actualizar múltiples BlueVoxs asociados en una sola operación
    * - NO se modifica BlueVoxs.IdInstalaciones (esa columna no existe o se ignora)
-   * 
+   *
    * @param id ID de la instalación a actualizar
    * @param idUser ID del usuario que realiza la operación (para bitácora)
    * @param cliente ID del cliente (para validaciones de roles si aplica)
@@ -1318,13 +1330,14 @@ ORDER BY i.Id DESC;
         // 3.5) Verificar que existan BlueVoxs asociados a la instalación y que estén disponibles
         // IMPORTANTE: Ahora consultamos BlueVoxs asociados mediante InstalacionesBlueVoxs (tabla intermedia).
         // La consulta retorna TODOS los BlueVoxs asociados que cumplan las condiciones.
-        const instalacionesBlueVoxsActivas = await this.instalacionesBlueVoxsRepository.find({
-          where: {
-            idInstalacion: instalacion.id, // Filtro por FK en tabla intermedia
-            estatus: 1, // Solo asociaciones activas
-          },
-          relations: ['idBlueVox2'], // Cargamos los BlueVoxs relacionados
-        });
+        const instalacionesBlueVoxsActivas =
+          await this.instalacionesBlueVoxsRepository.find({
+            where: {
+              idInstalacion: instalacion.id, // Filtro por FK en tabla intermedia
+              estatus: 1, // Solo asociaciones activas
+            },
+            relations: ['idBlueVox2'], // Cargamos los BlueVoxs relacionados
+          });
 
         // Validar que todos los BlueVoxs asociados estén disponibles (Estatus=1, EstadoActual=1)
         const blueVoxsAsociados = instalacionesBlueVoxsActivas
@@ -1369,7 +1382,9 @@ ORDER BY i.Id DESC;
         // Actualizar TODOS los BlueVoxs asociados a esta instalación
         // IMPORTANTE: Obtenemos los IDs de BlueVoxs desde InstalacionesBlueVoxs y actualizamos su EstadoActual.
         // NO se modifica BlueVoxs.IdInstalaciones (esa columna no existe o se ignora).
-        const idsBlueVoxsAsociados = instalacionesBlueVoxsActivas.map((ibv) => ibv.idBlueVox);
+        const idsBlueVoxsAsociados = instalacionesBlueVoxsActivas.map(
+          (ibv) => ibv.idBlueVox,
+        );
         if (idsBlueVoxsAsociados.length > 0) {
           await this.bluevoxsRepository.update(
             { id: In(idsBlueVoxsAsociados) }, // Filtro: IDs de BlueVoxs obtenidos de InstalacionesBlueVoxs
@@ -1398,13 +1413,16 @@ ORDER BY i.Id DESC;
         // IMPORTANTE: Obtenemos los IDs de BlueVoxs desde InstalacionesBlueVoxs y actualizamos su EstadoActual.
         // NO se modifica InstalacionesBlueVoxs (se mantienen los registros activos para relación histórica).
         // NO se modifica BlueVoxs.IdInstalaciones (esa columna no existe o se ignora).
-        const instalacionesBlueVoxsDesactivar = await this.instalacionesBlueVoxsRepository.find({
-          where: {
-            idInstalacion: instalacion.id,
-            estatus: 1, // Solo asociaciones activas
-          },
-        });
-        const idsBlueVoxsDesactivar = instalacionesBlueVoxsDesactivar.map((ibv) => ibv.idBlueVox);
+        const instalacionesBlueVoxsDesactivar =
+          await this.instalacionesBlueVoxsRepository.find({
+            where: {
+              idInstalacion: instalacion.id,
+              estatus: 1, // Solo asociaciones activas
+            },
+          });
+        const idsBlueVoxsDesactivar = instalacionesBlueVoxsDesactivar.map(
+          (ibv) => ibv.idBlueVox,
+        );
         if (idsBlueVoxsDesactivar.length > 0) {
           await this.bluevoxsRepository.update(
             { id: In(idsBlueVoxsDesactivar) }, // Filtro: IDs de BlueVoxs obtenidos de InstalacionesBlueVoxs
@@ -1504,8 +1522,8 @@ ORDER BY i.Id DESC;
 
       // Obtener el cliente del DTO o usar el de la instalación existente como fallback
       // IMPORTANTE: El cliente ahora se obtiene del DTO, no del token
-      const idClienteParaValidacion = updateInstalacioneDto.idCliente 
-        ? Number(updateInstalacioneDto.idCliente) 
+      const idClienteParaValidacion = updateInstalacioneDto.idCliente
+        ? Number(updateInstalacioneDto.idCliente)
         : instalacion.idCliente;
 
       // Si se proporciona idCliente en el DTO, actualizar la instalación
@@ -1519,13 +1537,17 @@ ORDER BY i.Id DESC;
       // ACTUALIZACIÓN DE DISPOSITIVO
       // ==========================================
       // Reglas: nuevo dispositivo no asignado a otra instalación activa; exista, estatus=1, estadoActual=DISPONIBLE, pertenezca al cliente
-      if (updateInstalacioneDto.estatusDispositivoAnterior !== undefined && updateInstalacioneDto.idDispositivo) {
+      if (
+        updateInstalacioneDto.estatusDispositivoAnterior !== undefined &&
+        updateInstalacioneDto.idDispositivo
+      ) {
         const nuevoDispositivoId = Number(updateInstalacioneDto.idDispositivo);
 
-        const instalacionConDispositivo = await this.instalacionesRepository.findOne({
-          where: { idDispositivo: nuevoDispositivoId, estatus: 1 },
-          relations: ['dispositivos'],
-        });
+        const instalacionConDispositivo =
+          await this.instalacionesRepository.findOne({
+            where: { idDispositivo: nuevoDispositivoId, estatus: 1 },
+            relations: ['dispositivos'],
+          });
         if (instalacionConDispositivo && instalacionConDispositivo.id !== id) {
           throw new BadRequestException(
             `El dispositivo con ID ${nuevoDispositivoId} ya se encuentra asignado a la instalación ${instalacionConDispositivo.id}.`,
@@ -1550,8 +1572,12 @@ ORDER BY i.Id DESC;
         await this.dispositivosRepository.update(instalacion.idDispositivo, {
           estadoActual: updateInstalacioneDto.estatusDispositivoAnterior,
         });
-        await this.dispositivosRepository.update(nuevoDispositivoId, { estadoActual: EstadoComponente.ASIGNADO });
-        await this.instalacionesRepository.update(id, { idDispositivo: nuevoDispositivoId });
+        await this.dispositivosRepository.update(nuevoDispositivoId, {
+          estadoActual: EstadoComponente.ASIGNADO,
+        });
+        await this.instalacionesRepository.update(id, {
+          idDispositivo: nuevoDispositivoId,
+        });
       }
 
       // ==========================================
@@ -1563,24 +1589,40 @@ ORDER BY i.Id DESC;
 
       // Pre-procesamiento: BlueVoxs anteriores (estado al desasociar)
       const blueVoxsAnterioresMap = new Map<number, number>();
-      if (updateInstalacioneDto.blueVoxsAnteriores && Array.isArray(updateInstalacioneDto.blueVoxsAnteriores)) {
+      if (
+        updateInstalacioneDto.blueVoxsAnteriores &&
+        Array.isArray(updateInstalacioneDto.blueVoxsAnteriores)
+      ) {
         for (const bv of updateInstalacioneDto.blueVoxsAnteriores) {
-          const bx = await this.bluevoxsRepository.findOne({ where: { id: bv.idBlueVox } });
+          const bx = await this.bluevoxsRepository.findOne({
+            where: { id: bv.idBlueVox },
+          });
           if (!bx) {
-            throw new BadRequestException(`El BlueVox con ID ${bv.idBlueVox} no existe en el sistema.`);
+            throw new BadRequestException(
+              `El BlueVox con ID ${bv.idBlueVox} no existe en el sistema.`,
+            );
           }
           blueVoxsAnterioresMap.set(Number(bv.idBlueVox), bv.estatusAnterior);
-          await this.bluevoxsRepository.update(bv.idBlueVox, { estadoActual: bv.estatusAnterior });
-          const asociacion = await this.instalacionesBlueVoxsRepository.findOne({
-            where: { idInstalacion: id, idBlueVox: bv.idBlueVox },
+          await this.bluevoxsRepository.update(bv.idBlueVox, {
+            estadoActual: bv.estatusAnterior,
           });
+          const asociacion = await this.instalacionesBlueVoxsRepository.findOne(
+            {
+              where: { idInstalacion: id, idBlueVox: bv.idBlueVox },
+            },
+          );
           if (asociacion && asociacion.estatus === 1) {
-            await this.instalacionesBlueVoxsRepository.update(asociacion.id, { estatus: 0 });
+            await this.instalacionesBlueVoxsRepository.update(asociacion.id, {
+              estatus: 0,
+            });
           }
         }
       }
 
-      if (updateInstalacioneDto.idsBlueVoxs && Array.isArray(updateInstalacioneDto.idsBlueVoxs)) {
+      if (
+        updateInstalacioneDto.idsBlueVoxs &&
+        Array.isArray(updateInstalacioneDto.idsBlueVoxs)
+      ) {
         const nuevaLista: number[] = Array.from(
           new Set(updateInstalacioneDto.idsBlueVoxs.map(Number)),
         ).filter((n) => Number.isFinite(n) && n > 0);
@@ -1598,8 +1640,12 @@ ORDER BY i.Id DESC;
           ...creadaLista.map((p) => Number(p.idBlueVox)),
         ]);
 
-        const blueVoxsYaAsociados = new Set(creadaLista.map((ibv) => Number(ibv.idBlueVox)));
-        const blueVoxsNuevos = nuevaLista.filter((idBv) => !blueVoxsYaAsociados.has(idBv));
+        const blueVoxsYaAsociados = new Set(
+          creadaLista.map((ibv) => Number(ibv.idBlueVox)),
+        );
+        const blueVoxsNuevos = nuevaLista.filter(
+          (idBv) => !blueVoxsYaAsociados.has(idBv),
+        );
 
         // Validación: todos los BlueVoxs deben existir, estar activos (estatus=1) y pertenecer al cliente
         const blueVoxsSolicitados = await this.bluevoxsRepository.find({
@@ -1610,10 +1656,13 @@ ORDER BY i.Id DESC;
           },
         });
         if (blueVoxsSolicitados.length !== nuevaLista.length) {
-          const encontrados = new Set(blueVoxsSolicitados.map((b) => Number(b.id)));
+          const encontrados = new Set(
+            blueVoxsSolicitados.map((b) => Number(b.id)),
+          );
           const faltantes = nuevaLista.filter((idBv) => !encontrados.has(idBv));
           throw new BadRequestException({
-            message: 'Uno o más BlueVoxs no existen, no pertenecen al cliente o no están activos (estatus=1).',
+            message:
+              'Uno o más BlueVoxs no existen, no pertenecen al cliente o no están activos (estatus=1).',
             faltantes,
           });
         }
@@ -1621,29 +1670,44 @@ ORDER BY i.Id DESC;
         // Validación BlueVoxs nuevos: estadoActual=DISPONIBLE y no asignados a otra instalación activa
         if (blueVoxsNuevos.length > 0) {
           const disponibles = await this.bluevoxsRepository.find({
-            where: { id: In(blueVoxsNuevos), estadoActual: EstadoComponente.DISPONIBLE },
+            where: {
+              id: In(blueVoxsNuevos),
+              estadoActual: EstadoComponente.DISPONIBLE,
+            },
           });
           if (disponibles.length !== blueVoxsNuevos.length) {
-            const encontradosDisp = new Set(disponibles.map((b) => Number(b.id)));
-            const noDisponibles = blueVoxsNuevos.filter((idBv) => !encontradosDisp.has(idBv));
+            const encontradosDisp = new Set(
+              disponibles.map((b) => Number(b.id)),
+            );
+            const noDisponibles = blueVoxsNuevos.filter(
+              (idBv) => !encontradosDisp.has(idBv),
+            );
             throw new BadRequestException({
-              message: 'Uno o más BlueVoxs no están disponibles (estadoActual=DISPONIBLE). Verifique que no estén asignados a otra instalación.',
+              message:
+                'Uno o más BlueVoxs no están disponibles (estadoActual=DISPONIBLE). Verifique que no estén asignados a otra instalación.',
               noDisponibles,
             });
           }
 
-          const asociadosActivos = await this.instalacionesBlueVoxsRepository.find({
-            where: { idBlueVox: In(blueVoxsNuevos), estatus: 1 },
-            relations: ['idInstalacion2'],
-          });
+          const asociadosActivos =
+            await this.instalacionesBlueVoxsRepository.find({
+              where: { idBlueVox: In(blueVoxsNuevos), estatus: 1 },
+              relations: ['idInstalacion2'],
+            });
           const conflictos = asociadosActivos.filter(
-            (ibv) => ibv.idInstalacion2 && ibv.idInstalacion2.estatus === 1 && ibv.idInstalacion2.id !== id,
+            (ibv) =>
+              ibv.idInstalacion2 &&
+              ibv.idInstalacion2.estatus === 1 &&
+              ibv.idInstalacion2.id !== id,
           );
           if (conflictos.length > 0) {
             const idsConflictivos = conflictos.map((c) => c.idBlueVox);
-            const instalacionesConflictivas = conflictos.map((c) => c.idInstalacion2.id).join(', ');
+            const instalacionesConflictivas = conflictos
+              .map((c) => c.idInstalacion2.id)
+              .join(', ');
             throw new BadRequestException({
-              message: 'Uno o más BlueVoxs ya se encuentran asignados a una instalación activa.',
+              message:
+                'Uno o más BlueVoxs ya se encuentran asignados a una instalación activa.',
               blueVoxsConflictivos: idsConflictivos,
               instalacionesConflictivas,
             });
@@ -1655,19 +1719,31 @@ ORDER BY i.Id DESC;
           const creado = creadaMap.get(blueVoxId);
 
           if (enNueva && creado && creado.estatus === 0) {
-            await this.instalacionesBlueVoxsRepository.update(creado.id, { estatus: 1 });
-            await this.bluevoxsRepository.update(blueVoxId, { estadoActual: EstadoComponente.ASIGNADO });
+            await this.instalacionesBlueVoxsRepository.update(creado.id, {
+              estatus: 1,
+            });
+            await this.bluevoxsRepository.update(blueVoxId, {
+              estadoActual: EstadoComponente.ASIGNADO,
+            });
           } else if (enNueva && !creado) {
             await this.instalacionesBlueVoxsRepository.save({
               idInstalacion: id,
               idBlueVox: blueVoxId,
               estatus: 1,
             });
-            await this.bluevoxsRepository.update(blueVoxId, { estadoActual: EstadoComponente.ASIGNADO });
+            await this.bluevoxsRepository.update(blueVoxId, {
+              estadoActual: EstadoComponente.ASIGNADO,
+            });
           } else if (!enNueva && creado && creado.estatus === 1) {
-            await this.instalacionesBlueVoxsRepository.update(creado.id, { estatus: 0 });
-            const estadoAlDesactivar = blueVoxsAnterioresMap.get(blueVoxId) ?? EstadoComponente.DISPONIBLE;
-            await this.bluevoxsRepository.update(blueVoxId, { estadoActual: estadoAlDesactivar });
+            await this.instalacionesBlueVoxsRepository.update(creado.id, {
+              estatus: 0,
+            });
+            const estadoAlDesactivar =
+              blueVoxsAnterioresMap.get(blueVoxId) ??
+              EstadoComponente.DISPONIBLE;
+            await this.bluevoxsRepository.update(blueVoxId, {
+              estadoActual: estadoAlDesactivar,
+            });
           }
         }
       }
@@ -1698,8 +1774,8 @@ ORDER BY i.Id DESC;
       );
 
       // Usar el cliente actualizado (del DTO si se proporcionó, o el de la instalación)
-      const clienteFinal = updateInstalacioneDto.idCliente 
-        ? Number(updateInstalacioneDto.idCliente) 
+      const clienteFinal = updateInstalacioneDto.idCliente
+        ? Number(updateInstalacioneDto.idCliente)
         : instalacionActualizada.idCliente;
 
       const body = {
@@ -1709,15 +1785,17 @@ ORDER BY i.Id DESC;
         idCliente: clienteFinal,
       };
       // Construir comentario combinando comentariosDispositivo y comentariosBluevox
-      const comentario = `${updateInstalacioneDto.comentariosDispositivo ?? ''} ${updateInstalacioneDto.comentariosBluevox ?? ''}`.trim();
+      const comentario =
+        `${updateInstalacioneDto.comentariosDispositivo ?? ''} ${updateInstalacioneDto.comentariosBluevox ?? ''}`.trim();
 
       //Registro historico
       // Snapshot: BlueVoxs asociados mediante tabla intermedia InstalacionesBlueVoxs
       // IMPORTANTE: Consultamos BlueVoxs mediante InstalacionesBlueVoxs en lugar de BlueVoxs.IdInstalaciones.
-      const instalacionesBlueVoxsUpdate = await this.instalacionesBlueVoxsRepository.find({
-        where: { idInstalacion: id, estatus: 1 }, // Solo asociaciones activas
-        relations: ['idBlueVox2'], // Cargamos los BlueVoxs relacionados
-      });
+      const instalacionesBlueVoxsUpdate =
+        await this.instalacionesBlueVoxsRepository.find({
+          where: { idInstalacion: id, estatus: 1 }, // Solo asociaciones activas
+          relations: ['idBlueVox2'], // Cargamos los BlueVoxs relacionados
+        });
 
       const blueVoxsUpdate = instalacionesBlueVoxsUpdate
         .map((ibv) => ibv.idBlueVox2)
@@ -1789,11 +1867,15 @@ ORDER BY i.Id DESC;
       await queryRunner.startTransaction();
 
       try {
-        const instalacionesRepo = queryRunner.manager.getRepository(Instalaciones);
-        const dispositivosRepo = queryRunner.manager.getRepository(Dispositivos);
+        const instalacionesRepo =
+          queryRunner.manager.getRepository(Instalaciones);
+        const dispositivosRepo =
+          queryRunner.manager.getRepository(Dispositivos);
         const vehiculosRepo = queryRunner.manager.getRepository(Vehiculos);
         const blueVoxsRepo = queryRunner.manager.getRepository(BlueVoxs);
-        const instalacionesBlueVoxsRepo = queryRunner.manager.getRepository(InstalacionesBlueVoxs);
+        const instalacionesBlueVoxsRepo = queryRunner.manager.getRepository(
+          InstalacionesBlueVoxs,
+        );
 
         // 1) Buscar instalación
         const instalacion = await instalacionesRepo.findOne({
@@ -1828,13 +1910,16 @@ ORDER BY i.Id DESC;
         // IMPORTANTE: Obtenemos los IDs de BlueVoxs desde InstalacionesBlueVoxs y actualizamos su EstadoActual.
         // NO se modifica InstalacionesBlueVoxs (se mantienen los registros activos para relación histórica).
         // NO se modifica BlueVoxs.IdInstalaciones (esa columna no existe o se ignora).
-        const instalacionesBlueVoxsEliminar = await instalacionesBlueVoxsRepo.find({
-          where: {
-            idInstalacion: instalacion.id,
-            estatus: 1, // Solo asociaciones activas
-          },
-        });
-        const idsBlueVoxsEliminar = instalacionesBlueVoxsEliminar.map((ibv) => ibv.idBlueVox);
+        const instalacionesBlueVoxsEliminar =
+          await instalacionesBlueVoxsRepo.find({
+            where: {
+              idInstalacion: instalacion.id,
+              estatus: 1, // Solo asociaciones activas
+            },
+          });
+        const idsBlueVoxsEliminar = instalacionesBlueVoxsEliminar.map(
+          (ibv) => ibv.idBlueVox,
+        );
         if (idsBlueVoxsEliminar.length > 0) {
           await blueVoxsRepo.update(
             { id: In(idsBlueVoxsEliminar) }, // Filtro: IDs de BlueVoxs obtenidos de InstalacionesBlueVoxs
@@ -1843,7 +1928,7 @@ ORDER BY i.Id DESC;
         }
 
         await queryRunner.commitTransaction();
-        
+
         //-----Registro en la bitacora----- SUCCESS
         const querylogger = { id: id, estatus: 0 };
         await this.bitacoraLogger.logToBitacora(

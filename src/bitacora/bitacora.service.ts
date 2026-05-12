@@ -9,39 +9,18 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Bitacora } from 'src/entities/Bitacora';
 import { Repository } from 'typeorm';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
-import { Clientes } from 'src/entities/Clientes';
 import { horaDesfasada } from 'src/utils/correccion-hora';
+import { ClientesJerarquiaService } from 'src/clientes-jerarquia/clientes-jerarquia.service';
 
 @Injectable()
 export class BitacoraLoggerService {
   constructor(
     @InjectRepository(Bitacora)
     private readonly bitacoraRepository: Repository<Bitacora>,
-    @InjectRepository(Clientes)
-    private readonly clienteRepository: Repository<Clientes>,
-  ) { }
+    private readonly clientesJerarquia: ClientesJerarquiaService,
+  ) {}
   createBitacora(createBitacoraDto: CreateBitacoraDto) {
     return 'This action adds a new bitacora';
-  }
-
-  //funcion para obtener los clientes hijos
-  private async clienteHijos(cliente: number) {
-    const clientesFiltrado = await this.clienteRepository.query(
-      `CALL spGetClientes(?);`,
-      [cliente],
-    );
-
-    const idsFiltrados = clientesFiltrado[0]; // El primer índice contiene los resultados
-    const ids = idsFiltrados
-      .map((clientesFiltrado: any) => Number(clientesFiltrado.Id))
-      .filter(Boolean);
-    if (ids.length === 0) {
-      return { data: [] }; // No hay clientes que consultar
-    }
-
-    // 3. Construir el query dinámico con los IDs
-    const placeholders = ids.map(() => '?').join(', ');
-    return { ids, placeholders };
   }
 
   async findAllListBitacora(cliente: number, rol: number) {
@@ -89,7 +68,8 @@ ORDER BY b.FechaCreacion DESC;
 
         default:
           // Consulta de datos listado resto Usuario
-          const { ids, placeholders } = await this.clienteHijos(cliente);
+          const { ids, placeholders } =
+            await this.clientesJerarquia.obtenerJerarquia(cliente);
           bitacora = await this.bitacoraRepository.query(
             `
 SELECT
@@ -210,7 +190,8 @@ INNER JOIN Modulos m ON b.IdModulo = m.Id
 
         default:
           // Consulta de datos paginados resto Usuario
-          const { ids, placeholders } = await this.clienteHijos(cliente);
+          const { ids, placeholders } =
+            await this.clientesJerarquia.obtenerJerarquia(cliente);
           bitacora = await this.bitacoraRepository.query(
             `
 SELECT

@@ -11,13 +11,13 @@ import {
   ParseIntPipe,
   Put,
 } from '@nestjs/common';
-import { 
-  ApiTags, 
-  ApiOperation, 
-  ApiResponse, 
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
   ApiBearerAuth,
   ApiParam,
-  ApiBody
+  ApiBody,
 } from '@nestjs/swagger';
 import { UsuariosinstalacionesService } from './usuariosinstalaciones.service';
 import { CreateUsuariosInstalacionesDto } from './dto/create-usuariosinstalacione.dto';
@@ -36,13 +36,13 @@ export class UsuariosinstalacionesController {
   ) {}
 
   @Post()
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Crear relación usuario-instalación',
-    description: 'Crea una nueva relación entre un usuario y una instalación'
+    description: 'Crea una nueva relación entre un usuario y una instalación',
   })
-  @ApiBody({ 
+  @ApiBody({
     type: CreateUsuariosInstalacionesDto,
-    description: 'Datos para crear la relación usuario-instalación'
+    description: 'Datos para crear la relación usuario-instalación',
   })
   @ApiResponse({
     status: 201,
@@ -75,9 +75,10 @@ export class UsuariosinstalacionesController {
 
   // ✅ Rutas específicas primero (antes de las rutas con parámetros dinámicos)
   @Get('list')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Obtener lista completa',
-    description: 'Obtiene una lista completa de todas las relaciones usuario-instalación activas'
+    description:
+      'Obtiene una lista completa de todas las relaciones usuario-instalación activas',
   })
   @ApiResponse({
     status: 200,
@@ -89,7 +90,12 @@ export class UsuariosinstalacionesController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, idUsuario: { type: 'number' }, idInstalacion: { type: 'number' }, estatus: { type: 'number' } },
+            properties: {
+              id: { type: 'number' },
+              idUsuario: { type: 'number' },
+              idInstalacion: { type: 'number' },
+              estatus: { type: 'number' },
+            },
           },
         },
       },
@@ -101,15 +107,16 @@ export class UsuariosinstalacionesController {
   }
 
   @Get('usuario/:idUsuario')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Obtener instalaciones por usuario',
-    description: 'Obtiene todas las instalaciones asociadas a un usuario específico'
+    description:
+      'Obtiene todas las instalaciones asociadas a un usuario específico',
   })
-  @ApiParam({ 
-    name: 'idUsuario', 
-    type: 'number', 
+  @ApiParam({
+    name: 'idUsuario',
+    type: 'number',
     description: 'ID del usuario',
-    example: 123
+    example: 123,
   })
   @ApiResponse({
     status: 200,
@@ -121,7 +128,11 @@ export class UsuariosinstalacionesController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, idUsuario: { type: 'number' }, idInstalacion: { type: 'number' } },
+            properties: {
+              id: { type: 'number' },
+              idUsuario: { type: 'number' },
+              idInstalacion: { type: 'number' },
+            },
           },
         },
       },
@@ -134,21 +145,21 @@ export class UsuariosinstalacionesController {
   }
 
   @Get(':page/:limit')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Obtener relaciones con paginación',
-    description: 'Obtiene una lista paginada de relaciones usuario-instalación'
+    description: 'Obtiene una lista paginada de relaciones usuario-instalación',
   })
-  @ApiParam({ 
-    name: 'page', 
-    type: 'number', 
+  @ApiParam({
+    name: 'page',
+    type: 'number',
     description: 'Número de página (empezando desde 1)',
-    example: 1
+    example: 1,
   })
-  @ApiParam({ 
-    name: 'limit', 
-    type: 'number', 
+  @ApiParam({
+    name: 'limit',
+    type: 'number',
     description: 'Cantidad de registros por página',
-    example: 10
+    example: 10,
   })
   @ApiResponse({
     status: 200,
@@ -160,17 +171,29 @@ export class UsuariosinstalacionesController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, idUsuario: { type: 'number' }, idInstalacion: { type: 'number' }, estatus: { type: 'number' } },
+            properties: {
+              id: { type: 'number' },
+              idUsuario: { type: 'number' },
+              idInstalacion: { type: 'number' },
+              estatus: { type: 'number' },
+            },
           },
         },
         paginated: {
           type: 'object',
-          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+          properties: {
+            total: { type: 'number' },
+            page: { type: 'number' },
+            lastPage: { type: 'number' },
+          },
         },
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Parámetros de paginación inválidos' })
+  @ApiResponse({
+    status: 400,
+    description: 'Parámetros de paginación inválidos',
+  })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   async findAll(
     @Param('page', ParseIntPipe) page: number,
@@ -181,15 +204,16 @@ export class UsuariosinstalacionesController {
 
   // ✅ Ruta con parámetro dinámico al final
   @Get(':id')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Obtener relación por ID',
-    description: 'Obtiene una relación específica usuario-instalación por su ID'
+    description:
+      'Obtiene una relación específica usuario-instalación por su ID',
   })
-  @ApiParam({ 
-    name: 'id', 
-    type: 'number', 
+  @ApiParam({
+    name: 'id',
+    type: 'number',
     description: 'ID de la relación usuario-instalación',
-    example: 1
+    example: 1,
   })
   @ApiResponse({
     status: 200,
@@ -199,7 +223,12 @@ export class UsuariosinstalacionesController {
       properties: {
         data: {
           type: 'object',
-          properties: { id: { type: 'number' }, idUsuario: { type: 'number' }, idInstalacion: { type: 'number' }, estatus: { type: 'number' } },
+          properties: {
+            id: { type: 'number' },
+            idUsuario: { type: 'number' },
+            idInstalacion: { type: 'number' },
+            estatus: { type: 'number' },
+          },
         },
       },
     },
@@ -213,16 +242,17 @@ export class UsuariosinstalacionesController {
   @Put(':idUsuario')
   @ApiOperation({
     summary: 'Actualizar relación usuario-instalación',
-    description: 'Actualiza completamente las instalaciones asociadas a un usuario.',
+    description:
+      'Actualiza completamente las instalaciones asociadas a un usuario.',
   })
   @ApiParam({
     name: 'idUsuario',
     description: 'ID del usuario cuyas instalaciones se actualizan',
     example: 123,
   })
-  @ApiBody({ 
+  @ApiBody({
     type: UpdateUsuariosinstalacioneDto,
-    description: 'Nuevos datos de instalaciones para el usuario'
+    description: 'Nuevos datos de instalaciones para el usuario',
   })
   @ApiResponse({
     status: 200,
@@ -257,19 +287,20 @@ export class UsuariosinstalacionesController {
   }
 
   @Patch(':id')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Actualizar estatus de relación',
-    description: 'Actualiza únicamente el estatus de una relación usuario-instalación específica'
+    description:
+      'Actualiza únicamente el estatus de una relación usuario-instalación específica',
   })
-  @ApiParam({ 
-    name: 'id', 
-    type: 'number', 
+  @ApiParam({
+    name: 'id',
+    type: 'number',
     description: 'ID de la relación usuario-instalación',
-    example: 1
+    example: 1,
   })
-  @ApiBody({ 
+  @ApiBody({
     type: UpdateUsuariosInstalacionesEstatusDto,
-    description: 'Nuevo estatus de la relación'
+    description: 'Nuevo estatus de la relación',
   })
   @ApiResponse({
     status: 200,
@@ -305,15 +336,15 @@ export class UsuariosinstalacionesController {
   }
 
   @Delete(':id')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Eliminar relación usuario-instalación',
-    description: 'Elimina una relación específica entre usuario e instalación'
+    description: 'Elimina una relación específica entre usuario e instalación',
   })
-  @ApiParam({ 
-    name: 'id', 
-    type: 'number', 
+  @ApiParam({
+    name: 'id',
+    type: 'number',
     description: 'ID de la relación usuario-instalación a eliminar',
-    example: 1
+    example: 1,
   })
   @ApiResponse({
     status: 200,

@@ -59,9 +59,15 @@ export class ClientesController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'El RFC ya existe o error de validación' })
+  @ApiResponse({
+    status: 400,
+    description: 'El RFC ya existe o error de validación',
+  })
   @ApiResponse({ status: 401, description: 'No autorizado' })
-  async createCliente(@Body() createClienteDto: CreateClienteDto, @Request() req): Promise<ApiCrudResponse> {
+  async createCliente(
+    @Body() createClienteDto: CreateClienteDto,
+    @Request() req,
+  ): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
     return await this.clientesService.createCliente(createClienteDto, idUser);
   }
@@ -94,7 +100,7 @@ export class ClientesController {
     },
   })
   @ApiResponse({ status: 401, description: 'No autorizado' })
-  async getAllListClientes(@Request() req,): Promise<ApiResponseCommon> {
+  async getAllListClientes(@Request() req): Promise<ApiResponseCommon> {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
     const rol = req.user.rol;
@@ -104,7 +110,8 @@ export class ClientesController {
   @Get('list/:cliente')
   @ApiOperation({
     summary: 'Listar clientes por ID padre',
-    description: 'Obtiene el listado de clientes hijos asociados a un cliente padre. Incluye nombre y apellidos.',
+    description:
+      'Obtiene el listado de clientes hijos asociados a un cliente padre. Incluye nombre y apellidos.',
   })
   @ApiParam({ name: 'cliente', description: 'ID del cliente padre' })
   @ApiResponse({
@@ -131,7 +138,8 @@ export class ClientesController {
   @ApiResponse({ status: 401, description: 'No autorizado' })
   async getAllListClientesId(
     @Param('cliente', ParseIntPipe) cliente: number,
-    @Request() req,): Promise<ApiResponseCommon> {
+    @Request() req,
+  ): Promise<ApiResponseCommon> {
     const idUser = req.user.userId;
     const rol = req.user.rol;
     return this.clientesService.getAllListClientesId(+idUser, +cliente, +rol);
@@ -195,7 +203,13 @@ export class ClientesController {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
     const rol = req.user.rol;
-    return this.clientesService.getAllClientes(+idUser, +cliente, +rol, page, limit);
+    return this.clientesService.getAllClientes(
+      +idUser,
+      +cliente,
+      +rol,
+      page,
+      limit,
+    );
   }
 
   @Get(':id')
@@ -237,7 +251,7 @@ export class ClientesController {
   })
   @ApiResponse({ status: 404, description: 'Cliente no encontrado' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
-  getOneCliente(@Param('id') id: string, @Request() req,) {
+  getOneCliente(@Param('id') id: string, @Request() req) {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
     const rol = req.user.rol;
@@ -247,7 +261,8 @@ export class ClientesController {
   @Patch('estatus/:id')
   @ApiOperation({
     summary: 'Actualizar estatus del cliente',
-    description: 'Cambia el estatus de un cliente y sus clientes hijos (0=Inactivo, 1=Activo).',
+    description:
+      'Cambia el estatus de un cliente y sus clientes hijos (0=Inactivo, 1=Activo).',
   })
   @ApiParam({ name: 'id', description: 'ID del cliente' })
   @ApiBody({
@@ -293,12 +308,14 @@ export class ClientesController {
   @Put(':id')
   @ApiOperation({
     summary: 'Actualizar cliente',
-    description: 'Modifica los datos de un cliente existente. Todos los campos son opcionales.',
+    description:
+      'Modifica los datos de un cliente existente. Todos los campos son opcionales.',
   })
   @ApiParam({ name: 'id', description: 'ID del cliente a actualizar' })
   @ApiBody({
     type: UpdateClienteDto,
-    description: 'Campos a actualizar (todos opcionales): rfc, tipoPersona, nombre, apellidos, teléfono, correo, dirección, etc.',
+    description:
+      'Campos a actualizar (todos opcionales): rfc, tipoPersona, nombre, apellidos, teléfono, correo, dirección, etc.',
   })
   @ApiResponse({
     status: 200,
@@ -323,13 +340,18 @@ export class ClientesController {
     @Body() updateClienteDto: UpdateClienteDto,
   ): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
-    return await this.clientesService.updateCliente(+id, idUser, updateClienteDto);
+    return await this.clientesService.updateCliente(
+      +id,
+      idUser,
+      updateClienteDto,
+    );
   }
 
   @Delete(':id')
   @ApiOperation({
     summary: 'Eliminar cliente',
-    description: 'Eliminación lógica: cambia el estatus del cliente y sus clientes hijos a inactivo (0).',
+    description:
+      'Eliminación lógica: cambia el estatus del cliente y sus clientes hijos a inactivo (0).',
   })
   @ApiParam({ name: 'id', description: 'ID del cliente a eliminar' })
   @ApiResponse({
@@ -349,7 +371,10 @@ export class ClientesController {
   })
   @ApiResponse({ status: 404, description: 'Cliente no encontrado' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
-  async removeClientes(@Param('id') id: string, @Request() req): Promise<ApiCrudResponse> {
+  async removeClientes(
+    @Param('id') id: string,
+    @Request() req,
+  ): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
     const cliente = req.user.cliente;
     return await this.clientesService.removeCliente(+id, idUser, +cliente);

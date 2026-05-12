@@ -8,20 +8,24 @@ import {
 } from 'typeorm';
 import { BlueVoxs } from './BlueVoxs';
 import { Viajes } from './Viajes';
-import { applySchema } from "src/common/apply-schema.decorator";
+import { applySchema } from 'src/common/apply-schema.decorator';
 
 /**
  * Entidad ConteoPasajeros
- * 
+ *
  * Representa el conteo de pasajeros (entradas y salidas) registrado por un dispositivo BlueVox
  * en un momento específico. Está asociado a un viaje opcional.
- * 
+ *
  * Relaciones:
  * - ManyToOne con BlueVoxs (a través de NumeroSerieBlueVox)
  * - ManyToOne con Viajes (a través de IdViaje, opcional)
  */
 @applySchema
-@Index('IX_ConteoPasajeros_Serie_FechaHora', ['numeroSerieBlueVox', 'fechaHora'], {})
+@Index(
+  'IX_ConteoPasajeros_Serie_FechaHora',
+  ['numeroSerieBlueVox', 'fechaHora'],
+  {},
+)
 @Index('FK_ConteoPasajeros_Viajes', ['idViaje'], {})
 @Entity('ConteoPasajeros')
 export class ConteoPasajeros {

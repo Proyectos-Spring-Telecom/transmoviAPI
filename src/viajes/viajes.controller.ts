@@ -27,7 +27,7 @@ import { UpdateViajeDto } from './dto/update-viaje.dto';
 @UseGuards(JwtAuthGuard)
 @Controller('viajes')
 export class ViajesController {
-  constructor(private readonly viajesService: ViajesService) { }
+  constructor(private readonly viajesService: ViajesService) {}
 
   @Post()
   @ApiOperation({
@@ -53,7 +53,8 @@ export class ViajesController {
             id: { type: 'number', example: 1 },
             nombre: {
               type: 'string',
-              example: 'Cliente ID: 5, Turno ID: 10, Derrotero ID: 20, Operador ID: 3',
+              example:
+                'Cliente ID: 5, Turno ID: 10, Derrotero ID: 20, Operador ID: 3',
             },
           },
         },
@@ -73,7 +74,12 @@ export class ViajesController {
     const cliente = req.user.cliente;
     const rol = req.user.rol;
     const idOperador = req.user.idOperador;
-    return this.viajesService.create(+idUser, +cliente, +idOperador, createViajeDto);
+    return this.viajesService.create(
+      +idUser,
+      +cliente,
+      +idOperador,
+      createViajeDto,
+    );
   }
 
   @Patch(':id')
@@ -106,7 +112,8 @@ export class ViajesController {
             id: { type: 'number', example: 1 },
             nombre: {
               type: 'string',
-              example: 'Cliente ID: 5, Turno ID: 10, Derrotero ID: 20, Operador ID: 3',
+              example:
+                'Cliente ID: 5, Turno ID: 10, Derrotero ID: 20, Operador ID: 3',
             },
           },
         },
@@ -138,7 +145,13 @@ export class ViajesController {
     const cliente = req.user.cliente;
     const rol = req.user.rol;
     const idOperador = req.user.idOperador;
-    return this.viajesService.update(+idUser, +cliente, +idOperador, +id, updateViajeDto);
+    return this.viajesService.update(
+      +idUser,
+      +cliente,
+      +idOperador,
+      +id,
+      updateViajeDto,
+    );
   }
 
   @Get('list')
@@ -236,7 +249,7 @@ export class ViajesController {
   findAll(
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,
-    @Request() req
+    @Request() req,
   ) {
     const idUser = req.user.userId;
     const cliente = req.user.cliente;
@@ -288,7 +301,6 @@ export class ViajesController {
     const idUser = req.user.userId;
     const cliente = req.user.cliente;
     const rol = req.user.rol;
-    return this.viajesService.findOne(+id, +cliente, +rol,);
+    return this.viajesService.findOne(+id, +cliente, +rol);
   }
-
 }

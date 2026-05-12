@@ -1,14 +1,13 @@
-import {
-  Column,
-  Entity,
-  Index,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
+import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { applySchema } from 'src/common/apply-schema.decorator';
 
 @applySchema
 @Index('FK_HistTransRec_NumeroSerieMonedero_idx', ['numeroSerieMonedero'], {})
-@Index('FK_HistTransRec_NumeroSerieDispositivo_idx', ['numeroSerieDispositivo'], {})
+@Index(
+  'FK_HistTransRec_NumeroSerieDispositivo_idx',
+  ['numeroSerieDispositivo'],
+  {},
+)
 @Index('FK_HistTransRec_CatTiposTransacciones_idx', ['idTipoTransaccion'], {})
 @Index('FK_HistoricoTransaccionesRecarga_CatMetodoPago', ['idMetodoPago'], {})
 @Index('FK_HistoricoTransaccionesRecarga_Usuarios', ['idUsuario'], {})

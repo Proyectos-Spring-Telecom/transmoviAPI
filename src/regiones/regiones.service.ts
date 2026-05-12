@@ -18,7 +18,7 @@ import {
 } from 'src/common/ApiResponse';
 import { UsuariosRegiones } from 'src/entities/UsuariosRegiones';
 import { UpdateRegionesEstatusDto } from './dto/update-regione-estatus.dto';
-import { Clientes } from 'src/entities/Clientes';
+import { ClientesJerarquiaService } from 'src/clientes-jerarquia/clientes-jerarquia.service';
 
 @Injectable()
 export class RegionesService {
@@ -27,10 +27,9 @@ export class RegionesService {
     private readonly regionesRepository: Repository<Regiones>,
     @InjectRepository(UsuariosRegiones)
     private readonly usuarioregionesRepository: Repository<UsuariosRegiones>,
-    @InjectRepository(Clientes)
-    private readonly clienteRepository: Repository<Clientes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
-  ) { }
+    private readonly clientesJerarquia: ClientesJerarquiaService,
+  ) {}
 
   //Crear Region
   async create(
@@ -125,33 +124,14 @@ export class RegionesService {
     }
   }
 
-  //funcion para obtener los clientes hijos
-  private async clienteHijos(cliente: number) {
-    const clientesFiltrado = await this.clienteRepository.query(
-      `CALL spGetClientes(?);`,
-      [cliente],
-    );
-
-    const idsFiltrados = clientesFiltrado[0]; // El primer índice contiene los resultados
-    const ids = idsFiltrados
-      .map((clientesFiltrado: any) => Number(clientesFiltrado.Id))
-      .filter(Boolean);
-    if (ids.length === 0) {
-      return { data: [] }; // No hay clientes que consultar
-    }
-
-    // 3. Construir el query dinámico con los IDs
-    const placeholders = ids.map(() => '?').join(', ');
-    return { ids, placeholders };
-  }
-
   //Funcion para obtener paginado por clientes
   private async consultarRegionesPagina(
     cliente: number,
     limit: number,
     offset: number,
   ) {
-    const { ids, placeholders } = await this.clienteHijos(cliente);
+    const { ids, placeholders } =
+      await this.clientesJerarquia.obtenerJerarquia(cliente);
     const query = `
 SELECT
   -- Región
@@ -184,7 +164,8 @@ ORDER BY r.Id DESC
 
   //Obtener total para la funcion de paginado
   private async consultarTotalRegionesPaginados(cliente: number) {
-    const { ids, placeholders } = await this.clienteHijos(cliente);
+    const { ids, placeholders } =
+      await this.clientesJerarquia.obtenerJerarquia(cliente);
     const query = `  
   SELECT COUNT(*) AS total
   FROM Regiones r
@@ -374,7 +355,8 @@ WHERE
 
   //Funcion Obtener listado por cliente
   private async consultarRegionesListado(cliente: number) {
-    const { ids, placeholders } = await this.clienteHijos(cliente);
+    const { ids, placeholders } =
+      await this.clientesJerarquia.obtenerJerarquia(cliente);
     const query = `
 SELECT
   -- Región
@@ -589,7 +571,8 @@ ORDER BY r.Id DESC;
   }
 
   private async consultarRegionesOne(cliente: number, id: number) {
-    const { ids, placeholders } = await this.clienteHijos(cliente);
+    const { ids, placeholders } =
+      await this.clientesJerarquia.obtenerJerarquia(cliente);
     const query = `
 SELECT
   -- Región
@@ -619,7 +602,6 @@ ORDER BY r.Id DESC
     `;
     return this.regionesRepository.query(query, [...ids, id]);
   }
-
 
   async findOne(idUser: number, id: number, cliente: number, rol: number) {
     try {
@@ -664,20 +646,20 @@ ORDER BY r.Id DESC;
 
         case 2:
           // Usuario administrador - obtiene todas las regiones de su cliente
-          regiones = await this.consultarRegionesOne(cliente, id)
+          regiones = await this.consultarRegionesOne(cliente, id);
           break;
         case 3:
           // Usuario operador - obtiene todas las regiones de su cliente
-          regiones = await this.consultarRegionesOne(cliente, id)
+          regiones = await this.consultarRegionesOne(cliente, id);
           break;
         case 8:
           // Usuario Reportes - obtiene todas las regiones de su cliente
-          regiones = await this.consultarRegionesOne(cliente, id)
+          regiones = await this.consultarRegionesOne(cliente, id);
           break;
 
         case 10:
           // Usuario Capturistas - obtiene todas las regiones de su cliente
-          regiones = await this.consultarRegionesOne(cliente, id)
+          regiones = await this.consultarRegionesOne(cliente, id);
           break;
 
         default:

@@ -35,9 +35,7 @@ import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 @UseGuards(JwtAuthGuard)
 @Controller('incidentes')
 export class IncidentesController {
-  constructor(
-    private readonly incidentesService: IncidentesService,
-  ) {}
+  constructor(private readonly incidentesService: IncidentesService) {}
 
   @Post()
   @UseInterceptors(
@@ -45,12 +43,14 @@ export class IncidentesController {
       storage: multer.memoryStorage(),
       limits: { fileSize: 10 * 1024 * 1024 }, // máximo 10 MB
       fileFilter: (req, file, cb) => {
-        const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'application/pdf'];
+        const allowedTypes = [
+          'image/png',
+          'image/jpeg',
+          'image/jpg',
+          'application/pdf',
+        ];
         if (file && !allowedTypes.includes(file.mimetype)) {
-          return cb(
-            new Error('Solo se permiten PNG, JPG, JPEG o PDF'),
-            false,
-          );
+          return cb(new Error('Solo se permiten PNG, JPG, JPEG o PDF'), false);
         }
         cb(null, true);
       },
@@ -59,7 +59,8 @@ export class IncidentesController {
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
     summary: 'Crear un nuevo incidente',
-    description: 'Crea un nuevo registro de incidente con toda la información. El campo imagen debe ser una imagen (archivo).',
+    description:
+      'Crea un nuevo registro de incidente con toda la información. El campo imagen debe ser una imagen (archivo).',
   })
   @ApiBody({
     type: CreateIncidentesDto,
@@ -104,7 +105,8 @@ export class IncidentesController {
   @Get()
   @ApiOperation({
     summary: 'Obtener incidentes paginados',
-    description: 'Obtiene un listado paginado de incidentes con sus relaciones.',
+    description:
+      'Obtiene un listado paginado de incidentes con sus relaciones.',
   })
   @ApiQuery({
     name: 'page',
@@ -129,7 +131,11 @@ export class IncidentesController {
         data: { type: 'array', items: { type: 'object' } },
         paginated: {
           type: 'object',
-          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+          properties: {
+            total: { type: 'number' },
+            page: { type: 'number' },
+            lastPage: { type: 'number' },
+          },
         },
       },
     },
@@ -142,13 +148,19 @@ export class IncidentesController {
   ): Promise<ApiResponseCommon> {
     const idCliente = req.user.cliente;
     const rol = req.user.rol;
-    return this.incidentesService.findAll(page, limit, Number(idCliente), Number(rol));
+    return this.incidentesService.findAll(
+      page,
+      limit,
+      Number(idCliente),
+      Number(rol),
+    );
   }
 
   @Get(':id')
   @ApiOperation({
     summary: 'Obtener un incidente por ID',
-    description: 'Obtiene los detalles completos de un incidente específico por su ID, incluyendo todas sus relaciones.',
+    description:
+      'Obtiene los detalles completos de un incidente específico por su ID, incluyendo todas sus relaciones.',
   })
   @ApiParam({
     name: 'id',
@@ -166,7 +178,10 @@ export class IncidentesController {
   })
   @ApiResponse({ status: 404, description: 'Incidente no encontrado' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
-  findOne(@Param('id', ParseIntPipe) id: number, @Request() req): Promise<ApiResponseCommon> {
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req,
+  ): Promise<ApiResponseCommon> {
     const idCliente = req.user.cliente;
     const rol = req.user.rol;
     return this.incidentesService.findOne(id, Number(idCliente), Number(rol));
@@ -175,7 +190,8 @@ export class IncidentesController {
   @Patch(':id')
   @ApiOperation({
     summary: 'Actualizar un incidente',
-    description: 'Actualiza los datos de un incidente existente. Solo se actualizan los campos proporcionados.',
+    description:
+      'Actualiza los datos de un incidente existente. Solo se actualizan los campos proporcionados.',
   })
   @ApiParam({
     name: 'id',
@@ -211,11 +227,7 @@ export class IncidentesController {
     @Request() req,
   ): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
-    return await this.incidentesService.update(
-      id,
-      updateIncidentesDto,
-      idUser,
-    );
+    return await this.incidentesService.update(id, updateIncidentesDto, idUser);
   }
 
   @Patch(':id/desactivar')
@@ -252,7 +264,8 @@ export class IncidentesController {
   @Patch(':id/activar')
   @ApiOperation({
     summary: 'Activar un incidente',
-    description: 'Activa un incidente cambiando su estatus a 1 si estaba previamente en 0.',
+    description:
+      'Activa un incidente cambiando su estatus a 1 si estaba previamente en 0.',
   })
   @ApiParam({
     name: 'id',

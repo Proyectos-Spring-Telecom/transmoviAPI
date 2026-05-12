@@ -16,7 +16,14 @@ import { CreateRutaDto } from './dto/create-ruta.dto';
 import { UpdateRutaDto } from './dto/update-ruta.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { UpdateRutasEstatusDto } from './dto/update-ruta-estatus.dto';
-import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiBody,
+} from '@nestjs/swagger';
 
 @ApiTags('Rutas')
 @ApiBearerAuth('bearer-token')
@@ -28,11 +35,13 @@ export class RutasController {
   @Post()
   @ApiOperation({
     summary: 'Crear ruta',
-    description: 'Registra una nueva ruta de transporte asociada a regiones y cliente.',
+    description:
+      'Registra una nueva ruta de transporte asociada a regiones y cliente.',
   })
   @ApiBody({
     type: CreateRutaDto,
-    description: 'nombre, idRegionInicio, idRegionFin, idRutaRegreso, idCliente, estatus, etc.',
+    description:
+      'nombre, idRegionInicio, idRegionFin, idRutaRegreso, idCliente, estatus, etc.',
   })
   @ApiResponse({
     status: 201,
@@ -55,13 +64,19 @@ export class RutasController {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
     const rol = req.user.rol;
-    return await this.rutasService.create(+idUser, +cliente, +rol, createRutaDto);
+    return await this.rutasService.create(
+      +idUser,
+      +cliente,
+      +rol,
+      createRutaDto,
+    );
   }
 
   @Get('list')
   @ApiOperation({
     summary: 'Listar rutas',
-    description: 'Obtiene el listado de rutas activas. El acceso depende del rol del usuario.',
+    description:
+      'Obtiene el listado de rutas activas. El acceso depende del rol del usuario.',
   })
   @ApiResponse({
     status: 200,
@@ -73,7 +88,12 @@ export class RutasController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, nombre: { type: 'string' }, idRegionInicio: { type: 'number' }, idRegionFin: { type: 'number' } },
+            properties: {
+              id: { type: 'number' },
+              nombre: { type: 'string' },
+              idRegionInicio: { type: 'number' },
+              idRegionFin: { type: 'number' },
+            },
           },
         },
       },
@@ -90,7 +110,8 @@ export class RutasController {
   @Get('by-region/:idRegion')
   @ApiOperation({
     summary: 'Listar rutas por ID de región',
-    description: 'Obtiene todas las rutas activas pertenecientes únicamente a la región especificada.',
+    description:
+      'Obtiene todas las rutas activas pertenecientes únicamente a la región especificada.',
   })
   @ApiParam({
     name: 'idRegion',
@@ -108,7 +129,13 @@ export class RutasController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, nombre: { type: 'string' }, idRegionInicio: { type: 'number' }, idRegionFin: { type: 'number' }, idCliente: { type: 'number' } },
+            properties: {
+              id: { type: 'number' },
+              nombre: { type: 'string' },
+              idRegionInicio: { type: 'number' },
+              idRegionFin: { type: 'number' },
+              idCliente: { type: 'number' },
+            },
           },
         },
       },
@@ -134,7 +161,8 @@ export class RutasController {
   @Get(':page/:limit')
   @ApiOperation({
     summary: 'Listar rutas paginadas',
-    description: 'Obtiene el catálogo paginado de rutas. El acceso depende del rol del usuario.',
+    description:
+      'Obtiene el catálogo paginado de rutas. El acceso depende del rol del usuario.',
   })
   @ApiParam({ name: 'page', description: 'Número de página (desde 1)' })
   @ApiParam({ name: 'limit', description: 'Registros por página' })
@@ -148,12 +176,23 @@ export class RutasController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, nombre: { type: 'string' }, idRegionInicio: { type: 'number' }, idRegionFin: { type: 'number' }, idCliente: { type: 'number' }, estatus: { type: 'number' } },
+            properties: {
+              id: { type: 'number' },
+              nombre: { type: 'string' },
+              idRegionInicio: { type: 'number' },
+              idRegionFin: { type: 'number' },
+              idCliente: { type: 'number' },
+              estatus: { type: 'number' },
+            },
           },
         },
         paginated: {
           type: 'object',
-          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+          properties: {
+            total: { type: 'number' },
+            page: { type: 'number' },
+            lastPage: { type: 'number' },
+          },
         },
       },
     },
@@ -167,7 +206,13 @@ export class RutasController {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
     const rol = req.user.rol;
-    return this.rutasService.obtenerRutasPorUsuarioSQL(+idUser, +cliente, +rol, +page, +limit);
+    return this.rutasService.obtenerRutasPorUsuarioSQL(
+      +idUser,
+      +cliente,
+      +rol,
+      +page,
+      +limit,
+    );
   }
 
   @Get(':id')
@@ -184,7 +229,14 @@ export class RutasController {
       properties: {
         data: {
           type: 'object',
-          properties: { id: { type: 'number' }, nombre: { type: 'string' }, idRegionInicio: { type: 'number' }, idRegionFin: { type: 'number' }, idCliente: { type: 'number' }, estatus: { type: 'number' } },
+          properties: {
+            id: { type: 'number' },
+            nombre: { type: 'string' },
+            idRegionInicio: { type: 'number' },
+            idRegionFin: { type: 'number' },
+            idCliente: { type: 'number' },
+            estatus: { type: 'number' },
+          },
         },
       },
     },
@@ -206,7 +258,8 @@ export class RutasController {
   @ApiParam({ name: 'id', description: 'ID de la ruta a actualizar' })
   @ApiBody({
     type: UpdateRutaDto,
-    description: 'Campos a actualizar: nombre, idRegionInicio, idRegionFin, idRutaRegreso, estatus',
+    description:
+      'Campos a actualizar: nombre, idRegionInicio, idRegionFin, idRutaRegreso, estatus',
   })
   @ApiResponse({
     status: 200,

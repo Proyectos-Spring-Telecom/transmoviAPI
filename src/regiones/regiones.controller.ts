@@ -16,7 +16,14 @@ import { CreateRegionesDto } from './dto/create-regione.dto';
 import { UpdateRegioneDto } from './dto/update-regione.dto';
 import { UpdateRegionesEstatusDto } from './dto/update-regione-estatus.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiBody,
+} from '@nestjs/swagger';
 
 @ApiTags('Regiones')
 @ApiBearerAuth('bearer-token')
@@ -66,7 +73,8 @@ export class RegionesController {
   @Get('list')
   @ApiOperation({
     summary: 'Listar regiones',
-    description: 'Obtiene el listado de regiones activas. El acceso depende del rol del usuario.',
+    description:
+      'Obtiene el listado de regiones activas. El acceso depende del rol del usuario.',
   })
   @ApiResponse({
     status: 200,
@@ -78,7 +86,11 @@ export class RegionesController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, nombre: { type: 'string' }, idCliente: { type: 'number' } },
+            properties: {
+              id: { type: 'number' },
+              nombre: { type: 'string' },
+              idCliente: { type: 'number' },
+            },
           },
         },
       },
@@ -95,7 +107,8 @@ export class RegionesController {
   @Get('by-cliente/:idCliente')
   @ApiOperation({
     summary: 'Listar regiones por ID de cliente',
-    description: 'Obtiene todas las regiones activas pertenecientes únicamente al cliente especificado (sin incluir clientes hijos).',
+    description:
+      'Obtiene todas las regiones activas pertenecientes únicamente al cliente especificado (sin incluir clientes hijos).',
   })
   @ApiParam({
     name: 'idCliente',
@@ -113,7 +126,12 @@ export class RegionesController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, nombre: { type: 'string' }, idCliente: { type: 'number' }, estatus: { type: 'number' } },
+            properties: {
+              id: { type: 'number' },
+              nombre: { type: 'string' },
+              idCliente: { type: 'number' },
+              estatus: { type: 'number' },
+            },
           },
         },
       },
@@ -139,7 +157,8 @@ export class RegionesController {
   @Get(':page/:limit')
   @ApiOperation({
     summary: 'Listar regiones paginadas',
-    description: 'Obtiene el catálogo paginado de regiones. El acceso depende del rol del usuario.',
+    description:
+      'Obtiene el catálogo paginado de regiones. El acceso depende del rol del usuario.',
   })
   @ApiParam({ name: 'page', description: 'Número de página (desde 1)' })
   @ApiParam({ name: 'limit', description: 'Registros por página' })
@@ -153,12 +172,21 @@ export class RegionesController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, nombre: { type: 'string' }, idCliente: { type: 'number' }, estatus: { type: 'number' } },
+            properties: {
+              id: { type: 'number' },
+              nombre: { type: 'string' },
+              idCliente: { type: 'number' },
+              estatus: { type: 'number' },
+            },
           },
         },
         paginated: {
           type: 'object',
-          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+          properties: {
+            total: { type: 'number' },
+            page: { type: 'number' },
+            lastPage: { type: 'number' },
+          },
         },
       },
     },
@@ -189,7 +217,12 @@ export class RegionesController {
       properties: {
         data: {
           type: 'object',
-          properties: { id: { type: 'number' }, nombre: { type: 'string' }, idCliente: { type: 'number' }, estatus: { type: 'number' } },
+          properties: {
+            id: { type: 'number' },
+            nombre: { type: 'string' },
+            idCliente: { type: 'number' },
+            estatus: { type: 'number' },
+          },
         },
       },
     },
@@ -255,7 +288,8 @@ export class RegionesController {
   @ApiParam({ name: 'id', description: 'ID de la región a actualizar' })
   @ApiBody({
     type: UpdateRegioneDto,
-    description: 'Campos a actualizar: nombre, descripción, coordenadas, estatus',
+    description:
+      'Campos a actualizar: nombre, descripción, coordenadas, estatus',
   })
   @ApiResponse({
     status: 200,
@@ -294,7 +328,8 @@ export class RegionesController {
   @Delete(':id')
   @ApiOperation({
     summary: 'Eliminar región',
-    description: 'Eliminación lógica: cambia el estatus de la región a inactivo.',
+    description:
+      'Eliminación lógica: cambia el estatus de la región a inactivo.',
   })
   @ApiParam({ name: 'id', description: 'ID de la región a eliminar' })
   @ApiResponse({

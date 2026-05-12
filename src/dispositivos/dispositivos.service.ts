@@ -33,7 +33,7 @@ export class DispositivosService {
     private readonly clienteRepository: Repository<Clientes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
     private readonly clientesService: ClientesService,
-  ) { }
+  ) {}
   //Crear un nuevo dispositivo
   async createDispositivo(
     createDispositivoDto: CreateDispositivoDto,

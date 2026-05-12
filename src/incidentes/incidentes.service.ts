@@ -31,7 +31,7 @@ export class IncidentesService {
     private readonly operadoresRepository: Repository<Operadores>,
     private readonly bitacoraLogger: BitacoraLoggerService,
     private readonly s3Service: S3Service,
-  ) { }
+  ) {}
 
   async create(
     createIncidentesDto: CreateIncidentesDto,
@@ -76,9 +76,7 @@ export class IncidentesService {
         imagen: imagenUrl,
       };
 
-      const create = this.incidentesRepository.create(
-        dataToCreate,
-      );
+      const create = this.incidentesRepository.create(dataToCreate);
       const savedResult = await this.incidentesRepository.save(create);
       const saved = Array.isArray(savedResult) ? savedResult[0] : savedResult;
 
@@ -129,7 +127,12 @@ export class IncidentesService {
     }
   }
 
-  async findAll(page: number, limit: number, idCliente: number, rol: number): Promise<ApiResponseCommon> {
+  async findAll(
+    page: number,
+    limit: number,
+    idCliente: number,
+    rol: number,
+  ): Promise<ApiResponseCommon> {
     try {
       const whereCondition: any = {};
 
@@ -140,7 +143,7 @@ export class IncidentesService {
           where: { idCliente: idCliente },
           select: ['id'],
         });
-        const idsInstalaciones = instalaciones.map(inst => inst.id);
+        const idsInstalaciones = instalaciones.map((inst) => inst.id);
 
         // Si no hay instalaciones, retornar vacío
         if (idsInstalaciones.length === 0) {
@@ -158,8 +161,15 @@ export class IncidentesService {
       }
 
       const [data, total] = await this.incidentesRepository.findAndCount({
-        where: Object.keys(whereCondition).length > 0 ? whereCondition : undefined,
-        relations: ['instalacion', 'instalacion.vehiculos', 'instalacion.idCliente2', 'operador', 'operador.idUsuario2'],
+        where:
+          Object.keys(whereCondition).length > 0 ? whereCondition : undefined,
+        relations: [
+          'instalacion',
+          'instalacion.vehiculos',
+          'instalacion.idCliente2',
+          'operador',
+          'operador.idUsuario2',
+        ],
         order: { fhRegistro: 'DESC' },
         skip: (page - 1) * limit,
         take: limit,
@@ -168,11 +178,13 @@ export class IncidentesService {
       // Forzamos ids a number
       const incidentes = data.map((item) => {
         const nombreOperador = item.operador?.idUsuario2
-          ? `${item.operador.idUsuario2.nombre || ''} ${item.operador.idUsuario2.apellidoPaterno || ''} ${item.operador.idUsuario2.apellidoMaterno || ''}`.trim() || null
+          ? `${item.operador.idUsuario2.nombre || ''} ${item.operador.idUsuario2.apellidoPaterno || ''} ${item.operador.idUsuario2.apellidoMaterno || ''}`.trim() ||
+            null
           : null;
 
         const nombreCliente = item.instalacion?.idCliente2
-          ? `${item.instalacion.idCliente2.nombre || ''} ${item.instalacion.idCliente2.apellidoPaterno || ''} ${item.instalacion.idCliente2.apellidoMaterno || ''}`.trim() || null
+          ? `${item.instalacion.idCliente2.nombre || ''} ${item.instalacion.idCliente2.apellidoPaterno || ''} ${item.instalacion.idCliente2.apellidoMaterno || ''}`.trim() ||
+            null
           : null;
 
         return {
@@ -210,11 +222,21 @@ export class IncidentesService {
     }
   }
 
-  async findOne(id: number, idCliente: number, rol: number): Promise<ApiResponseCommon> {
+  async findOne(
+    id: number,
+    idCliente: number,
+    rol: number,
+  ): Promise<ApiResponseCommon> {
     try {
       const incidente = await this.incidentesRepository.findOne({
         where: { id: id },
-        relations: ['instalacion', 'instalacion.vehiculos', 'instalacion.idCliente2', 'operador', 'operador.idUsuario2'],
+        relations: [
+          'instalacion',
+          'instalacion.vehiculos',
+          'instalacion.idCliente2',
+          'operador',
+          'operador.idUsuario2',
+        ],
       });
 
       // Verificar que el incidente pertenece al cliente si el rol no es 1 o 2
@@ -229,11 +251,13 @@ export class IncidentesService {
       }
 
       const nombreOperador = incidente.operador?.idUsuario2
-        ? `${incidente.operador.idUsuario2.nombre || ''} ${incidente.operador.idUsuario2.apellidoPaterno || ''} ${incidente.operador.idUsuario2.apellidoMaterno || ''}`.trim() || null
+        ? `${incidente.operador.idUsuario2.nombre || ''} ${incidente.operador.idUsuario2.apellidoPaterno || ''} ${incidente.operador.idUsuario2.apellidoMaterno || ''}`.trim() ||
+          null
         : null;
 
       const nombreCliente = incidente.instalacion?.idCliente2
-        ? `${incidente.instalacion.idCliente2.nombre || ''} ${incidente.instalacion.idCliente2.apellidoPaterno || ''} ${incidente.instalacion.idCliente2.apellidoMaterno || ''}`.trim() || null
+        ? `${incidente.instalacion.idCliente2.nombre || ''} ${incidente.instalacion.idCliente2.apellidoPaterno || ''} ${incidente.instalacion.idCliente2.apellidoMaterno || ''}`.trim() ||
+          null
         : null;
 
       const result: ApiResponseCommon = {
@@ -279,7 +303,10 @@ export class IncidentesService {
       }
 
       // Validar claves foráneas si se proporcionan
-      if (updateIncidentesDto.idInstalacion !== undefined && updateIncidentesDto.idInstalacion !== null) {
+      if (
+        updateIncidentesDto.idInstalacion !== undefined &&
+        updateIncidentesDto.idInstalacion !== null
+      ) {
         const instalacionExists = await this.instalacionesRepository.findOne({
           where: { id: updateIncidentesDto.idInstalacion },
         });
@@ -290,7 +317,10 @@ export class IncidentesService {
         }
       }
 
-      if (updateIncidentesDto.idOperador !== undefined && updateIncidentesDto.idOperador !== null) {
+      if (
+        updateIncidentesDto.idOperador !== undefined &&
+        updateIncidentesDto.idOperador !== null
+      ) {
         const operadorExists = await this.operadoresRepository.findOne({
           where: { id: updateIncidentesDto.idOperador },
         });
@@ -301,10 +331,7 @@ export class IncidentesService {
         }
       }
 
-      await this.incidentesRepository.update(
-        id,
-        updateIncidentesDto,
-      );
+      await this.incidentesRepository.update(id, updateIncidentesDto);
       const incidenteResult = await this.incidentesRepository.findOne({
         where: { id: id },
       });
@@ -476,7 +503,11 @@ export class IncidentesService {
     }
   }
 
-  async updateStatus(idUser: number, idIncidente: number, estatus: number): Promise<ApiCrudResponse> {
+  async updateStatus(
+    idUser: number,
+    idIncidente: number,
+    estatus: number,
+  ): Promise<ApiCrudResponse> {
     try {
       const incidente = await this.incidentesRepository.findOne({
         where: { id: idIncidente },

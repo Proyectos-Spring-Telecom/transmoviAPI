@@ -18,7 +18,14 @@ import { UpdatePasajeroEstatusDto } from './dto/update-pasajeros-estatus.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
 import { UpdatePasajeroEstadoSolicitudDto } from './dto/update-pasajeros-estado-solicitud.dto';
-import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiParam,
+} from '@nestjs/swagger';
 
 @ApiTags('Pasajeros')
 @ApiBearerAuth('bearer-token')
@@ -38,7 +45,8 @@ export class PasajerosController {
   })
   @ApiBody({
     type: CreatePasajeroDto,
-    description: 'Datos del pasajero: nombre, apellidos, correo, teléfono, idCliente, etc.',
+    description:
+      'Datos del pasajero: nombre, apellidos, correo, teléfono, idCliente, etc.',
   })
   @ApiResponse({
     status: 201,
@@ -69,7 +77,8 @@ export class PasajerosController {
   @Get('list')
   @ApiOperation({
     summary: 'Listar pasajeros',
-    description: 'Obtiene el listado de pasajeros activos. El acceso depende del rol del usuario.',
+    description:
+      'Obtiene el listado de pasajeros activos. El acceso depende del rol del usuario.',
   })
   @ApiResponse({
     status: 200,
@@ -81,7 +90,12 @@ export class PasajerosController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, nombre: { type: 'string' }, apellidos: { type: 'string' }, correo: { type: 'string' } },
+            properties: {
+              id: { type: 'number' },
+              nombre: { type: 'string' },
+              apellidos: { type: 'string' },
+              correo: { type: 'string' },
+            },
           },
         },
       },
@@ -109,7 +123,12 @@ export class PasajerosController {
       properties: {
         data: {
           type: 'object',
-          properties: { id: { type: 'number' }, nombre: { type: 'string' }, idUsuario: { type: 'number' }, idCliente: { type: 'number' } },
+          properties: {
+            id: { type: 'number' },
+            nombre: { type: 'string' },
+            idUsuario: { type: 'number' },
+            idCliente: { type: 'number' },
+          },
         },
       },
     },
@@ -129,7 +148,8 @@ export class PasajerosController {
   @Get(':page/:limit')
   @ApiOperation({
     summary: 'Listar pasajeros paginados',
-    description: 'Obtiene el catálogo paginado de pasajeros. El acceso depende del rol del usuario.',
+    description:
+      'Obtiene el catálogo paginado de pasajeros. El acceso depende del rol del usuario.',
   })
   @ApiParam({ name: 'page', description: 'Número de página (desde 1)' })
   @ApiParam({ name: 'limit', description: 'Registros por página' })
@@ -143,12 +163,23 @@ export class PasajerosController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, nombre: { type: 'string' }, apellidos: { type: 'string' }, correo: { type: 'string' }, idCliente: { type: 'number' }, estatus: { type: 'number' } },
+            properties: {
+              id: { type: 'number' },
+              nombre: { type: 'string' },
+              apellidos: { type: 'string' },
+              correo: { type: 'string' },
+              idCliente: { type: 'number' },
+              estatus: { type: 'number' },
+            },
           },
         },
         paginated: {
           type: 'object',
-          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+          properties: {
+            total: { type: 'number' },
+            page: { type: 'number' },
+            lastPage: { type: 'number' },
+          },
         },
       },
     },
@@ -179,7 +210,14 @@ export class PasajerosController {
       properties: {
         data: {
           type: 'object',
-          properties: { id: { type: 'number' }, nombre: { type: 'string' }, apellidos: { type: 'string' }, correo: { type: 'string' }, idCliente: { type: 'number' }, estatus: { type: 'number' } },
+          properties: {
+            id: { type: 'number' },
+            nombre: { type: 'string' },
+            apellidos: { type: 'string' },
+            correo: { type: 'string' },
+            idCliente: { type: 'number' },
+            estatus: { type: 'number' },
+          },
         },
       },
     },
@@ -236,7 +274,8 @@ export class PasajerosController {
   @Patch('estado/solicitud/:id')
   @ApiOperation({
     summary: 'Actualizar estado de solicitud del pasajero',
-    description: 'Actualiza el estado de la solicitud de un pasajero (ej. aprobado, rechazado).',
+    description:
+      'Actualiza el estado de la solicitud de un pasajero (ej. aprobado, rechazado).',
   })
   @ApiParam({ name: 'id', description: 'ID del pasajero' })
   @ApiBody({
@@ -320,7 +359,8 @@ export class PasajerosController {
   @Delete(':id')
   @ApiOperation({
     summary: 'Eliminar pasajero',
-    description: 'Eliminación lógica: cambia el estatus del pasajero a inactivo.',
+    description:
+      'Eliminación lógica: cambia el estatus del pasajero a inactivo.',
   })
   @ApiParam({ name: 'id', description: 'ID del pasajero a eliminar' })
   @ApiResponse({

@@ -9,7 +9,10 @@ import { UsuariosRegiones } from 'src/entities/UsuariosRegiones';
 import { Clientes } from 'src/entities/Clientes';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Regiones,Rutas,UsuariosRegiones,Clientes]), BitacoraModule],
+  imports: [
+    TypeOrmModule.forFeature([Regiones, Rutas, UsuariosRegiones, Clientes]),
+    BitacoraModule,
+  ],
   controllers: [RutasController],
   providers: [RutasService],
 })

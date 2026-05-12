@@ -16,14 +16,24 @@ import {
   ApiResponseCommon,
   EstatusEnumBitcora,
 } from 'src/common/ApiResponse';
-import { EnumControlTarifaIncremental, EnumControlTransacciones, EnumModulos, EnumTipoTarifa, EstatusEnum } from 'src/common/estatus.enum';
+import {
+  EnumControlTarifaIncremental,
+  EnumControlTransacciones,
+  EnumModulos,
+  EnumTipoTarifa,
+  EstatusEnum,
+} from 'src/common/estatus.enum';
 import { Clientes } from 'src/entities/Clientes';
 import { UpdateViajeDto } from './dto/update-viaje.dto';
 import { ConteoPasajeros } from 'src/entities/ConteoPasajeros';
 import { horaDesfasada } from 'src/utils/correccion-hora';
 import { TransaccionesDebito } from 'src/entities/TransaccionesDebito';
 import { TransaccionesService } from 'src/transacciones/transacciones.service';
-import { calcularDistanciaHastaIndex, calcularDistanciaReal, snapToRoute } from 'src/utils/recorrido.utils';
+import {
+  calcularDistanciaHastaIndex,
+  calcularDistanciaReal,
+  snapToRoute,
+} from 'src/utils/recorrido.utils';
 
 @Injectable()
 export class ViajesService {
@@ -38,13 +48,13 @@ export class ViajesService {
     private readonly transaccionesdebitoRepository: Repository<TransaccionesDebito>,
     private readonly bitacoraLogger: BitacoraLoggerService,
     private readonly transaccionesService: TransaccionesService,
-  ) { }
+  ) {}
   // ========================================
   // 🔹 CREAR UN VIAJE
   // ========================================
   /**
    * Crea un nuevo viaje asociado a un turno, derrotero y operador.
-   * 
+   *
    * Reglas de negocio:
    * - Solo usuarios con rol operador pueden crear viajes
    * - La fecha de inicio se establece automáticamente con desfase de horario (-6 horas)
@@ -54,11 +64,11 @@ export class ViajesService {
    *   BlueVox asociado a la instalación del turno (solo aquellos con Estatus=1 en InstalacionesBlueVoxs)
    * - Cada ConteoPasajeros se crea con valores iniciales (entradas=0, salidas=0, diferencia=0)
    *   y se asocia al viaje creado con estatus ACTIVO
-   * 
+   *
    * Flujo de obtención de BlueVoxs:
    * Viajes → Turnos (obtener IdInstalacion) → InstalacionesBlueVoxs (obtener IdBlueVox con Estatus=1)
    * → BlueVoxs (obtener NumeroSerie) → Crear ConteoPasajeros por cada BlueVox
-   * 
+   *
    * @param idUser ID del usuario que realiza la operación (para bitácora)
    * @param cliente ID del cliente (obtenido del token)
    * @param idOperador ID del operador (obtenido del token, debe existir)
@@ -77,12 +87,13 @@ export class ViajesService {
       // 🔹 VALIDACIÓN: Solo usuarios con rol operador pueden crear viajes
       // El idOperador debe existir en el token del usuario autenticado
       if (!idOperador) {
-        throw new UnauthorizedException(`Usuario no autorizado para la generación de viajes.`)
+        throw new UnauthorizedException(
+          `Usuario no autorizado para la generación de viajes.`,
+        );
       }
 
       // 🔹 FUNCIÓN AUXILIAR: Formatea números menores a 10 con un cero a la izquierda
       // Ejemplo: pad(5) = "05", pad(15) = "15"
-  
 
       // 🔹 CÁLCULO DE FECHA CON DESFASE HORARIO
       // Se aplica un desfase de -6 horas al tiempo actual (ajuste de zona horaria)
@@ -116,24 +127,30 @@ export class ViajesService {
         WHERE v.Id = ?
       `;
 
-      const blueVoxsResult = await this.viajesRepository.query(blueVoxsQuery, [viajeSave.id]);
-      const numerosSerieBlueVoxs = blueVoxsResult.map((row: any) => row.NumeroSerie);
+      const blueVoxsResult = await this.viajesRepository.query(blueVoxsQuery, [
+        viajeSave.id,
+      ]);
+      const numerosSerieBlueVoxs = blueVoxsResult.map(
+        (row: any) => row.NumeroSerie,
+      );
 
       // 🔹 CREACIÓN DE REGISTROS DE CONTEO DE PASAJEROS
       // Se crea un registro de ConteoPasajeros por cada BlueVox asociado a la instalación
       // Cada registro se inicializa con valores por defecto (entradas=0, salidas=0, diferencia=0)
       if (numerosSerieBlueVoxs.length > 0) {
-        const conteosPasajeros = numerosSerieBlueVoxs.map((numeroSerie: string) => {
-          return this.conteoPasajerosRepository.create({
-            entradas: 0,
-            salidas: 0,
-            diferencia: 0,
-            fechaHora: fechaDesfasada, // Usa la misma fecha del viaje (con desfase de -6 horas)
-            numeroSerieBlueVox: numeroSerie,
-            idViaje: viajeSave.id, // Asocia el conteo con el viaje creado
-            estatus: EstatusEnum.ACTIVO, // Establece el estatus como ACTIVO
-          });
-        });
+        const conteosPasajeros = numerosSerieBlueVoxs.map(
+          (numeroSerie: string) => {
+            return this.conteoPasajerosRepository.create({
+              entradas: 0,
+              salidas: 0,
+              diferencia: 0,
+              fechaHora: fechaDesfasada, // Usa la misma fecha del viaje (con desfase de -6 horas)
+              numeroSerieBlueVox: numeroSerie,
+              idViaje: viajeSave.id, // Asocia el conteo con el viaje creado
+              estatus: EstatusEnum.ACTIVO, // Establece el estatus como ACTIVO
+            });
+          },
+        );
 
         // 🔹 GUARDADO EN LOTE: Se guardan todos los conteos de una vez para mayor eficiencia
         await this.conteoPasajerosRepository.save(conteosPasajeros);
@@ -191,9 +208,7 @@ export class ViajesService {
     }
   }
 
-
   async findTarifa(idViaje: number) {
-
     const query = `
 SELECT
 	-- Datos de entidad Viajes
@@ -237,7 +252,7 @@ WHERE v.Id = ?
   // ========================================
   /**
    * Actualiza un viaje existente, generalmente para finalizarlo.
-   * 
+   *
    * Reglas de negocio:
    * - Solo usuarios con rol operador pueden actualizar viajes
    * - El viaje debe pertenecer al mismo cliente y operador del usuario autenticado
@@ -245,7 +260,7 @@ WHERE v.Id = ?
    * - El estatus se cambia automáticamente a INACTIVO (finalización del viaje)
    * - Al finalizar el viaje, todos los registros de ConteoPasajeros asociados al viaje
    *   también se actualizan a estatus INACTIVO para mantener consistencia
-   * 
+   *
    * @param idUser ID del usuario que realiza la operación (para bitácora)
    * @param cliente ID del cliente (obtenido del token, debe coincidir con el del viaje)
    * @param idOperador ID del operador (obtenido del token, debe coincidir con el del viaje)
@@ -265,10 +280,16 @@ WHERE v.Id = ?
     updateViajeDto: UpdateViajeDto,
   ): Promise<ApiCrudResponse> {
     try {
-      console.log('Entro a actualizar un viaje con ID: ', id, ' para cerrar el viaje');
+      console.log(
+        'Entro a actualizar un viaje con ID: ',
+        id,
+        ' para cerrar el viaje',
+      );
       // 🔹 VALIDACIÓN: Solo usuarios con rol operador pueden actualizar viajes
       if (!idOperador) {
-        throw new UnauthorizedException(`Usuario no autorizado para la generación de viajes.`)
+        throw new UnauthorizedException(
+          `Usuario no autorizado para la generación de viajes.`,
+        );
       }
 
       const { fechaDesfasada, fechaActual } = await horaDesfasada();
@@ -281,15 +302,24 @@ WHERE v.Id = ?
       // 🔹 VALIDACIÓN DE PERMISOS: El viaje debe pertenecer al mismo cliente y operador
       // Esto asegura que solo el operador que creó el viaje pueda finalizarlo
       if (cliente != viaje.idCliente || idOperador != viaje.idOperador) {
-        throw new BadRequestException(`Los datos del viaje con ID: ${id} no coinciden con los del usuario.`)
+        throw new BadRequestException(
+          `Los datos del viaje con ID: ${id} no coinciden con los del usuario.`,
+        );
       }
 
       // 🔹 VALIDACIÓN Que no exista transacciones abiertas
-      const transacciones = await this.transaccionesdebitoRepository.find({ where: { idViajes: id, idControlTransaccion: EnumControlTransacciones.ABIERTA } });
+      const transacciones = await this.transaccionesdebitoRepository.find({
+        where: {
+          idViajes: id,
+          idControlTransaccion: EnumControlTransacciones.ABIERTA,
+        },
+      });
 
       //si hay transacciones abiertas procedemos a cerrar las transacciones
       if (transacciones.length > 0) {
-        console.log('Hay transacciones abiertas, procedemos a cerrar las transacciones');
+        console.log(
+          'Hay transacciones abiertas, procedemos a cerrar las transacciones',
+        );
         await this.viajeCierre(id);
       }
       // 🔹 PREPARACIÓN DEL DTO: Se establecen valores automáticos para finalizar el viaje
@@ -308,7 +338,7 @@ WHERE v.Id = ?
       // Esto mantiene la consistencia: si el viaje termina, los conteos también deben finalizar
       await this.conteoPasajerosRepository.update(
         { idViaje: id }, // Filtra todos los conteos asociados al viaje
-        { estatus: EstatusEnum.INACTIVO } // Cambia su estatus a INACTIVO
+        { estatus: EstatusEnum.INACTIVO }, // Cambia su estatus a INACTIVO
       );
 
       // 🔹 REGISTRO EN BITÁCORA: Se registra la operación exitosa
@@ -364,7 +394,9 @@ WHERE v.Id = ?
    * Usado por el cron de cierre automático.
    * @param idUserSistema ID de usuario sistema para bitácora (ej. 0)
    */
-  async cerrarViajesAbiertosCron(idUserSistema: number): Promise<{ viajesCerrados: number; errores: string[] }> {
+  async cerrarViajesAbiertosCron(
+    idUserSistema: number,
+  ): Promise<{ viajesCerrados: number; errores: string[] }> {
     const errores: string[] = [];
     let viajesCerrados = 0;
     const viajesAbiertos = await this.viajesRepository.find({
@@ -373,7 +405,13 @@ WHERE v.Id = ?
     });
     for (const viaje of viajesAbiertos) {
       try {
-        await this.update(idUserSistema, viaje.idCliente, viaje.idOperador, viaje.id, {});
+        await this.update(
+          idUserSistema,
+          viaje.idCliente,
+          viaje.idOperador,
+          viaje.id,
+          {},
+        );
         viajesCerrados++;
       } catch (err) {
         const msg = (err as Error)?.message ?? String(err);
@@ -396,12 +434,19 @@ WHERE v.Id = ?
       let metrosBase;
 
       // 🔹 BÚSQUEDA DEL VIAJE: Se valida que el viaje exista
-      const viaje = await this.viajesRepository.findOne({ where: { id: idViaje } });
+      const viaje = await this.viajesRepository.findOne({
+        where: { id: idViaje },
+      });
       if (!viaje) {
         throw new NotFoundException(`Viaje con ID ${idViaje} no encontrado`);
       }
 
-      const transacciones = await this.transaccionesdebitoRepository.find({ where: { idViajes: idViaje, idControlTransaccion: EnumControlTransacciones.ABIERTA } });
+      const transacciones = await this.transaccionesdebitoRepository.find({
+        where: {
+          idViajes: idViaje,
+          idControlTransaccion: EnumControlTransacciones.ABIERTA,
+        },
+      });
 
       //Proceso en caso de existir transacciones abiertas
       if (transacciones.length > 0) {
@@ -416,14 +461,17 @@ WHERE v.Id = ?
           DistanciaBaseKm,
           incrementoCadaMetros,
           costoAdicional,
-          tipoTarifa
+          tipoTarifa,
         } = viajeData[0];
 
         //Como existe transacciones abiertas, se debe calcular el monto de cada transaccion
         for (const i of transacciones) {
           const { latitudInicial, longitudInicial } = i;
           if (latitudInicial && longitudInicial) {
-            const posicionActual = { lat: latitudInicial, lng: longitudInicial };
+            const posicionActual = {
+              lat: latitudInicial,
+              lng: longitudInicial,
+            };
 
             ///////////////////*********************
             // //////////switch para saber si la tarifa es incremental o estacionaria */
@@ -434,10 +482,15 @@ WHERE v.Id = ?
 
                 //Obtenemos los ultimos puntos del derrotero
                 const ultimoPunto1 = recorridoInterpolar.length - 1;
-                const { lat: latitudFinal1Raw, lng: longitudFinal1Raw } = recorridoInterpolar[ultimoPunto1];
+                const { lat: latitudFinal1Raw, lng: longitudFinal1Raw } =
+                  recorridoInterpolar[ultimoPunto1];
                 // Formatear a decimal(10,7) - 7 decimales
-                const latitudFinal1 = parseFloat(Number(latitudFinal1Raw).toFixed(7));
-                const longitudFinal1 = parseFloat(Number(longitudFinal1Raw).toFixed(7));
+                const latitudFinal1 = parseFloat(
+                  Number(latitudFinal1Raw).toFixed(7),
+                );
+                const longitudFinal1 = parseFloat(
+                  Number(longitudFinal1Raw).toFixed(7),
+                );
 
                 await this.transaccionesService.createTransaccionDebitoByViajes(
                   montoCalculado,
@@ -451,46 +504,64 @@ WHERE v.Id = ?
                   idViaje,
                   i.numeroSerieMonedero,
                   idUsuario,
-                  i.id
-                )
+                  i.id,
+                );
                 break;
               case EnumTipoTarifa.INCREMENTAL:
                 //Buscamos el punto mas que se encuentre nuestro recorrido con snapToRoute
                 const { index, distanciaMetros } = await snapToRoute(
                   posicionActual,
-                  recorridoInterpolar
+                  recorridoInterpolar,
                 );
 
                 //Calculamos la distancia en metros
                 //tomamos el penultimo punto mas cercano a la posicion actual
                 const indexSeguro = Math.max(index - 1, 0);
-                console.log(latitudInicial, longitudInicial, index, indexSeguro, distanciaMetros);
+                console.log(
+                  latitudInicial,
+                  longitudInicial,
+                  index,
+                  indexSeguro,
+                  distanciaMetros,
+                );
                 //Tomamos del inicio de la ruta hasta el penultimo punto mas cercano
                 const metrosRecorridos = await calcularDistanciaHastaIndex(
                   recorridoInterpolar,
-                  indexSeguro
+                  indexSeguro,
                 );
 
                 //Creamos el arreglo del penultimo punto a la posicion actual
-                const punto = [indexSeguro === 0 ? recorridoInterpolar[index] : recorridoInterpolar[index - 1], posicionActual];
+                const punto = [
+                  indexSeguro === 0
+                    ? recorridoInterpolar[index]
+                    : recorridoInterpolar[index - 1],
+                  posicionActual,
+                ];
                 //Calculamos la distancia del penultimo punto a la posicion actual con la funcion calcularDistanciaReal
                 let ultimoIndex = await calcularDistanciaReal(punto);
                 //Si la distancia pasa mas de 150 metros solo se queda en 150 metros sino toma la calculada en calcularDistanciaReal
-                ultimoIndex = ultimoIndex > 150 ? 150 : ultimoIndex
+                ultimoIndex = ultimoIndex > 150 ? 150 : ultimoIndex;
                 //Sumamos para obtener el total de distancia desde el inicio de la ruta hasta la posicion actual
                 //Para esos sumamos las distacias del unicio de la ruta al penultimo punto + la distancia del penultimo punto a la posicion actual
                 //Redondeamos el valor a enteros
-                distanciaInicial = Math.round(metrosRecorridos + ultimoIndex)
+                distanciaInicial = Math.round(metrosRecorridos + ultimoIndex);
                 //Obtenemos la distacia restante para verificar el monto que maximo que debe tener el monedero
                 //Para eso distanciaKm lo convertimos en metros que el total de recorrido que tiene nuestra ruta
                 //y le restamos la distanciaInicial anteriormente calculada
-                distancia = Math.round((distanciaKm * 1000) - distanciaInicial);
+                distancia = Math.round(distanciaKm * 1000 - distanciaInicial);
                 //Convertimos la distanciaBaseKm a metros
-                metrosBase = (DistanciaBaseKm * 1000);
+                metrosBase = DistanciaBaseKm * 1000;
                 //generamos la logica para calcular el monto
                 //Si la distancia (que es la distancia restante) es menor a la distanciaBaseKm el monto es la tarifa base
                 //Si la distancia (que es la distancia restante) es mayor a la distanciaBaseKm el monto es la distancia (que es la distancia restante) - distanciaBaseKm / incrementoCadaMetros * costoAdicional + tarifaBase
-                montoCalculado = distancia <= metrosBase ? tarifaBase : (tarifaBase + (Math.trunc((distancia - metrosBase) / (incrementoCadaMetros))) * costoAdicional);
+                montoCalculado =
+                  distancia <= metrosBase
+                    ? tarifaBase
+                    : tarifaBase +
+                      Math.trunc(
+                        (distancia - metrosBase) / incrementoCadaMetros,
+                      ) *
+                        costoAdicional;
                 //montoCalculado = tarifaBase;
                 controlTransaccion = EnumControlTransacciones.ABIERTA;
                 console.log(`Penultimo punto: ${indexSeguro}, Cordenadas del Penultimo punto: ${recorridoInterpolar[indexSeguro]},
@@ -498,7 +569,7 @@ WHERE v.Id = ?
               Distacia en metros del inicio de la ruta al penultimo punto: ${metrosRecorridos},
               La distancia en metros del penultimo punto al posicion actual: ${ultimoIndex},
               Distancia desde el inicio de la ruta a la posicion actual: ${distanciaInicial},
-              Distancia total de la ruta en metros: ${(distanciaKm * 1000)},
+              Distancia total de la ruta en metros: ${distanciaKm * 1000},
               Distancia de la posicion inicial a la posicion actual: ${distancia},
               Distancia base en km: ${DistanciaBaseKm},
               Distancia base en metros: ${metrosBase},
@@ -509,10 +580,15 @@ WHERE v.Id = ?
 
                 //Obtenemos los ultimos puntos del derrotero
                 const ultimoPunto = recorridoInterpolar.length - 1;
-                const { lat: latitudFinal, lng:longitudFinal } = recorridoInterpolar[ultimoPunto];
+                const { lat: latitudFinal, lng: longitudFinal } =
+                  recorridoInterpolar[ultimoPunto];
                 // Formatear a decimal(10,7) - 7 decimales
-                const latitudFinalRaw = parseFloat(Number(latitudFinal).toFixed(7));
-                const longitudFinalRaw = parseFloat(Number(longitudFinal).toFixed(7));
+                const latitudFinalRaw = parseFloat(
+                  Number(latitudFinal).toFixed(7),
+                );
+                const longitudFinalRaw = parseFloat(
+                  Number(longitudFinal).toFixed(7),
+                );
                 //console.log(latitudFinalRaw,longitudFinalRaw,'///*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*',latitudFinal, longitudFinal);
 
                 await this.transaccionesService.createTransaccionDebitoByViajes(
@@ -527,8 +603,8 @@ WHERE v.Id = ?
                   idViaje,
                   i.numeroSerieMonedero,
                   idUsuario,
-                  i.id
-                )
+                  i.id,
+                );
 
                 //fin del proceso
                 break;
@@ -538,9 +614,7 @@ WHERE v.Id = ?
             }
           }
         }
-
       }
-
     } catch (error) {
       console.log(error);
       // Registro en la bitácora FAIL
@@ -568,11 +642,11 @@ WHERE v.Id = ?
 
   /**
    * Función auxiliar para obtener los clientes hijos de un cliente padre.
-   * 
+   *
    * Utiliza el stored procedure spGetClientes para obtener la jerarquía de clientes.
    * Esta función es utilizada por roles Administrador, Reportes y Capturista para
    * filtrar viajes según la jerarquía de clientes.
-   * 
+   *
    * @param cliente ID del cliente padre del cual se obtendrán los hijos
    * @returns Objeto con arrays de IDs de clientes y placeholders para consultas SQL
    *          Si no hay clientes, retorna { data: [] }
@@ -620,10 +694,10 @@ WHERE v.Id = ?
 
   /**
    * Consulta SQL privada: Obtiene viajes de un cliente específico (sin jerarquía).
-   * 
+   *
    * Utilizada por roles Cliente (rol 3) para obtener solo sus propios viajes.
    * No incluye viajes de clientes hijos, solo los viajes del cliente especificado.
-   * 
+   *
    * @param cliente ID del cliente del cual se obtendrán los viajes
    * @returns Listado de viajes con información completa (sin paginación)
    */
@@ -719,10 +793,10 @@ ORDER BY v.Id DESC
 
   /**
    * Consulta SQL privada: Obtiene viajes de clientes hijos (con jerarquía).
-   * 
+   *
    * Utilizada por roles 2, 8, 10 y 13 (jerarquía de clientes).
    * Incluye viajes del cliente y todos sus clientes hijos (jerarquía completa).
-   * 
+   *
    * @param cliente ID del cliente padre del cual se obtendrán los viajes (incluyendo hijos)
    * @returns Listado de viajes con información completa (sin paginación)
    */
@@ -962,10 +1036,10 @@ ORDER BY v.Id DESC
 
   /**
    * Consulta SQL privada: Obtiene viajes de clientes hijos (con jerarquía) paginados.
-   * 
+   *
    * Utilizada por roles 2, 8, 10 y 13 (jerarquía de clientes).
    * Incluye viajes del cliente y todos sus clientes hijos (jerarquía completa).
-   * 
+   *
    * @param cliente ID del cliente padre del cual se obtendrán los viajes (incluyendo hijos)
    * @param limit Cantidad de registros por página
    * @param offset Desplazamiento para la paginación (salta N registros)
@@ -1063,10 +1137,10 @@ LIMIT ? OFFSET ?
 
   /**
    * Consulta SQL privada: Cuenta el total de viajes de clientes hijos (con jerarquía).
-   * 
+   *
    * Utilizada para calcular la paginación en findAll() para roles Administrador,
    * Reportes y Capturista. Viajes y clientes activos (v.Estatus = 1, c.Estatus = 1).
-   * 
+   *
    * @param cliente ID del cliente padre del cual se contarán los viajes (incluyendo hijos)
    * @returns Total de viajes (número entero)
    */
@@ -1272,10 +1346,10 @@ ORDER BY v.Id DESC
 
   /**
    * Consulta SQL privada: Obtiene viajes de un cliente específico (sin jerarquía) paginados.
-   * 
+   *
    * Utilizada por roles Cliente (rol 3) para obtener solo sus propios viajes.
    * No incluye viajes de clientes hijos, solo los viajes del cliente especificado.
-   * 
+   *
    * @param cliente ID del cliente del cual se obtendrán los viajes
    * @param limit Cantidad de registros por página
    * @param offset Desplazamiento para la paginación (salta N registros)
@@ -1361,9 +1435,9 @@ LIMIT ? OFFSET ?
 
   /**
    * Consulta SQL privada: Cuenta el total de viajes de un cliente específico (sin jerarquía).
-   * 
+   *
    * Utilizada por findAllList y otros flujos de cliente único. Viaje y cliente activos.
-   * 
+   *
    * @param cliente ID del cliente del cual se contarán los viajes
    * @returns Total de viajes (número entero)
    */
@@ -1525,9 +1599,8 @@ WHERE c.Estatus = 1
             limit,
             offset,
           );
-          totalResult = await this.consultarTotalRutasPaginadoPorOperador(
-            idUsuario,
-          );
+          totalResult =
+            await this.consultarTotalRutasPaginadoPorOperador(idUsuario);
           break;
 
         case 9:
@@ -1589,11 +1662,11 @@ WHERE c.Estatus = 1
   // ========================================
   /**
    * Obtiene la información detallada de un viaje específico por su ID.
-   * 
+   *
    * El viaje incluye información completa de:
    * - Turno, Instalación, Dispositivo, BlueVox, Vehículo
    * - Operador (usuario asociado), Derrotero, Ruta y Regiones
-   * 
+   *
    * @param id ID del viaje a consultar
    * @param cliente ID del cliente (obtenido del token, no se usa en la consulta actual)
    * @param rol Rol del usuario (obtenido del token, no se usa en la consulta actual)

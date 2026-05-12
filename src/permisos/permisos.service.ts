@@ -11,7 +11,11 @@ import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import { UpdatePermisoEstatusDto } from './dto/update-permiso-estatus.dto';
-import { ApiCrudResponse, ApiResponseCommon, EstatusEnumBitcora } from 'src/common/ApiResponse';
+import {
+  ApiCrudResponse,
+  ApiResponseCommon,
+  EstatusEnumBitcora,
+} from 'src/common/ApiResponse';
 import { UsuariosPermisos } from 'src/entities/UsuariosPermisos';
 
 @Injectable()

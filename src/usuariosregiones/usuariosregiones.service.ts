@@ -11,7 +11,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { UsuariosRegiones } from 'src/entities/UsuariosRegiones';
 import { Repository } from 'typeorm';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
-import { ApiCrudResponse, ApiResponseCommon, EstatusEnumBitcora } from 'src/common/ApiResponse';
+import {
+  ApiCrudResponse,
+  ApiResponseCommon,
+  EstatusEnumBitcora,
+} from 'src/common/ApiResponse';
 import { UpdateUsuariosRegionesEstatusDto } from './dto/update-usuariosregione-estatus.dto';
 import { Regiones } from 'src/entities/Regiones';
 import { Usuarios } from 'src/entities/Usuarios';
@@ -49,7 +53,7 @@ export class UsuariosregionesService {
       switch (idUser) {
         case 1:
           break;
-          // Usuario administrador - obtiene todas las instalaciones
+        // Usuario administrador - obtiene todas las instalaciones
         default:
           // Usuarios normales - solo sus instalaciones asignadas
           for (const i of createUsuariosRegionesDto.idsRegiones) {

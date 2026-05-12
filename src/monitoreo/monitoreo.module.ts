@@ -7,7 +7,7 @@ import { Derroteros } from 'src/entities/Derroteros';
 import { UsuariosRegiones } from 'src/entities/UsuariosRegiones';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Derroteros,UsuariosRegiones,Clientes]), ],
+  imports: [TypeOrmModule.forFeature([Derroteros, UsuariosRegiones, Clientes])],
   controllers: [MonitoreoController],
   providers: [MonitoreoService],
 })

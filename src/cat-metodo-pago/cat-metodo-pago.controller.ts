@@ -33,14 +33,20 @@ export class CatMetodoPagoController {
             type: 'object',
             properties: {
               id: { type: 'number', description: 'ID del método de pago' },
-              nombre: { type: 'string', description: 'Nombre del método (Efectivo, Tarjeta, etc.)' },
+              nombre: {
+                type: 'string',
+                description: 'Nombre del método (Efectivo, Tarjeta, etc.)',
+              },
             },
           },
         },
       },
     },
   })
-  @ApiResponse({ status: 404, description: 'No se encontraron métodos de pago' })
+  @ApiResponse({
+    status: 404,
+    description: 'No se encontraron métodos de pago',
+  })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   findAll() {
     return this.catMetodoPagoService.findAll();

@@ -10,8 +10,17 @@ import { Clientes } from 'src/entities/Clientes';
 import { Viajes } from 'src/entities/Viajes';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ConteoPasajeros, BlueVoxs, Usuarios, Clientes, Viajes]), BitacoraModule],
+  imports: [
+    TypeOrmModule.forFeature([
+      ConteoPasajeros,
+      BlueVoxs,
+      Usuarios,
+      Clientes,
+      Viajes,
+    ]),
+    BitacoraModule,
+  ],
   controllers: [ConteopasajerosController],
   providers: [ConteopasajerosService],
 })
-export class ConteopasajerosModule { }
+export class ConteopasajerosModule {}

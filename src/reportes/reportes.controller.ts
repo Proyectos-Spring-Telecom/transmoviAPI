@@ -4,7 +4,13 @@ import { RecaudacionDiariaRutaDto } from './dto/recaudacion-diaria-ruta.dto';
 import { RecaudacionPorOperadorDto } from './dto/recaudacion-por-operador.dto';
 import { RecaudacionPorVehiculoDto } from './dto/recaudacion-por-vehiculo.dto';
 import { RecaudacionPorDispositivoDto } from './dto/recaudacion-por-dispositivo.dto';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiBody,
+} from '@nestjs/swagger';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 
@@ -18,7 +24,8 @@ export class ReportesController {
   @Post('recaudacion-diaria-ruta')
   @ApiOperation({
     summary: 'Reporte de recaudación diaria por ruta',
-    description: 'Genera un reporte de recaudación diaria agrupado por ruta, incluyendo viajes, validaciones, ingresos, ticket promedio, % electrónico y evasión.',
+    description:
+      'Genera un reporte de recaudación diaria agrupado por ruta, incluyendo viajes, validaciones, ingresos, ticket promedio, % electrónico y evasión.',
   })
   @ApiBody({
     type: RecaudacionDiariaRutaDto,
@@ -34,7 +41,15 @@ export class ReportesController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { ruta: { type: 'string' }, viajes: { type: 'number' }, validaciones: { type: 'number' }, ingresos: { type: 'number' }, ticketPromedio: { type: 'number' }, porcentajeElectronico: { type: 'number' }, evasion: { type: 'number' } },
+            properties: {
+              ruta: { type: 'string' },
+              viajes: { type: 'number' },
+              validaciones: { type: 'number' },
+              ingresos: { type: 'number' },
+              ticketPromedio: { type: 'number' },
+              porcentajeElectronico: { type: 'number' },
+              evasion: { type: 'number' },
+            },
           },
         },
       },
@@ -62,7 +77,8 @@ export class ReportesController {
   @Post('recaudacion-por-operador')
   @ApiOperation({
     summary: 'Reporte de recaudación por operador',
-    description: 'Genera un reporte de recaudación agrupado por operador, incluyendo turnos, viajes, validaciones, ingresos, ticket promedio, evasión % y último turno.',
+    description:
+      'Genera un reporte de recaudación agrupado por operador, incluyendo turnos, viajes, validaciones, ingresos, ticket promedio, evasión % y último turno.',
   })
   @ApiBody({
     type: RecaudacionPorOperadorDto,
@@ -78,7 +94,16 @@ export class ReportesController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { operador: { type: 'string' }, turnos: { type: 'number' }, viajes: { type: 'number' }, validaciones: { type: 'number' }, ingresos: { type: 'number' }, ticketPromedio: { type: 'number' }, evasion: { type: 'number' }, ultimoTurno: { type: 'string' } },
+            properties: {
+              operador: { type: 'string' },
+              turnos: { type: 'number' },
+              viajes: { type: 'number' },
+              validaciones: { type: 'number' },
+              ingresos: { type: 'number' },
+              ticketPromedio: { type: 'number' },
+              evasion: { type: 'number' },
+              ultimoTurno: { type: 'string' },
+            },
           },
         },
       },
@@ -106,7 +131,8 @@ export class ReportesController {
   @Post('recaudacion-por-vehiculo')
   @ApiOperation({
     summary: 'Reporte de recaudación por vehículo',
-    description: 'Genera un reporte de recaudación agrupado por vehículo, incluyendo turnos, viajes, validaciones, ingresos, ticket promedio y horas en servicio.',
+    description:
+      'Genera un reporte de recaudación agrupado por vehículo, incluyendo turnos, viajes, validaciones, ingresos, ticket promedio y horas en servicio.',
   })
   @ApiBody({
     type: RecaudacionPorVehiculoDto,
@@ -122,7 +148,15 @@ export class ReportesController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { vehiculo: { type: 'string' }, turnos: { type: 'number' }, viajes: { type: 'number' }, validaciones: { type: 'number' }, ingresos: { type: 'number' }, ticketPromedio: { type: 'number' }, horasServicio: { type: 'number' } },
+            properties: {
+              vehiculo: { type: 'string' },
+              turnos: { type: 'number' },
+              viajes: { type: 'number' },
+              validaciones: { type: 'number' },
+              ingresos: { type: 'number' },
+              ticketPromedio: { type: 'number' },
+              horasServicio: { type: 'number' },
+            },
           },
         },
       },
@@ -150,7 +184,8 @@ export class ReportesController {
   @Post('recaudacion-por-dispositivo')
   @ApiOperation({
     summary: 'Reporte de recaudación por dispositivo/instalación',
-    description: 'Genera un reporte de recaudación agrupado por dispositivo e instalación, incluyendo validaciones, ingresos, última posición y estado.',
+    description:
+      'Genera un reporte de recaudación agrupado por dispositivo e instalación, incluyendo validaciones, ingresos, última posición y estado.',
   })
   @ApiBody({
     type: RecaudacionPorDispositivoDto,
@@ -166,7 +201,14 @@ export class ReportesController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { dispositivo: { type: 'string' }, instalacion: { type: 'string' }, validaciones: { type: 'number' }, ingresos: { type: 'number' }, ultimaPosicion: { type: 'object' }, estado: { type: 'string' } },
+            properties: {
+              dispositivo: { type: 'string' },
+              instalacion: { type: 'string' },
+              validaciones: { type: 'number' },
+              ingresos: { type: 'number' },
+              ultimaPosicion: { type: 'object' },
+              estado: { type: 'string' },
+            },
           },
         },
       },

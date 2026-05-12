@@ -58,7 +58,10 @@ export class CatTipoCombustibleController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'El tipo ya existe o error de validación' })
+  @ApiResponse({
+    status: 400,
+    description: 'El tipo ya existe o error de validación',
+  })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   async create(
     @Body() createCatTipoCombustibleDto: CreateCatTipoCombustibleDto,
@@ -101,7 +104,8 @@ export class CatTipoCombustibleController {
   @Get(':page/:limit')
   @ApiOperation({
     summary: 'Listar tipos de combustible paginados',
-    description: 'Obtiene el catálogo paginado. Ordenado por nombre ascendente.',
+    description:
+      'Obtiene el catálogo paginado. Ordenado por nombre ascendente.',
   })
   @ApiParam({ name: 'page', description: 'Número de página (desde 1)' })
   @ApiParam({ name: 'limit', description: 'Registros por página' })
@@ -159,7 +163,10 @@ export class CatTipoCombustibleController {
       },
     },
   })
-  @ApiResponse({ status: 404, description: 'Tipo de combustible no encontrado' })
+  @ApiResponse({
+    status: 404,
+    description: 'Tipo de combustible no encontrado',
+  })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   findOne(@Param('id', ParseIntPipe) id: number): Promise<ApiResponseCommon> {
     return this.catTipoCombustibleService.findOne(id);
@@ -168,7 +175,8 @@ export class CatTipoCombustibleController {
   @Patch(':id')
   @ApiOperation({
     summary: 'Actualizar tipo de combustible',
-    description: 'Modifica el nombre de un tipo existente. El nombre debe seguir siendo único.',
+    description:
+      'Modifica el nombre de un tipo existente. El nombre debe seguir siendo único.',
   })
   @ApiParam({ name: 'id', description: 'ID del tipo a actualizar' })
   @ApiBody({
@@ -190,8 +198,14 @@ export class CatTipoCombustibleController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'El nombre ya existe o error de validación' })
-  @ApiResponse({ status: 404, description: 'Tipo de combustible no encontrado' })
+  @ApiResponse({
+    status: 400,
+    description: 'El nombre ya existe o error de validación',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Tipo de combustible no encontrado',
+  })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   async update(
     @Param('id', ParseIntPipe) id: number,
@@ -228,7 +242,10 @@ export class CatTipoCombustibleController {
       },
     },
   })
-  @ApiResponse({ status: 404, description: 'Tipo de combustible no encontrado' })
+  @ApiResponse({
+    status: 404,
+    description: 'Tipo de combustible no encontrado',
+  })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   async remove(
     @Param('id', ParseIntPipe) id: number,

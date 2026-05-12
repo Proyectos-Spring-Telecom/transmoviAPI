@@ -17,7 +17,14 @@ import { UpdateUsuariosregioneDto } from './dto/update-usuariosregione.dto';
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { UpdateUsuariosRegionesEstatusDto } from './dto/update-usuariosregione-estatus.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiParam,
+} from '@nestjs/swagger';
 
 @ApiTags('Usuarios regiones')
 @ApiBearerAuth('bearer-token')
@@ -68,7 +75,8 @@ export class UsuariosregionesController {
   @Get('list')
   @ApiOperation({
     summary: 'Listar relaciones usuario-región',
-    description: 'Obtiene el listado de todas las relaciones usuario-región activas.',
+    description:
+      'Obtiene el listado de todas las relaciones usuario-región activas.',
   })
   @ApiResponse({
     status: 200,
@@ -80,7 +88,12 @@ export class UsuariosregionesController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, idUsuario: { type: 'number' }, idRegion: { type: 'number' }, estatus: { type: 'number' } },
+            properties: {
+              id: { type: 'number' },
+              idUsuario: { type: 'number' },
+              idRegion: { type: 'number' },
+              estatus: { type: 'number' },
+            },
           },
         },
       },
@@ -94,7 +107,8 @@ export class UsuariosregionesController {
   @Get('usuario/:idUsuario')
   @ApiOperation({
     summary: 'Obtener regiones por usuario',
-    description: 'Obtiene todas las regiones asociadas a un usuario específico.',
+    description:
+      'Obtiene todas las regiones asociadas a un usuario específico.',
   })
   @ApiParam({ name: 'idUsuario', description: 'ID del usuario' })
   @ApiResponse({
@@ -107,7 +121,11 @@ export class UsuariosregionesController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, idUsuario: { type: 'number' }, idRegion: { type: 'number' } },
+            properties: {
+              id: { type: 'number' },
+              idUsuario: { type: 'number' },
+              idRegion: { type: 'number' },
+            },
           },
         },
       },
@@ -136,12 +154,21 @@ export class UsuariosregionesController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, idUsuario: { type: 'number' }, idRegion: { type: 'number' }, estatus: { type: 'number' } },
+            properties: {
+              id: { type: 'number' },
+              idUsuario: { type: 'number' },
+              idRegion: { type: 'number' },
+              estatus: { type: 'number' },
+            },
           },
         },
         paginated: {
           type: 'object',
-          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+          properties: {
+            total: { type: 'number' },
+            page: { type: 'number' },
+            lastPage: { type: 'number' },
+          },
         },
       },
     },
@@ -169,7 +196,12 @@ export class UsuariosregionesController {
       properties: {
         data: {
           type: 'object',
-          properties: { id: { type: 'number' }, idUsuario: { type: 'number' }, idRegion: { type: 'number' }, estatus: { type: 'number' } },
+          properties: {
+            id: { type: 'number' },
+            idUsuario: { type: 'number' },
+            idRegion: { type: 'number' },
+            estatus: { type: 'number' },
+          },
         },
       },
     },
@@ -183,7 +215,8 @@ export class UsuariosregionesController {
   @Patch('estatus/:id')
   @ApiOperation({
     summary: 'Actualizar estatus de relación usuario-región',
-    description: 'Cambia el estatus de una relación usuario-región (0=Inactivo, 1=Activo).',
+    description:
+      'Cambia el estatus de una relación usuario-región (0=Inactivo, 1=Activo).',
   })
   @ApiParam({ name: 'id', description: 'ID de la relación usuario-región' })
   @ApiBody({
@@ -225,7 +258,10 @@ export class UsuariosregionesController {
     summary: 'Actualizar relación usuario-región',
     description: 'Actualiza completamente las regiones asociadas a un usuario.',
   })
-  @ApiParam({ name: 'idUsuario', description: 'ID del usuario cuyas regiones se actualizan' })
+  @ApiParam({
+    name: 'idUsuario',
+    description: 'ID del usuario cuyas regiones se actualizan',
+  })
   @ApiBody({
     type: UpdateUsuariosregioneDto,
     description: 'Nuevos datos de regiones para el usuario',
@@ -266,7 +302,10 @@ export class UsuariosregionesController {
     summary: 'Eliminar relación usuario-región',
     description: 'Elimina una relación específica entre usuario y región.',
   })
-  @ApiParam({ name: 'id', description: 'ID de la relación usuario-región a eliminar' })
+  @ApiParam({
+    name: 'id',
+    description: 'ID de la relación usuario-región a eliminar',
+  })
   @ApiResponse({
     status: 200,
     description: 'Relación eliminada correctamente',
@@ -284,7 +323,10 @@ export class UsuariosregionesController {
   })
   @ApiResponse({ status: 404, description: 'Relación no encontrada' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
-  async remove(@Param('id') id: string, @Request() req): Promise<ApiCrudResponse> {
+  async remove(
+    @Param('id') id: string,
+    @Request() req,
+  ): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
     return await this.usuariosregionesService.remove(+id, idUser);
   }

@@ -76,7 +76,9 @@ export class S3Service {
       const publicUrl = `https://${this.bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
 
       //-----Registro en la bitacora----- SUCCESS
-      const querylogger = { data: `INSERT INTO ${folder} (...) VALUES (...) -> bucket:  ${this.bucket} url: ${publicUrl}` };
+      const querylogger = {
+        data: `INSERT INTO ${folder} (...) VALUES (...) -> bucket:  ${this.bucket} url: ${publicUrl}`,
+      };
       await this.bitacoraLogger.logToBitacora(
         `${folder}`,
         `Se subio archivo al bucket: ${this.bucket}`,
@@ -91,7 +93,9 @@ export class S3Service {
     } catch (error) {
       console.log(error);
       //-----Registro en la bitacora----- ERROR
-      const querylogger = { data: `INSERT INTO ${folder} (...) VALUES (...) -> bucket:  ${this.bucket}` };
+      const querylogger = {
+        data: `INSERT INTO ${folder} (...) VALUES (...) -> bucket:  ${this.bucket}`,
+      };
       await this.bitacoraLogger.logToBitacora(
         `${folder}`,
         `Se subio archivo al bucket: ${this.bucket}`,

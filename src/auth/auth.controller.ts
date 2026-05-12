@@ -3,11 +3,8 @@ import {
   Post,
   Body,
   HttpCode,
-  Get,
-  Query,
   UseGuards,
   Patch,
-  Request,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginAuthDto } from './dto/login-auth.dto';
@@ -24,6 +21,8 @@ import {
   ApiBody,
   ApiResponse,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
+import { AUTH_THROTTLE } from './auth-throttle.config';
 
 @ApiTags('Autenticación')
 @ApiBearerAuth('bearer-token')
@@ -35,6 +34,7 @@ export class AuthController {
    * Inicio de sesión con correo y contraseña.
    * Para usuarios administrativos (administrador, cliente, reportes, etc.).
    */
+  @Throttle({ default: AUTH_THROTTLE.login })
   @Post()
   @HttpCode(200)
   @ApiOperation({
@@ -71,7 +71,10 @@ export class AuthController {
         fechaCreacion: { type: 'string' },
         fotoPerfil: { type: 'string' },
         userName: { type: 'string' },
-        token: { type: 'string', description: 'JWT para usar en Authorization header' },
+        token: {
+          type: 'string',
+          description: 'JWT para usar en Authorization header',
+        },
         permisos: { type: 'array', items: { type: 'object' } },
         rol: { type: 'object' },
       },
@@ -79,6 +82,10 @@ export class AuthController {
   })
   @ApiResponse({ status: 401, description: 'Credenciales inválidas' })
   @ApiResponse({ status: 404, description: 'Usuario no encontrado' })
+  @ApiResponse({
+    status: 429,
+    description: 'Demasiadas solicitudes; reintente más tarde',
+  })
   async login(@Body() loginAuthDto: LoginAuthDto) {
     return this.authService.signIn(loginAuthDto);
   }
@@ -86,6 +93,7 @@ export class AuthController {
   /**
    * Login de operadores usando correo, PIN y dispositivo.
    */
+  @Throttle({ default: AUTH_THROTTLE.pin })
   @Post('operador/login')
   @HttpCode(200)
   @ApiOperation({
@@ -109,7 +117,8 @@ export class AuthController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Login exitoso. Retorna token, datos del operador y licencias.',
+    description:
+      'Login exitoso. Retorna token, datos del operador y licencias.',
     schema: {
       type: 'object',
       properties: {
@@ -131,6 +140,10 @@ export class AuthController {
   })
   @ApiResponse({ status: 401, description: 'Credenciales inválidas' })
   @ApiResponse({ status: 404, description: 'Operador no encontrado' })
+  @ApiResponse({
+    status: 429,
+    description: 'Demasiadas solicitudes; reintente más tarde',
+  })
   async loginPin(@Body() loginAuthPinDto: LoginAuthPinDto) {
     return this.authService.singInPin(loginAuthPinDto);
   }
@@ -139,6 +152,7 @@ export class AuthController {
    * Solicitar recuperación de contraseña.
    * Envía un correo con el código para restablecer.
    */
+  @Throttle({ default: AUTH_THROTTLE.recuperacion })
   @Post('usuario/recuperar/acceso')
   @ApiOperation({
     summary: 'Solicitar recuperación de contraseña',
@@ -149,7 +163,10 @@ export class AuthController {
     type: LoginAuthConfirmacionDto,
     description: 'Correo del usuario que olvidó su contraseña',
     examples: {
-      ejemplo: { value: { userName: 'usuario@ejemplo.com' }, summary: 'Correo' },
+      ejemplo: {
+        value: { userName: 'usuario@ejemplo.com' },
+        summary: 'Correo',
+      },
     },
   })
   @ApiResponse({
@@ -161,6 +178,10 @@ export class AuthController {
     },
   })
   @ApiResponse({ status: 400, description: 'Usuario no encontrado' })
+  @ApiResponse({
+    status: 429,
+    description: 'Demasiadas solicitudes; reintente más tarde',
+  })
   async email(@Body() loginAuthConfirmacionDto: LoginAuthConfirmacionDto) {
     return await this.authService.recuperarContrasena(loginAuthConfirmacionDto);
   }
@@ -169,6 +190,7 @@ export class AuthController {
    * Solicitar código de confirmación de correo.
    * Para usuarios que aún no han verificado su cuenta.
    */
+  @Throttle({ default: AUTH_THROTTLE.recuperacionConfirmacion })
   @Post('recuperar/confirmacion')
   @ApiOperation({
     summary: 'Solicitar código de confirmación de correo',
@@ -179,7 +201,10 @@ export class AuthController {
     type: LoginAuthConfirmacionDto,
     description: 'Correo del usuario',
     examples: {
-      ejemplo: { value: { userName: 'usuario@ejemplo.com' }, summary: 'Correo' },
+      ejemplo: {
+        value: { userName: 'usuario@ejemplo.com' },
+        summary: 'Correo',
+      },
     },
   })
   @ApiResponse({
@@ -191,6 +216,10 @@ export class AuthController {
     },
   })
   @ApiResponse({ status: 404, description: 'Usuario no encontrado' })
+  @ApiResponse({
+    status: 429,
+    description: 'Demasiadas solicitudes; reintente más tarde',
+  })
   async recuperacionConfirmacion(
     @Body() loginAuthConfirmacionDto: LoginAuthConfirmacionDto,
   ) {
@@ -203,6 +232,7 @@ export class AuthController {
    * Registro de nuevo pasajero (afiliación).
    * Crea usuario, pasajero y asocia monedero.
    */
+  @Throttle({ default: AUTH_THROTTLE.pasajeroRegistro })
   @Post('pasajero/registro')
   @ApiOperation({
     summary: 'Registro de pasajero (afiliación)',
@@ -222,7 +252,14 @@ export class AuthController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Monedero ya ligado o usuario ya existe' })
+  @ApiResponse({
+    status: 400,
+    description: 'Monedero ya ligado o usuario ya existe',
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Demasiadas solicitudes; reintente más tarde',
+  })
   async createPasajero(@Body() createAltaPasajaroDto: CreateAltaPasajaroDto) {
     return this.authService.createPasajero(createAltaPasajaroDto);
   }
@@ -230,11 +267,13 @@ export class AuthController {
   /**
    * Cambiar contraseña (requiere token JWT).
    */
+  @Throttle({ default: AUTH_THROTTLE.resetPassword })
   @Post('cambiar/accesso')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: 'Cambiar contraseña',
-    description: 'Actualiza la contraseña del usuario. Requiere autenticación con token Bearer.',
+    description:
+      'Actualiza la contraseña del usuario. Requiere autenticación con token Bearer.',
   })
   @ApiBody({
     type: LoginAuthResetDto,
@@ -254,11 +293,16 @@ export class AuthController {
     description: 'Contraseña actualizada exitosamente',
     schema: {
       type: 'string',
-      example: 'La contraseña del usuario Juan ha sido actualizada exitosamente.',
+      example:
+        'La contraseña del usuario Juan ha sido actualizada exitosamente.',
     },
   })
   @ApiResponse({ status: 400, description: 'Usuario no encontrado' })
   @ApiResponse({ status: 401, description: 'Token inválido o expirado' })
+  @ApiResponse({
+    status: 429,
+    description: 'Demasiadas solicitudes; reintente más tarde',
+  })
   async resetPassword(@Body() loginAuthResetDto: LoginAuthResetDto) {
     return await this.authService.resetPassword(loginAuthResetDto);
   }
@@ -266,6 +310,7 @@ export class AuthController {
   /**
    * Verificar código de autenticación enviado por correo.
    */
+  @Throttle({ default: AUTH_THROTTLE.verify })
   @Patch('verify')
   @HttpCode(200)
   @ApiOperation({
@@ -290,6 +335,10 @@ export class AuthController {
     },
   })
   @ApiResponse({ status: 400, description: 'Código inválido o expirado' })
+  @ApiResponse({
+    status: 429,
+    description: 'Demasiadas solicitudes; reintente más tarde',
+  })
   async verifyUser(
     @Body() codigoPasajeroAutenticacion: CodigoPasajeroAutenticacion,
   ) {

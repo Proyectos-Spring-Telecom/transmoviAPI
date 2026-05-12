@@ -12,7 +12,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Not } from 'typeorm';
 import { Roles } from 'src/entities/Roles';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
-import { ApiCrudResponse, ApiResponseCommon, EstatusEnumBitcora } from 'src/common/ApiResponse';
+import {
+  ApiCrudResponse,
+  ApiResponseCommon,
+  EstatusEnumBitcora,
+} from 'src/common/ApiResponse';
 import { UpdateRolEstatusDto } from './dto/update-rol.dto';
 import { Response } from 'express';
 
@@ -104,7 +108,7 @@ export class RolesService {
           skip: (page - 1) * limit,
           take: limit,
           where: {
-            id: Not(1), 
+            id: Not(1),
           },
         });
         break;
@@ -152,7 +156,7 @@ export class RolesService {
       });
       if (!permiso) throw new NotFoundException('Rol no encontrado');
 
-      return {data:permiso};
+      return { data: permiso };
     } catch (error) {
       console.log(error);
       if (error instanceof HttpException) {

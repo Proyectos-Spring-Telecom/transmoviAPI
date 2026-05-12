@@ -21,7 +21,7 @@ import {
   ApiResponseCommon,
   EstatusEnumBitcora,
 } from 'src/common/ApiResponse';
-import { Clientes } from 'src/entities/Clientes';
+import { ClientesJerarquiaService } from 'src/clientes-jerarquia/clientes-jerarquia.service';
 
 @Injectable()
 export class MantenimientoVehicularService {
@@ -36,31 +36,10 @@ export class MantenimientoVehicularService {
     private readonly instalacionesRepository: Repository<Instalaciones>,
     @InjectRepository(CatReferenciaServicio)
     private readonly catReferenciaServicioRepository: Repository<CatReferenciaServicio>,
-    @InjectRepository(Clientes)
-    private readonly clienteRepository: Repository<Clientes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
     private readonly s3Service: S3Service,
+    private readonly clientesJerarquia: ClientesJerarquiaService,
   ) {}
-
-  //funcion para obtener los clientes hijos
-  private async clienteHijos(cliente: number) {
-    const clientesFiltrado = await this.clienteRepository.query(
-      `CALL spGetClientes(?);`,
-      [cliente],
-    );
-
-    const idsFiltrados = clientesFiltrado[0]; // El primer índice contiene los resultados
-    const ids = idsFiltrados
-      .map((clientesFiltrado: any) => Number(clientesFiltrado.Id))
-      .filter(Boolean);
-    if (ids.length === 0) {
-      return { ids: [], placeholders: '' }; // No hay clientes que consultar
-    }
-
-    // Construir el query dinámico con los IDs
-    const placeholders = ids.map(() => '?').join(', ');
-    return { ids, placeholders };
-  }
 
   async create(
     createMantenimientoVehicularDto: CreateMantenimientoVehicularDto,
@@ -69,10 +48,14 @@ export class MantenimientoVehicularService {
   ): Promise<ApiCrudResponse> {
     try {
       // Validar claves foráneas si se proporcionan
-      if (createMantenimientoVehicularDto.idEstatus !== undefined && createMantenimientoVehicularDto.idEstatus !== null) {
-        const estatusExists = await this.catEstatusMantenimientoRepository.findOne({
-          where: { id: createMantenimientoVehicularDto.idEstatus },
-        });
+      if (
+        createMantenimientoVehicularDto.idEstatus !== undefined &&
+        createMantenimientoVehicularDto.idEstatus !== null
+      ) {
+        const estatusExists =
+          await this.catEstatusMantenimientoRepository.findOne({
+            where: { id: createMantenimientoVehicularDto.idEstatus },
+          });
         if (!estatusExists) {
           throw new BadRequestException(
             `El estatus de mantenimiento con ID ${createMantenimientoVehicularDto.idEstatus} no existe.`,
@@ -80,7 +63,10 @@ export class MantenimientoVehicularService {
         }
       }
 
-      if (createMantenimientoVehicularDto.idTaller !== undefined && createMantenimientoVehicularDto.idTaller !== null) {
+      if (
+        createMantenimientoVehicularDto.idTaller !== undefined &&
+        createMantenimientoVehicularDto.idTaller !== null
+      ) {
         const tallerExists = await this.talleresRepository.findOne({
           where: { id: createMantenimientoVehicularDto.idTaller },
         });
@@ -91,7 +77,10 @@ export class MantenimientoVehicularService {
         }
       }
 
-      if (createMantenimientoVehicularDto.idInstalacion !== undefined && createMantenimientoVehicularDto.idInstalacion !== null) {
+      if (
+        createMantenimientoVehicularDto.idInstalacion !== undefined &&
+        createMantenimientoVehicularDto.idInstalacion !== null
+      ) {
         const instalacionExists = await this.instalacionesRepository.findOne({
           where: { id: createMantenimientoVehicularDto.idInstalacion },
         });
@@ -102,10 +91,14 @@ export class MantenimientoVehicularService {
         }
       }
 
-      if (createMantenimientoVehicularDto.idReferencia !== undefined && createMantenimientoVehicularDto.idReferencia !== null) {
-        const referenciaExists = await this.catReferenciaServicioRepository.findOne({
-          where: { id: createMantenimientoVehicularDto.idReferencia },
-        });
+      if (
+        createMantenimientoVehicularDto.idReferencia !== undefined &&
+        createMantenimientoVehicularDto.idReferencia !== null
+      ) {
+        const referenciaExists =
+          await this.catReferenciaServicioRepository.findOne({
+            where: { id: createMantenimientoVehicularDto.idReferencia },
+          });
         if (!referenciaExists) {
           throw new BadRequestException(
             `La referencia de servicio con ID ${createMantenimientoVehicularDto.idReferencia} no existe.`,
@@ -131,10 +124,9 @@ export class MantenimientoVehicularService {
         notaServicio: notaServicioUrl,
       };
 
-      const create = this.mantenimientoVehicularRepository.create(
-        dataToCreate,
-      );
-      const savedResult = await this.mantenimientoVehicularRepository.save(create);
+      const create = this.mantenimientoVehicularRepository.create(dataToCreate);
+      const savedResult =
+        await this.mantenimientoVehicularRepository.save(create);
       const saved = Array.isArray(savedResult) ? savedResult[0] : savedResult;
 
       //-----Registro en la bitacora----- SUCCESS
@@ -163,7 +155,7 @@ export class MantenimientoVehicularService {
     } catch (error) {
       console.log(error);
       //-----Registro en la bitacora----- ERROR
-      console.log(error); 
+      console.log(error);
       const querylogger = { createMantenimientoVehicularDto };
       await this.bitacoraLogger.logToBitacora(
         'MantenimientoVehicular',
@@ -184,7 +176,12 @@ export class MantenimientoVehicularService {
     }
   }
 
-  async findAll(page: number, limit: number, idCliente: number, rol: number): Promise<ApiResponseCommon> {
+  async findAll(
+    page: number,
+    limit: number,
+    idCliente: number,
+    rol: number,
+  ): Promise<ApiResponseCommon> {
     try {
       const offset = (page - 1) * limit;
       let mantenimientos;
@@ -248,7 +245,8 @@ INNER JOIN Clientes c ON i.IdCliente = c.Id
           break;
 
         default:
-          const { ids, placeholders } = await this.clienteHijos(idCliente);
+          const { ids, placeholders } =
+            await this.clientesJerarquia.obtenerJerarquia(idCliente);
           if (ids.length === 0) {
             return {
               data: [],
@@ -332,28 +330,38 @@ WHERE c.Id IN (${placeholders})
         estatus: item.estatus,
         placaVehiculo: item.placaVehiculo || null,
         imagenVehiculo: item.imagenVehiculo || null,
-        instalacion: item.idInstalacion ? { id: Number(item.idInstalacion) } : null,
-        estatusMantenimiento: item.estatusMantenimientoId ? {
-          id: Number(item.estatusMantenimientoId),
-          nombre: item.estatusMantenimientoNombre,
-        } : null,
-        taller: item.tallerId ? {
-          id: Number(item.tallerId),
-          nombre: item.tallerNombre,
-        } : null,
-        referenciaServicio: item.referenciaServicioId ? {
-          id: Number(item.referenciaServicioId),
-          nombre: item.referenciaServicioNombre,
-        } : null,
-        ...(rol === 1 || rol === 2) && item.idClienteData ? {
-          cliente: {
-            id: Number(item.idClienteData),
-            nombre: item.nombreClienteData,
-            apellidoPaterno: item.apellidoPaternoCliente,
-            apellidoMaterno: item.apellidoMaternoCliente,
-            estatus: item.estatusCliente,
-          },
-        } : {},
+        instalacion: item.idInstalacion
+          ? { id: Number(item.idInstalacion) }
+          : null,
+        estatusMantenimiento: item.estatusMantenimientoId
+          ? {
+              id: Number(item.estatusMantenimientoId),
+              nombre: item.estatusMantenimientoNombre,
+            }
+          : null,
+        taller: item.tallerId
+          ? {
+              id: Number(item.tallerId),
+              nombre: item.tallerNombre,
+            }
+          : null,
+        referenciaServicio: item.referenciaServicioId
+          ? {
+              id: Number(item.referenciaServicioId),
+              nombre: item.referenciaServicioNombre,
+            }
+          : null,
+        ...((rol === 1 || rol === 2) && item.idClienteData
+          ? {
+              cliente: {
+                id: Number(item.idClienteData),
+                nombre: item.nombreClienteData,
+                apellidoPaterno: item.apellidoPaternoCliente,
+                apellidoMaterno: item.apellidoMaternoCliente,
+                estatus: item.estatusCliente,
+              },
+            }
+          : {}),
       }));
 
       const result: ApiResponseCommon = {
@@ -376,7 +384,11 @@ WHERE c.Id IN (${placeholders})
     }
   }
 
-  async findOne(id: number, idCliente: number, rol: number): Promise<ApiResponseCommon> {
+  async findOne(
+    id: number,
+    idCliente: number,
+    rol: number,
+  ): Promise<ApiResponseCommon> {
     try {
       let mantenimientos;
 
@@ -427,9 +439,12 @@ WHERE mv.Id = ?
           break;
 
         default:
-          const { ids, placeholders } = await this.clienteHijos(idCliente);
+          const { ids, placeholders } =
+            await this.clientesJerarquia.obtenerJerarquia(idCliente);
           if (ids.length === 0) {
-            throw new NotFoundException('Mantenimiento vehicular no encontrado');
+            throw new NotFoundException(
+              'Mantenimiento vehicular no encontrado',
+            );
           }
 
           // Consulta para resto de usuarios
@@ -482,7 +497,9 @@ AND mv.Id = ?
         data: [
           {
             id: Number(item.id),
-            idInstalacion: item.idInstalacion ? Number(item.idInstalacion) : null,
+            idInstalacion: item.idInstalacion
+              ? Number(item.idInstalacion)
+              : null,
             idReferencia: item.idReferencia ? Number(item.idReferencia) : null,
             servicioDescripcion: item.servicioDescripcion,
             notaServicio: item.notaServicio,
@@ -496,28 +513,38 @@ AND mv.Id = ?
             estatus: item.estatus,
             placaVehiculo: item.placaVehiculo || null,
             imagenVehiculo: item.imagenVehiculo || null,
-            instalacion: item.idInstalacion ? { id: Number(item.idInstalacion) } : null,
-            estatusMantenimiento: item.estatusMantenimientoId ? {
-              id: Number(item.estatusMantenimientoId),
-              nombre: item.estatusMantenimientoNombre,
-            } : null,
-            taller: item.tallerId ? {
-              id: Number(item.tallerId),
-              nombre: item.tallerNombre,
-            } : null,
-            referenciaServicio: item.referenciaServicioId ? {
-              id: Number(item.referenciaServicioId),
-              nombre: item.referenciaServicioNombre,
-            } : null,
-            ...(rol === 1 || rol === 2) && item.idClienteData ? {
-              cliente: {
-                id: Number(item.idClienteData),
-                nombre: item.nombreClienteData,
-                apellidoPaterno: item.apellidoPaternoCliente,
-                apellidoMaterno: item.apellidoMaternoCliente,
-                estatus: item.estatusCliente,
-              },
-            } : {},
+            instalacion: item.idInstalacion
+              ? { id: Number(item.idInstalacion) }
+              : null,
+            estatusMantenimiento: item.estatusMantenimientoId
+              ? {
+                  id: Number(item.estatusMantenimientoId),
+                  nombre: item.estatusMantenimientoNombre,
+                }
+              : null,
+            taller: item.tallerId
+              ? {
+                  id: Number(item.tallerId),
+                  nombre: item.tallerNombre,
+                }
+              : null,
+            referenciaServicio: item.referenciaServicioId
+              ? {
+                  id: Number(item.referenciaServicioId),
+                  nombre: item.referenciaServicioNombre,
+                }
+              : null,
+            ...((rol === 1 || rol === 2) && item.idClienteData
+              ? {
+                  cliente: {
+                    id: Number(item.idClienteData),
+                    nombre: item.nombreClienteData,
+                    apellidoPaterno: item.apellidoPaternoCliente,
+                    apellidoMaterno: item.apellidoMaternoCliente,
+                    estatus: item.estatusCliente,
+                  },
+                }
+              : {}),
           },
         ],
       };
@@ -539,18 +566,24 @@ AND mv.Id = ?
     idUser: number,
   ): Promise<ApiCrudResponse> {
     try {
-      const mantenimiento = await this.mantenimientoVehicularRepository.findOne({
-        where: { id: id },
-      });
+      const mantenimiento = await this.mantenimientoVehicularRepository.findOne(
+        {
+          where: { id: id },
+        },
+      );
       if (!mantenimiento) {
         throw new NotFoundException('Mantenimiento vehicular no encontrado');
       }
 
       // Validar claves foráneas si se proporcionan
-      if (updateMantenimientoVehicularDto.idEstatus !== undefined && updateMantenimientoVehicularDto.idEstatus !== null) {
-        const estatusExists = await this.catEstatusMantenimientoRepository.findOne({
-          where: { id: updateMantenimientoVehicularDto.idEstatus },
-        });
+      if (
+        updateMantenimientoVehicularDto.idEstatus !== undefined &&
+        updateMantenimientoVehicularDto.idEstatus !== null
+      ) {
+        const estatusExists =
+          await this.catEstatusMantenimientoRepository.findOne({
+            where: { id: updateMantenimientoVehicularDto.idEstatus },
+          });
         if (!estatusExists) {
           throw new BadRequestException(
             `El estatus de mantenimiento con ID ${updateMantenimientoVehicularDto.idEstatus} no existe.`,
@@ -558,7 +591,10 @@ AND mv.Id = ?
         }
       }
 
-      if (updateMantenimientoVehicularDto.idTaller !== undefined && updateMantenimientoVehicularDto.idTaller !== null) {
+      if (
+        updateMantenimientoVehicularDto.idTaller !== undefined &&
+        updateMantenimientoVehicularDto.idTaller !== null
+      ) {
         const tallerExists = await this.talleresRepository.findOne({
           where: { id: updateMantenimientoVehicularDto.idTaller },
         });
@@ -569,7 +605,10 @@ AND mv.Id = ?
         }
       }
 
-      if (updateMantenimientoVehicularDto.idInstalacion !== undefined && updateMantenimientoVehicularDto.idInstalacion !== null) {
+      if (
+        updateMantenimientoVehicularDto.idInstalacion !== undefined &&
+        updateMantenimientoVehicularDto.idInstalacion !== null
+      ) {
         const instalacionExists = await this.instalacionesRepository.findOne({
           where: { id: updateMantenimientoVehicularDto.idInstalacion },
         });
@@ -580,10 +619,14 @@ AND mv.Id = ?
         }
       }
 
-      if (updateMantenimientoVehicularDto.idReferencia !== undefined && updateMantenimientoVehicularDto.idReferencia !== null) {
-        const referenciaExists = await this.catReferenciaServicioRepository.findOne({
-          where: { id: updateMantenimientoVehicularDto.idReferencia },
-        });
+      if (
+        updateMantenimientoVehicularDto.idReferencia !== undefined &&
+        updateMantenimientoVehicularDto.idReferencia !== null
+      ) {
+        const referenciaExists =
+          await this.catReferenciaServicioRepository.findOne({
+            where: { id: updateMantenimientoVehicularDto.idReferencia },
+          });
         if (!referenciaExists) {
           throw new BadRequestException(
             `La referencia de servicio con ID ${updateMantenimientoVehicularDto.idReferencia} no existe.`,
@@ -595,9 +638,10 @@ AND mv.Id = ?
         id,
         updateMantenimientoVehicularDto,
       );
-      const mantenimientoResult = await this.mantenimientoVehicularRepository.findOne({
-        where: { id: id },
-      });
+      const mantenimientoResult =
+        await this.mantenimientoVehicularRepository.findOne({
+          where: { id: id },
+        });
 
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { updateMantenimientoVehicularDto };
@@ -646,9 +690,11 @@ AND mv.Id = ?
 
   async desactivar(id: number, idUser: number): Promise<ApiCrudResponse> {
     try {
-      const mantenimiento = await this.mantenimientoVehicularRepository.findOne({
-        where: { id: id },
-      });
+      const mantenimiento = await this.mantenimientoVehicularRepository.findOne(
+        {
+          where: { id: id },
+        },
+      );
 
       if (!mantenimiento) {
         throw new NotFoundException('Mantenimiento vehicular no encontrado');
@@ -705,16 +751,20 @@ AND mv.Id = ?
 
   async activar(id: number, idUser: number): Promise<ApiCrudResponse> {
     try {
-      const mantenimiento = await this.mantenimientoVehicularRepository.findOne({
-        where: { id: id },
-      });
+      const mantenimiento = await this.mantenimientoVehicularRepository.findOne(
+        {
+          where: { id: id },
+        },
+      );
 
       if (!mantenimiento) {
         throw new NotFoundException('Mantenimiento vehicular no encontrado');
       }
 
       if (mantenimiento.estatus === 1) {
-        throw new BadRequestException('El mantenimiento vehicular ya está activo');
+        throw new BadRequestException(
+          'El mantenimiento vehicular ya está activo',
+        );
       }
 
       await this.mantenimientoVehicularRepository.update(id, { estatus: 1 });
@@ -766,17 +816,25 @@ AND mv.Id = ?
     }
   }
 
-  async updateStatus(idUser: number, idMantenimiento: number, estatus: number): Promise<ApiCrudResponse> {
+  async updateStatus(
+    idUser: number,
+    idMantenimiento: number,
+    estatus: number,
+  ): Promise<ApiCrudResponse> {
     try {
-      const mantenimiento = await this.mantenimientoVehicularRepository.findOne({
-        where: { id: idMantenimiento },
-      });
+      const mantenimiento = await this.mantenimientoVehicularRepository.findOne(
+        {
+          where: { id: idMantenimiento },
+        },
+      );
 
       if (!mantenimiento) {
         throw new NotFoundException('Mantenimiento vehicular no encontrado');
       }
 
-      await this.mantenimientoVehicularRepository.update(idMantenimiento, { estatus: estatus });
+      await this.mantenimientoVehicularRepository.update(idMantenimiento, {
+        estatus: estatus,
+      });
 
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { id: idMantenimiento, estatus: estatus };
@@ -792,7 +850,8 @@ AND mv.Id = ?
 
       return {
         status: 'success',
-        message: 'Estatus del mantenimiento vehicular actualizado correctamente',
+        message:
+          'Estatus del mantenimiento vehicular actualizado correctamente',
         estatus: { estatus: estatus },
         data: {
           id: idMantenimiento,

@@ -95,11 +95,11 @@ export class ModulosService {
       const data = modulos.map((item) => ({
         ...item,
         id: Number(item.id),
-        permisos: item.permisos.map(permiso => ({
+        permisos: item.permisos.map((permiso) => ({
           ...permiso,
           id: Number(permiso.id),
           idModulo: Number(permiso.idModulo),
-        }))
+        })),
       }));
       const result: ApiResponseCommon = {
         data: modulos,
@@ -122,11 +122,11 @@ export class ModulosService {
       const modulos = data.map((item) => ({
         ...item,
         id: Number(item.id),
-        permisos: item.permisos.map(permiso => ({
+        permisos: item.permisos.map((permiso) => ({
           ...permiso,
           id: Number(permiso.id),
           idModulo: Number(permiso.idModulo),
-        }))
+        })),
       }));
 
       const result: ApiResponseCommon = {
@@ -150,23 +150,24 @@ export class ModulosService {
         where: { id: id },
         relations: ['permisos'],
       });
-      if (!modulo)      throw new NotFoundException({ message: 'Módulo no encontrado' });
+      if (!modulo)
+        throw new NotFoundException({ message: 'Módulo no encontrado' });
 
       return { data: modulo };
     } catch (error) {
       console.log(error);
-    if (error instanceof HttpException) throw error;
+      if (error instanceof HttpException) throw error;
 
-    console.error('Error interno:', error);
+      console.error('Error interno:', error);
 
-    throw new HttpException(
-      {
-        message: 'Error interno al buscar el módulo',
-        details: error.message,
-      },
-      HttpStatus.INTERNAL_SERVER_ERROR,
-    );
-  }
+      throw new HttpException(
+        {
+          message: 'Error interno al buscar el módulo',
+          details: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 
   async update(
@@ -287,12 +288,12 @@ export class ModulosService {
   async deleteModulo(id: number, idUser: number): Promise<ApiCrudResponse> {
     try {
       const modulo = await this.moduloRepository.findOne({ where: { id: id } });
-  
+
       if (!modulo) throw new NotFoundException('Modulo no encontrado');
       if (modulo.estatus === 1) {
         modulo.estatus = 0;
         await this.moduloRepository.update(id, modulo);
-  
+
         const permisos = await this.permisosRepository.find({
           where: { id: id },
         });
@@ -315,7 +316,7 @@ export class ModulosService {
           }
         }
       }
-  
+
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { id: id, estatus: 0 };
       await this.bitacoraLogger.logToBitacora(
@@ -327,7 +328,7 @@ export class ModulosService {
         5,
         EstatusEnumBitcora.SUCCESS,
       );
-      
+
       //Api response
       const result: ApiCrudResponse = {
         status: 'success',

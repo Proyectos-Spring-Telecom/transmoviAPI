@@ -33,7 +33,7 @@ import { UpdateUsuarioDispositivoDto } from './dto/update-usuario-dispositivo.dt
 @ApiBearerAuth('bearer-token')
 @Controller('usuarios')
 export class UsuariosController {
-  constructor(private readonly usuariosService: UsuariosService) { }
+  constructor(private readonly usuariosService: UsuariosService) {}
 
   @Post()
   @ApiOperation({ summary: 'Registrar un nuevo usuario' })

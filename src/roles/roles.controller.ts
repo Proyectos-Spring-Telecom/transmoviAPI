@@ -19,7 +19,14 @@ import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { UpdateRolEstatusDto } from './dto/update-rol.dto';
 import type { Response } from 'express';
-import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiParam,
+} from '@nestjs/swagger';
 
 @ApiTags('Roles')
 @ApiBearerAuth('bearer-token')
@@ -31,11 +38,13 @@ export class RolesController {
   @Post()
   @ApiOperation({
     summary: 'Crear rol',
-    description: 'Registra un nuevo rol del sistema con sus permisos asociados.',
+    description:
+      'Registra un nuevo rol del sistema con sus permisos asociados.',
   })
   @ApiBody({
     type: CreateRolDto,
-    description: 'nombre, descripción, idCliente, permisos (array), estatus, etc.',
+    description:
+      'nombre, descripción, idCliente, permisos (array), estatus, etc.',
   })
   @ApiResponse({
     status: 201,
@@ -64,7 +73,8 @@ export class RolesController {
   @Get(':page/:limit')
   @ApiOperation({
     summary: 'Listar roles paginados',
-    description: 'Obtiene el catálogo paginado de roles. El acceso depende del rol del usuario.',
+    description:
+      'Obtiene el catálogo paginado de roles. El acceso depende del rol del usuario.',
   })
   @ApiParam({ name: 'page', description: 'Número de página (desde 1)' })
   @ApiParam({ name: 'limit', description: 'Registros por página' })
@@ -78,12 +88,21 @@ export class RolesController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, nombre: { type: 'string' }, idCliente: { type: 'number' }, estatus: { type: 'number' } },
+            properties: {
+              id: { type: 'number' },
+              nombre: { type: 'string' },
+              idCliente: { type: 'number' },
+              estatus: { type: 'number' },
+            },
           },
         },
         paginated: {
           type: 'object',
-          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+          properties: {
+            total: { type: 'number' },
+            page: { type: 'number' },
+            lastPage: { type: 'number' },
+          },
         },
       },
     },
@@ -92,7 +111,7 @@ export class RolesController {
   async findAll(
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,
-    @Request() req
+    @Request() req,
   ): Promise<ApiResponseCommon> {
     const idUser = req.user.userId;
     const cliente = req.user.cliente;
@@ -103,7 +122,8 @@ export class RolesController {
   @Get('list')
   @ApiOperation({
     summary: 'Listar roles',
-    description: 'Obtiene el listado de roles activos sin paginación. El acceso depende del rol del usuario.',
+    description:
+      'Obtiene el listado de roles activos sin paginación. El acceso depende del rol del usuario.',
   })
   @ApiResponse({
     status: 200,
@@ -115,7 +135,11 @@ export class RolesController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, nombre: { type: 'string' }, idCliente: { type: 'number' } },
+            properties: {
+              id: { type: 'number' },
+              nombre: { type: 'string' },
+              idCliente: { type: 'number' },
+            },
           },
         },
       },
@@ -129,11 +153,11 @@ export class RolesController {
     return await this.rolesService.findAllList(+rol);
   }
 
-
   @Get(':id')
   @ApiOperation({
     summary: 'Obtener rol por ID',
-    description: 'Obtiene el detalle de un rol por su ID, incluyendo permisos asociados.',
+    description:
+      'Obtiene el detalle de un rol por su ID, incluyendo permisos asociados.',
   })
   @ApiParam({ name: 'id', description: 'ID del rol' })
   @ApiResponse({
@@ -144,7 +168,13 @@ export class RolesController {
       properties: {
         data: {
           type: 'object',
-          properties: { id: { type: 'number' }, nombre: { type: 'string' }, idCliente: { type: 'number' }, estatus: { type: 'number' }, permisos: { type: 'array' } },
+          properties: {
+            id: { type: 'number' },
+            nombre: { type: 'string' },
+            idCliente: { type: 'number' },
+            estatus: { type: 'number' },
+            permisos: { type: 'array' },
+          },
         },
       },
     },

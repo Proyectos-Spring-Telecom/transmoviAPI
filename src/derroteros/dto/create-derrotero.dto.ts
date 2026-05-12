@@ -29,7 +29,8 @@ export class CreateDerroteroDto {
   // 🔹 CAMPOS DEL DERROTERO
   // ========================================
   @ApiProperty({
-    description: 'Variable para crear derrotero de regreso (0 = No generar, 1 = Generar)',
+    description:
+      'Variable para crear derrotero de regreso (0 = No generar, 1 = Generar)',
     example: 0,
   })
   @IsNumber()
@@ -59,7 +60,10 @@ export class CreateDerroteroDto {
   puntoFin?: object;
 
   @ApiProperty({
-    example: [{ lat: 20.1, lng: -103.1 }, { lat: 20.2, lng: -103.2 }],
+    example: [
+      { lat: 20.1, lng: -103.1 },
+      { lat: 20.2, lng: -103.2 },
+    ],
     description: 'Recorrido base para interpolación',
   })
   @IsArray()
@@ -130,7 +134,8 @@ export class CreateDerroteroDto {
 
   @ApiPropertyOptional({
     example: 500,
-    description: 'Número de metros después de los cuales se aplica el costo adicional',
+    description:
+      'Número de metros después de los cuales se aplica el costo adicional',
   })
   @IsOptional()
   @IsInt({ message: 'El incremento debe ser un número entero' })

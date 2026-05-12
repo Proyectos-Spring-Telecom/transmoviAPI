@@ -5,7 +5,7 @@ import { CatMetodoPago } from 'src/entities/CatMetodoPago';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([CatMetodoPago]),],
+  imports: [TypeOrmModule.forFeature([CatMetodoPago])],
   controllers: [CatMetodoPagoController],
   providers: [CatMetodoPagoService],
 })

@@ -37,11 +37,13 @@ export class DispositivosController {
   @Post()
   @ApiOperation({
     summary: 'Crear dispositivo',
-    description: 'Registra un nuevo dispositivo (lector, validador, etc.). El número de serie debe ser único.',
+    description:
+      'Registra un nuevo dispositivo (lector, validador, etc.). El número de serie debe ser único.',
   })
   @ApiBody({
     type: CreateDispositivoDto,
-    description: 'numeroSerie (obligatorio, único), marca, modelo, idCliente, estatus, estadoActual',
+    description:
+      'numeroSerie (obligatorio, único), marca, modelo, idCliente, estatus, estadoActual',
   })
   @ApiResponse({
     status: 201,
@@ -58,7 +60,10 @@ export class DispositivosController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'El número de serie ya existe o cliente no válido' })
+  @ApiResponse({
+    status: 400,
+    description: 'El número de serie ya existe o cliente no válido',
+  })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   createDispositivo(
     @Body() createDispositivoDto: CreateDispositivoDto,
@@ -153,13 +158,18 @@ export class DispositivosController {
     const idUser = req.user.userId;
     const cliente = req.user.cliente;
     const rol = req.user.rol;
-    return await this.dispositivosService.findByCliente(idCliente, +cliente, +rol);
+    return await this.dispositivosService.findByCliente(
+      idCliente,
+      +cliente,
+      +rol,
+    );
   }
 
   @Get('clientes/:id')
   @ApiOperation({
     summary: 'Listar dispositivos disponibles de un cliente',
-    description: 'Obtiene los dispositivos activos, disponibles y no asignados a instalación de un cliente.',
+    description:
+      'Obtiene los dispositivos activos, disponibles y no asignados a instalación de un cliente.',
   })
   @ApiParam({ name: 'id', description: 'ID del cliente' })
   @ApiResponse({
@@ -194,13 +204,17 @@ export class DispositivosController {
     const idUser = req.user.userId;
     const cliente = req.user.cliente;
     const rol = req.user.rol;
-    return await this.dispositivosService.findAllListDispositivosClientes(+id, +cliente);
+    return await this.dispositivosService.findAllListDispositivosClientes(
+      +id,
+      +cliente,
+    );
   }
 
   @Get(':page/:limit')
   @ApiOperation({
     summary: 'Listar dispositivos paginados',
-    description: 'Obtiene el catálogo paginado de dispositivos. El acceso depende del rol del usuario.',
+    description:
+      'Obtiene el catálogo paginado de dispositivos. El acceso depende del rol del usuario.',
   })
   @ApiParam({ name: 'page', description: 'Número de página (desde 1)' })
   @ApiParam({ name: 'limit', description: 'Registros por página' })
@@ -230,7 +244,11 @@ export class DispositivosController {
         },
         paginated: {
           type: 'object',
-          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+          properties: {
+            total: { type: 'number' },
+            page: { type: 'number' },
+            lastPage: { type: 'number' },
+          },
         },
       },
     },
@@ -310,7 +328,10 @@ export class DispositivosController {
       properties: {
         status: { type: 'string', example: 'success' },
         message: { type: 'string' },
-        estatus: { type: 'object', properties: { estatus: { type: 'number' } } },
+        estatus: {
+          type: 'object',
+          properties: { estatus: { type: 'number' } },
+        },
         data: {
           type: 'object',
           properties: { id: { type: 'number' }, nombre: { type: 'string' } },
@@ -318,7 +339,10 @@ export class DispositivosController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Dispositivo asignado a instalación o dado de baja' })
+  @ApiResponse({
+    status: 400,
+    description: 'Dispositivo asignado a instalación o dado de baja',
+  })
   @ApiResponse({ status: 404, description: 'Dispositivo no encontrado' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   updateDispositivoEstado(
@@ -337,7 +361,8 @@ export class DispositivosController {
   @Patch('estatus/:id')
   @ApiOperation({
     summary: 'Actualizar estatus del dispositivo',
-    description: 'Cambia el estatus del dispositivo (0=Inactivo, 1=Activo). No aplica si está asignado a una instalación (al pasar a inactivo).',
+    description:
+      'Cambia el estatus del dispositivo (0=Inactivo, 1=Activo). No aplica si está asignado a una instalación (al pasar a inactivo).',
   })
   @ApiParam({ name: 'id', description: 'ID del dispositivo' })
   @ApiBody({
@@ -352,7 +377,10 @@ export class DispositivosController {
       properties: {
         status: { type: 'string', example: 'success' },
         message: { type: 'string' },
-        estatus: { type: 'object', properties: { estatus: { type: 'number' } } },
+        estatus: {
+          type: 'object',
+          properties: { estatus: { type: 'number' } },
+        },
         data: {
           type: 'object',
           properties: { id: { type: 'number' }, nombre: { type: 'string' } },
@@ -360,7 +388,10 @@ export class DispositivosController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Dispositivo asignado a instalación' })
+  @ApiResponse({
+    status: 400,
+    description: 'Dispositivo asignado a instalación',
+  })
   @ApiResponse({ status: 404, description: 'Dispositivo no encontrado' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   updateDispositivoEstatus(
@@ -379,12 +410,14 @@ export class DispositivosController {
   @Put(':id')
   @ApiOperation({
     summary: 'Actualizar dispositivo',
-    description: 'Modifica los datos de un dispositivo existente (numeroSerie, marca, modelo, etc.).',
+    description:
+      'Modifica los datos de un dispositivo existente (numeroSerie, marca, modelo, etc.).',
   })
   @ApiParam({ name: 'id', description: 'ID del dispositivo a actualizar' })
   @ApiBody({
     type: UpdateDispositivoDto,
-    description: 'Campos a actualizar (todos opcionales): numeroSerie, marca, modelo, estatus, estadoActual, idCliente',
+    description:
+      'Campos a actualizar (todos opcionales): numeroSerie, marca, modelo, estatus, estadoActual, idCliente',
   })
   @ApiResponse({
     status: 200,
@@ -438,7 +471,10 @@ export class DispositivosController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Dispositivo asignado a instalación' })
+  @ApiResponse({
+    status: 400,
+    description: 'Dispositivo asignado a instalación',
+  })
   @ApiResponse({ status: 404, description: 'Dispositivo no encontrado' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   removeDispositivo(@Param('id') id: string, @Request() req) {

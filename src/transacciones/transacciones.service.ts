@@ -43,7 +43,11 @@ import { HistoricoTransaccionesRecarga } from 'src/entities/HistoricoTransaccion
 import { UpdateTransaccioneDebitoDto } from './dto/update-transaccione-debito.dto';
 import { GetTransaccioneDto } from './dto/get-transacciones.dto';
 import { Viajes } from 'src/entities/Viajes';
-import { calcularDistanciaHastaIndex, calcularDistanciaReal, snapToRoute } from 'src/utils/recorrido.utils';
+import {
+  calcularDistanciaHastaIndex,
+  calcularDistanciaReal,
+  snapToRoute,
+} from 'src/utils/recorrido.utils';
 import { CatMetodoPago } from 'src/entities/CatMetodoPago';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, EntityManager, IsNull, QueryRunner } from 'typeorm';
@@ -73,7 +77,7 @@ export class TransaccionesService {
     private readonly bitacoraLogger: BitacoraLoggerService,
     private readonly monederosService: MonederosService,
     private readonly pasajeroService: PasajerosService,
-  ) { }
+  ) {}
 
   /** Ventana en ms para permitir varias transacciones abiertas: 1 min 20 s desde la primera. */
   private static readonly VENTANA_ABIERTAS_MS = 80 * 1000;
@@ -92,7 +96,9 @@ export class TransaccionesService {
     idUser: number,
   ): Promise<void> {
     if (manager) {
-      await manager.getRepository(Monederos).update({ id: monederoId }, { saldo });
+      await manager
+        .getRepository(Monederos)
+        .update({ id: monederoId }, { saldo });
       return;
     }
     await this.monederosService.updateMonederoSaldo(numeroSerie, idUser, saldo);
@@ -110,7 +116,7 @@ export class TransaccionesService {
    * 4. Inserta la transacción en TransaccionesRecarga
    * 5. Inserta los mismos datos en HistoricoTransaccionesRecarga
    * 6. Registra el evento exitoso en la bitácora
-   * 
+   *
    * Si ocurre un error en cualquier paso, se hace rollback de toda la transacción.
    */
   async createTransaccionRecarga(
@@ -125,28 +131,42 @@ export class TransaccionesService {
     try {
       let monedero;
       // Repositorios dentro de la misma transacción para commit/rollback unificado.
-      const transaccionesRecargaRepo = queryRunner.manager.getRepository(TransaccionesRecarga);
-      const historicoTransaccionesRecargaRepo = queryRunner.manager.getRepository(HistoricoTransaccionesRecarga);
+      const transaccionesRecargaRepo =
+        queryRunner.manager.getRepository(TransaccionesRecarga);
+      const historicoTransaccionesRecargaRepo =
+        queryRunner.manager.getRepository(HistoricoTransaccionesRecarga);
       const monederoRepo = queryRunner.manager.getRepository(Monederos);
-      const catMetodoPagoRepo = queryRunner.manager.getRepository(CatMetodoPago);
+      const catMetodoPagoRepo =
+        queryRunner.manager.getRepository(CatMetodoPago);
 
-      if (!createTransaccioneRecargaDto.idCardMonedero && !createTransaccioneRecargaDto.numeroSerieMonedero) {
-        throw new BadRequestException('Debe proporcionarse al menos uno de los campos requeridos: número de serie del monedero o ID Card.');
+      if (
+        !createTransaccioneRecargaDto.idCardMonedero &&
+        !createTransaccioneRecargaDto.numeroSerieMonedero
+      ) {
+        throw new BadRequestException(
+          'Debe proporcionarse al menos uno de los campos requeridos: número de serie del monedero o ID Card.',
+        );
       }
 
       // CRÍTICO: Validar que el monedero existe y está activo (estatus = 1).
       if (createTransaccioneRecargaDto.idCardMonedero) {
         monedero = await this.monederoRepository.findOne({
-          where:
-            { idCard: createTransaccioneRecargaDto.idCardMonedero, estatus: 1 }
+          where: {
+            idCard: createTransaccioneRecargaDto.idCardMonedero,
+            estatus: 1,
+          },
         });
       } else if (createTransaccioneRecargaDto.numeroSerieMonedero) {
         monedero = await this.monederoRepository.findOne({
-          where:
-            { numeroSerie: createTransaccioneRecargaDto.numeroSerieMonedero, estatus: 1, }
+          where: {
+            numeroSerie: createTransaccioneRecargaDto.numeroSerieMonedero,
+            estatus: 1,
+          },
         });
       } else {
-        throw new BadRequestException('Debe proporcionarse al menos uno de los campos requeridos: número de serie del monedero o ID Card.');
+        throw new BadRequestException(
+          'Debe proporcionarse al menos uno de los campos requeridos: número de serie del monedero o ID Card.',
+        );
       }
 
       if (!monedero) {
@@ -182,12 +202,10 @@ export class TransaccionesService {
         idUsuario: idUser,
         contexto: 'Transaccion realizada de manera correcta',
       });
-      const transaccionSave = await transaccionesRecargaRepo.save(newTransaccion);
+      const transaccionSave =
+        await transaccionesRecargaRepo.save(newTransaccion);
 
-      await monederoRepo.update(
-        { id: monedero.id },
-        { saldo: montoFinal },
-      );
+      await monederoRepo.update({ id: monedero.id }, { saldo: montoFinal });
 
       const historicoRecarga = historicoTransaccionesRecargaRepo.create({
         idTipoTransaccion: transaccionSave.idTipoTransaccion,
@@ -272,7 +290,10 @@ export class TransaccionesService {
     idUser: number,
   ): Promise<ApiCrudResponse> {
     // CRÍTICO: Toda la lógica atómica y de negocio vive en createOrCloseTransaccionDebito (QueryRunner, locks, bitácora).
-    return this.createOrCloseTransaccionDebito(createTransaccioneDebitoDto, idUser);
+    return this.createOrCloseTransaccionDebito(
+      createTransaccioneDebitoDto,
+      idUser,
+    );
   }
 
   // ========================================
@@ -283,7 +304,9 @@ export class TransaccionesService {
    * Usa manager del QueryRunner cuando se ejecuta dentro de una transacción.
    */
   private async findOpenTransaccionesDebito(
-    manager: { getRepository: (entity: any) => Repository<TransaccionesDebito> },
+    manager: {
+      getRepository: (entity: any) => Repository<TransaccionesDebito>;
+    },
     numeroSerieMonedero: string,
   ): Promise<TransaccionesDebito[]> {
     const repo = manager.getRepository(TransaccionesDebito);
@@ -297,7 +320,6 @@ export class TransaccionesService {
   }
 
   async findTarifaByOtherViaje(idViaje: number) {
-
     const query = `
 SELECT
 	-- Datos de entidad Viajes
@@ -332,7 +354,7 @@ INNER JOIN Derroteros d ON d.Id  = v.IdDerrotero
 INNER JOIN Tarifas t ON t.IdDerrotero = d.Id
 
 WHERE v.Id = ${idViaje}
-    `
+    `;
     return await this.viajesRepository.query(query);
   }
 
@@ -354,12 +376,19 @@ WHERE v.Id = ${idViaje}
       let metrosBase;
 
       // 🔹 BÚSQUEDA DEL VIAJE: Se valida que el viaje exista
-      const viaje = await this.viajesRepository.findOne({ where: { id: idViaje } });
+      const viaje = await this.viajesRepository.findOne({
+        where: { id: idViaje },
+      });
       if (!viaje) {
         throw new NotFoundException(`Viaje con ID ${idViaje} no encontrado`);
       }
 
-      const transacciones = await this.transaccionesdebitoRepository.find({ where: { idViajes: idViaje, idControlTransaccion: EnumControlTransacciones.ABIERTA } });
+      const transacciones = await this.transaccionesdebitoRepository.find({
+        where: {
+          idViajes: idViaje,
+          idControlTransaccion: EnumControlTransacciones.ABIERTA,
+        },
+      });
 
       // CRÍTICO: Si hay transacciones abiertas, calcular monto por cada una según tarifa (estacionaria vs incremental).
       if (transacciones.length > 0) {
@@ -374,13 +403,16 @@ WHERE v.Id = ${idViaje}
           DistanciaBaseKm,
           incrementoCadaMetros,
           costoAdicional,
-          tipoTarifa
+          tipoTarifa,
         } = viajeData[0];
 
         for (const i of transacciones) {
           const { latitudInicial, longitudInicial } = i;
           if (latitudInicial && longitudInicial) {
-            const posicionActual = { lat: latitudInicial, lng: longitudInicial };
+            const posicionActual = {
+              lat: latitudInicial,
+              lng: longitudInicial,
+            };
 
             switch (tipoTarifa) {
               case EnumTipoTarifa.ESTACIONARIA:
@@ -389,10 +421,15 @@ WHERE v.Id = ${idViaje}
 
                 // CRÍTICO: Coordenadas finales = último punto del derrotero (decimal 10,7).
                 const ultimoPunto1 = recorridoInterpolar.length - 1;
-                const { lat: latitudFinal1Raw, lng: longitudFinal1Raw } = recorridoInterpolar[ultimoPunto1];
+                const { lat: latitudFinal1Raw, lng: longitudFinal1Raw } =
+                  recorridoInterpolar[ultimoPunto1];
                 // Formatear a decimal(10,7) - 7 decimales
-                const latitudFinal1 = parseFloat(Number(latitudFinal1Raw).toFixed(7));
-                const longitudFinal1 = parseFloat(Number(longitudFinal1Raw).toFixed(7));
+                const latitudFinal1 = parseFloat(
+                  Number(latitudFinal1Raw).toFixed(7),
+                );
+                const longitudFinal1 = parseFloat(
+                  Number(longitudFinal1Raw).toFixed(7),
+                );
 
                 await this.createTransaccionDebitoByViajes(
                   montoCalculado,
@@ -409,34 +446,51 @@ WHERE v.Id = ${idViaje}
                   i.id,
                   undefined,
                   queryRunner,
-                )
+                );
                 break;
               case EnumTipoTarifa.INCREMENTAL:
                 // CRÍTICO: snapToRoute → índice más cercano en recorrido; luego distancia hasta penúltimo + último tramo (máx 150 m).
                 const { index, distanciaMetros } = await snapToRoute(
                   posicionActual,
-                  recorridoInterpolar
+                  recorridoInterpolar,
                 );
 
                 const indexSeguro = Math.max(index - 1, 0);
                 const metrosRecorridos = await calcularDistanciaHastaIndex(
                   recorridoInterpolar,
-                  indexSeguro
+                  indexSeguro,
                 );
 
-                const punto = [indexSeguro === 0 ? recorridoInterpolar[index] : recorridoInterpolar[index - 1], posicionActual];
+                const punto = [
+                  indexSeguro === 0
+                    ? recorridoInterpolar[index]
+                    : recorridoInterpolar[index - 1],
+                  posicionActual,
+                ];
                 let ultimoIndex = await calcularDistanciaReal(punto);
                 ultimoIndex = ultimoIndex > 150 ? 150 : ultimoIndex;
                 distanciaInicial = Math.round(metrosRecorridos + ultimoIndex);
-                distancia = Math.round((distanciaKm * 1000) - distanciaInicial);
-                metrosBase = (DistanciaBaseKm * 1000);
-                montoCalculado = distancia <= metrosBase ? tarifaBase : (tarifaBase + (Math.trunc((distancia - metrosBase) / (incrementoCadaMetros))) * costoAdicional);
+                distancia = Math.round(distanciaKm * 1000 - distanciaInicial);
+                metrosBase = DistanciaBaseKm * 1000;
+                montoCalculado =
+                  distancia <= metrosBase
+                    ? tarifaBase
+                    : tarifaBase +
+                      Math.trunc(
+                        (distancia - metrosBase) / incrementoCadaMetros,
+                      ) *
+                        costoAdicional;
                 controlTransaccion = EnumControlTransacciones.ABIERTA;
 
                 const ultimoPunto = recorridoInterpolar.length - 1;
-                const { lat: latitudFinal, lng: longitudFinal } = recorridoInterpolar[ultimoPunto];
-                const latitudFinalRaw = parseFloat(Number(latitudFinal).toFixed(7));
-                const longitudFinalRaw = parseFloat(Number(longitudFinal).toFixed(7));
+                const { lat: latitudFinal, lng: longitudFinal } =
+                  recorridoInterpolar[ultimoPunto];
+                const latitudFinalRaw = parseFloat(
+                  Number(latitudFinal).toFixed(7),
+                );
+                const longitudFinalRaw = parseFloat(
+                  Number(longitudFinal).toFixed(7),
+                );
 
                 await this.createTransaccionDebitoByViajes(
                   montoCalculado,
@@ -462,9 +516,7 @@ WHERE v.Id = ${idViaje}
             }
           }
         }
-
       }
-
     } catch (error) {
       console.error('[viajeCierre]', error?.message ?? error);
       // Registro en la bitácora FAIL
@@ -500,19 +552,34 @@ WHERE v.Id = ${idViaje}
   private async ejecutarCierreTransaccionAbierta(
     queryRunner: QueryRunner,
     idTransaccion: number,
-    dto: { latitud: number; longitud: number; numeroSerieDispositivo: string; idViaje: number },
+    dto: {
+      latitud: number;
+      longitud: number;
+      numeroSerieDispositivo: string;
+      idViaje: number;
+    },
     monedero: Monederos,
     _idUser: number,
-  ): Promise<{ closedAsPagado: boolean; historicoId?: number; historicoTransaccion?: object; }> {
-    const transaccionesDebitoRepo = queryRunner.manager.getRepository(TransaccionesDebito);
-    const historicoTransaccionesDebitoRepo = queryRunner.manager.getRepository(HistoricoTransaccionesDebito);
+  ): Promise<{
+    closedAsPagado: boolean;
+    historicoId?: number;
+    historicoTransaccion?: object;
+  }> {
+    const transaccionesDebitoRepo =
+      queryRunner.manager.getRepository(TransaccionesDebito);
+    const historicoTransaccionesDebitoRepo = queryRunner.manager.getRepository(
+      HistoricoTransaccionesDebito,
+    );
     const monederoRepo = queryRunner.manager.getRepository(Monederos);
-    const catTiposPasajerosRepo = queryRunner.manager.getRepository(CatTiposPasajeros);
+    const catTiposPasajerosRepo =
+      queryRunner.manager.getRepository(CatTiposPasajeros);
 
     const idUsuario = await this.obtenerIdUsuarioPasajero(monedero.numeroSerie);
     const viajeData = await this.findTarifa(dto.idViaje);
     if (!viajeData || viajeData.length === 0) {
-      throw new NotFoundException(`No se encontraron datos de tarifa para el viaje ${dto.idViaje}`);
+      throw new NotFoundException(
+        `No se encontraron datos de tarifa para el viaje ${dto.idViaje}`,
+      );
     }
     const {
       estatusTurno,
@@ -526,7 +593,9 @@ WHERE v.Id = ${idViaje}
       tipoTarifa,
     } = viajeData[0];
     if (!estatusTurno || !estatusViaje) {
-      throw new BadRequestException(`Transacción realizada fuera del viaje o del turno.`);
+      throw new BadRequestException(
+        `Transacción realizada fuera del viaje o del turno.`,
+      );
     }
 
     // CRÍTICO: Bloqueo pesimista para evitar race conditions al cerrar y actualizar monedero.
@@ -539,19 +608,20 @@ WHERE v.Id = ${idViaje}
     }
 
     const controlTarifaIncremental = EnumControlTarifaIncremental.FINAL;
-    const { montoCalculado, controlTransaccion, distanciaInicial } = await this.montoTarifa(
-      recorridoInterpolar,
-      distanciaKm,
-      tarifaBase,
-      DistanciaBaseKm,
-      incrementoCadaMetros,
-      costoAdicional,
-      tipoTarifa,
-      Number(dto.latitud),
-      Number(dto.longitud),
-      controlTarifaIncremental,
-      transaccionFind.distanciaInicialKm ?? 0,
-    );
+    const { montoCalculado, controlTransaccion, distanciaInicial } =
+      await this.montoTarifa(
+        recorridoInterpolar,
+        distanciaKm,
+        tarifaBase,
+        DistanciaBaseKm,
+        incrementoCadaMetros,
+        costoAdicional,
+        tipoTarifa,
+        Number(dto.latitud),
+        Number(dto.longitud),
+        controlTarifaIncremental,
+        transaccionFind.distanciaInicialKm ?? 0,
+      );
 
     let montoConDescuento = montoCalculado;
     if (monedero.idTipoPasajero) {
@@ -564,7 +634,8 @@ WHERE v.Id = ${idViaje}
         const cantidad = tipoPasajero.cantidad || 0;
         switch (tipoDescuento) {
           case Number(EnumTipoDescuento.PORCENTAJE):
-            montoConDescuento = montoConDescuento - (montoConDescuento * cantidad) / 100;
+            montoConDescuento =
+              montoConDescuento - (montoConDescuento * cantidad) / 100;
             break;
           case EnumTipoDescuento.MONETARIO:
             montoConDescuento = montoConDescuento - cantidad;
@@ -591,7 +662,10 @@ WHERE v.Id = ${idViaje}
       const transaccionRechazo = await transaccionesDebitoRepo.findOne({
         where: { id: idTransaccion },
       });
-      if (!transaccionRechazo) throw new NotFoundException('No se pudo recuperar la transacción actualizada');
+      if (!transaccionRechazo)
+        throw new NotFoundException(
+          'No se pudo recuperar la transacción actualizada',
+        );
       const historicoRechazo = historicoTransaccionesDebitoRepo.create({
         idTipoTransaccion: transaccionRechazo.idTipoTransaccion,
         monto: transaccionRechazo.monto,
@@ -609,7 +683,8 @@ WHERE v.Id = ${idViaje}
         idUsuario: transaccionRechazo.idUsuario,
         contexto: 'Transaccion rechazada: saldo insuficiente',
       });
-      const histRechazo = await historicoTransaccionesDebitoRepo.save(historicoRechazo);
+      const histRechazo =
+        await historicoTransaccionesDebitoRepo.save(historicoRechazo);
       return { closedAsPagado: false, historicoId: Number(histRechazo.id) };
     }
 
@@ -626,7 +701,10 @@ WHERE v.Id = ${idViaje}
     const transaccionSave = await transaccionesDebitoRepo.findOne({
       where: { id: idTransaccion },
     });
-    if (!transaccionSave) throw new NotFoundException('No se pudo recuperar la transacción actualizada');
+    if (!transaccionSave)
+      throw new NotFoundException(
+        'No se pudo recuperar la transacción actualizada',
+      );
     const historicoTransaccion = historicoTransaccionesDebitoRepo.create({
       idTipoTransaccion: transaccionSave.idTipoTransaccion,
       monto: transaccionSave.monto,
@@ -644,8 +722,13 @@ WHERE v.Id = ${idViaje}
       idUsuario: transaccionSave.idUsuario,
       contexto: 'Transaccion realizada de manera correcta',
     });
-    const histSaved = await historicoTransaccionesDebitoRepo.save(historicoTransaccion);
-    return { closedAsPagado: true, historicoId: Number(histSaved.id), historicoTransaccion: histSaved || null };
+    const histSaved =
+      await historicoTransaccionesDebitoRepo.save(historicoTransaccion);
+    return {
+      closedAsPagado: true,
+      historicoId: Number(histSaved.id),
+      historicoTransaccion: histSaved || null,
+    };
   }
 
   // ========================================
@@ -665,68 +748,110 @@ WHERE v.Id = ${idViaje}
     createTransaccioneDebitoDto: CreateTransaccioneDebitoDto,
     idUser: number,
   ): Promise<ApiCrudResponse> {
-    console.log('[createOrCloseTransaccionDebito] 1. Iniciando QueryRunner y transacción BD', {
-      idUser,
-      idViaje: createTransaccioneDebitoDto.idViaje,
-    });
+    console.log(
+      '[createOrCloseTransaccionDebito] 1. Iniciando QueryRunner y transacción BD',
+      {
+        idUser,
+        idViaje: createTransaccioneDebitoDto.idViaje,
+      },
+    );
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
-    const transaccionesDebitoRepo = queryRunner.manager.getRepository(TransaccionesDebito);
-    const historicoTransaccionesDebitoRepo = queryRunner.manager.getRepository(HistoricoTransaccionesDebito);
+    const transaccionesDebitoRepo =
+      queryRunner.manager.getRepository(TransaccionesDebito);
+    const historicoTransaccionesDebitoRepo = queryRunner.manager.getRepository(
+      HistoricoTransaccionesDebito,
+    );
     const monederoRepo = queryRunner.manager.getRepository(Monederos);
-    const catTiposPasajerosRepo = queryRunner.manager.getRepository(CatTiposPasajeros);
+    const catTiposPasajerosRepo =
+      queryRunner.manager.getRepository(CatTiposPasajeros);
 
     try {
-      const viajeFlag = await this.findTarifa(createTransaccioneDebitoDto.idViaje);
-      console.log('[createOrCloseTransaccionDebito] 2. Validación viaje/dispositivo', {
-        estatusViaje: viajeFlag[0]?.estatusViaje,
-        numeroSerieViaje: viajeFlag[0]?.numeroSerieDispositivo,
-        numeroSerieRequest: createTransaccioneDebitoDto.numeroSerieDispositivo,
-      });
-      if (viajeFlag[0].estatusViaje === EstatusEnum.INACTIVO || viajeFlag[0].numeroSerieDispositivo !== createTransaccioneDebitoDto.numeroSerieDispositivo) {
-        throw new BadRequestException(`El viaje ${createTransaccioneDebitoDto.idViaje} no esta activo o el dispositivo ${createTransaccioneDebitoDto.numeroSerieDispositivo} no es el mismo que el dispositivo del viaje`);
+      const viajeFlag = await this.findTarifa(
+        createTransaccioneDebitoDto.idViaje,
+      );
+      console.log(
+        '[createOrCloseTransaccionDebito] 2. Validación viaje/dispositivo',
+        {
+          estatusViaje: viajeFlag[0]?.estatusViaje,
+          numeroSerieViaje: viajeFlag[0]?.numeroSerieDispositivo,
+          numeroSerieRequest:
+            createTransaccioneDebitoDto.numeroSerieDispositivo,
+        },
+      );
+      if (
+        viajeFlag[0].estatusViaje === EstatusEnum.INACTIVO ||
+        viajeFlag[0].numeroSerieDispositivo !==
+          createTransaccioneDebitoDto.numeroSerieDispositivo
+      ) {
+        throw new BadRequestException(
+          `El viaje ${createTransaccioneDebitoDto.idViaje} no esta activo o el dispositivo ${createTransaccioneDebitoDto.numeroSerieDispositivo} no es el mismo que el dispositivo del viaje`,
+        );
       }
-      if (!createTransaccioneDebitoDto.idCardMonedero && !createTransaccioneDebitoDto.numeroSerieMonedero) {
-        throw new BadRequestException('Debe proporcionarse al menos uno de los campos requeridos: número de serie del monedero o ID Card.');
+      if (
+        !createTransaccioneDebitoDto.idCardMonedero &&
+        !createTransaccioneDebitoDto.numeroSerieMonedero
+      ) {
+        throw new BadRequestException(
+          'Debe proporcionarse al menos uno de los campos requeridos: número de serie del monedero o ID Card.',
+        );
       }
       let monedero: Monederos | null = null;
       if (createTransaccioneDebitoDto.idCardMonedero) {
         monedero = await monederoRepo.findOne({
-          where: { idCard: createTransaccioneDebitoDto.idCardMonedero, estatus: 1 },
+          where: {
+            idCard: createTransaccioneDebitoDto.idCardMonedero,
+            estatus: 1,
+          },
           lock: { mode: 'pessimistic_write' },
         });
       } else if (createTransaccioneDebitoDto.numeroSerieMonedero) {
         monedero = await monederoRepo.findOne({
-          where: { numeroSerie: createTransaccioneDebitoDto.numeroSerieMonedero, estatus: 1 },
+          where: {
+            numeroSerie: createTransaccioneDebitoDto.numeroSerieMonedero,
+            estatus: 1,
+          },
           lock: { mode: 'pessimistic_write' },
         });
       }
       if (!monedero) {
         throw new BadRequestException('Monedero no encontrado');
       }
-      console.log('[createOrCloseTransaccionDebito] 3. Monedero bloqueado (pessimistic_write)', {
-        idMonedero: monedero.id,
-        numeroSerie: monedero.numeroSerie,
-        saldo: monedero.saldo,
-      });
+      console.log(
+        '[createOrCloseTransaccionDebito] 3. Monedero bloqueado (pessimistic_write)',
+        {
+          idMonedero: monedero.id,
+          numeroSerie: monedero.numeroSerie,
+          saldo: monedero.saldo,
+        },
+      );
       createTransaccioneDebitoDto.numeroSerieMonedero = monedero.numeroSerie;
 
-      const openList = await this.findOpenTransaccionesDebito(queryRunner.manager, monedero.numeroSerie);
-      console.log('[createOrCloseTransaccionDebito] 4. Transacciones débito ABIERTAS del monedero', {
-        cantidad: openList.length,
-        ids: openList.map((o) => o.id),
-        idViajes: openList.map((o) => o.idViajes),
-      });
+      const openList = await this.findOpenTransaccionesDebito(
+        queryRunner.manager,
+        monedero.numeroSerie,
+      );
+      console.log(
+        '[createOrCloseTransaccionDebito] 4. Transacciones débito ABIERTAS del monedero',
+        {
+          cantidad: openList.length,
+          ids: openList.map((o) => o.id),
+          idViajes: openList.map((o) => o.idViajes),
+        },
+      );
 
       // CRÍTICO: Cerrar transacciones abiertas de otro viaje en la misma transacción. Pasar queryRunner para evitar lock conflict.
       for (const open of openList) {
         if (Number(open.idViajes) !== createTransaccioneDebitoDto.idViaje) {
-          console.log('[createOrCloseTransaccionDebito] 5. Cerrando viaje distinto al actual (viajeCierre)', {
-            idViajeAbierto: open.idViajes,
-            idViajeActual: createTransaccioneDebitoDto.idViaje,
-          });
+          console.log(
+            '[createOrCloseTransaccionDebito] 5. Cerrando viaje distinto al actual (viajeCierre)',
+            {
+              idViajeAbierto: open.idViajes,
+              idViajeActual: createTransaccioneDebitoDto.idViaje,
+            },
+          );
           await this.viajeCierre(Number(open.idViajes), queryRunner);
         }
       }
@@ -734,10 +859,15 @@ WHERE v.Id = ${idViaje}
       //En caso de que la transacciones encontradas sean diferentes al viaje actual, se manda un error
       for (const open of openList) {
         if (Number(open.idViajes) !== createTransaccioneDebitoDto.idViaje) {
-          console.log('[createOrCloseTransaccionDebito] 6. Error: aún hay abiertas de otro viaje tras cierre', {
-            idViajeConflicto: open.idViajes,
-          });
-          throw new BadRequestException(`Usted tenia transacciónes del viaje ${open.idViajes} abiertas, estas han sido cerradas correctamente, Pase de nuevo su monedero para poder viajar`);
+          console.log(
+            '[createOrCloseTransaccionDebito] 6. Error: aún hay abiertas de otro viaje tras cierre',
+            {
+              idViajeConflicto: open.idViajes,
+            },
+          );
+          throw new BadRequestException(
+            `Usted tenia transacciónes del viaje ${open.idViajes} abiertas, estas han sido cerradas correctamente, Pase de nuevo su monedero para poder viajar`,
+          );
         }
         continue;
       }
@@ -760,18 +890,24 @@ WHERE v.Id = ${idViaje}
 
         // Validar que la conversión fue exitosa
         if (isNaN(firstTime)) {
-          throw new InternalServerErrorException(`Error al convertir FHRegistro a fecha: ${first.fhRegistro}`);
+          throw new InternalServerErrorException(
+            `Error al convertir FHRegistro a fecha: ${first.fhRegistro}`,
+          );
         }
 
         const elapsedMs = now - firstTime;
         // CRÍTICO: Ventana 1m20s desde FHRegistro de la primera abierta. Si se supera, cerrar primera y retornar (no crear nueva).
-        const mustCloseFirst = elapsedMs > TransaccionesService.VENTANA_ABIERTAS_MS;
-        console.log('[createOrCloseTransaccionDebito] 7. Ventana tiempo primera transacción abierta (mismo viaje)', {
-          idPrimeraAbierta: first.id,
-          elapsedMs,
-          ventanaMaxMs: TransaccionesService.VENTANA_ABIERTAS_MS,
-          mustCloseFirst,
-        });
+        const mustCloseFirst =
+          elapsedMs > TransaccionesService.VENTANA_ABIERTAS_MS;
+        console.log(
+          '[createOrCloseTransaccionDebito] 7. Ventana tiempo primera transacción abierta (mismo viaje)',
+          {
+            idPrimeraAbierta: first.id,
+            elapsedMs,
+            ventanaMaxMs: TransaccionesService.VENTANA_ABIERTAS_MS,
+            mustCloseFirst,
+          },
+        );
 
         if (mustCloseFirst) {
           const closeDto = {
@@ -780,23 +916,29 @@ WHERE v.Id = ${idViaje}
             numeroSerieDispositivo: first.numeroSerieDispositivo,
             idViaje: Number(first.idViajes),
           };
-          const { closedAsPagado, historicoId, historicoTransaccion } = await this.ejecutarCierreTransaccionAbierta(
-            queryRunner,
-            first.id,
-            closeDto,
-            monedero,
-            idUser,
-          );
+          const { closedAsPagado, historicoId, historicoTransaccion } =
+            await this.ejecutarCierreTransaccionAbierta(
+              queryRunner,
+              first.id,
+              closeDto,
+              monedero,
+              idUser,
+            );
           if (closedAsPagado) {
-            const refreshed = await monederoRepo.findOne({ where: { id: monedero.id } });
+            const refreshed = await monederoRepo.findOne({
+              where: { id: monedero.id },
+            });
             if (refreshed) monedero = refreshed;
           }
 
           // Si pasa de 1 min 20 s, cerrar la primera y retornar (no crear nueva)
-          console.log('[createOrCloseTransaccionDebito] 8. Cierre por tiempo excedido — COMMIT y retorno (no crea nueva)', {
-            historicoId,
-            closedAsPagado,
-          });
+          console.log(
+            '[createOrCloseTransaccionDebito] 8. Cierre por tiempo excedido — COMMIT y retorno (no crea nueva)',
+            {
+              historicoId,
+              closedAsPagado,
+            },
+          );
           await queryRunner.commitTransaction();
           await queryRunner.release();
           await this.bitacoraLogger.logToBitacora(
@@ -814,17 +956,26 @@ WHERE v.Id = ${idViaje}
             data: {
               id: historicoId ?? first.id,
               nombre: `${monedero.numeroSerie}`,
-              contexto: 'Transaccion cerrada: tiempo excedido (ventana 1m20s superada)',
+              contexto:
+                'Transaccion cerrada: tiempo excedido (ventana 1m20s superada)',
             },
           };
         }
       }
 
-      console.log('[createOrCloseTransaccionDebito] 9. Calculando tarifa (montoTarifa) y descuentos');
-      const idUsuario = await this.obtenerIdUsuarioPasajero(monedero.numeroSerie);
-      const viajeData = await this.findTarifa(createTransaccioneDebitoDto.idViaje);
+      console.log(
+        '[createOrCloseTransaccionDebito] 9. Calculando tarifa (montoTarifa) y descuentos',
+      );
+      const idUsuario = await this.obtenerIdUsuarioPasajero(
+        monedero.numeroSerie,
+      );
+      const viajeData = await this.findTarifa(
+        createTransaccioneDebitoDto.idViaje,
+      );
       if (!viajeData || viajeData.length === 0) {
-        throw new NotFoundException(`No se encontraron datos de tarifa para el viaje ${createTransaccioneDebitoDto.idViaje}`);
+        throw new NotFoundException(
+          `No se encontraron datos de tarifa para el viaje ${createTransaccioneDebitoDto.idViaje}`,
+        );
       }
       const {
         estatusTurno,
@@ -838,22 +989,25 @@ WHERE v.Id = ${idViaje}
         tipoTarifa,
       } = viajeData[0];
       if (!estatusTurno || !estatusViaje) {
-        throw new BadRequestException(`Transacción realizada fuera del viaje o del turno.`);
+        throw new BadRequestException(
+          `Transacción realizada fuera del viaje o del turno.`,
+        );
       }
 
       const controlTarifaIncremental = EnumControlTarifaIncremental.INICIAL;
-      const { montoCalculado, controlTransaccion, distanciaInicial } = await this.montoTarifa(
-        recorridoInterpolar,
-        distanciaKm,
-        tarifaBase,
-        DistanciaBaseKm,
-        incrementoCadaMetros,
-        costoAdicional,
-        tipoTarifa,
-        Number(createTransaccioneDebitoDto.latitud),
-        Number(createTransaccioneDebitoDto.longitud),
-        controlTarifaIncremental,
-      );
+      const { montoCalculado, controlTransaccion, distanciaInicial } =
+        await this.montoTarifa(
+          recorridoInterpolar,
+          distanciaKm,
+          tarifaBase,
+          DistanciaBaseKm,
+          incrementoCadaMetros,
+          costoAdicional,
+          tipoTarifa,
+          Number(createTransaccioneDebitoDto.latitud),
+          Number(createTransaccioneDebitoDto.longitud),
+          controlTarifaIncremental,
+        );
 
       let montoConDescuento = montoCalculado;
       if (monedero.idTipoPasajero) {
@@ -866,7 +1020,8 @@ WHERE v.Id = ${idViaje}
           const cantidad = tipoPasajero.cantidad || 0;
           switch (tipoDescuento) {
             case Number(EnumTipoDescuento.PORCENTAJE):
-              montoConDescuento = montoConDescuento - (montoConDescuento * cantidad) / 100;
+              montoConDescuento =
+                montoConDescuento - (montoConDescuento * cantidad) / 100;
               break;
             case EnumTipoDescuento.MONETARIO:
               montoConDescuento = montoConDescuento - cantidad;
@@ -890,7 +1045,9 @@ WHERE v.Id = ${idViaje}
       const { fechaDesfasada } = await horaDesfasada();
 
       if (montoFinal < 0) {
-        console.log('[createOrCloseTransaccionDebito] 11. Saldo insuficiente — rechazo + histórico');
+        console.log(
+          '[createOrCloseTransaccionDebito] 11. Saldo insuficiente — rechazo + histórico',
+        );
         const transaccionRechazo = transaccionesDebitoRepo.create({
           idTipoTransaccion: EnumTipoTransaccion.RECHAZO,
           monto: montoConDescuento,
@@ -900,12 +1057,14 @@ WHERE v.Id = ${idViaje}
           fechaHoraInicio: fechaDesfasada,
           distanciaInicialKm: distanciaInicial,
           numeroSerieMonedero: createTransaccioneDebitoDto.numeroSerieMonedero,
-          numeroSerieDispositivo: createTransaccioneDebitoDto.numeroSerieDispositivo,
+          numeroSerieDispositivo:
+            createTransaccioneDebitoDto.numeroSerieDispositivo,
           idViajes: createTransaccioneDebitoDto.idViaje,
           idUsuario: idUsuario,
           contexto: 'Transaccion rechazada: saldo insuficiente',
         });
-        const transaccionRechazoSave = await transaccionesDebitoRepo.save(transaccionRechazo);
+        const transaccionRechazoSave =
+          await transaccionesDebitoRepo.save(transaccionRechazo);
         const historicoRechazo = historicoTransaccionesDebitoRepo.create({
           idTipoTransaccion: transaccionRechazoSave.idTipoTransaccion,
           monto: transaccionRechazoSave.monto,
@@ -945,31 +1104,41 @@ WHERE v.Id = ${idViaje}
         fechaHoraInicio: fechaDesfasada,
         distanciaInicialKm: distanciaInicial,
         numeroSerieMonedero: createTransaccioneDebitoDto.numeroSerieMonedero,
-        numeroSerieDispositivo: createTransaccioneDebitoDto.numeroSerieDispositivo,
+        numeroSerieDispositivo:
+          createTransaccioneDebitoDto.numeroSerieDispositivo,
         idViajes: createTransaccioneDebitoDto.idViaje,
         idUsuario: idUsuario,
-        contexto: controlTransaccion === EnumControlTransacciones.PAGADO
-          ? 'Transaccion realizada de manera correcta'
-          : 'Transaccion abierta correctamente',
+        contexto:
+          controlTransaccion === EnumControlTransacciones.PAGADO
+            ? 'Transaccion realizada de manera correcta'
+            : 'Transaccion abierta correctamente',
       };
 
       if (controlTransaccion === EnumControlTransacciones.ABIERTA) {
         (bodyTransaccionDebito as any).monto = 0;
-        (bodyTransaccionDebito as any).idControlTransaccion = EnumControlTransacciones.ABIERTA;
+        (bodyTransaccionDebito as any).idControlTransaccion =
+          EnumControlTransacciones.ABIERTA;
       } else {
         await monederoRepo.update({ id: monedero.id }, { saldo: montoFinal });
         (bodyTransaccionDebito as any).monto = montoConDescuento;
-        (bodyTransaccionDebito as any).idControlTransaccion = EnumControlTransacciones.PAGADO;
+        (bodyTransaccionDebito as any).idControlTransaccion =
+          EnumControlTransacciones.PAGADO;
       }
 
-      const newTransaccion = transaccionesDebitoRepo.create(bodyTransaccionDebito as Partial<TransaccionesDebito>);
+      const newTransaccion = transaccionesDebitoRepo.create(
+        bodyTransaccionDebito as Partial<TransaccionesDebito>,
+      );
       (newTransaccion as any).idTipoTransaccion = EnumTipoTransaccion.DEBITO;
-      const transaccionSave = await transaccionesDebitoRepo.save(newTransaccion);
-      console.log('[createOrCloseTransaccionDebito] 12. Transacción débito guardada', {
-        id: transaccionSave.id,
-        idControlTransaccion: transaccionSave.idControlTransaccion,
-        monto: transaccionSave.monto,
-      });
+      const transaccionSave =
+        await transaccionesDebitoRepo.save(newTransaccion);
+      console.log(
+        '[createOrCloseTransaccionDebito] 12. Transacción débito guardada',
+        {
+          id: transaccionSave.id,
+          idControlTransaccion: transaccionSave.idControlTransaccion,
+          monto: transaccionSave.monto,
+        },
+      );
 
       let transaccionSaveHis;
 
@@ -992,7 +1161,8 @@ WHERE v.Id = ${idViaje}
           idUsuario: transaccionSave.idUsuario,
           contexto: 'Transaccion realizada de manera correcta',
         });
-        transaccionSaveHis = await historicoTransaccionesDebitoRepo.save(historicoTransaccion);
+        transaccionSaveHis =
+          await historicoTransaccionesDebitoRepo.save(historicoTransaccion);
 
         await transaccionesDebitoRepo.update(transaccionSave.id, {
           latitudFinal: createTransaccioneDebitoDto.latitud,
@@ -1000,9 +1170,12 @@ WHERE v.Id = ${idViaje}
           fechaHoraFinal: fechaDesfasada,
         });
 
-        console.log('[createOrCloseTransaccionDebito] 13. Éxito PAGADO — histórico + update + COMMIT', {
-          idHistorico: transaccionSaveHis?.id,
-        });
+        console.log(
+          '[createOrCloseTransaccionDebito] 13. Éxito PAGADO — histórico + update + COMMIT',
+          {
+            idHistorico: transaccionSaveHis?.id,
+          },
+        );
         await queryRunner.commitTransaction();
         await queryRunner.release();
         await this.bitacoraLogger.logToBitacora(
@@ -1027,7 +1200,9 @@ WHERE v.Id = ${idViaje}
       }
 
       // Bitácora de éxito (controlTransaccion ABIERTA)
-      console.log('[createOrCloseTransaccionDebito] 14. Éxito ABIERTA — COMMIT (sin histórico completo de cierre)');
+      console.log(
+        '[createOrCloseTransaccionDebito] 14. Éxito ABIERTA — COMMIT (sin histórico completo de cierre)',
+      );
       await queryRunner.commitTransaction();
       await queryRunner.release();
       await this.bitacoraLogger.logToBitacora(
@@ -1054,15 +1229,24 @@ WHERE v.Id = ${idViaje}
         try {
           await queryRunner.rollbackTransaction();
         } catch (e) {
-          console.error('[createOrCloseTransaccionDebito] Error al hacer rollback:', (e as Error)?.message ?? e);
+          console.error(
+            '[createOrCloseTransaccionDebito] Error al hacer rollback:',
+            (e as Error)?.message ?? e,
+          );
         }
       }
       try {
         await queryRunner.release();
       } catch (e) {
-        console.error('[createOrCloseTransaccionDebito] Error al liberar QueryRunner:', (e as Error)?.message ?? e);
+        console.error(
+          '[createOrCloseTransaccionDebito] Error al liberar QueryRunner:',
+          (e as Error)?.message ?? e,
+        );
       }
-      console.error('[createOrCloseTransaccionDebito]', (err as Error)?.message ?? err);
+      console.error(
+        '[createOrCloseTransaccionDebito]',
+        (err as Error)?.message ?? err,
+      );
       if (err instanceof HttpException) throw err;
       await this.bitacoraLogger.logToBitacora(
         'Transacciones',
@@ -1085,7 +1269,9 @@ WHERE v.Id = ${idViaje}
    * Obtiene el ID del usuario pasajero asociado a un monedero.
    * Usa query parametrizada para prevenir SQL injection.
    */
-  private async obtenerIdUsuarioPasajero(numeroSerieMonedero: string): Promise<number | null> {
+  private async obtenerIdUsuarioPasajero(
+    numeroSerieMonedero: string,
+  ): Promise<number | null> {
     const query = `
 SELECT 
     m.Id AS idMonedero,
@@ -1102,7 +1288,9 @@ FROM
 WHERE
     m.NumeroSerie = ?
     `;
-    const resultado = await this.viajesRepository.query(query, [numeroSerieMonedero]);
+    const resultado = await this.viajesRepository.query(query, [
+      numeroSerieMonedero,
+    ]);
 
     if (resultado.length > 0) {
       return resultado[0].idUsuarioPasajero || null;
@@ -1168,7 +1356,7 @@ WHERE v.Id = ?
     latitud: number,
     longitud: number,
     controlTarifaIncremental: number,
-    DistanciaInicialKm?: number
+    DistanciaInicialKm?: number,
   ) {
     try {
       let montoCalculado;
@@ -1188,40 +1376,60 @@ WHERE v.Id = ?
             const posicionActual = { lat: latitud, lng: longitud };
             const { index, distanciaMetros } = await snapToRoute(
               posicionActual,
-              recorridoInterpolar
+              recorridoInterpolar,
             );
             const indexSeguro = Math.max(index - 1, 0);
             const metrosRecorridos = await calcularDistanciaHastaIndex(
               recorridoInterpolar,
-              indexSeguro
+              indexSeguro,
             );
-            const punto = [indexSeguro === 0 ? recorridoInterpolar[index] : recorridoInterpolar[index - 1], posicionActual];
+            const punto = [
+              indexSeguro === 0
+                ? recorridoInterpolar[index]
+                : recorridoInterpolar[index - 1],
+              posicionActual,
+            ];
             let ultimoIndex = await calcularDistanciaReal(punto);
             ultimoIndex = ultimoIndex > 150 ? 150 : ultimoIndex;
             distanciaInicial = Math.round(metrosRecorridos + ultimoIndex);
             if (!DistanciaInicialKm) DistanciaInicialKm = 0;
             distancia = Math.round(distanciaInicial - DistanciaInicialKm);
-            metrosBase = (distanciaBaseKm * 1000);
-            montoCalculado = distancia <= metrosBase ? tarifaBase : (tarifaBase + (Math.trunc((distancia - metrosBase) / (incrementoCadaMetros))) * costoAdicional);
+            metrosBase = distanciaBaseKm * 1000;
+            montoCalculado =
+              distancia <= metrosBase
+                ? tarifaBase
+                : tarifaBase +
+                  Math.trunc((distancia - metrosBase) / incrementoCadaMetros) *
+                    costoAdicional;
             controlTransaccion = EnumControlTransacciones.PAGADO;
           } else {
             const posicionActual = { lat: latitud, lng: longitud };
             const { index, distanciaMetros } = await snapToRoute(
               posicionActual,
-              recorridoInterpolar
+              recorridoInterpolar,
             );
             const indexSeguro = Math.max(index - 1, 0);
             const metrosRecorridos = await calcularDistanciaHastaIndex(
               recorridoInterpolar,
-              indexSeguro
+              indexSeguro,
             );
-            const punto = [indexSeguro === 0 ? recorridoInterpolar[index] : recorridoInterpolar[index - 1], posicionActual];
+            const punto = [
+              indexSeguro === 0
+                ? recorridoInterpolar[index]
+                : recorridoInterpolar[index - 1],
+              posicionActual,
+            ];
             let ultimoIndex = await calcularDistanciaReal(punto);
             ultimoIndex = ultimoIndex > 150 ? 150 : ultimoIndex;
             distanciaInicial = Math.round(metrosRecorridos + ultimoIndex);
-            distancia = Math.round((distanciaKm * 1000) - distanciaInicial);
-            metrosBase = (distanciaBaseKm * 1000);
-            montoCalculado = distancia <= metrosBase ? tarifaBase : (tarifaBase + (Math.trunc((distancia - metrosBase) / (incrementoCadaMetros))) * costoAdicional);
+            distancia = Math.round(distanciaKm * 1000 - distanciaInicial);
+            metrosBase = distanciaBaseKm * 1000;
+            montoCalculado =
+              distancia <= metrosBase
+                ? tarifaBase
+                : tarifaBase +
+                  Math.trunc((distancia - metrosBase) / incrementoCadaMetros) *
+                    costoAdicional;
             controlTransaccion = EnumControlTransacciones.ABIERTA;
           }
           break;
@@ -1234,7 +1442,8 @@ WHERE v.Id = ?
       if (error instanceof HttpException) throw error;
 
       throw new InternalServerErrorException({
-        message: 'Error al obtener el monto de la tarifa para transacciones débito',
+        message:
+          'Error al obtener el monto de la tarifa para transacciones débito',
         error: (error as Error).message,
       });
     }
@@ -1288,7 +1497,10 @@ WHERE v.Id = ?
       };
       return result;
     } catch (error) {
-      console.error('[updateMonederoSaldo]', (error as Error)?.message ?? error);
+      console.error(
+        '[updateMonederoSaldo]',
+        (error as Error)?.message ?? error,
+      );
       const querylogger = { numeroSerie: numeroSerie, saldo: saldo };
       await this.bitacoraLogger.logToBitacora(
         'Monederos',
@@ -1335,12 +1547,12 @@ WHERE v.Id = ?
     email: string,
     cliente: number,
     rol: number,
-    getTransaccioneDto: GetTransaccioneDto
+    getTransaccioneDto: GetTransaccioneDto,
   ) {
     try {
       //Declaramos las variables para el consumo del api
-      let { fechaInicio, fechaFin } = getTransaccioneDto
-      const { page, limit } = getTransaccioneDto
+      let { fechaInicio, fechaFin } = getTransaccioneDto;
+      const { page, limit } = getTransaccioneDto;
       let entidadRecarga;
       let entidadDebito;
       let transacciones;
@@ -1357,22 +1569,42 @@ WHERE v.Id = ?
 
       //Si fechaInicio y fechaFin son null arroja las transacciones del dia de la tabla TransaccionesRecarga y TransaccionesDebito
       if (!fechaInicio && !fechaFin) {
-        fechaInicio = fechaActual
-        fechaFin = fechaActual
+        fechaInicio = fechaActual;
+        fechaFin = fechaActual;
         entidadRecarga = 'TransaccionesRecarga';
         entidadDebito = 'TransaccionesDebito';
-        transacciones = await this.resolverPorRolDefault(fechaInicio, fechaFin, email, cliente, rol, page, limit, entidadDebito, entidadRecarga);
+        transacciones = await this.resolverPorRolDefault(
+          fechaInicio,
+          fechaFin,
+          email,
+          cliente,
+          rol,
+          page,
+          limit,
+          entidadDebito,
+          entidadRecarga,
+        );
       } else {
         //Si fechaInicio y fechaFin no son null arroja las transacciones del dia de la tabla HistoricoTransaccionesRecarga y HistoricoTransaccionesDebito
         //asigna fechaActual solo si el valor de la izquierda es null o undefined
-        fechaInicio = fechaInicio?.split("T")[0] ?? fechaActual;
-        fechaFin = fechaFin?.split("T")[0] ?? fechaActual;
+        fechaInicio = fechaInicio?.split('T')[0] ?? fechaActual;
+        fechaFin = fechaFin?.split('T')[0] ?? fechaActual;
         entidadRecarga = 'HistoricoTransaccionesRecarga';
         entidadDebito = 'HistoricoTransaccionesDebito';
-        transacciones = await this.resolverPorRolDefault(fechaInicio, fechaFin, email, cliente, rol, page, limit, entidadDebito, entidadRecarga);
+        transacciones = await this.resolverPorRolDefault(
+          fechaInicio,
+          fechaFin,
+          email,
+          cliente,
+          rol,
+          page,
+          limit,
+          entidadDebito,
+          entidadRecarga,
+        );
       }
 
-      const { data, total } = transacciones
+      const { data, total } = transacciones;
 
       //API Response
       const result: ApiResponseCommon = {
@@ -1404,7 +1636,7 @@ WHERE v.Id = ?
     page: number,
     limit: number,
     entidadDebito: string,
-    entidadRecarga: string
+    entidadRecarga: string,
   ) {
     try {
       let totalResult;
@@ -1420,10 +1652,13 @@ WHERE v.Id = ?
         'TransaccionesDebito',
         'TransaccionesRecarga',
         'HistoricoTransaccionesDebito',
-        'HistoricoTransaccionesRecarga'
+        'HistoricoTransaccionesRecarga',
       ];
 
-      if (!allowedTables.includes(entidadDebito) || !allowedTables.includes(entidadRecarga)) {
+      if (
+        !allowedTables.includes(entidadDebito) ||
+        !allowedTables.includes(entidadRecarga)
+      ) {
         throw new BadRequestException('Nombre de tabla inválido');
       }
 
@@ -1533,7 +1768,14 @@ SELECT * FROM (
 ORDER BY t.fhRegistro DESC
 LIMIT ? OFFSET ?;
         `,
-            [fechaInicioParam, fechaFinParam, fechaInicioParam, fechaFinParam, limit, offset],
+            [
+              fechaInicioParam,
+              fechaFinParam,
+              fechaInicioParam,
+              fechaFinParam,
+              limit,
+              offset,
+            ],
           );
 
           // Query para total (sin paginación)
@@ -1665,7 +1907,16 @@ SELECT * FROM (
 ORDER BY t.fhRegistro DESC
 LIMIT ? OFFSET ?;
         `,
-            [fechaInicioParam, fechaFinParam, cliente, fechaInicioParam, fechaFinParam, cliente, limit, offset],
+            [
+              fechaInicioParam,
+              fechaFinParam,
+              cliente,
+              fechaInicioParam,
+              fechaFinParam,
+              cliente,
+              limit,
+              offset,
+            ],
           );
 
           // Query para total (sin paginación)
@@ -1690,7 +1941,14 @@ FROM (
     AND m.IdCliente = ?
 ) AS todas;
         `,
-            [fechaInicioParam, fechaFinParam, cliente, fechaInicioParam, fechaFinParam, cliente],
+            [
+              fechaInicioParam,
+              fechaFinParam,
+              cliente,
+              fechaInicioParam,
+              fechaFinParam,
+              cliente,
+            ],
           );
           break;
 
@@ -1806,7 +2064,16 @@ SELECT * FROM (
 ORDER BY t.fhRegistro DESC
 LIMIT ? OFFSET ?;
         `,
-            [fechaInicioParam, fechaFinParam, Number(pasajero.id), fechaInicioParam, fechaFinParam, Number(pasajero.id), limit, offset],
+            [
+              fechaInicioParam,
+              fechaFinParam,
+              Number(pasajero.id),
+              fechaInicioParam,
+              fechaFinParam,
+              Number(pasajero.id),
+              limit,
+              offset,
+            ],
           );
 
           // Query para total (sin paginación)
@@ -1837,7 +2104,14 @@ FROM (
     AND p.Id = ?
 ) AS todas;
         `,
-            [fechaInicioParam, fechaFinParam, Number(pasajero.id), fechaInicioParam, fechaFinParam, Number(pasajero.id)],
+            [
+              fechaInicioParam,
+              fechaFinParam,
+              Number(pasajero.id),
+              fechaInicioParam,
+              fechaFinParam,
+              Number(pasajero.id),
+            ],
           );
 
           break;
@@ -1953,7 +2227,16 @@ SELECT * FROM (
 ORDER BY t.fhRegistro DESC
 LIMIT ? OFFSET ?;
         `,
-            [fechaInicioParam, fechaFinParam, ...ids, fechaInicioParam, fechaFinParam, ...ids, limit, offset],
+            [
+              fechaInicioParam,
+              fechaFinParam,
+              ...ids,
+              fechaInicioParam,
+              fechaFinParam,
+              ...ids,
+              limit,
+              offset,
+            ],
           );
           // Query para total (sin paginación)
           totalResult = await this.transaccionesrecargaRepository.query(
@@ -1977,7 +2260,14 @@ FROM (
     AND m.IdCliente IN (${placeholders})
 ) AS todas;
         `,
-            [fechaInicioParam, fechaFinParam, ...ids, fechaInicioParam, fechaFinParam, ...ids],
+            [
+              fechaInicioParam,
+              fechaFinParam,
+              ...ids,
+              fechaInicioParam,
+              fechaFinParam,
+              ...ids,
+            ],
           );
           break;
       }
@@ -1990,9 +2280,15 @@ FROM (
         id: Number(item.id),
         idTipoTransaccion: Number(item.idTipoTransaccion),
         monto: Number(item.monto),
-        latitudInicial: item.latitudInicial ? Number(item.latitudInicial) : null,
-        longitudInicial: item.longitudInicial ? Number(item.longitudInicial) : null,
-        distanciaInicialKm: item.distanciaInicialKm ? Number(item.distanciaInicialKm) : null,
+        latitudInicial: item.latitudInicial
+          ? Number(item.latitudInicial)
+          : null,
+        longitudInicial: item.longitudInicial
+          ? Number(item.longitudInicial)
+          : null,
+        distanciaInicialKm: item.distanciaInicialKm
+          ? Number(item.distanciaInicialKm)
+          : null,
         latitudFinal: item.latitudFinal ? Number(item.latitudFinal) : null,
         longitudFinal: item.longitudFinal ? Number(item.longitudFinal) : null,
         idCliente: item.idCliente ? Number(item.idCliente) : null,
@@ -2004,7 +2300,10 @@ FROM (
       const lastPage = Math.ceil(total / limit);
       return { data, total, page, lastPage };
     } catch (error) {
-      console.error('[resolverPorRolDefault]', (error as Error)?.message ?? error);
+      console.error(
+        '[resolverPorRolDefault]',
+        (error as Error)?.message ?? error,
+      );
       if (error instanceof HttpException) {
         throw error;
       }
@@ -2012,7 +2311,6 @@ FROM (
         message: 'Error al obtener transacciones paginadas por rol',
       });
     }
-
   }
 
   /*   async findAllTransacciones(
@@ -2566,8 +2864,8 @@ FROM (
       // Solo la fecha del momento
       const fechaActual = `${fechaDesfasada.getFullYear()}-${pad(fechaDesfasada.getMonth() + 1)}-${pad(fechaDesfasada.getDate())}`;
 
-      fechaInicio = fechaActual
-      fechaFin = fechaActual
+      fechaInicio = fechaActual;
+      fechaFin = fechaActual;
       entidadRecarga = 'TransaccionesRecarga';
       entidadDebito = 'TransaccionesDebito';
       switch (rol) {
@@ -2670,7 +2968,12 @@ WHERE tr.FechaHoraFinal BETWEEN ? AND ?
 
 ORDER BY FechaHoraFinal DESC
         `,
-            [`${fechaInicio}T00:00:00Z`, `${fechaFin}T23:59:59Z`, `${fechaInicio}T00:00:00Z`, `${fechaFin}T23:59:59Z`],
+            [
+              `${fechaInicio}T00:00:00Z`,
+              `${fechaFin}T23:59:59Z`,
+              `${fechaInicio}T00:00:00Z`,
+              `${fechaFin}T23:59:59Z`,
+            ],
           );
           break;
 
@@ -2779,7 +3082,14 @@ AND m.IdCliente IN (${placeholders})   -- 🔹 aquí colocas el ID del cliente q
 ORDER BY FechaHoraFinal DESC
 
         `,
-            [`${fechaInicio}T00:00:00Z`, `${fechaFin}T23:59:59Z`, ...ids, `${fechaInicio}T00:00:00Z`, `${fechaFin}T23:59:59Z`, ...ids],
+            [
+              `${fechaInicio}T00:00:00Z`,
+              `${fechaFin}T23:59:59Z`,
+              ...ids,
+              `${fechaInicio}T00:00:00Z`,
+              `${fechaFin}T23:59:59Z`,
+              ...ids,
+            ],
           );
           break;
 
@@ -2885,7 +3195,14 @@ AND m.IdCliente = ?
 
 ORDER BY FechaHoraFinal DESC
         `,
-            [`${fechaInicio}T00:00:00Z`, `${fechaFin}T23:59:59Z`, cliente, `${fechaInicio}T00:00:00Z`, `${fechaFin}T23:59:59Z`, cliente],
+            [
+              `${fechaInicio}T00:00:00Z`,
+              `${fechaFin}T23:59:59Z`,
+              cliente,
+              `${fechaInicio}T00:00:00Z`,
+              `${fechaFin}T23:59:59Z`,
+              cliente,
+            ],
           );
           break;
       }
@@ -2907,7 +3224,10 @@ ORDER BY FechaHoraFinal DESC
       };
       return result;
     } catch (error) {
-      console.error('[findAllListTransacciones]', (error as Error)?.message ?? error);
+      console.error(
+        '[findAllListTransacciones]',
+        (error as Error)?.message ?? error,
+      );
       if (error instanceof HttpException) {
         throw error;
       }
@@ -2984,7 +3304,10 @@ INNER JOIN Clientes c
       }));
       return { data: data };
     } catch (error) {
-      console.error('[findOneTransaccionRecarga]', (error as Error)?.message ?? error);
+      console.error(
+        '[findOneTransaccionRecarga]',
+        (error as Error)?.message ?? error,
+      );
       if (error instanceof HttpException) {
         throw error;
       }
@@ -3062,7 +3385,10 @@ INNER JOIN Clientes c
       }));
       return { data: data };
     } catch (error) {
-      console.error('[findOneTransaccionDebito]', (error as Error)?.message ?? error);
+      console.error(
+        '[findOneTransaccionDebito]',
+        (error as Error)?.message ?? error,
+      );
       if (error instanceof HttpException) {
         throw error;
       }
@@ -3077,12 +3403,12 @@ INNER JOIN Clientes c
     email: string,
     cliente: number,
     rol: number,
-    getTransaccioneDto: GetTransaccioneDto
+    getTransaccioneDto: GetTransaccioneDto,
   ) {
     try {
       //Declaramos las variables para el consumo del api
-      let { fechaInicio, fechaFin } = getTransaccioneDto
-      const { page, limit } = getTransaccioneDto
+      let { fechaInicio, fechaFin } = getTransaccioneDto;
+      const { page, limit } = getTransaccioneDto;
       let entidadRecarga;
       let transacciones;
 
@@ -3101,15 +3427,35 @@ INNER JOIN Clientes c
         fechaInicio = fechaActual;
         fechaFin = fechaActual;
         entidadRecarga = 'TransaccionesRecarga';
-        transacciones = await this.resolverPorRolRecargas(fechaInicio, fechaFin, idUser, email, cliente, rol, page, limit, entidadRecarga);
+        transacciones = await this.resolverPorRolRecargas(
+          fechaInicio,
+          fechaFin,
+          idUser,
+          email,
+          cliente,
+          rol,
+          page,
+          limit,
+          entidadRecarga,
+        );
       } else {
-        fechaInicio = fechaInicio?.split("T")[0] ?? fechaActual;
-        fechaFin = fechaFin?.split("T")[0] ?? fechaActual;
+        fechaInicio = fechaInicio?.split('T')[0] ?? fechaActual;
+        fechaFin = fechaFin?.split('T')[0] ?? fechaActual;
         entidadRecarga = 'HistoricoTransaccionesRecarga';
-        transacciones = await this.resolverPorRolRecargas(fechaInicio, fechaFin, idUser, email, cliente, rol, page, limit, entidadRecarga);
+        transacciones = await this.resolverPorRolRecargas(
+          fechaInicio,
+          fechaFin,
+          idUser,
+          email,
+          cliente,
+          rol,
+          page,
+          limit,
+          entidadRecarga,
+        );
       }
 
-      const { data, total } = transacciones
+      const { data, total } = transacciones;
 
       //API Response
       const result: ApiResponseCommon = {
@@ -3132,7 +3478,6 @@ INNER JOIN Clientes c
     }
   }
 
-
   async resolverPorRolRecargas(
     fechaInicio: string,
     fechaFin: string,
@@ -3142,7 +3487,7 @@ INNER JOIN Clientes c
     rol: number,
     page: number,
     limit: number,
-    entidadRecarga: string
+    entidadRecarga: string,
   ) {
     try {
       let totalResult;
@@ -3200,7 +3545,12 @@ WHERE tr.FechaHoraFinal BETWEEN ? AND ?
 ORDER BY tr.FechaHoraFinal DESC
   LIMIT ? OFFSET ?;
         `,
-            [`${fechaInicio}T00:00:00Z`, `${fechaFin}T23:59:59Z`, limit, offset],
+            [
+              `${fechaInicio}T00:00:00Z`,
+              `${fechaFin}T23:59:59Z`,
+              limit,
+              offset,
+            ],
           );
 
           // Query para total (sin paginación)
@@ -3278,7 +3628,13 @@ ORDER BY tr.FechaHoraFinal DESC
 LIMIT ? OFFSET ?;
 
         `,
-            [cliente, `${fechaInicio}T00:00:00Z`, `${fechaFin}T23:59:59Z`, limit, offset],
+            [
+              cliente,
+              `${fechaInicio}T00:00:00Z`,
+              `${fechaFin}T23:59:59Z`,
+              limit,
+              offset,
+            ],
           );
 
           // Query para total (sin paginación)
@@ -3299,7 +3655,8 @@ INNER JOIN Clientes c
 
 WHERE c.Id = ?   -- 👈 filtro por cliente
   AND tr.FechaHoraFinal BETWEEN ? AND ?
-  `, [cliente, `${fechaInicio}T00:00:00Z`, `${fechaFin}T23:59:59Z`]
+  `,
+            [cliente, `${fechaInicio}T00:00:00Z`, `${fechaFin}T23:59:59Z`],
           );
           break;
 
@@ -3360,7 +3717,13 @@ ORDER BY FechaHoraFinal DESC
 LIMIT ? OFFSET ?;
 
         `,
-            [`${fechaInicio}T00:00:00Z`, `${fechaFin}T23:59:59Z`, Number(pasajero.id), limit, offset],
+            [
+              `${fechaInicio}T00:00:00Z`,
+              `${fechaFin}T23:59:59Z`,
+              Number(pasajero.id),
+              limit,
+              offset,
+            ],
           );
           // Query para total (sin paginación)
           totalResult = await this.transaccionesrecargaRepository.query(
@@ -3384,7 +3747,11 @@ AND m.Estatus = 1
 AND p.Id = ?
 
   `,
-            [`${fechaInicio}T00:00:00Z`, `${fechaFin}T23:59:59Z`, Number(pasajero.id)],
+            [
+              `${fechaInicio}T00:00:00Z`,
+              `${fechaFin}T23:59:59Z`,
+              Number(pasajero.id),
+            ],
           );
           break;
 
@@ -3464,7 +3831,8 @@ INNER JOIN Clientes c
 
 WHERE tr.IdUsuario = ?   -- 👈 filtro por usuario
   AND tr.FechaHoraFinal BETWEEN ? AND ?
-  `, [idUser, fechaInicioParam11, fechaFinParam11]
+  `,
+            [idUser, fechaInicioParam11, fechaFinParam11],
           );
           break;
       }
@@ -3493,7 +3861,10 @@ WHERE tr.IdUsuario = ?   -- 👈 filtro por usuario
       };
       return { data, total };
     } catch (error) {
-      console.error('[resolverPorRolRecargas]', (error as Error)?.message ?? error);
+      console.error(
+        '[resolverPorRolRecargas]',
+        (error as Error)?.message ?? error,
+      );
       if (error instanceof HttpException) {
         throw error;
       }
@@ -3501,7 +3872,6 @@ WHERE tr.IdUsuario = ?   -- 👈 filtro por usuario
         message: 'Error al obtener transacciones paginadas por rol',
       });
     }
-
   }
 
   // ========================================
@@ -3510,7 +3880,7 @@ WHERE tr.IdUsuario = ?   -- 👈 filtro por usuario
   /**
    * Limpia la tabla TransaccionesRecarga verificando que todos los registros
    * ya existan en HistoricoTransaccionesRecarga antes de hacer TRUNCATE.
-   * 
+   *
    * Este método se ejecuta mediante cron job a las 02:00 AM diariamente.
    */
   async limpiarTransaccionesRecarga(): Promise<void> {
@@ -3520,8 +3890,10 @@ WHERE tr.IdUsuario = ?   -- 👈 filtro por usuario
 
     try {
       // Obtener repositorios dentro de la transacción
-      const transaccionesRecargaRepo = queryRunner.manager.getRepository(TransaccionesRecarga);
-      const historicoTransaccionesRecargaRepo = queryRunner.manager.getRepository(HistoricoTransaccionesRecarga);
+      const transaccionesRecargaRepo =
+        queryRunner.manager.getRepository(TransaccionesRecarga);
+      const historicoTransaccionesRecargaRepo =
+        queryRunner.manager.getRepository(HistoricoTransaccionesRecarga);
 
       // 1) Obtener todos los registros de TransaccionesRecarga
       const transaccionesRecarga = await transaccionesRecargaRepo.find();
@@ -3533,13 +3905,14 @@ WHERE tr.IdUsuario = ?   -- 👈 filtro por usuario
 
       // CRÍTICO: No hacer TRUNCATE hasta confirmar que cada registro existe en histórico (evitar pérdida de datos).
       for (const transaccion of transaccionesRecarga) {
-        const existeEnHistorico = await historicoTransaccionesRecargaRepo.findOne({
-          where: {
-            numeroSerieMonedero: transaccion.numeroSerieMonedero,
-            monto: transaccion.monto,
-            fechaHoraFinal: transaccion.fechaHoraFinal,
-          },
-        });
+        const existeEnHistorico =
+          await historicoTransaccionesRecargaRepo.findOne({
+            where: {
+              numeroSerieMonedero: transaccion.numeroSerieMonedero,
+              monto: transaccion.monto,
+              fechaHoraFinal: transaccion.fechaHoraFinal,
+            },
+          });
 
         if (!existeEnHistorico) {
           await queryRunner.rollbackTransaction();
@@ -3578,7 +3951,10 @@ WHERE tr.IdUsuario = ?   -- 👈 filtro por usuario
       );
     } catch (error) {
       await queryRunner.rollbackTransaction();
-      console.error('[limpiarTransaccionesRecarga]', (error as Error)?.message ?? error);
+      console.error(
+        '[limpiarTransaccionesRecarga]',
+        (error as Error)?.message ?? error,
+      );
 
       // Registrar error en bitácora
       await this.bitacoraLogger.logToBitacora(
@@ -3615,8 +3991,11 @@ WHERE tr.IdUsuario = ?   -- 👈 filtro por usuario
     await queryRunner.startTransaction();
 
     try {
-      const transaccionesDebitoRepo = queryRunner.manager.getRepository(TransaccionesDebito);
-      const historicoRepo = queryRunner.manager.getRepository(HistoricoTransaccionesDebito);
+      const transaccionesDebitoRepo =
+        queryRunner.manager.getRepository(TransaccionesDebito);
+      const historicoRepo = queryRunner.manager.getRepository(
+        HistoricoTransaccionesDebito,
+      );
 
       const transaccionesDebito = await transaccionesDebitoRepo.find();
 
@@ -3668,7 +4047,10 @@ WHERE tr.IdUsuario = ?   -- 👈 filtro por usuario
       );
     } catch (error) {
       await queryRunner.rollbackTransaction();
-      console.error('[limpiarTransaccionesDebito]', (error as Error)?.message ?? error);
+      console.error(
+        '[limpiarTransaccionesDebito]',
+        (error as Error)?.message ?? error,
+      );
       await this.bitacoraLogger.logToBitacora(
         'Transacciones',
         `Error al limpiar TransaccionesDebito`,
@@ -3696,14 +4078,19 @@ WHERE tr.IdUsuario = ?   -- 👈 filtro por usuario
    * Usado por el cron de cierre automático: busca TransaccionesDebito con idControlTransaccion=ABIERTA,
    * agrupa por idViajes y ejecuta viajeCierre (que usa createTransaccionDebitoByViajes) para cada viaje.
    */
-  async cerrarTransaccionesDebitoAbiertasCron(): Promise<{ viajesProcesados: number; errores: string[] }> {
+  async cerrarTransaccionesDebitoAbiertasCron(): Promise<{
+    viajesProcesados: number;
+    errores: string[];
+  }> {
     const errores: string[] = [];
     let viajesProcesados = 0;
     const transacciones = await this.transaccionesdebitoRepository.find({
       where: { idControlTransaccion: EnumControlTransacciones.ABIERTA },
       select: ['idViajes'],
     });
-    const idViajesUnicos = [...new Set(transacciones.map((t) => t.idViajes).filter(Boolean))] as number[];
+    const idViajesUnicos = [
+      ...new Set(transacciones.map((t) => t.idViajes).filter(Boolean)),
+    ] as number[];
     for (const idViaje of idViajesUnicos) {
       try {
         await this.viajeCierre(idViaje);
@@ -3742,10 +4129,18 @@ WHERE tr.IdUsuario = ?   -- 👈 filtro por usuario
     let idUsuario;
 
     const manager = queryRunner?.manager;
-    const monederoRepo = manager ? manager.getRepository(Monederos) : this.monederoRepository;
-    const transDebitoRepo = manager ? manager.getRepository(TransaccionesDebito) : this.transaccionesdebitoRepository;
-    const historicoRepo = manager ? manager.getRepository(HistoricoTransaccionesDebito) : this.historicoTransaccionesDebitoRepository;
-    const catTiposRepo = manager ? manager.getRepository(CatTiposPasajeros) : this.CatTiposPasajerosRepository;
+    const monederoRepo = manager
+      ? manager.getRepository(Monederos)
+      : this.monederoRepository;
+    const transDebitoRepo = manager
+      ? manager.getRepository(TransaccionesDebito)
+      : this.transaccionesdebitoRepository;
+    const historicoRepo = manager
+      ? manager.getRepository(HistoricoTransaccionesDebito)
+      : this.historicoTransaccionesDebitoRepository;
+    const catTiposRepo = manager
+      ? manager.getRepository(CatTiposPasajeros)
+      : this.CatTiposPasajerosRepository;
 
     try {
       let monedero;
@@ -3755,20 +4150,22 @@ WHERE tr.IdUsuario = ?   -- 👈 filtro por usuario
       // 2️⃣ Buscamos el monedero
       if (!idCardMonedero && !numeroSerieMonedero) {
         estado = EstadoTransaccion.ERROR;
-        throw new BadRequestException('Debe proporcionarse al menos uno de los campos requeridos: número de serie del monedero o ID Card.');
+        throw new BadRequestException(
+          'Debe proporcionarse al menos uno de los campos requeridos: número de serie del monedero o ID Card.',
+        );
       }
       if (idCardMonedero) {
         monedero = await monederoRepo.findOne({
-          where:
-            { idCard: idCardMonedero, estatus: 1 }
+          where: { idCard: idCardMonedero, estatus: 1 },
         });
       } else if (numeroSerieMonedero) {
         monedero = await monederoRepo.findOne({
-          where:
-            { numeroSerie: numeroSerieMonedero, estatus: 1, }
+          where: { numeroSerie: numeroSerieMonedero, estatus: 1 },
         });
       } else {
-        throw new BadRequestException('Debe proporcionarse al menos uno de los campos requeridos: número de serie del monedero o ID Card.');
+        throw new BadRequestException(
+          'Debe proporcionarse al menos uno de los campos requeridos: número de serie del monedero o ID Card.',
+        );
       }
 
       //controlTransaccion
@@ -3803,7 +4200,7 @@ WHERE
         const { idUsuarioPasajero } = pasajero[0];
         idUsuario = idUsuarioPasajero;
       } else {
-        idUsuario = null
+        idUsuario = null;
       }
 
       //Obtenemos el monto con descuento
@@ -3834,7 +4231,7 @@ WHERE
         }
       }
 
-      let montoFinal = Number(monedero.saldo) - montoConDescuento;
+      const montoFinal = Number(monedero.saldo) - montoConDescuento;
 
       // CRÍTICO: Validación de saldo antes de actualizar monedero y guardar transacción.
       if (montoFinal < 0) {
@@ -3862,8 +4259,13 @@ WHERE
           idViajes: idViaje,
           idUsuario: idUsuario,
         });
-        const transaccionRechazo = await transDebitoRepo.findOne({ where: { id: idTransaccion } });
-        if (!transaccionRechazo) throw new NotFoundException('No se pudo recuperar la transacción actualizada');
+        const transaccionRechazo = await transDebitoRepo.findOne({
+          where: { id: idTransaccion },
+        });
+        if (!transaccionRechazo)
+          throw new NotFoundException(
+            'No se pudo recuperar la transacción actualizada',
+          );
         const historicoRechazo = historicoRepo.create({
           idTipoTransaccion: transaccionRechazo.idTipoTransaccion,
           monto: transaccionRechazo.monto,
@@ -3935,8 +4337,13 @@ WHERE
 
       // 6️⃣ Guardamos transacción aprobada (update por id)
       await transDebitoRepo.update(idTransaccion, bodyTransaccionDebito);
-      const transaccionSave = await transDebitoRepo.findOne({ where: { id: idTransaccion } });
-      if (!transaccionSave) throw new NotFoundException('No se pudo recuperar la transacción actualizada');
+      const transaccionSave = await transDebitoRepo.findOne({
+        where: { id: idTransaccion },
+      });
+      if (!transaccionSave)
+        throw new NotFoundException(
+          'No se pudo recuperar la transacción actualizada',
+        );
       const historicoTransaccion = historicoRepo.create({
         idTipoTransaccion: transaccionSave.idTipoTransaccion,
         monto: transaccionSave.monto,
@@ -3980,7 +4387,10 @@ WHERE
         },
       };
     } catch (error) {
-      console.error('[createTransaccionDebitoByViajes]', (error as Error)?.message ?? error);
+      console.error(
+        '[createTransaccionDebitoByViajes]',
+        (error as Error)?.message ?? error,
+      );
       estado = EstadoTransaccion.ERROR;
       if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException(

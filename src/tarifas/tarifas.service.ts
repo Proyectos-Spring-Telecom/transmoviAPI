@@ -34,7 +34,7 @@ export class TarifasService {
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
-  ) { }
+  ) {}
 
   // ========================================
   // 🔹 CREAR UN TARIFA
@@ -46,7 +46,6 @@ export class TarifasService {
     createTarifaDto: CreateTarifaDto,
   ): Promise<ApiCrudResponse> {
     try {
-      
       const derrotero = await this.derroterosRepository.findOne({
         where: { id: createTarifaDto.idDerrotero },
       });

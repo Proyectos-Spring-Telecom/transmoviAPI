@@ -1,10 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDateString, IsInt, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import {
+  IsDateString,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { EstatusEnum } from 'src/common/estatus.enum';
 
 /**
  * DTO para crear un registro de conteo de pasajeros
- * 
+ *
  * Representa los datos necesarios para registrar el conteo de entradas y salidas
  * de pasajeros capturado por un dispositivo BlueVox, opcionalmente asociado a un viaje.
  */

@@ -46,9 +46,11 @@ export class TurnosService {
     try {
       //validamos que el usuario sea rol operador
       if (!idOperador) {
-        throw new UnauthorizedException(`El usuario no está autorizado para generar un turno.`)
+        throw new UnauthorizedException(
+          `El usuario no está autorizado para generar un turno.`,
+        );
       }
-      
+
       //Creamos el turno
 
       const { fechaDesfasada, fechaActual } = await horaDesfasada();
@@ -61,16 +63,20 @@ export class TurnosService {
       WHERE d.NumeroSerie = ? AND i.Estatus = 1
       `;
 
-      const instalacion = await this.turnosRepository.query(query, [numeroSerieDispositivo]);
+      const instalacion = await this.turnosRepository.query(query, [
+        numeroSerieDispositivo,
+      ]);
       if (instalacion.length === 0) {
-        throw new NotFoundException('No se ha encontrado la instalación asignada al dispositivo.');
+        throw new NotFoundException(
+          'No se ha encontrado la instalación asignada al dispositivo.',
+        );
       }
 
       body.inicio = fechaDesfasada;
       body.estatus = EstatusEnum.ACTIVO;
       body.idCliente = cliente;
       body.idOperador = idOperador;
-      body.idInstalacion = instalacion[0].Id
+      body.idInstalacion = instalacion[0].Id;
 
       const newTurno = await this.turnosRepository.create(body);
       const turnoSave = await this.turnosRepository.save(newTurno);
@@ -466,9 +472,8 @@ WHERE c.Estatus = 1
             limit,
             offset,
           );
-          totalResult = await this.consultarTotalTurnosPaginadoPorOperador(
-            idUser,
-          );
+          totalResult =
+            await this.consultarTotalTurnosPaginadoPorOperador(idUser);
           break;
 
         case 9:
@@ -485,7 +490,8 @@ WHERE c.Estatus = 1
         ...item,
         id: Number(item.id),
         idInstalacion: Number(item.idInstalacion),
-        idDispositivo: item.idDispositivo != null ? Number(item.idDispositivo) : null,
+        idDispositivo:
+          item.idDispositivo != null ? Number(item.idDispositivo) : null,
         blueVoxs: this.parseBlueVoxs(item.blueVoxs),
         idVehiculo: item.idVehiculo != null ? Number(item.idVehiculo) : null,
         idCliente: Number(item.idCliente),
@@ -765,7 +771,8 @@ ORDER BY t.Id DESC;
         ...item,
         id: Number(item.id),
         idInstalacion: Number(item.idInstalacion),
-        idDispositivo: item.idDispositivo != null ? Number(item.idDispositivo) : null,
+        idDispositivo:
+          item.idDispositivo != null ? Number(item.idDispositivo) : null,
         blueVoxs: this.parseBlueVoxs(item.blueVoxs),
         idVehiculo: item.idVehiculo != null ? Number(item.idVehiculo) : null,
         idCliente: Number(item.idCliente),
@@ -1066,7 +1073,8 @@ ORDER BY t.Inicio DESC;
         ...item,
         id: Number(item.id),
         idInstalacion: Number(item.idInstalacion),
-        idDispositivo: item.idDispositivo != null ? Number(item.idDispositivo) : null,
+        idDispositivo:
+          item.idDispositivo != null ? Number(item.idDispositivo) : null,
         blueVoxs: this.parseBlueVoxs(item.blueVoxs),
         idVehiculo: item.idVehiculo != null ? Number(item.idVehiculo) : null,
         idCliente: Number(item.idCliente),
@@ -1109,7 +1117,10 @@ ORDER BY t.Inicio DESC;
               {},
             );
           } catch (err) {
-            console.error(`[updateEstatus Turno] Error al cerrar viaje ${viaje.id}:`, (err as Error)?.message ?? err);
+            console.error(
+              `[updateEstatus Turno] Error al cerrar viaje ${viaje.id}:`,
+              (err as Error)?.message ?? err,
+            );
             // Se registra pero se sigue cerrando el resto de viajes y el turno
           }
         }
@@ -1169,7 +1180,9 @@ ORDER BY t.Inicio DESC;
    * Usado por el cron de cierre automático. Cierra primero los viajes abiertos de cada turno.
    * @param idUserSistema ID de usuario sistema para bitácora (ej. 0)
    */
-  async cerrarTurnosAbiertosCron(idUserSistema: number): Promise<{ turnosCerrados: number; errores: string[] }> {
+  async cerrarTurnosAbiertosCron(
+    idUserSistema: number,
+  ): Promise<{ turnosCerrados: number; errores: string[] }> {
     const errores: string[] = [];
     let turnosCerrados = 0;
     const turnosAbiertos = await this.turnosRepository.find({
@@ -1189,14 +1202,19 @@ ORDER BY t.Inicio DESC;
     return { turnosCerrados, errores };
   }
 
-  async update(id: number, idUser: number,
+  async update(
+    id: number,
+    idUser: number,
     cliente: number,
     idOperador: number,
-    updateTurnoDto: UpdateTurnoDto) {
+    updateTurnoDto: UpdateTurnoDto,
+  ) {
     try {
       //validamos que el usuario sea rol operador
       if (!idOperador) {
-        throw new UnauthorizedException(`El usuario no está autorizado para actualizar un turno.`)
+        throw new UnauthorizedException(
+          `El usuario no está autorizado para actualizar un turno.`,
+        );
       }
       const { numeroSerieDispositivo } = updateTurnoDto;
 
@@ -1207,22 +1225,36 @@ ORDER BY t.Inicio DESC;
       WHERE d.NumeroSerie = ? AND i.Estatus = 1
       `;
 
-      const instalacion = await this.turnosRepository.query(query, [numeroSerieDispositivo]);
+      const instalacion = await this.turnosRepository.query(query, [
+        numeroSerieDispositivo,
+      ]);
       if (instalacion.length === 0) {
-        throw new NotFoundException('No se ha encontrado la instalación asignada al dispositivo.');
+        throw new NotFoundException(
+          'No se ha encontrado la instalación asignada al dispositivo.',
+        );
       }
       const idInstalacion = instalacion[0].Id;
-      
+
       const { fechaDesfasada, fechaActual } = await horaDesfasada();
       // buscamos el turno
-      const turnoFind = await this.turnosRepository.findOne({ where: { id: id } })
+      const turnoFind = await this.turnosRepository.findOne({
+        where: { id: id },
+      });
 
       if (!turnoFind) {
-        throw new NotFoundException(`El turno con ID: ${id} no fue encontrado.`)
+        throw new NotFoundException(
+          `El turno con ID: ${id} no fue encontrado.`,
+        );
       }
 
-      if (cliente != turnoFind.idCliente || idOperador != turnoFind.idOperador || idInstalacion != turnoFind.idInstalacion) {
-        throw new BadRequestException(`El turno con ID: ${id} no coincide los valores del turno con el del usuario.`)
+      if (
+        cliente != turnoFind.idCliente ||
+        idOperador != turnoFind.idOperador ||
+        idInstalacion != turnoFind.idInstalacion
+      ) {
+        throw new BadRequestException(
+          `El turno con ID: ${id} no coincide los valores del turno con el del usuario.`,
+        );
       }
 
       // Validar y cerrar viajes abiertos asociados al turno
@@ -1241,15 +1273,17 @@ ORDER BY t.Inicio DESC;
           );
         }
       }
-      
 
       const body = {
         fin: fechaDesfasada,
         estatus: EstatusEnum.INACTIVO,
-      }
+      };
 
       //actualizamos
-      await this.turnosRepository.update(id, { fin: fechaDesfasada, estatus: EstatusEnum.INACTIVO });
+      await this.turnosRepository.update(id, {
+        fin: fechaDesfasada,
+        estatus: EstatusEnum.INACTIVO,
+      });
 
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { updateTurnoDto };

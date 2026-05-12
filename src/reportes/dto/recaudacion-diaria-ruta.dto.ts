@@ -56,4 +56,3 @@ export class RecaudacionDiariaRutaDto {
   @IsOptional()
   idDerrotero?: number;
 }
-

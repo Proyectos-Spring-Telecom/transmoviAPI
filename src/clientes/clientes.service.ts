@@ -31,7 +31,7 @@ export class ClientesService {
     private readonly clienteRepository: Repository<Clientes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
     private readonly catpasajeroService: CatpasajeroService,
-  ) { }
+  ) {}
 
   // ========================================
   // 🔹 CREAR UN CLIENTE
@@ -142,12 +142,12 @@ export class ClientesService {
       [cliente],
     );
 
-    let rows = result?.[0] ?? [];
+    const rows = result?.[0] ?? [];
 
     // Construir ids y quitar el cliente padre
     const ids = rows
       .map((row: any) => Number(row.Id))
-      .filter(id => !isNaN(id) && id !== cliente); // 👈 QUITAR EL CLIENTE PADRE
+      .filter((id) => !isNaN(id) && id !== cliente); // 👈 QUITAR EL CLIENTE PADRE
 
     if (ids.length === 0) {
       return { ids: [], placeholders: '' };
@@ -207,7 +207,7 @@ FROM Clientes
 ORDER BY Id ASC
   LIMIT ? OFFSET ?;
             `,
-            [ limit, offset],
+            [limit, offset],
           );
 
           // Query para total (sin paginación)
@@ -216,7 +216,7 @@ ORDER BY Id ASC
   SELECT COUNT(*) AS total
 FROM Clientes
 
-  `, 
+  `,
           );
           break;
 
@@ -382,9 +382,9 @@ ORDER BY Id ASC;
     try {
       let clientes;
       // Usuarios normales - solo sus regiones asignadas
-          const { ids, placeholders } = await this.clienteHijos(cliente);
-          clientes = await this.clienteRepository.query(
-            `
+      const { ids, placeholders } = await this.clienteHijos(cliente);
+      clientes = await this.clienteRepository.query(
+        `
 SELECT
   Id AS id,
   Nombre AS nombre,
@@ -396,8 +396,8 @@ WHERE Id IN (${placeholders})  -- 🔹 aquí colocas el ID del cliente que quier
 ORDER BY Id ASC
 
             `,
-            [...ids],
-          );
+        [...ids],
+      );
 
       // 🔥 Forzamos ids a number y agregamos nombreCompleto
       const data = clientes.map((item) => ({
@@ -411,7 +411,7 @@ ORDER BY Id ASC
       return result;
     } catch (error) {
       console.log(error);
-      console.log(error)
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -609,7 +609,6 @@ ORDER BY Id ASC
     cliente: number,
   ): Promise<ApiCrudResponse> {
     try {
-
       //Buscamos al cliente y verificamos
       const clienteEliminar = await this.clienteRepository.findOne({
         where: { id: id },

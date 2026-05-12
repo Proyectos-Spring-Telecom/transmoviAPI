@@ -11,10 +11,21 @@ import {
 } from '@nestjs/common';
 import { TransaccionesService } from './transacciones.service';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-import { ApiCrudResponse, ApiCrudTransaccionRecarga, ApiResponseCommon } from 'src/common/ApiResponse';
+import {
+  ApiCrudResponse,
+  ApiCrudTransaccionRecarga,
+  ApiResponseCommon,
+} from 'src/common/ApiResponse';
 import { CreateTransaccioneDebitoDto } from './dto/create-transaccione-debito.dto';
 import { CreateTransaccioneRecargaDto } from './dto/create-transaccione-recarga.dto';
-import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiParam,
+} from '@nestjs/swagger';
 import { UpdateTransaccioneDebitoDto } from './dto/update-transaccione-debito.dto';
 import { GetTransaccioneDto } from './dto/get-transacciones.dto';
 
@@ -22,17 +33,19 @@ import { GetTransaccioneDto } from './dto/get-transacciones.dto';
 @Controller('transacciones')
 @ApiBearerAuth('bearer-token')
 export class TransaccionesController {
-  constructor(private readonly transaccionesService: TransaccionesService) { }
+  constructor(private readonly transaccionesService: TransaccionesService) {}
 
   @Post('debito')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: 'Crear/cerrar transacción de débito',
-    description: 'Registra una nueva transacción de débito (validación) o cierra una existente.',
+    description:
+      'Registra una nueva transacción de débito (validación) o cierra una existente.',
   })
   @ApiBody({
     type: CreateTransaccioneDebitoDto,
-    description: 'Datos de la transacción de débito: idMonedero, idDispositivo, idDerrotero, monto, etc.',
+    description:
+      'Datos de la transacción de débito: idMonedero, idDispositivo, idDerrotero, monto, etc.',
   })
   @ApiResponse({
     status: 201,
@@ -44,12 +57,19 @@ export class TransaccionesController {
         message: { type: 'string' },
         data: {
           type: 'object',
-          properties: { id: { type: 'number' }, monto: { type: 'number' }, saldoRestante: { type: 'number' } },
+          properties: {
+            id: { type: 'number' },
+            monto: { type: 'number' },
+            saldoRestante: { type: 'number' },
+          },
         },
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Error de validación o saldo insuficiente' })
+  @ApiResponse({
+    status: 400,
+    description: 'Error de validación o saldo insuficiente',
+  })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   createTransaccionDebito(
     @Body() createTransaccioneDebitoDto: CreateTransaccioneDebitoDto,
@@ -59,9 +79,11 @@ export class TransaccionesController {
     console.log('[POST /transacciones/debito] Inicio', {
       idUser,
       idViaje: createTransaccioneDebitoDto.idViaje,
-      numeroSerieDispositivo: createTransaccioneDebitoDto.numeroSerieDispositivo,
+      numeroSerieDispositivo:
+        createTransaccioneDebitoDto.numeroSerieDispositivo,
       tieneIdCard: !!createTransaccioneDebitoDto.idCardMonedero,
-      tieneNumeroSerieMonedero: !!createTransaccioneDebitoDto.numeroSerieMonedero,
+      tieneNumeroSerieMonedero:
+        !!createTransaccioneDebitoDto.numeroSerieMonedero,
     });
     return this.transaccionesService.createOrCloseTransaccionDebito(
       createTransaccioneDebitoDto,
@@ -89,7 +111,11 @@ export class TransaccionesController {
         message: { type: 'string' },
         data: {
           type: 'object',
-          properties: { id: { type: 'number' }, monto: { type: 'number' }, saldoNuevo: { type: 'number' } },
+          properties: {
+            id: { type: 'number' },
+            monto: { type: 'number' },
+            saldoNuevo: { type: 'number' },
+          },
         },
       },
     },
@@ -111,7 +137,8 @@ export class TransaccionesController {
   @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: 'Listar recargas paginadas',
-    description: 'Obtiene el listado paginado de transacciones de recarga con filtros por fecha.',
+    description:
+      'Obtiene el listado paginado de transacciones de recarga con filtros por fecha.',
   })
   @ApiBody({
     type: GetTransaccioneDto,
@@ -127,12 +154,21 @@ export class TransaccionesController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, monto: { type: 'number' }, idMonedero: { type: 'number' }, fecha: { type: 'string' } },
+            properties: {
+              id: { type: 'number' },
+              monto: { type: 'number' },
+              idMonedero: { type: 'number' },
+              fecha: { type: 'string' },
+            },
           },
         },
         paginated: {
           type: 'object',
-          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+          properties: {
+            total: { type: 'number' },
+            page: { type: 'number' },
+            lastPage: { type: 'number' },
+          },
         },
       },
     },
@@ -152,7 +188,7 @@ export class TransaccionesController {
       email,
       +cliente,
       +rol,
-      getTransaccioneDto
+      getTransaccioneDto,
     );
   }
 
@@ -160,7 +196,8 @@ export class TransaccionesController {
   @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: 'Listar transacciones paginadas',
-    description: 'Obtiene el listado paginado de transacciones (débitos) con filtros por fecha.',
+    description:
+      'Obtiene el listado paginado de transacciones (débitos) con filtros por fecha.',
   })
   @ApiBody({
     type: GetTransaccioneDto,
@@ -176,12 +213,22 @@ export class TransaccionesController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, monto: { type: 'number' }, idMonedero: { type: 'number' }, idDispositivo: { type: 'number' }, fecha: { type: 'string' } },
+            properties: {
+              id: { type: 'number' },
+              monto: { type: 'number' },
+              idMonedero: { type: 'number' },
+              idDispositivo: { type: 'number' },
+              fecha: { type: 'string' },
+            },
           },
         },
         paginated: {
           type: 'object',
-          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+          properties: {
+            total: { type: 'number' },
+            page: { type: 'number' },
+            lastPage: { type: 'number' },
+          },
         },
       },
     },
@@ -201,7 +248,7 @@ export class TransaccionesController {
       email,
       +cliente,
       +rol,
-      getTransaccioneDto
+      getTransaccioneDto,
     );
   }
 
@@ -209,7 +256,8 @@ export class TransaccionesController {
   @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: 'Listar transacciones',
-    description: 'Obtiene el listado de transacciones. El acceso depende del rol del usuario.',
+    description:
+      'Obtiene el listado de transacciones. El acceso depende del rol del usuario.',
   })
   @ApiResponse({
     status: 200,
@@ -221,7 +269,12 @@ export class TransaccionesController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, monto: { type: 'number' }, tipo: { type: 'string' }, fecha: { type: 'string' } },
+            properties: {
+              id: { type: 'number' },
+              monto: { type: 'number' },
+              tipo: { type: 'string' },
+              fecha: { type: 'string' },
+            },
           },
         },
       },
@@ -231,7 +284,10 @@ export class TransaccionesController {
   async findAllListTransacciones(@Request() req): Promise<ApiResponseCommon> {
     const cliente = req.user.cliente;
     const rol = req.user.rol;
-    return await this.transaccionesService.findAllListTransacciones(cliente, rol);
+    return await this.transaccionesService.findAllListTransacciones(
+      cliente,
+      rol,
+    );
   }
 
   @Get('RECARGA/:id')
@@ -249,7 +305,13 @@ export class TransaccionesController {
       properties: {
         data: {
           type: 'object',
-          properties: { id: { type: 'number' }, monto: { type: 'number' }, idMonedero: { type: 'number' }, idMetodoPago: { type: 'number' }, fecha: { type: 'string' } },
+          properties: {
+            id: { type: 'number' },
+            monto: { type: 'number' },
+            idMonedero: { type: 'number' },
+            idMetodoPago: { type: 'number' },
+            fecha: { type: 'string' },
+          },
         },
       },
     },
@@ -264,7 +326,8 @@ export class TransaccionesController {
   @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: 'Obtener transacción de débito por ID',
-    description: 'Obtiene el detalle de una transacción de débito (validación) por su ID.',
+    description:
+      'Obtiene el detalle de una transacción de débito (validación) por su ID.',
   })
   @ApiParam({ name: 'id', description: 'ID de la transacción de débito' })
   @ApiResponse({
@@ -275,7 +338,14 @@ export class TransaccionesController {
       properties: {
         data: {
           type: 'object',
-          properties: { id: { type: 'number' }, monto: { type: 'number' }, idMonedero: { type: 'number' }, idDispositivo: { type: 'number' }, idDerrotero: { type: 'number' }, fecha: { type: 'string' } },
+          properties: {
+            id: { type: 'number' },
+            monto: { type: 'number' },
+            idMonedero: { type: 'number' },
+            idDispositivo: { type: 'number' },
+            idDerrotero: { type: 'number' },
+            fecha: { type: 'string' },
+          },
         },
       },
     },
