@@ -11,6 +11,7 @@ import { Vehiculos } from 'src/entities/Vehiculos';
 import { Clientes } from 'src/entities/Clientes';
 import { HistoricoInstalaciones } from 'src/entities/historico-instalaciones';
 import { InstalacionesBlueVoxs } from 'src/entities/InstalacionesBlueVoxs';
+import { InstalacionesDispositivos } from 'src/entities/InstalacionesDispositivos';
 import { HistoricoinstalacionesModule } from 'src/historicoinstalaciones/historicoinstalaciones.module';
 
 @Module({
@@ -23,6 +24,7 @@ import { HistoricoinstalacionesModule } from 'src/historicoinstalaciones/histori
       Vehiculos,
       Clientes,
       InstalacionesBlueVoxs,
+      InstalacionesDispositivos,
     ]),
     BitacoraModule,
     HistoricoinstalacionesModule,

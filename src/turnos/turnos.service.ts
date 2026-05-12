@@ -59,7 +59,8 @@ export class TurnosService {
       const query = `
       SELECT i.Id
       FROM Dispositivos d
-      INNER JOIN Instalaciones i ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+      INNER JOIN InstalacionesDispositivos id_disp ON id_disp.IdDispositivo = d.Id AND id_disp.Estatus = 1
+      INNER JOIN Instalaciones i ON i.Id = id_disp.IdInstalacion AND i.IdCliente = d.IdCliente
       WHERE d.NumeroSerie = ? AND i.Estatus = 1
       `;
 
@@ -235,7 +236,13 @@ SELECT
 
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
@@ -256,7 +263,13 @@ LIMIT ? OFFSET ?
 SELECT COUNT(*) AS total
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
@@ -322,7 +335,13 @@ SELECT
   u.ApellidoMaterno AS apellidoMaternoOperador
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
@@ -340,7 +359,13 @@ LIMIT ? OFFSET ?
 SELECT COUNT(*) AS total
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
@@ -431,7 +456,13 @@ SELECT
 
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
@@ -448,7 +479,13 @@ LIMIT ? OFFSET ?
 SELECT COUNT(*) AS total
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
@@ -588,7 +625,13 @@ SELECT
 
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
@@ -654,7 +697,13 @@ SELECT
   u.ApellidoMaterno AS apellidoMaternoOperador
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
@@ -738,7 +787,13 @@ SELECT
 
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
@@ -862,7 +917,13 @@ SELECT
 
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
@@ -948,7 +1009,13 @@ SELECT
 
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON t.IdCliente = c.Id
 INNER JOIN Operadores o ON t.IdOperador = o.Id
@@ -1042,7 +1109,13 @@ SELECT
 FROM Turnos t
 INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
 INNER JOIN Clientes c ON t.IdCliente = c.Id
-LEFT JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+LEFT JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+LEFT JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 LEFT JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 LEFT JOIN Operadores o ON t.IdOperador = o.Id
 LEFT JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -1221,7 +1294,8 @@ ORDER BY t.Inicio DESC;
       const query = `
       SELECT i.Id
       FROM Dispositivos d
-      INNER JOIN Instalaciones i ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+      INNER JOIN InstalacionesDispositivos id_disp ON id_disp.IdDispositivo = d.Id AND id_disp.Estatus = 1
+      INNER JOIN Instalaciones i ON i.Id = id_disp.IdInstalacion AND i.IdCliente = d.IdCliente
       WHERE d.NumeroSerie = ? AND i.Estatus = 1
       `;
 

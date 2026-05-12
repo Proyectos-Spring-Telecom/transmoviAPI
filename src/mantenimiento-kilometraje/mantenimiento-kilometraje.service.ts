@@ -139,7 +139,13 @@ FROM MantenimientoKilometraje mk
 INNER JOIN Instalaciones i ON mk.IdInstalacion = i.Id
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 LEFT JOIN Vehiculos veh ON i.IdVehiculo = veh.Id AND i.IdCliente = veh.IdCliente
-LEFT JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+LEFT JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+LEFT JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 LEFT JOIN BlueVoxs bv ON i.IdBlueVox = bv.Id AND i.IdCliente = bv.IdCliente
 ORDER BY mk.FHRegistro DESC
 LIMIT ? OFFSET ?;
@@ -201,7 +207,13 @@ FROM MantenimientoKilometraje mk
 INNER JOIN Instalaciones i ON mk.IdInstalacion = i.Id
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 LEFT JOIN Vehiculos veh ON i.IdVehiculo = veh.Id AND i.IdCliente = veh.IdCliente
-LEFT JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+LEFT JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+LEFT JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 LEFT JOIN BlueVoxs bv ON i.IdBlueVox = bv.Id AND i.IdCliente = bv.IdCliente
 WHERE c.Id IN (${placeholders})
 ORDER BY mk.FHRegistro DESC
@@ -342,7 +354,13 @@ FROM MantenimientoKilometraje mk
 INNER JOIN Instalaciones i ON mk.IdInstalacion = i.Id
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 LEFT JOIN Vehiculos veh ON i.IdVehiculo = veh.Id AND i.IdCliente = veh.IdCliente
-LEFT JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+LEFT JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+LEFT JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 LEFT JOIN BlueVoxs bv ON i.IdBlueVox = bv.Id AND i.IdCliente = bv.IdCliente
 WHERE mk.Id = ?
             `,
@@ -388,7 +406,13 @@ FROM MantenimientoKilometraje mk
 INNER JOIN Instalaciones i ON mk.IdInstalacion = i.Id
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 LEFT JOIN Vehiculos veh ON i.IdVehiculo = veh.Id AND i.IdCliente = veh.IdCliente
-LEFT JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+LEFT JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+LEFT JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 LEFT JOIN BlueVoxs bv ON i.IdBlueVox = bv.Id AND i.IdCliente = bv.IdCliente
 WHERE c.Id IN (${placeholders})
 AND mk.Id = ?
@@ -748,7 +772,8 @@ AND mk.Id = ?
             p.Estado AS estado
           FROM Posiciones p
           INNER JOIN Dispositivos d ON p.NumeroSerieDispositivo = d.NumeroSerie
-          INNER JOIN Instalaciones i ON d.Id = i.IdDispositivo AND d.IdCliente = i.IdCliente
+          INNER JOIN InstalacionesDispositivos id_disp ON id_disp.IdDispositivo = d.Id AND id_disp.Estatus = 1
+          INNER JOIN Instalaciones i ON i.Id = id_disp.IdInstalacion AND i.IdCliente = d.IdCliente
           LEFT JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
           WHERE i.Id = ?
             AND MONTH(p.FechaHora) = ?

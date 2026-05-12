@@ -24,6 +24,7 @@ import { Vehiculos } from 'src/entities/Vehiculos';
 import { Clientes } from 'src/entities/Clientes';
 import { HistoricoInstalaciones } from 'src/entities/historico-instalaciones';
 import { InstalacionesBlueVoxs } from 'src/entities/InstalacionesBlueVoxs';
+import { InstalacionesDispositivos } from 'src/entities/InstalacionesDispositivos';
 import { HistoricoinstalacionesService } from 'src/historicoinstalaciones/historicoinstalaciones.service';
 import {
   EnumModulos,
@@ -50,6 +51,8 @@ export class InstalacionesService {
     private readonly clienteRepository: Repository<Clientes>,
     @InjectRepository(InstalacionesBlueVoxs)
     private readonly instalacionesBlueVoxsRepository: Repository<InstalacionesBlueVoxs>,
+    @InjectRepository(InstalacionesDispositivos)
+    private readonly instalacionesDispositivosRepository: Repository<InstalacionesDispositivos>,
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly bitacoraLogger: BitacoraLoggerService,
     private readonly historicoinstalacionesService: HistoricoinstalacionesService,
@@ -78,6 +81,16 @@ export class InstalacionesService {
         );
       }
 
+      const idsDispositivos = Array.from(
+        new Set((createInstalacioneDto.idsDispositivos ?? []).map(Number)),
+      ).filter((id) => Number.isFinite(id) && id > 0);
+
+      if (idsDispositivos.length === 0) {
+        throw new BadRequestException(
+          'Debe enviar al menos 1 dispositivo en idsDispositivos.',
+        );
+      }
+
       // Transacción para evitar estados inconsistentes (componentes “asignados” sin instalación, etc.).
       const queryRunner = this.dataSource.createQueryRunner();
       await queryRunner.connect();
@@ -93,33 +106,60 @@ export class InstalacionesService {
         const instalacionesBlueVoxsRepo = queryRunner.manager.getRepository(
           InstalacionesBlueVoxs,
         );
+        const instalacionesDispositivosRepo = queryRunner.manager.getRepository(
+          InstalacionesDispositivos,
+        );
 
-        // 1) Validar Dispositivo (existencia + cliente + estatus/estado + no asignado)
-        const dispositivo = await dispositivosRepo.findOne({
+        // 1) Validar Dispositivos (existencia + cliente + estatus/estado + disponibles)
+        const dispositivos = await dispositivosRepo.find({
           where: {
-            id: createInstalacioneDto.idDispositivo,
+            id: In(idsDispositivos),
             idCliente: createInstalacioneDto.idCliente,
             estatus: 1,
             estadoActual: EstadoComponente.DISPONIBLE,
           },
         });
-        if (!dispositivo) {
+
+        if (dispositivos.length !== idsDispositivos.length) {
+          const encontrados = new Set(dispositivos.map((d) => Number(d.id)));
+          const faltantes = idsDispositivos.filter(
+            (id) => !encontrados.has(id),
+          );
           throw new BadRequestException({
             message:
-              'Dispositivo inválido o no disponible (Estatus=1 y EstadoActual=1) o no pertenece al cliente.',
-            idDispositivo: createInstalacioneDto.idDispositivo,
+              'Uno o más dispositivos no existen, no pertenecen al cliente, no están activos (Estatus=1) o no están disponibles (EstadoActual=1).',
+            faltantes,
             idCliente: createInstalacioneDto.idCliente,
           });
         }
 
-        // Conflicto: si hay una instalación activa con ese dispositivo
-        const instalacionConDispositivo = await instalacionesRepo.findOne({
-          where: { idDispositivo: dispositivo.id, estatus: 1 },
-          relations: ['dispositivos'],
-        });
-        if (instalacionConDispositivo) {
-          throw new BadRequestException(
-            `El componente ${instalacionConDispositivo.dispositivos.numeroSerie} ya pertenece a una instalación.`,
+        // 1.2) Dispositivos ya asociados a otras instalaciones activas: liberar (mismo patrón que BlueVoxs)
+        const dispositivosAsignadosActivos =
+          await instalacionesDispositivosRepo.find({
+            where: {
+              idDispositivo: In(idsDispositivos),
+              estatus: 1,
+            },
+            relations: ['idInstalacion2'],
+          });
+
+        const conflictosDispositivos = dispositivosAsignadosActivos.filter(
+          (row) => row.idInstalacion2 && row.idInstalacion2.estatus === 1,
+        );
+
+        if (conflictosDispositivos.length > 0) {
+          const idsConflictivos = conflictosDispositivos.map((c) => c.id);
+          await instalacionesDispositivosRepo.update(
+            { id: In(idsConflictivos) },
+            { estatus: 0 },
+          );
+
+          const idsDispositivosConflictivos = [
+            ...new Set(conflictosDispositivos.map((c) => c.idDispositivo)),
+          ];
+          await dispositivosRepo.update(
+            { id: In(idsDispositivosConflictivos) },
+            { estadoActual: EstadoComponente.DISPONIBLE },
           );
         }
 
@@ -211,24 +251,32 @@ export class InstalacionesService {
           );
         }
 
-        // 4) Crear instalación
-        // IMPORTANTE: La asociación con BlueVoxs se gestiona mediante la tabla intermedia InstalacionesBlueVoxs,
-        // no mediante un campo directo en Instalaciones.
+        // 4) Crear instalación (sin IdDispositivo en tabla Instalaciones)
         const instalacion = instalacionesRepo.create({
-          idDispositivo: dispositivo.id,
           idVehiculo: vehiculo.id,
           idCliente: createInstalacioneDto.idCliente,
           estatus: createInstalacioneDto.estatus ?? 1,
         });
         const instalacionSave = await instalacionesRepo.save(instalacion);
 
-        // 5) Actualizar estados de componentes (dispositivo/vehículo y N BlueVoxs)
-        await dispositivosRepo.update(dispositivo.id, {
-          estadoActual: EstadoComponente.ASIGNADO,
-        });
+        // 5) Actualizar estados de componentes (N dispositivos / vehículo y N BlueVoxs)
+        await dispositivosRepo.update(
+          { id: In(idsDispositivos) },
+          { estadoActual: EstadoComponente.ASIGNADO },
+        );
         await vehiculosRepo.update(vehiculo.id, {
           estadoActual: EstadoComponente.ASIGNADO,
         });
+
+        // 5.0) InstalacionesDispositivos
+        const instalacionesDispositivosRows = idsDispositivos.map((idDisp) =>
+          instalacionesDispositivosRepo.create({
+            idInstalacion: instalacionSave.id,
+            idDispositivo: idDisp,
+            estatus: 1,
+          }),
+        );
+        await instalacionesDispositivosRepo.save(instalacionesDispositivosRows);
 
         // 5.1) Crear registros en InstalacionesBlueVoxs para asociar los BlueVoxs con la instalación.
         // IMPORTANTE: Esta es la forma correcta de asociar BlueVoxs con Instalaciones usando la tabla intermedia.
@@ -248,15 +296,20 @@ export class InstalacionesService {
           { estadoActual: EstadoComponente.ASIGNADO },
         );
 
-        // 6) Histórico: arreglo de objetos {Id, NumeroSerie}
+        // 6) Histórico: snapshots
         const blueVoxsSnapshot = blueVoxs.map((b) => ({
           Id: Number(b.id),
           NumeroSerie: b.numeroSerie,
         }));
 
+        const dispositivosSnapshot = dispositivos.map((d) => ({
+          Id: Number(d.id),
+          NumeroSerie: d.numeroSerie,
+        }));
+
         await this.historicoinstalacionesService.createHistorico(
           instalacionSave.id,
-          dispositivo.id,
+          dispositivosSnapshot,
           blueVoxsSnapshot,
           vehiculo.id,
           instalacionSave.idCliente,
@@ -268,7 +321,7 @@ export class InstalacionesService {
         const querylogger = {
           instalacionId: instalacionSave.id,
           idCliente: instalacionSave.idCliente,
-          idDispositivo: dispositivo.id,
+          idsDispositivos,
           idVehiculo: vehiculo.id,
           idsBlueVoxs,
         };
@@ -292,7 +345,7 @@ export class InstalacionesService {
           message: 'La instalación ha sido creada correctamente.',
           data: {
             id: Number(instalacionSave.id),
-            nombre: `Instalación ${instalacionSave.id} registrada con Dispositivo: ${dispositivo.id}, Vehículo: ${vehiculo.id} y BlueVoxs: ${blueVoxsSnapshot
+            nombre: `Instalación ${instalacionSave.id} registrada con Dispositivos: ${idsDispositivos.join(', ')}, Vehículo: ${vehiculo.id} y BlueVoxs: ${blueVoxsSnapshot
               .map((b) => b.NumeroSerie)
               .join(', ')}.`,
           },
@@ -374,7 +427,7 @@ SELECT
   i.Estatus AS estatus,
 
   -- Dispositivo
-  i.IdDispositivo AS idDispositivo,
+  id_disp.IdDispositivo AS idDispositivo,
   d.NumeroSerie AS numeroSerieDispositivo,
   d.Marca AS marcaDispositivo,
   d.Modelo AS modeloDispositivo,
@@ -417,7 +470,13 @@ SELECT
   c.Estatus AS estatusCliente
 
 FROM Instalaciones i
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -434,7 +493,13 @@ LIMIT ? OFFSET ?;
     const query = `  
   SELECT COUNT(*) AS total
   FROM Instalaciones i
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -471,7 +536,7 @@ SELECT
   i.Estatus AS estatus,
 
   -- Dispositivo
-  i.IdDispositivo AS idDispositivo,
+  id_disp.IdDispositivo AS idDispositivo,
   d.NumeroSerie AS numeroSerieDispositivo,
   d.Marca AS marcaDispositivo,
   d.Modelo AS modeloDispositivo,
@@ -511,7 +576,13 @@ SELECT
   c.Estatus AS estatusCliente
 
 FROM Instalaciones i
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -528,7 +599,13 @@ ORDER BY i.Id DESC
             `
   SELECT COUNT(*) AS total
   FROM Instalaciones i
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -598,7 +675,7 @@ SELECT
   i.Estatus AS estatus,
   
   -- Dispositivo
-  i.IdDispositivo AS idDispositivo,
+  id_disp.IdDispositivo AS idDispositivo,
   d.NumeroSerie AS numeroSerieDispositivo,
   d.Marca AS marcaDispositivo,
   d.Modelo AS modeloDispositivo,
@@ -639,7 +716,13 @@ SELECT
 
 FROM UsuariosInstalaciones ui
 INNER JOIN Instalaciones i ON ui.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -658,7 +741,13 @@ ORDER BY i.Id DESC
     SELECT COUNT(*) AS total
   FROM UsuariosInstalaciones ui
 INNER JOIN Instalaciones i ON ui.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 	WHERE ui.IdUsuario = ?
@@ -714,7 +803,7 @@ SELECT
   i.Estatus AS estatus,
 
   -- Dispositivo
-  i.IdDispositivo AS idDispositivo,
+  id_disp.IdDispositivo AS idDispositivo,
   d.NumeroSerie AS numeroSerieDispositivo,
   d.Marca AS marcaDispositivo,
   d.Modelo AS modeloDispositivo,
@@ -754,7 +843,13 @@ SELECT
   c.Estatus AS estatusCliente
 
 FROM Instalaciones i
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -791,7 +886,7 @@ SELECT
   i.Estatus AS estatus,
 
   -- Dispositivo
-  i.IdDispositivo AS idDispositivo,
+  id_disp.IdDispositivo AS idDispositivo,
   d.NumeroSerie AS numeroSerieDispositivo,
   d.Marca AS marcaDispositivo,
   d.Modelo AS modeloDispositivo,
@@ -831,7 +926,13 @@ SELECT
   c.Estatus AS estatusCliente
 
 FROM Instalaciones i
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -876,7 +977,7 @@ SELECT
   i.Estatus AS estatus,
   
   -- Dispositivo
-  i.IdDispositivo AS idDispositivo,
+  id_disp.IdDispositivo AS idDispositivo,
   d.NumeroSerie AS numeroSerieDispositivo,
   d.Marca AS marcaDispositivo,
   d.Modelo AS modeloDispositivo,
@@ -917,7 +1018,13 @@ SELECT
 
 FROM UsuariosInstalaciones ui
 INNER JOIN Instalaciones i ON ui.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -971,7 +1078,7 @@ SELECT
   i.Estatus AS estatus,
 
   -- Dispositivo
-  i.IdDispositivo AS idDispositivo,
+  id_disp.IdDispositivo AS idDispositivo,
   d.NumeroSerie AS numeroSerieDispositivo,
   d.Marca AS marcaDispositivo,
   d.Modelo AS modeloDispositivo,
@@ -1011,7 +1118,13 @@ SELECT
   c.Estatus AS estatusCliente
 
 FROM Instalaciones i
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -1042,7 +1155,7 @@ SELECT
   i.Estatus AS estatus,
 
   -- Dispositivo
-  i.IdDispositivo AS idDispositivo,
+  id_disp.IdDispositivo AS idDispositivo,
   d.NumeroSerie AS numeroSerieDispositivo,
   d.Marca AS marcaDispositivo,
   d.Modelo AS modeloDispositivo,
@@ -1082,7 +1195,13 @@ SELECT
   c.Estatus AS estatusCliente
 
 FROM Instalaciones i
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -1127,7 +1246,7 @@ SELECT
   i.Estatus AS estatus,
   
   -- Dispositivo
-  i.IdDispositivo AS idDispositivo,
+  id_disp.IdDispositivo AS idDispositivo,
   d.NumeroSerie AS numeroSerieDispositivo,
   d.Marca AS marcaDispositivo,
   d.Modelo AS modeloDispositivo,
@@ -1168,7 +1287,13 @@ SELECT
 
 FROM UsuariosInstalaciones ui
 INNER JOIN Instalaciones i ON ui.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -1267,20 +1392,30 @@ ORDER BY i.Id DESC;
 
         const errores: string[] = [];
 
-        // 3.1) Validar conflictos: verificar si dispositivo ya está en otra instalación activa
-        // (excluyendo la instalación actual, por si se está reactivando)
-        const dispositivoEnUso = await this.instalacionesRepository.findOne({
-          where: {
-            idDispositivo: instalacion.idDispositivo,
-            estatus: 1,
-          },
-          relations: ['dispositivos'],
-        });
-        // Solo es conflicto si existe otra instalación activa (no la actual)
-        if (dispositivoEnUso && dispositivoEnUso.id !== instalacion.id) {
-          errores.push(
-            `Dispositivo "${dispositivoEnUso.dispositivos.numeroSerie}" ya está en uso`,
+        const dispositivosLinksActivos =
+          await this.instalacionesDispositivosRepository.find({
+            where: { idInstalacion: instalacion.id, estatus: 1 },
+            relations: ['idDispositivo2', 'idInstalacion2'],
+          });
+
+        // 3.1) Validar conflictos: cada dispositivo no debe estar en otra instalación activa
+        for (const link of dispositivosLinksActivos) {
+          const otrosUsos = await this.instalacionesDispositivosRepository.find(
+            {
+              where: { idDispositivo: link.idDispositivo, estatus: 1 },
+              relations: ['idInstalacion2', 'idDispositivo2'],
+            },
           );
+          const conflicto = otrosUsos.find(
+            (o) =>
+              Number(o.idInstalacion) !== Number(instalacion.id) &&
+              o.idInstalacion2?.estatus === 1,
+          );
+          if (conflicto && link.idDispositivo2) {
+            errores.push(
+              `Dispositivo "${link.idDispositivo2.numeroSerie}" ya está en uso`,
+            );
+          }
         }
 
         // Nota sobre BlueVoxs:
@@ -1313,18 +1448,22 @@ ORDER BY i.Id DESC;
         // 3.4) Validar disponibilidad: verificar que todos los componentes estén disponibles
         const erroresEstado: string[] = [];
 
-        // Verificar dispositivo esté disponible (Estatus=1, EstadoActual=1)
-        const dispositivoEstado = await this.dispositivosRepository.findOne({
-          where: {
-            id: instalacion.idDispositivo,
-            estatus: 1,
-            estadoActual: 1,
-          },
-        });
-        if (!dispositivoEstado) {
-          erroresEstado.push(
-            `Dispositivo "${instalacion.idDispositivo}" su estado actual no está disponible`,
-          );
+        const idsDispositivosInstalacion = dispositivosLinksActivos.map((l) =>
+          Number(l.idDispositivo),
+        );
+        for (const idDisp of idsDispositivosInstalacion) {
+          const dispositivoEstado = await this.dispositivosRepository.findOne({
+            where: {
+              id: idDisp,
+              estatus: 1,
+              estadoActual: 1,
+            },
+          });
+          if (!dispositivoEstado) {
+            erroresEstado.push(
+              `Dispositivo "${idDisp}" su estado actual no está disponible`,
+            );
+          }
         }
 
         // 3.5) Verificar que existan BlueVoxs asociados a la instalación y que estén disponibles
@@ -1373,11 +1512,12 @@ ORDER BY i.Id DESC;
         // 3.8) Actualizar componentes a ASIGNADO (EstadoActual = 2)
         const body = { estadoActual: EstadoComponente.ASIGNADO };
 
-        // Actualizar Dispositivo
-        await this.dispositivosRepository.update(
-          instalacion.idDispositivo,
-          body,
-        );
+        if (idsDispositivosInstalacion.length > 0) {
+          await this.dispositivosRepository.update(
+            { id: In(idsDispositivosInstalacion) },
+            body,
+          );
+        }
 
         // Actualizar TODOS los BlueVoxs asociados a esta instalación
         // IMPORTANTE: Obtenemos los IDs de BlueVoxs desde InstalacionesBlueVoxs y actualizamos su EstadoActual.
@@ -1403,11 +1543,19 @@ ORDER BY i.Id DESC;
 
         const body = { estadoActual: EstadoComponente.DISPONIBLE };
 
-        // Actualizar Dispositivo a DISPONIBLE (EstadoActual = 1)
-        await this.dispositivosRepository.update(
-          instalacion.idDispositivo,
-          body,
+        const dispositivosLinksDesactivar =
+          await this.instalacionesDispositivosRepository.find({
+            where: { idInstalacion: instalacion.id, estatus: 1 },
+          });
+        const idsDispositivosDesactivar = dispositivosLinksDesactivar.map(
+          (l) => l.idDispositivo,
         );
+        if (idsDispositivosDesactivar.length > 0) {
+          await this.dispositivosRepository.update(
+            { id: In(idsDispositivosDesactivar) },
+            body,
+          );
+        }
 
         // Actualizar TODOS los BlueVoxs asociados a DISPONIBLE
         // IMPORTANTE: Obtenemos los IDs de BlueVoxs desde InstalacionesBlueVoxs y actualizamos su EstadoActual.
@@ -1449,6 +1597,14 @@ ORDER BY i.Id DESC;
         EstatusEnumBitcora.SUCCESS,
       );
 
+      const dispLinksResumen =
+        await this.instalacionesDispositivosRepository.find({
+          where: { idInstalacion: instalacion.id, estatus: 1 },
+        });
+      const idsDispResumen = dispLinksResumen
+        .map((l) => l.idDispositivo)
+        .join(',');
+
       // 6) Respuesta de la API
       const result: ApiCrudResponse = {
         status: 'success',
@@ -1458,7 +1614,7 @@ ORDER BY i.Id DESC;
         data: {
           id: id,
           nombre:
-            `${instalacion.id} dispositivo:${instalacion.idDispositivo} vehiculo: ${instalacion.idVehiculo}` ||
+            `${instalacion.id} dispositivos:${idsDispResumen} vehiculo: ${instalacion.idVehiculo}` ||
             '',
         },
       };
@@ -1534,50 +1690,138 @@ ORDER BY i.Id DESC;
       }
 
       // ==========================================
-      // ACTUALIZACIÓN DE DISPOSITIVO
+      // ACTUALIZACIÓN DE DISPOSITIVOS (MATRIZ — InstalacionesDispositivos)
       // ==========================================
-      // Reglas: nuevo dispositivo no asignado a otra instalación activa; exista, estatus=1, estadoActual=DISPONIBLE, pertenezca al cliente
       if (
-        updateInstalacioneDto.estatusDispositivoAnterior !== undefined &&
-        updateInstalacioneDto.idDispositivo
+        updateInstalacioneDto.idsDispositivos &&
+        Array.isArray(updateInstalacioneDto.idsDispositivos)
       ) {
-        const nuevoDispositivoId = Number(updateInstalacioneDto.idDispositivo);
+        const nuevaListaDisp: number[] = Array.from(
+          new Set(updateInstalacioneDto.idsDispositivos.map(Number)),
+        ).filter((n) => Number.isFinite(n) && n > 0);
 
-        const instalacionConDispositivo =
-          await this.instalacionesRepository.findOne({
-            where: { idDispositivo: nuevoDispositivoId, estatus: 1 },
-            relations: ['dispositivos'],
+        const creadaListaDisp =
+          await this.instalacionesDispositivosRepository.find({
+            where: { idInstalacion: id },
           });
-        if (instalacionConDispositivo && instalacionConDispositivo.id !== id) {
-          throw new BadRequestException(
-            `El dispositivo con ID ${nuevoDispositivoId} ya se encuentra asignado a la instalación ${instalacionConDispositivo.id}.`,
-          );
-        }
 
-        const nuevoDispositivo = await this.dispositivosRepository.findOne({
+        const nuevaSetDisp = new Set<number>(nuevaListaDisp);
+        const creadaMapDisp = new Map<number, InstalacionesDispositivos>(
+          creadaListaDisp.map((p) => [Number(p.idDispositivo), p]),
+        );
+        const todosIdsDisp = new Set<number>([
+          ...nuevaSetDisp,
+          ...creadaListaDisp.map((p) => Number(p.idDispositivo)),
+        ]);
+
+        const dispYaAsociados = new Set(
+          creadaListaDisp.map((row) => Number(row.idDispositivo)),
+        );
+        const dispositivosNuevos = nuevaListaDisp.filter(
+          (idD) => !dispYaAsociados.has(idD),
+        );
+
+        const dispositivosSolicitados = await this.dispositivosRepository.find({
           where: {
-            id: nuevoDispositivoId,
+            id: In(nuevaListaDisp),
             idCliente: idClienteParaValidacion,
             estatus: 1,
-            estadoActual: EstadoComponente.DISPONIBLE,
           },
         });
-        if (!nuevoDispositivo) {
+        if (dispositivosSolicitados.length !== nuevaListaDisp.length) {
+          const encontrados = new Set(
+            dispositivosSolicitados.map((d) => Number(d.id)),
+          );
+          const faltantes = nuevaListaDisp.filter(
+            (idD) => !encontrados.has(idD),
+          );
           throw new BadRequestException({
-            message: `El dispositivo con ID ${nuevoDispositivoId} no está disponible. Verifique que exista, tenga estatus=1, estadoActual=DISPONIBLE y pertenezca al cliente ${idClienteParaValidacion}.`,
-            idDispositivo: nuevoDispositivoId,
+            message:
+              'Uno o más dispositivos no existen, no pertenecen al cliente o no están activos (Estatus=1).',
+            faltantes,
           });
         }
 
-        await this.dispositivosRepository.update(instalacion.idDispositivo, {
-          estadoActual: updateInstalacioneDto.estatusDispositivoAnterior,
-        });
-        await this.dispositivosRepository.update(nuevoDispositivoId, {
-          estadoActual: EstadoComponente.ASIGNADO,
-        });
-        await this.instalacionesRepository.update(id, {
-          idDispositivo: nuevoDispositivoId,
-        });
+        if (dispositivosNuevos.length > 0) {
+          const disponibles = await this.dispositivosRepository.find({
+            where: {
+              id: In(dispositivosNuevos),
+              estadoActual: EstadoComponente.DISPONIBLE,
+            },
+          });
+          if (disponibles.length !== dispositivosNuevos.length) {
+            const encontradosDisp = new Set(
+              disponibles.map((d) => Number(d.id)),
+            );
+            const noDisponibles = dispositivosNuevos.filter(
+              (idD) => !encontradosDisp.has(idD),
+            );
+            throw new BadRequestException({
+              message:
+                'Uno o más dispositivos no están disponibles (estadoActual=DISPONIBLE). Verifique que no estén asignados a otra instalación.',
+              noDisponibles,
+            });
+          }
+
+          const asociadosActivosDisp =
+            await this.instalacionesDispositivosRepository.find({
+              where: { idDispositivo: In(dispositivosNuevos), estatus: 1 },
+              relations: ['idInstalacion2'],
+            });
+          const conflictosDisp = asociadosActivosDisp.filter(
+            (row) =>
+              row.idInstalacion2 &&
+              row.idInstalacion2.estatus === 1 &&
+              row.idInstalacion2.id !== id,
+          );
+          if (conflictosDisp.length > 0) {
+            const idsConflictivos = conflictosDisp.map((c) => c.idDispositivo);
+            const instalacionesConflictivas = conflictosDisp
+              .map((c) => c.idInstalacion2.id)
+              .join(', ');
+            throw new BadRequestException({
+              message:
+                'Uno o más dispositivos ya se encuentran asignados a una instalación activa.',
+              dispositivosConflictivos: idsConflictivos,
+              instalacionesConflictivas,
+            });
+          }
+        }
+
+        const estatusDispAnterior =
+          updateInstalacioneDto.estatusDispositivoAnterior;
+        const dispositivosAnterioresValor =
+          estatusDispAnterior ?? EstadoComponente.DISPONIBLE;
+
+        for (const dispositivoId of todosIdsDisp) {
+          const enNueva = nuevaSetDisp.has(dispositivoId);
+          const creado = creadaMapDisp.get(dispositivoId);
+
+          if (enNueva && creado && creado.estatus === 0) {
+            await this.instalacionesDispositivosRepository.update(creado.id, {
+              estatus: 1,
+            });
+            await this.dispositivosRepository.update(dispositivoId, {
+              estadoActual: EstadoComponente.ASIGNADO,
+            });
+          } else if (enNueva && !creado) {
+            await this.instalacionesDispositivosRepository.save({
+              idInstalacion: id,
+              idDispositivo: dispositivoId,
+              estatus: 1,
+            });
+            await this.dispositivosRepository.update(dispositivoId, {
+              estadoActual: EstadoComponente.ASIGNADO,
+            });
+          } else if (!enNueva && creado && creado.estatus === 1) {
+            await this.instalacionesDispositivosRepository.update(creado.id, {
+              estatus: 0,
+            });
+            await this.dispositivosRepository.update(dispositivoId, {
+              estadoActual: dispositivosAnterioresValor,
+            });
+          }
+        }
       }
 
       // ==========================================
@@ -1778,9 +2022,23 @@ ORDER BY i.Id DESC;
         ? Number(updateInstalacioneDto.idCliente)
         : instalacionActualizada.idCliente;
 
+      const instalacionesDispositivosUpdate =
+        await this.instalacionesDispositivosRepository.find({
+          where: { idInstalacion: id, estatus: 1 },
+          relations: ['idDispositivo2'],
+        });
+
+      const dispositivosSnapshot = instalacionesDispositivosUpdate
+        .map((row) => row.idDispositivo2)
+        .filter((d) => d != null)
+        .map((d) => ({
+          Id: Number(d.id),
+          NumeroSerie: d.numeroSerie,
+        }));
+
       const body = {
         idInstalacion: id,
-        idDispositivo: instalacionActualizada.idDispositivo,
+        idDispositivo: dispositivosSnapshot[0]?.Id ?? 0,
         idVehiculo: instalacionActualizada.idVehiculo,
         idCliente: clienteFinal,
       };
@@ -1808,7 +2066,7 @@ ORDER BY i.Id DESC;
 
       await this.historicoinstalacionesService.updateHistorico(
         body,
-        Number(instalacionActualizada?.idDispositivo),
+        dispositivosSnapshot,
         blueVoxsSnapshot,
         Number(instalacionActualizada?.idVehiculo),
         clienteFinal, // Usar el cliente final (del DTO si se proporcionó, o el de la instalación)
@@ -1823,7 +2081,7 @@ ORDER BY i.Id DESC;
         data: {
           id: id,
           nombre:
-            `Instalación ${instalacion.id} asociada a Dispositivo: ${instalacion.idDispositivo} y Vehículo: ${instalacion.idVehiculo}.` ||
+            `Instalación ${instalacion.id} asociada a Dispositivos: ${dispositivosSnapshot.map((d) => d.Id).join(', ')} y Vehículo: ${instalacion.idVehiculo}.` ||
             '',
         },
       };
@@ -1876,6 +2134,9 @@ ORDER BY i.Id DESC;
         const instalacionesBlueVoxsRepo = queryRunner.manager.getRepository(
           InstalacionesBlueVoxs,
         );
+        const instalacionesDispositivosRepo = queryRunner.manager.getRepository(
+          InstalacionesDispositivos,
+        );
 
         // 1) Buscar instalación
         const instalacion = await instalacionesRepo.findOne({
@@ -1903,7 +2164,22 @@ ORDER BY i.Id DESC;
 
         // 3) Regla de negocio confirmada: al dar baja lógica, SIEMPRE dejar componentes en DISPONIBLE
         const body = { estadoActual: EstadoComponente.DISPONIBLE };
-        await dispositivosRepo.update(instalacion.idDispositivo, body);
+        const instalacionesDispositivosEliminar =
+          await instalacionesDispositivosRepo.find({
+            where: {
+              idInstalacion: instalacion.id,
+              estatus: 1,
+            },
+          });
+        const idsDispositivosEliminar = instalacionesDispositivosEliminar.map(
+          (row) => row.idDispositivo,
+        );
+        if (idsDispositivosEliminar.length > 0) {
+          await dispositivosRepo.update(
+            { id: In(idsDispositivosEliminar) },
+            body,
+          );
+        }
         await vehiculosRepo.update(instalacion.idVehiculo, body);
 
         // 3.1) Actualizar BlueVoxs asociados a DISPONIBLE mediante InstalacionesBlueVoxs
@@ -1948,7 +2224,7 @@ ORDER BY i.Id DESC;
           data: {
             id: id,
             nombre:
-              `${instalacion.id} dispositivo:${instalacion.idDispositivo} vehiculo: ${instalacion.idVehiculo}` ||
+              `${instalacion.id} dispositivos:${idsDispositivosEliminar.join(',')} vehiculo: ${instalacion.idVehiculo}` ||
               '',
           },
         };

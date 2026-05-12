@@ -37,12 +37,12 @@ export class InstalacionesController {
   @ApiOperation({
     summary: 'Crear instalación',
     description:
-      'Asocia un dispositivo, vehículo y BlueVoxs en una instalación. Requiere al menos 1 BlueVox en idsBlueVoxs.',
+      'Asocia dispositivos, vehículo y BlueVoxs en una instalación. Requiere al menos 1 BlueVox en idsBlueVoxs.',
   })
   @ApiBody({
     type: CreateInstalacionesDto,
     description:
-      'idDispositivo, idVehiculo, idsBlueVoxs (array, al menos 1), idCliente',
+      'idsDispositivos (array), idVehiculo, idsBlueVoxs (array, al menos 1), idCliente',
   })
   @ApiResponse({
     status: 201,

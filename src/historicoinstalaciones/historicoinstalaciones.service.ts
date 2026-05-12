@@ -28,7 +28,7 @@ export class HistoricoinstalacionesService {
   //Crear un historico
   async createHistorico(
     idInstalacion: number,
-    idDispositivo: number,
+    dispositivosSnapshot: Array<{ Id: number; NumeroSerie: string }>,
     blueVoxs: Array<{ Id: number; NumeroSerie: string }>,
     idVehiculo: number,
     idCliente: number,
@@ -38,7 +38,8 @@ export class HistoricoinstalacionesService {
     try {
       const historico = {
         idInstalacion: idInstalacion,
-        idDispositivo: idDispositivo,
+        idDispositivo: dispositivosSnapshot[0]?.Id ?? 0,
+        idsDispositivos: dispositivosSnapshot,
         idsBlueVoxs: blueVoxs,
         idVehiculo: idVehiculo,
         idCliente: idCliente,
@@ -67,7 +68,7 @@ export class HistoricoinstalacionesService {
       // Registro en la bitácora SUCCESS
       const querylogger = {
         instalacion: idInstalacion,
-        dispositivo: idDispositivo,
+        dispositivos: dispositivosSnapshot,
         bluevoxs: blueVoxs,
         vehiculo: idVehiculo,
         cliente: idCliente,
@@ -94,7 +95,7 @@ export class HistoricoinstalacionesService {
 
   async updateHistorico(
     instalacion: UpdateHistoricoDto,
-    idDispositivoUp: number,
+    dispositivosSnapshot: Array<{ Id: number; NumeroSerie: string }>,
     blueVoxsUp: Array<{ Id: number; NumeroSerie: string }>,
     idVehiculoUp: number,
     idClienteUp: number,
@@ -115,14 +116,15 @@ export class HistoricoinstalacionesService {
         },
       });
 
-      const mismoDispositivo =
-        historicoActivo?.idDispositivo === idDispositivoUp;
+      const mismoDispositivos =
+        JSON.stringify(historicoActivo?.idsDispositivos ?? null) ===
+        JSON.stringify(dispositivosSnapshot);
       const mismoBlueVoxs =
         JSON.stringify(historicoActivo?.idsBlueVoxs ?? null) ===
         JSON.stringify(blueVoxsUp);
 
       // 🚫 Si no hay cambios reales, no hacer nada
-      if (historicoActivo && mismoDispositivo && mismoBlueVoxs) {
+      if (historicoActivo && mismoDispositivos && mismoBlueVoxs) {
         return;
       }
 
@@ -148,7 +150,8 @@ export class HistoricoinstalacionesService {
       // 🆕 Insertar nuevo histórico con los datos actualizados
       const historico = repo.create({
         idInstalacion: instalacion.idInstalacion,
-        idDispositivo: idDispositivoUp,
+        idDispositivo: dispositivosSnapshot[0]?.Id ?? 0,
+        idsDispositivos: dispositivosSnapshot,
         idsBlueVoxs: blueVoxsUp,
         idVehiculo: idVehiculoUp, // el vehículo no cambia, pero se registra
         idCliente: idClienteUp,
@@ -172,7 +175,7 @@ export class HistoricoinstalacionesService {
       // Registro en la bitácora de errores
       const querylogger = {
         instalacion: instalacion.idInstalacion,
-        dispositivo: idDispositivoUp,
+        dispositivos: dispositivosSnapshot,
         bluevoxs: blueVoxsUp,
         vehiculo: idVehiculoUp,
         cliente: idClienteUp,

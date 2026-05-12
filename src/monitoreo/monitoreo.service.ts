@@ -237,7 +237,13 @@ SELECT
     IFNULL(CONCAT(' ', c.ApellidoMaterno), '')
   ) AS nombreCompletoCliente
 FROM Instalaciones i
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 INNER JOIN UltimaPosicion up ON d.NumeroSerie = up.NumeroSerieDispositivo
@@ -295,7 +301,13 @@ SELECT
     IFNULL(CONCAT(' ', c.ApellidoMaterno), '')
   ) AS nombreCompletoCliente
 FROM Instalaciones i
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 INNER JOIN UltimaPosicion up ON d.NumeroSerie = up.NumeroSerieDispositivo
@@ -386,7 +398,13 @@ SELECT
     IFNULL(CONCAT(' ', c.ApellidoMaterno), '')
   ) AS nombreCompletoCliente
 FROM Instalaciones i
-INNER JOIN Dispositivos d ON i.IdDispositivo = d.Id AND i.IdCliente = d.IdCliente
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 INNER JOIN Posiciones up ON d.NumeroSerie = up.NumeroSerieDispositivo

@@ -17,7 +17,7 @@ import { applySchema } from 'src/common/apply-schema.decorator';
   { unique: true },
 )
 @Index('FK_InstalacionesDispositivos_Instalaciones', ['idInstalacion'], {})
-@Index('FK_InstalacionesDispositivos_IdDispositivo', ['idDispositivo'], {})
+@Index('FK_InstalacionesDispositivos_Dispositivos', ['idDispositivo'], {})
 @Entity('InstalacionesDispositivos')
 export class InstalacionesDispositivos {
   @PrimaryGeneratedColumn({ type: 'bigint', name: 'Id' })
@@ -32,7 +32,6 @@ export class InstalacionesDispositivos {
   @Column('datetime', {
     name: 'FechaActualizacion',
     default: () => 'CURRENT_TIMESTAMP',
-    onUpdate: 'CURRENT_TIMESTAMP',
   })
   fechaActualizacion: Date;
 
@@ -56,10 +55,14 @@ export class InstalacionesDispositivos {
   @JoinColumn([{ name: 'IdInstalacion', referencedColumnName: 'id' }])
   idInstalacion2: Instalaciones;
 
-  @ManyToOne(() => Dispositivos, (dispositivos) => dispositivos.instalacionesDispositivos, {
-    onDelete: 'NO ACTION',
-    onUpdate: 'NO ACTION',
-  })
+  @ManyToOne(
+    () => Dispositivos,
+    (dispositivos) => dispositivos.instalacionesDispositivos,
+    {
+      onDelete: 'NO ACTION',
+      onUpdate: 'NO ACTION',
+    },
+  )
   @JoinColumn([{ name: 'IdDispositivo', referencedColumnName: 'id' }])
   idDispositivo2: Dispositivos;
 }

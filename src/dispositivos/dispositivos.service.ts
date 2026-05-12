@@ -18,7 +18,7 @@ import {
   EstatusEnumBitcora,
 } from 'src/common/ApiResponse';
 import { ClientesService } from 'src/clientes/clientes.service';
-import { Instalaciones } from 'src/entities/Instalaciones';
+import { InstalacionesDispositivos } from 'src/entities/InstalacionesDispositivos';
 import { Clientes } from 'src/entities/Clientes';
 import { EstadoComponente, EstatusEnum } from 'src/common/estatus.enum';
 import { UpdateDispositivoEstadoDto } from './dto/update-dispositivo-estado.dto';
@@ -27,13 +27,27 @@ export class DispositivosService {
   constructor(
     @InjectRepository(Dispositivos)
     private readonly dispositivoRepository: Repository<Dispositivos>,
-    @InjectRepository(Instalaciones)
-    private readonly instalacionesRepository: Repository<Instalaciones>,
+    @InjectRepository(InstalacionesDispositivos)
+    private readonly instalacionesDispositivosRepository: Repository<InstalacionesDispositivos>,
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
     private readonly clientesService: ClientesService,
   ) {}
+
+  private async dispositivoTieneInstalacionActiva(
+    idDispositivo: number,
+  ): Promise<boolean> {
+    const row = await this.instalacionesDispositivosRepository
+      .createQueryBuilder('idv')
+      .innerJoin('idv.idInstalacion2', 'ins')
+      .where('idv.idDispositivo = :did', { did: idDispositivo })
+      .andWhere('idv.estatus = 1')
+      .andWhere('ins.estatus = 1')
+      .getOne();
+    return !!row;
+  }
+
   //Crear un nuevo dispositivo
   async createDispositivo(
     createDispositivoDto: CreateDispositivoDto,
@@ -604,12 +618,7 @@ ORDER BY d.Id DESC;
       }
       const { estatus } = updateDispositivoEstatusDto;
       if (estatus === 0) {
-        const dispositivoInstalacion =
-          await this.instalacionesRepository.findOne({
-            where: { idDispositivo: dispositivo.id, estatus: 1 },
-          });
-
-        if (dispositivoInstalacion)
+        if (await this.dispositivoTieneInstalacionActiva(dispositivo.id))
           throw new BadRequestException(
             'No es posible completar la operación: Dispositivo se encuentra asignado a una instalación.',
           );
@@ -693,13 +702,7 @@ ORDER BY d.Id DESC;
       }
 
       //buscamos que no este asiganada a una instalacion
-      const dispositivoInstalacion = await this.instalacionesRepository.findOne(
-        {
-          where: { idDispositivo: dispositivo.id, estatus: 1 },
-        },
-      );
-
-      if (dispositivoInstalacion)
+      if (await this.dispositivoTieneInstalacionActiva(dispositivo.id))
         throw new BadRequestException(
           'No es posible completar la operación: Dispositivo se encuentra asignado a una instalación.',
         );
@@ -853,13 +856,7 @@ ORDER BY d.Id DESC;
         );
       }
 
-      const dispositivoInstalacion = await this.instalacionesRepository.findOne(
-        {
-          where: { idDispositivo: dispositivo.id, estatus: 1 },
-        },
-      );
-
-      if (dispositivoInstalacion)
+      if (await this.dispositivoTieneInstalacionActiva(dispositivo.id))
         throw new BadRequestException(
           'No es posible completar la operación: Dispositivo se encuentra asignado a una instalación.',
         );

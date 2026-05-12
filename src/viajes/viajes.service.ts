@@ -238,7 +238,13 @@ INNER JOIN Operadores op ON op.Id = v.IdOperador
 INNER JOIN Usuarios us ON us.Id = op.IdUsuario
 INNER JOIN Turnos tu ON tu.Id = v.IdTurno
 INNER JOIN Instalaciones i ON i.Id = tu.IdInstalacion
-INNER JOIN Dispositivos dp ON dp.Id = i.IdDispositivo
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+INNER JOIN Dispositivos dp ON dp.Id = id_disp.IdDispositivo AND dp.IdCliente = i.IdCliente
 INNER JOIN Derroteros d ON d.Id  = v.IdDerrotero
 INNER JOIN Tarifas t ON t.IdDerrotero = d.Id
 
@@ -722,7 +728,7 @@ SELECT
   t.IdInstalacion AS idInstalacion,
 
   -- Instalación
-  ins.IdDispositivo AS idDispositivo,
+  id_disp.IdDispositivo AS idDispositivo,
   -- Dispositivo
   d.NumeroSerie AS numeroSerieDispositivo,
   COALESCE(
@@ -775,7 +781,13 @@ FROM Viajes v
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = ins.Id
+JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND d.Id = id_disp.IdDispositivo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -824,7 +836,7 @@ SELECT
   t.IdInstalacion AS idInstalacion,
 
   -- Instalación
-  ins.IdDispositivo AS idDispositivo,
+  id_disp.IdDispositivo AS idDispositivo,
   d.NumeroSerie AS numeroSerieDispositivo,
   COALESCE(
     (
@@ -870,7 +882,13 @@ FROM Viajes v
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = ins.Id
+JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND d.Id = id_disp.IdDispositivo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -919,7 +937,7 @@ SELECT
   t.Id AS idTurno,
   t.Inicio AS inicioTurno,
   t.IdInstalacion AS idInstalacion,
-  ins.IdDispositivo AS idDispositivo,
+  id_disp.IdDispositivo AS idDispositivo,
   d.NumeroSerie AS numeroSerieDispositivo,
   COALESCE(
     (
@@ -962,7 +980,13 @@ FROM Viajes v
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = ins.Id
+JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND d.Id = id_disp.IdDispositivo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -1073,7 +1097,7 @@ SELECT
   t.IdInstalacion AS idInstalacion,
 
   -- Instalación
-  ins.IdDispositivo AS idDispositivo,
+  id_disp.IdDispositivo AS idDispositivo,
   d.NumeroSerie AS numeroSerieDispositivo,
   COALESCE(
     (
@@ -1119,7 +1143,13 @@ FROM Viajes v
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = ins.Id
+JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND d.Id = id_disp.IdDispositivo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -1154,7 +1184,13 @@ FROM Viajes v
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = ins.Id
+JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND d.Id = id_disp.IdDispositivo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -1190,7 +1226,7 @@ SELECT
   t.Id AS idTurno,
   t.Inicio AS inicioTurno,
   t.IdInstalacion AS idInstalacion,
-  ins.IdDispositivo AS idDispositivo,
+  id_disp.IdDispositivo AS idDispositivo,
   d.NumeroSerie AS numeroSerieDispositivo,
   COALESCE(
     (
@@ -1232,7 +1268,13 @@ FROM Viajes v
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = ins.Id
+JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND d.Id = id_disp.IdDispositivo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -1256,7 +1298,13 @@ FROM Viajes v
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = ins.Id
+JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND d.Id = id_disp.IdDispositivo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -1286,7 +1334,7 @@ SELECT
   t.Id AS idTurno,
   t.Inicio AS inicioTurno,
   t.IdInstalacion AS idInstalacion,
-  ins.IdDispositivo AS idDispositivo,
+  id_disp.IdDispositivo AS idDispositivo,
   d.NumeroSerie AS numeroSerieDispositivo,
   COALESCE(
     (
@@ -1328,7 +1376,13 @@ FROM Viajes v
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = ins.Id
+JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND d.Id = id_disp.IdDispositivo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -1373,7 +1427,7 @@ SELECT
   t.Id AS idTurno,
   t.Inicio AS inicioTurno,
   t.IdInstalacion AS idInstalacion,
-  ins.IdDispositivo AS idDispositivo,
+  id_disp.IdDispositivo AS idDispositivo,
   d.NumeroSerie AS numeroSerieDispositivo,
   COALESCE(
     (
@@ -1416,7 +1470,13 @@ FROM Viajes v
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = ins.Id
+JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND d.Id = id_disp.IdDispositivo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -1448,7 +1508,13 @@ FROM Viajes v
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = ins.Id
+JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND d.Id = id_disp.IdDispositivo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -1508,7 +1574,7 @@ SELECT
   t.Id AS idTurno,
   t.Inicio AS inicioTurno,
   t.IdInstalacion AS idInstalacion,
-  ins.IdDispositivo AS idDispositivo,
+  id_disp.IdDispositivo AS idDispositivo,
   d.NumeroSerie AS numeroSerieDispositivo,
   COALESCE(
     (
@@ -1551,7 +1617,13 @@ FROM Viajes v
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = ins.Id
+JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND d.Id = id_disp.IdDispositivo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -1573,7 +1645,13 @@ FROM Viajes v
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = ins.Id
+JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND d.Id = id_disp.IdDispositivo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -1693,7 +1771,7 @@ SELECT
   t.Id AS idTurno,
   t.Inicio AS inicioTurno,
   t.IdInstalacion AS idInstalacion,
-  ins.IdDispositivo AS idDispositivo,
+  id_disp.IdDispositivo AS idDispositivo,
   d.NumeroSerie AS numeroSerieDispositivo,
   COALESCE(
     (
@@ -1736,7 +1814,13 @@ FROM Viajes v
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND ins.IdDispositivo = d.Id
+INNER JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = ins.Id
+JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND d.Id = id_disp.IdDispositivo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id

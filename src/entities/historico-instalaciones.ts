@@ -17,6 +17,9 @@ export class HistoricoInstalaciones {
   @Column('bigint', { name: 'IdDispositivo' })
   idDispositivo: number;
 
+  @Column('json', { name: 'IdsDispositivos', nullable: true })
+  idsDispositivos: Array<{ Id: number; NumeroSerie: string }> | null;
+
   @Column('json', { name: 'IdsBlueVoxs', nullable: false })
   idsBlueVoxs: Array<{ Id: number; NumeroSerie: string }>;
 

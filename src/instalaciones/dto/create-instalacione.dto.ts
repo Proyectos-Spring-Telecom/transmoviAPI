@@ -10,12 +10,14 @@ import {
 
 export class CreateInstalacionesDto {
   @ApiProperty({
-    description: 'ID del dispositivo asociado a la instalación',
-    example: 101,
+    description:
+      'IDs de Dispositivos asociados a la instalación. Deben pertenecer al mismo cliente y estar disponibles.',
+    example: [101, 102],
   })
-  @IsNotEmpty({ message: 'El IdDispositivo es obligatorio' })
-  @IsNumber()
-  idDispositivo: number;
+  @IsNotEmpty()
+  @IsArray()
+  @IsNumber({}, { each: true })
+  idsDispositivos: number[];
 
   @ApiProperty({
     description: 'ID del vehículo asociado a la instalación',

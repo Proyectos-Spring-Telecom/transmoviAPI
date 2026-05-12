@@ -589,7 +589,13 @@ SELECT
 
 FROM Vehiculos v
 LEFT JOIN Instalaciones i ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente AND i.Estatus = 1
-LEFT JOIN Dispositivos d ON d.Id = i.IdDispositivo
+LEFT JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+LEFT JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 LEFT JOIN Posiciones up ON up.NumeroSerieDispositivo = d.NumeroSerie
     AND up.FechaHora >= NOW() - INTERVAL 15 MINUTE
 LEFT JOIN Turnos t ON t.IdCliente = v.IdCliente
@@ -726,7 +732,13 @@ SELECT
 
 FROM Vehiculos v
 LEFT JOIN Instalaciones i ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente AND i.Estatus = 1
-LEFT JOIN Dispositivos d ON d.Id = i.IdDispositivo
+LEFT JOIN (
+  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
+  FROM InstalacionesDispositivos
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_disp ON id_disp.IdInstalacion = i.Id
+LEFT JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 LEFT JOIN Posiciones up ON up.NumeroSerieDispositivo = d.NumeroSerie
     AND up.FechaHora >= NOW() - INTERVAL 15 MINUTE
 LEFT JOIN Turnos t ON t.IdCliente = v.IdCliente
@@ -1461,7 +1473,8 @@ VelocidadRuta AS (
     FROM Posiciones p
     INNER JOIN rango ON 1=1
     INNER JOIN Dispositivos d ON p.NumeroSerieDispositivo = d.NumeroSerie
-    INNER JOIN Instalaciones i ON d.Id = i.IdDispositivo AND d.IdCliente = i.IdCliente
+    INNER JOIN InstalacionesDispositivos id_disp ON id_disp.IdDispositivo = d.Id AND id_disp.Estatus = 1
+    INNER JOIN Instalaciones i ON i.Id = id_disp.IdInstalacion AND i.IdCliente = d.IdCliente
     INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND v.IdCliente = d.IdCliente
     INNER JOIN Turnos t ON i.Id = t.IdInstalacion AND t.Estatus = 1
     INNER JOIN Viajes vi ON t.Id = vi.IdTurno AND vi.Estatus = 1
@@ -1531,7 +1544,8 @@ VelocidadRuta AS (
     FROM Posiciones p
     INNER JOIN rango ON 1=1
     INNER JOIN Dispositivos d ON p.NumeroSerieDispositivo = d.NumeroSerie
-    INNER JOIN Instalaciones i ON d.Id = i.IdDispositivo AND d.IdCliente = i.IdCliente
+    INNER JOIN InstalacionesDispositivos id_disp ON id_disp.IdDispositivo = d.Id AND id_disp.Estatus = 1
+    INNER JOIN Instalaciones i ON i.Id = id_disp.IdInstalacion AND i.IdCliente = d.IdCliente
     INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND v.IdCliente = d.IdCliente
     INNER JOIN Turnos t ON i.Id = t.IdInstalacion AND t.Estatus = 1
     INNER JOIN Viajes vi ON t.Id = vi.IdTurno AND vi.Estatus = 1

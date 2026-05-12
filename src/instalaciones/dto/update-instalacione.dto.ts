@@ -30,15 +30,8 @@ export class BlueVoxAnteriorDto {
 
 export class UpdateInstalacioneDto extends PartialType(CreateInstalacionesDto) {
   @ApiProperty({
-    description: 'ID del dispositivo asociado a la instalación',
-    example: 101,
-  })
-  @IsOptional({ message: 'El IdDispositivo es obligatorio' })
-  @IsNumber()
-  idDispositivo?: number;
-
-  @ApiProperty({
-    description: 'ID del dispositivo asociado a la instalación',
+    description:
+      'Para saber el estado de los componentes en caso de cambiarlos',
     example: 101,
   })
   @IsOptional({
@@ -60,7 +53,7 @@ export class UpdateInstalacioneDto extends PartialType(CreateInstalacionesDto) {
   idsBlueVoxs?: number[];
 
   @ApiProperty({
-    description: 'ID del dispositivo asociado a la instalación',
+    description: 'Para saber el estado de los BlueVox en caso de cambiarlos',
     example: 101,
   })
   @IsOptional({
