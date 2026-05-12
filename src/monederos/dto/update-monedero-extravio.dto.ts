@@ -24,6 +24,4 @@ export class UpdateMonederoExtravioDto {
   })
   @IsString()
   numeroSerie: string;
-
-
 }

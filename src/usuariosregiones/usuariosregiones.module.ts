@@ -8,7 +8,10 @@ import { Regiones } from 'src/entities/Regiones';
 import { Usuarios } from 'src/entities/Usuarios';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([UsuariosRegiones,Regiones,Usuarios]), BitacoraModule],
+  imports: [
+    TypeOrmModule.forFeature([UsuariosRegiones, Regiones, Usuarios]),
+    BitacoraModule,
+  ],
   controllers: [UsuariosregionesController],
   providers: [UsuariosregionesService],
 })

@@ -19,7 +19,14 @@ import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
 import { UpdateMonederoCatPasajeroDto } from './dto/update-monedero-catpasajero.dto';
 import { UpdateMonederoExtravioDto } from './dto/update-monedero-extravio.dto';
-import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiParam,
+} from '@nestjs/swagger';
 
 @ApiTags('Monederos')
 @ApiBearerAuth('bearer-token')
@@ -58,19 +65,27 @@ export class MonederosController {
   })
   @ApiResponse({ status: 400, description: 'Error de validación' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
-  reportarExtravio(@Body() updateMonederoExtravioDto: UpdateMonederoExtravioDto, @Request() req) {
+  reportarExtravio(
+    @Body() updateMonederoExtravioDto: UpdateMonederoExtravioDto,
+    @Request() req,
+  ) {
     const idUser = req.user.userId;
-    return this.monederosService.reportarExtravio(+idUser, updateMonederoExtravioDto);
+    return this.monederosService.reportarExtravio(
+      +idUser,
+      updateMonederoExtravioDto,
+    );
   }
 
   @Post()
   @ApiOperation({
     summary: 'Crear monedero',
-    description: 'Registra un nuevo monedero electrónico asociado a un pasajero.',
+    description:
+      'Registra un nuevo monedero electrónico asociado a un pasajero.',
   })
   @ApiBody({
     type: CreateMonederoDto,
-    description: 'Datos del monedero: número de serie, idPasajero, idCatPasajero, etc.',
+    description:
+      'Datos del monedero: número de serie, idPasajero, idCatPasajero, etc.',
   })
   @ApiResponse({
     status: 201,
@@ -87,7 +102,10 @@ export class MonederosController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Error de validación o serie duplicada' })
+  @ApiResponse({
+    status: 400,
+    description: 'Error de validación o serie duplicada',
+  })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   createMonedero(@Body() createMonederoDto: CreateMonederoDto, @Request() req) {
     const idUser = req.user.userId;
@@ -101,7 +119,8 @@ export class MonederosController {
   @Get('list')
   @ApiOperation({
     summary: 'Listar monederos',
-    description: 'Obtiene el listado de monederos activos. El acceso depende del rol del usuario.',
+    description:
+      'Obtiene el listado de monederos activos. El acceso depende del rol del usuario.',
   })
   @ApiResponse({
     status: 200,
@@ -113,7 +132,12 @@ export class MonederosController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, numeroSerie: { type: 'string' }, idPasajero: { type: 'number' }, estatus: { type: 'number' } },
+            properties: {
+              id: { type: 'number' },
+              numeroSerie: { type: 'string' },
+              idPasajero: { type: 'number' },
+              estatus: { type: 'number' },
+            },
           },
         },
       },
@@ -138,7 +162,10 @@ export class MonederosController {
     summary: 'Obtener monedero por número de serie',
     description: 'Busca un monedero por su número de serie/tarjeta.',
   })
-  @ApiParam({ name: 'idCard', description: 'Número de serie de la tarjeta/monedero' })
+  @ApiParam({
+    name: 'idCard',
+    description: 'Número de serie de la tarjeta/monedero',
+  })
   @ApiResponse({
     status: 200,
     description: 'Detalle del monedero',
@@ -147,24 +174,28 @@ export class MonederosController {
       properties: {
         data: {
           type: 'object',
-          properties: { id: { type: 'number' }, numeroSerie: { type: 'string' }, idPasajero: { type: 'number' }, saldo: { type: 'number' }, estatus: { type: 'number' } },
+          properties: {
+            id: { type: 'number' },
+            numeroSerie: { type: 'string' },
+            idPasajero: { type: 'number' },
+            saldo: { type: 'number' },
+            estatus: { type: 'number' },
+          },
         },
       },
     },
   })
   @ApiResponse({ status: 404, description: 'Monedero no encontrado' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
-  findOneMonederoBySerie(
-    @Param('idCard') idCard: string,
-    @Request() req,
-  ) {
+  findOneMonederoBySerie(@Param('idCard') idCard: string, @Request() req) {
     return this.monederosService.findOneMonederoBySerie(idCard);
   }
 
   @Get(':page/:limit')
   @ApiOperation({
     summary: 'Listar monederos paginados',
-    description: 'Obtiene el catálogo paginado de monederos. El acceso depende del rol del usuario.',
+    description:
+      'Obtiene el catálogo paginado de monederos. El acceso depende del rol del usuario.',
   })
   @ApiParam({ name: 'page', description: 'Número de página (desde 1)' })
   @ApiParam({ name: 'limit', description: 'Registros por página' })
@@ -178,12 +209,22 @@ export class MonederosController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, numeroSerie: { type: 'string' }, idPasajero: { type: 'number' }, saldo: { type: 'number' }, estatus: { type: 'number' } },
+            properties: {
+              id: { type: 'number' },
+              numeroSerie: { type: 'string' },
+              idPasajero: { type: 'number' },
+              saldo: { type: 'number' },
+              estatus: { type: 'number' },
+            },
           },
         },
         paginated: {
           type: 'object',
-          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+          properties: {
+            total: { type: 'number' },
+            page: { type: 'number' },
+            lastPage: { type: 'number' },
+          },
         },
       },
     },
@@ -222,7 +263,13 @@ export class MonederosController {
       properties: {
         data: {
           type: 'object',
-          properties: { id: { type: 'number' }, numeroSerie: { type: 'string' }, idPasajero: { type: 'number' }, saldo: { type: 'number' }, estatus: { type: 'number' } },
+          properties: {
+            id: { type: 'number' },
+            numeroSerie: { type: 'string' },
+            idPasajero: { type: 'number' },
+            saldo: { type: 'number' },
+            estatus: { type: 'number' },
+          },
         },
       },
     },
@@ -280,7 +327,8 @@ export class MonederosController {
   @Patch('tipo/pasajero/:id')
   @ApiOperation({
     summary: 'Actualizar tipo de pasajero del monedero',
-    description: 'Cambia el tipo de pasajero (categoría tarifaria) asociado a un monedero.',
+    description:
+      'Cambia el tipo de pasajero (categoría tarifaria) asociado a un monedero.',
   })
   @ApiParam({ name: 'id', description: 'ID del monedero' })
   @ApiBody({
@@ -364,7 +412,8 @@ export class MonederosController {
   @Delete(':id')
   @ApiOperation({
     summary: 'Eliminar monedero',
-    description: 'Eliminación lógica: cambia el estatus del monedero a inactivo.',
+    description:
+      'Eliminación lógica: cambia el estatus del monedero a inactivo.',
   })
   @ApiParam({ name: 'id', description: 'ID del monedero a eliminar' })
   @ApiResponse({

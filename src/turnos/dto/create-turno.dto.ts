@@ -1,8 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDateString, IsInt, IsNotEmpty, IsIn, IsOptional, IsString } from 'class-validator';
+import {
+  IsDateString,
+  IsInt,
+  IsNotEmpty,
+  IsIn,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class CreateTurnoDto {
-
   @IsOptional()
   @IsDateString({}, { message: 'El inicio debe estar en formato ISO8601' })
   inicio?: Date;
@@ -35,5 +41,4 @@ export class CreateTurnoDto {
   @IsString()
   @IsNotEmpty()
   numeroSerieDispositivo: string;
-
 }

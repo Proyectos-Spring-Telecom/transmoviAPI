@@ -11,7 +11,7 @@ import { TransaccionesRecarga } from 'src/entities/TransaccionesRecarga';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Monederos,Clientes, TransaccionesRecarga]),
+    TypeOrmModule.forFeature([Monederos, Clientes, TransaccionesRecarga]),
     BitacoraModule,
     ClientesModule,
     PasajerosModule,

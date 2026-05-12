@@ -12,7 +12,13 @@ import { Monederos } from 'src/entities/Monederos';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Pasajeros, Clientes, Usuarios, UsuariosPermisos, Monederos]),
+    TypeOrmModule.forFeature([
+      Pasajeros,
+      Clientes,
+      Usuarios,
+      UsuariosPermisos,
+      Monederos,
+    ]),
     BitacoraModule,
   ],
   controllers: [PasajerosController],

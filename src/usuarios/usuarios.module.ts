@@ -15,14 +15,19 @@ import { Dispositivos } from 'src/entities/Dispositivos';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Usuarios, UsuariosPermisos, Clientes, Dispositivos]),
+    TypeOrmModule.forFeature([
+      Usuarios,
+      UsuariosPermisos,
+      Clientes,
+      Dispositivos,
+    ]),
     BitacoraModule,
     ClientesModule,
     PermisosModule,
     MailModule,
-    AuthModule
+    AuthModule,
   ],
   controllers: [UsuariosController],
   providers: [UsuariosService],
 })
-export class UsuariosModule { }
+export class UsuariosModule {}

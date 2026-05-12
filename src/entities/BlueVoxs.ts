@@ -9,7 +9,7 @@ import {
 } from 'typeorm';
 import { Clientes } from './Clientes';
 import { ConteoPasajeros } from './ConteoPasajeros';
-import { Instalaciones } from './Instalaciones';
+import { HistoricoConteoPasajeros } from './HistoricoConteoPasajeros';
 import { InstalacionesBlueVoxs } from './InstalacionesBlueVoxs';
 import { applySchema } from 'src/common/apply-schema.decorator';
 
@@ -46,7 +46,7 @@ export class BlueVoxs {
   @Column('tinyint', { name: 'Estatus', default: () => "'1'" })
   estatus: number;
 
-  @Column('tinyint',{ name: 'EstadoActual', unsigned: true })
+  @Column('tinyint', { name: 'EstadoActual', unsigned: true })
   estadoActual: number;
 
   @Column('bigint', { name: 'IdCliente' })
@@ -65,10 +65,18 @@ export class BlueVoxs {
   )
   conteoPasajeros: ConteoPasajeros[];
 
+  @OneToMany(
+    () => HistoricoConteoPasajeros,
+    (historicoConteoPasajeros) => historicoConteoPasajeros.numeroSerieBlueVox2,
+  )
+  historicoConteoPasajeros: HistoricoConteoPasajeros[];
+
   // Relación correcta según BD:
   // BlueVoxs.IdInstalaciones (FK) -> Instalaciones.Id
 
-
-  @OneToMany(() => InstalacionesBlueVoxs, (instalacionesBlueVoxs) => instalacionesBlueVoxs.idBlueVox2)
+  @OneToMany(
+    () => InstalacionesBlueVoxs,
+    (instalacionesBlueVoxs) => instalacionesBlueVoxs.idBlueVox2,
+  )
   instalacionesBlueVoxs: InstalacionesBlueVoxs[];
 }

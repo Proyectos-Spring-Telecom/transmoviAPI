@@ -17,7 +17,14 @@ import { UpdateOperadoreDto } from './dto/update-operadore.dto';
 import { UpdateOperadorStatusDto } from './dto/update-operadores-estatus.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
-import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiBody,
+} from '@nestjs/swagger';
 
 @ApiTags('Operadores')
 @ApiBearerAuth('bearer-token')
@@ -63,7 +70,8 @@ export class OperadoresController {
   @Get('list')
   @ApiOperation({
     summary: 'Listar operadores',
-    description: 'Obtiene el listado de operadores activos. El acceso depende del rol del usuario.',
+    description:
+      'Obtiene el listado de operadores activos. El acceso depende del rol del usuario.',
   })
   @ApiResponse({
     status: 200,
@@ -75,23 +83,28 @@ export class OperadoresController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, nombre: { type: 'string' }, numeroLicencia: { type: 'string' } },
+            properties: {
+              id: { type: 'number' },
+              nombre: { type: 'string' },
+              numeroLicencia: { type: 'string' },
+            },
           },
         },
       },
     },
   })
   @ApiResponse({ status: 401, description: 'No autorizado' })
-  findAllListOperador(@Request() req,): Promise<ApiResponseCommon> {
+  findAllListOperador(@Request() req): Promise<ApiResponseCommon> {
     const cliente = req.user.cliente;
     const rol = req.user.rol;
-    return this.operadoresService.findAllListOperadores(+cliente, +rol,);
+    return this.operadoresService.findAllListOperadores(+cliente, +rol);
   }
 
   @Get('by-cliente/:idCliente')
   @ApiOperation({
     summary: 'Listar operadores por ID de cliente',
-    description: 'Obtiene todos los operadores activos pertenecientes únicamente al cliente especificado (a través de la relación Operadores -> Usuarios -> Clientes).',
+    description:
+      'Obtiene todos los operadores activos pertenecientes únicamente al cliente especificado (a través de la relación Operadores -> Usuarios -> Clientes).',
   })
   @ApiParam({
     name: 'idCliente',
@@ -109,7 +122,12 @@ export class OperadoresController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, nombre: { type: 'string' }, numeroLicencia: { type: 'string' }, idCliente: { type: 'number' } },
+            properties: {
+              id: { type: 'number' },
+              nombre: { type: 'string' },
+              numeroLicencia: { type: 'string' },
+              idCliente: { type: 'number' },
+            },
           },
         },
       },
@@ -129,13 +147,18 @@ export class OperadoresController {
   ): Promise<ApiResponseCommon> {
     const idUser = req.user.userId;
     const rol = req.user.rol;
-    return await this.operadoresService.findByCliente(+idCliente, +idUser, +rol);
+    return await this.operadoresService.findByCliente(
+      +idCliente,
+      +idUser,
+      +rol,
+    );
   }
 
   @Get(':page/:limit')
   @ApiOperation({
     summary: 'Listar operadores paginados',
-    description: 'Obtiene el catálogo paginado de operadores. El acceso depende del rol del usuario.',
+    description:
+      'Obtiene el catálogo paginado de operadores. El acceso depende del rol del usuario.',
   })
   @ApiParam({ name: 'page', description: 'Número de página (desde 1)' })
   @ApiParam({ name: 'limit', description: 'Registros por página' })
@@ -149,12 +172,22 @@ export class OperadoresController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, nombre: { type: 'string' }, numeroLicencia: { type: 'string' }, idCliente: { type: 'number' }, estatus: { type: 'number' } },
+            properties: {
+              id: { type: 'number' },
+              nombre: { type: 'string' },
+              numeroLicencia: { type: 'string' },
+              idCliente: { type: 'number' },
+              estatus: { type: 'number' },
+            },
           },
         },
         paginated: {
           type: 'object',
-          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+          properties: {
+            total: { type: 'number' },
+            page: { type: 'number' },
+            lastPage: { type: 'number' },
+          },
         },
       },
     },
@@ -167,7 +200,12 @@ export class OperadoresController {
   ): Promise<ApiResponseCommon> {
     const cliente = req.user.cliente;
     const rol = req.user.rol;
-    return this.operadoresService.findAllOperadores(+cliente, +rol, page, limit);
+    return this.operadoresService.findAllOperadores(
+      +cliente,
+      +rol,
+      page,
+      limit,
+    );
   }
 
   @Get(':id')
@@ -184,17 +222,23 @@ export class OperadoresController {
       properties: {
         data: {
           type: 'object',
-          properties: { id: { type: 'number' }, nombre: { type: 'string' }, numeroLicencia: { type: 'string' }, idCliente: { type: 'number' }, estatus: { type: 'number' } },
+          properties: {
+            id: { type: 'number' },
+            nombre: { type: 'string' },
+            numeroLicencia: { type: 'string' },
+            idCliente: { type: 'number' },
+            estatus: { type: 'number' },
+          },
         },
       },
     },
   })
   @ApiResponse({ status: 404, description: 'Operador no encontrado' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
-  findOneOperador(@Param('id') id: string,@Request() req) {
+  findOneOperador(@Param('id') id: string, @Request() req) {
     const cliente = req.user.cliente;
     const rol = req.user.rol;
-    return this.operadoresService.findOneOperador(+id, +cliente, + rol);
+    return this.operadoresService.findOneOperador(+id, +cliente, +rol);
   }
 
   @Patch('estatus/:id')
@@ -280,7 +324,8 @@ export class OperadoresController {
   @Delete(':id')
   @ApiOperation({
     summary: 'Eliminar operador',
-    description: 'Eliminación lógica: cambia el estatus del operador a inactivo.',
+    description:
+      'Eliminación lógica: cambia el estatus del operador a inactivo.',
   })
   @ApiParam({ name: 'id', description: 'ID del operador a eliminar' })
   @ApiResponse({

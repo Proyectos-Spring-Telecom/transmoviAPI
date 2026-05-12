@@ -16,7 +16,14 @@ import { CreateTarifaDto } from './dto/create-tarifa.dto';
 import { UpdateTarifaDto } from './dto/update-tarifa.dto';
 import { UpdateTarifasEstatusDto } from './dto/update-tarifa-estatus.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiParam,
+} from '@nestjs/swagger';
 
 @ApiTags('Tarifas')
 @ApiBearerAuth('bearer-token')
@@ -32,7 +39,8 @@ export class TarifasController {
   })
   @ApiBody({
     type: CreateTarifaDto,
-    description: 'tarifaBase, tipoTarifa, idDerrotero, distanciaKm, idCatPasajero, estatus, etc.',
+    description:
+      'tarifaBase, tipoTarifa, idDerrotero, distanciaKm, idCatPasajero, estatus, etc.',
   })
   @ApiResponse({
     status: 201,
@@ -61,7 +69,8 @@ export class TarifasController {
   @Get('list')
   @ApiOperation({
     summary: 'Listar tarifas',
-    description: 'Obtiene el listado de tarifas activas. El acceso depende del rol del usuario.',
+    description:
+      'Obtiene el listado de tarifas activas. El acceso depende del rol del usuario.',
   })
   @ApiResponse({
     status: 200,
@@ -73,7 +82,12 @@ export class TarifasController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, tarifaBase: { type: 'number' }, idDerrotero: { type: 'number' }, tipoTarifa: { type: 'number' } },
+            properties: {
+              id: { type: 'number' },
+              tarifaBase: { type: 'number' },
+              idDerrotero: { type: 'number' },
+              tipoTarifa: { type: 'number' },
+            },
           },
         },
       },
@@ -90,7 +104,8 @@ export class TarifasController {
   @Get(':page/:limit')
   @ApiOperation({
     summary: 'Listar tarifas paginadas',
-    description: 'Obtiene el catálogo paginado de tarifas. El acceso depende del rol del usuario.',
+    description:
+      'Obtiene el catálogo paginado de tarifas. El acceso depende del rol del usuario.',
   })
   @ApiParam({ name: 'page', description: 'Número de página (desde 1)' })
   @ApiParam({ name: 'limit', description: 'Registros por página' })
@@ -104,12 +119,23 @@ export class TarifasController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, tarifaBase: { type: 'number' }, idDerrotero: { type: 'number' }, tipoTarifa: { type: 'number' }, idCliente: { type: 'number' }, estatus: { type: 'number' } },
+            properties: {
+              id: { type: 'number' },
+              tarifaBase: { type: 'number' },
+              idDerrotero: { type: 'number' },
+              tipoTarifa: { type: 'number' },
+              idCliente: { type: 'number' },
+              estatus: { type: 'number' },
+            },
           },
         },
         paginated: {
           type: 'object',
-          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+          properties: {
+            total: { type: 'number' },
+            page: { type: 'number' },
+            lastPage: { type: 'number' },
+          },
         },
       },
     },
@@ -140,7 +166,14 @@ export class TarifasController {
       properties: {
         data: {
           type: 'object',
-          properties: { id: { type: 'number' }, tarifaBase: { type: 'number' }, idDerrotero: { type: 'number' }, tipoTarifa: { type: 'number' }, idCliente: { type: 'number' }, estatus: { type: 'number' } },
+          properties: {
+            id: { type: 'number' },
+            tarifaBase: { type: 'number' },
+            idDerrotero: { type: 'number' },
+            tipoTarifa: { type: 'number' },
+            idCliente: { type: 'number' },
+            estatus: { type: 'number' },
+          },
         },
       },
     },
@@ -204,7 +237,8 @@ export class TarifasController {
   @ApiParam({ name: 'id', description: 'ID de la tarifa a actualizar' })
   @ApiBody({
     type: UpdateTarifaDto,
-    description: 'Campos a actualizar: tarifaBase, tipoTarifa, distanciaKm, estatus',
+    description:
+      'Campos a actualizar: tarifaBase, tipoTarifa, distanciaKm, estatus',
   })
   @ApiResponse({
     status: 200,
@@ -237,7 +271,8 @@ export class TarifasController {
   @Delete('eliminado/total/:id')
   @ApiOperation({
     summary: 'Eliminar tarifa permanentemente',
-    description: 'Eliminación física del registro. Solo disponible para SuperAdministrador.',
+    description:
+      'Eliminación física del registro. Solo disponible para SuperAdministrador.',
   })
   @ApiParam({ name: 'id', description: 'ID de la tarifa a eliminar' })
   @ApiResponse({
@@ -255,7 +290,10 @@ export class TarifasController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Acceso denegado (solo SuperAdmin)' })
+  @ApiResponse({
+    status: 400,
+    description: 'Acceso denegado (solo SuperAdmin)',
+  })
   @ApiResponse({ status: 404, description: 'Tarifa no encontrada' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   removeTotal(@Param('id') id: string, @Request() req) {
@@ -268,7 +306,8 @@ export class TarifasController {
   @Delete(':id')
   @ApiOperation({
     summary: 'Eliminar tarifa',
-    description: 'Eliminación lógica: cambia el estatus de la tarifa a inactivo.',
+    description:
+      'Eliminación lógica: cambia el estatus de la tarifa a inactivo.',
   })
   @ApiParam({ name: 'id', description: 'ID de la tarifa a eliminar' })
   @ApiResponse({

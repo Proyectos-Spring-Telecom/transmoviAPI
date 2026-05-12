@@ -16,7 +16,14 @@ import { CreateDerroteroDto } from './dto/create-derrotero.dto';
 import { UpdateDerroteroDto } from './dto/update-derrotero.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { UpdateDerroterosEstatusDto } from './dto/update-derrotero-estatus.dto';
-import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiBody,
+} from '@nestjs/swagger';
 
 @ApiTags('Derroteros')
 @ApiBearerAuth('bearer-token')
@@ -49,14 +56,32 @@ export class DerroterosController {
           properties: {
             derroteroPrincipal: {
               type: 'object',
-              properties: { id: { type: 'number' }, nombre: { type: 'string' }, distanciaKm: { type: 'number' }, estatus: { type: 'number' }, idRuta: { type: 'number' } },
+              properties: {
+                id: { type: 'number' },
+                nombre: { type: 'string' },
+                distanciaKm: { type: 'number' },
+                estatus: { type: 'number' },
+                idRuta: { type: 'number' },
+              },
             },
             tarifaPrincipal: {
               type: 'object',
-              properties: { id: { type: 'number' }, tarifaBase: { type: 'number' }, tipoTarifa: { type: 'number' }, estatus: { type: 'number' }, idDerrotero: { type: 'number' } },
+              properties: {
+                id: { type: 'number' },
+                tarifaBase: { type: 'number' },
+                tipoTarifa: { type: 'number' },
+                estatus: { type: 'number' },
+                idDerrotero: { type: 'number' },
+              },
             },
-            derroteroRegreso: { type: 'object', description: 'Presente si se creó derrotero de regreso' },
-            tarifaRegreso: { type: 'object', description: 'Presente si se creó tarifa de regreso' },
+            derroteroRegreso: {
+              type: 'object',
+              description: 'Presente si se creó derrotero de regreso',
+            },
+            tarifaRegreso: {
+              type: 'object',
+              description: 'Presente si se creó tarifa de regreso',
+            },
           },
         },
       },
@@ -68,7 +93,12 @@ export class DerroterosController {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
     const rol = req.user.rol;
-    return this.derroterosService.create(+idUser, +cliente, +rol, createDerroteroDto);
+    return this.derroterosService.create(
+      +idUser,
+      +cliente,
+      +rol,
+      createDerroteroDto,
+    );
   }
 
   @Get('list')
@@ -116,7 +146,8 @@ export class DerroterosController {
   @Get('by-ruta/:idRuta')
   @ApiOperation({
     summary: 'Listar derroteros por ID de ruta',
-    description: 'Obtiene todos los derroteros activos pertenecientes únicamente a la ruta especificada.',
+    description:
+      'Obtiene todos los derroteros activos pertenecientes únicamente a la ruta especificada.',
   })
   @ApiParam({ name: 'idRuta', description: 'ID de la ruta' })
   @ApiResponse({
@@ -193,7 +224,11 @@ export class DerroterosController {
         },
         paginated: {
           type: 'object',
-          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+          properties: {
+            total: { type: 'number' },
+            page: { type: 'number' },
+            lastPage: { type: 'number' },
+          },
         },
       },
     },
@@ -213,7 +248,8 @@ export class DerroterosController {
   @Get(':id')
   @ApiOperation({
     summary: 'Obtener derrotero por ID',
-    description: 'Obtiene el detalle completo de un derrotero, incluyendo recorrido interpolado.',
+    description:
+      'Obtiene el detalle completo de un derrotero, incluyendo recorrido interpolado.',
   })
   @ApiParam({ name: 'id', description: 'ID del derrotero' })
   @ApiResponse({
@@ -290,18 +326,26 @@ export class DerroterosController {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
     const rol = req.user.rol;
-    return this.derroterosService.updateEstatus(+id, +idUser, +cliente, +rol, updateDerroterosEstatusDto);
+    return this.derroterosService.updateEstatus(
+      +id,
+      +idUser,
+      +cliente,
+      +rol,
+      updateDerroterosEstatusDto,
+    );
   }
 
   @Put(':id')
   @ApiOperation({
     summary: 'Actualizar derrotero',
-    description: 'Modifica los datos de un derrotero existente. Si se envía recorridoDetallado, se recalcula la distancia e interpolación.',
+    description:
+      'Modifica los datos de un derrotero existente. Si se envía recorridoDetallado, se recalcula la distancia e interpolación.',
   })
   @ApiParam({ name: 'id', description: 'ID del derrotero a actualizar' })
   @ApiBody({
     type: UpdateDerroteroDto,
-    description: 'Campos a actualizar (todos opcionales): nombre, puntoInicio, puntoFin, recorridoDetallado, distanciaKm, estatus, idRuta, tarifa, etc.',
+    description:
+      'Campos a actualizar (todos opcionales): nombre, puntoInicio, puntoFin, recorridoDetallado, distanciaKm, estatus, idRuta, tarifa, etc.',
   })
   @ApiResponse({
     status: 200,
@@ -328,13 +372,20 @@ export class DerroterosController {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
     const rol = req.user.rol;
-    return this.derroterosService.update(+id, +idUser, +cliente, +rol, updateDerroteroDto);
+    return this.derroterosService.update(
+      +id,
+      +idUser,
+      +cliente,
+      +rol,
+      updateDerroteroDto,
+    );
   }
 
   @Delete('eliminado/total/:id')
   @ApiOperation({
     summary: 'Eliminar derrotero permanentemente',
-    description: 'Eliminación física del registro. Solo disponible para SuperAdministrador.',
+    description:
+      'Eliminación física del registro. Solo disponible para SuperAdministrador.',
   })
   @ApiParam({ name: 'id', description: 'ID del derrotero a eliminar' })
   @ApiResponse({
@@ -352,7 +403,10 @@ export class DerroterosController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Acceso denegado (solo SuperAdmin)' })
+  @ApiResponse({
+    status: 400,
+    description: 'Acceso denegado (solo SuperAdmin)',
+  })
   @ApiResponse({ status: 404, description: 'Derrotero no encontrado' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   removeTotal(@Param('id') id: string, @Request() req) {
@@ -365,7 +419,8 @@ export class DerroterosController {
   @Delete(':id')
   @ApiOperation({
     summary: 'Eliminar derrotero (lógico)',
-    description: 'Eliminación lógica: cambia el estatus del derrotero a inactivo (0).',
+    description:
+      'Eliminación lógica: cambia el estatus del derrotero a inactivo (0).',
   })
   @ApiParam({ name: 'id', description: 'ID del derrotero a eliminar' })
   @ApiResponse({
@@ -391,5 +446,4 @@ export class DerroterosController {
     const rol = req.user.rol;
     return this.derroterosService.remove(+id, +idUser, +cliente, +rol);
   }
-
 }

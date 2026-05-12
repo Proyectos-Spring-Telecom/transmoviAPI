@@ -17,7 +17,14 @@ import { UpdateVehiculoDto } from './dto/update-vehiculo.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
 import { UpdateVehiculoEstatusDto } from './dto/update-vehiculos-estatus.dto';
-import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiBody,
+} from '@nestjs/swagger';
 
 @ApiTags('Vehiculos')
 @ApiBearerAuth('bearer-token')
@@ -33,7 +40,8 @@ export class VehiculosController {
   })
   @ApiBody({
     type: CreateVehiculoDto,
-    description: 'Datos del vehículo: numeroEconomico, placas, idCliente, idModelo, etc.',
+    description:
+      'Datos del vehículo: numeroEconomico, placas, idCliente, idModelo, etc.',
   })
   @ApiResponse({
     status: 201,
@@ -60,7 +68,8 @@ export class VehiculosController {
   @Get('list')
   @ApiOperation({
     summary: 'Listar vehículos',
-    description: 'Obtiene el listado de vehículos activos. El acceso depende del rol del usuario.',
+    description:
+      'Obtiene el listado de vehículos activos. El acceso depende del rol del usuario.',
   })
   @ApiResponse({
     status: 200,
@@ -72,7 +81,12 @@ export class VehiculosController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, numeroEconomico: { type: 'string' }, placas: { type: 'string' }, idCliente: { type: 'number' } },
+            properties: {
+              id: { type: 'number' },
+              numeroEconomico: { type: 'string' },
+              placas: { type: 'string' },
+              idCliente: { type: 'number' },
+            },
           },
         },
       },
@@ -88,7 +102,8 @@ export class VehiculosController {
   @Get('by-cliente/:idCliente')
   @ApiOperation({
     summary: 'Listar vehículos por ID de cliente',
-    description: 'Obtiene todos los vehículos activos pertenecientes únicamente al cliente especificado.',
+    description:
+      'Obtiene todos los vehículos activos pertenecientes únicamente al cliente especificado.',
   })
   @ApiParam({
     name: 'idCliente',
@@ -106,7 +121,13 @@ export class VehiculosController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, numeroEconomico: { type: 'string' }, placas: { type: 'string' }, idCliente: { type: 'number' }, estatus: { type: 'number' } },
+            properties: {
+              id: { type: 'number' },
+              numeroEconomico: { type: 'string' },
+              placas: { type: 'string' },
+              idCliente: { type: 'number' },
+              estatus: { type: 'number' },
+            },
           },
         },
       },
@@ -132,7 +153,8 @@ export class VehiculosController {
   @Get('clientes/:id')
   @ApiOperation({
     summary: 'Listar vehículos por ID de cliente',
-    description: 'Obtiene los vehículos (y dispositivos asociados) del cliente especificado.',
+    description:
+      'Obtiene los vehículos (y dispositivos asociados) del cliente especificado.',
   })
   @ApiParam({ name: 'id', description: 'ID del cliente' })
   @ApiResponse({
@@ -145,7 +167,11 @@ export class VehiculosController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, numeroEconomico: { type: 'string' }, idCliente: { type: 'number' } },
+            properties: {
+              id: { type: 'number' },
+              numeroEconomico: { type: 'string' },
+              idCliente: { type: 'number' },
+            },
           },
         },
       },
@@ -154,7 +180,7 @@ export class VehiculosController {
   @ApiResponse({ status: 401, description: 'No autorizado' })
   async findAllDispositivosClientes(
     @Param('id', ParseIntPipe) id: number,
-    @Request() req
+    @Request() req,
   ): Promise<ApiResponseCommon> {
     const cliente = req.user.cliente;
     const rol = req.user.rol;
@@ -164,7 +190,8 @@ export class VehiculosController {
   @Get(':page/:limit')
   @ApiOperation({
     summary: 'Listar vehículos paginados',
-    description: 'Obtiene el catálogo paginado de vehículos. El acceso depende del rol del usuario.',
+    description:
+      'Obtiene el catálogo paginado de vehículos. El acceso depende del rol del usuario.',
   })
   @ApiParam({ name: 'page', description: 'Número de página (desde 1)' })
   @ApiParam({ name: 'limit', description: 'Registros por página' })
@@ -178,12 +205,22 @@ export class VehiculosController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, numeroEconomico: { type: 'string' }, placas: { type: 'string' }, idCliente: { type: 'number' }, estatus: { type: 'number' } },
+            properties: {
+              id: { type: 'number' },
+              numeroEconomico: { type: 'string' },
+              placas: { type: 'string' },
+              idCliente: { type: 'number' },
+              estatus: { type: 'number' },
+            },
           },
         },
         paginated: {
           type: 'object',
-          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+          properties: {
+            total: { type: 'number' },
+            page: { type: 'number' },
+            lastPage: { type: 'number' },
+          },
         },
       },
     },
@@ -213,7 +250,14 @@ export class VehiculosController {
       properties: {
         data: {
           type: 'object',
-          properties: { id: { type: 'number' }, numeroEconomico: { type: 'string' }, placas: { type: 'string' }, idCliente: { type: 'number' }, idModelo: { type: 'number' }, estatus: { type: 'number' } },
+          properties: {
+            id: { type: 'number' },
+            numeroEconomico: { type: 'string' },
+            placas: { type: 'string' },
+            idCliente: { type: 'number' },
+            idModelo: { type: 'number' },
+            estatus: { type: 'number' },
+          },
         },
       },
     },
@@ -305,7 +349,8 @@ export class VehiculosController {
   @Delete(':id')
   @ApiOperation({
     summary: 'Eliminar vehículo',
-    description: 'Eliminación lógica: cambia el estatus del vehículo a inactivo.',
+    description:
+      'Eliminación lógica: cambia el estatus del vehículo a inactivo.',
   })
   @ApiParam({ name: 'id', description: 'ID del vehículo a eliminar' })
   @ApiResponse({

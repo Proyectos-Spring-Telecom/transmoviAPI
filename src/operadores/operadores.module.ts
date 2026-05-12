@@ -9,7 +9,11 @@ import { LicenciasModule } from 'src/licencias/licencias.module';
 import { Licencias } from 'src/entities/Licencias';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Operadores,Clientes,Licencias]), BitacoraModule,LicenciasModule],
+  imports: [
+    TypeOrmModule.forFeature([Operadores, Clientes, Licencias]),
+    BitacoraModule,
+    LicenciasModule,
+  ],
   controllers: [OperadoresController],
   providers: [OperadoresService],
 })

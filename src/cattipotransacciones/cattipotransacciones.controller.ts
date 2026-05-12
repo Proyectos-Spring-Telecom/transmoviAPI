@@ -1,14 +1,21 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
 import { CattipotransaccionesService } from './cattipotransacciones.service';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+} from '@nestjs/swagger';
 
 @ApiTags('Catálogo tipo transacciones')
 @ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('cattipotransacciones')
 export class CattipotransaccionesController {
-  constructor(private readonly cattipotransaccionesService: CattipotransaccionesService) {}
+  constructor(
+    private readonly cattipotransaccionesService: CattipotransaccionesService,
+  ) {}
 
   @Get('list')
   @ApiOperation({
@@ -27,8 +34,14 @@ export class CattipotransaccionesController {
           items: {
             type: 'object',
             properties: {
-              idCatTiposTransacciones: { type: 'number', description: 'ID del tipo de transacción' },
-              nombreCatTiposTransacciones: { type: 'string', description: 'Nombre del tipo de transacción' },
+              idCatTiposTransacciones: {
+                type: 'number',
+                description: 'ID del tipo de transacción',
+              },
+              nombreCatTiposTransacciones: {
+                type: 'string',
+                description: 'Nombre del tipo de transacción',
+              },
             },
           },
         },

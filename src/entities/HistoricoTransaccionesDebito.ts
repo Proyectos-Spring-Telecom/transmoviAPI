@@ -1,14 +1,13 @@
-import {
-  Column,
-  Entity,
-  Index,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
+import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { applySchema } from 'src/common/apply-schema.decorator';
 
 @applySchema
 @Index('FK_HistTransDeb_NumeroSerieMonedero_idx', ['numeroSerieMonedero'], {})
-@Index('FK_HistTransDeb_NumeroSerieDispositivo_idx', ['numeroSerieDispositivo'], {})
+@Index(
+  'FK_HistTransDeb_NumeroSerieDispositivo_idx',
+  ['numeroSerieDispositivo'],
+  {},
+)
 @Index('FK_HistTransDeb_CatTiposTransacciones_idx', ['idTipoTransaccion'], {})
 @Entity('HistoricoTransaccionesDebito')
 export class HistoricoTransaccionesDebito {
@@ -24,16 +23,31 @@ export class HistoricoTransaccionesDebito {
   @Column('bigint', { name: 'IdControlTransaccion', nullable: true })
   idControlTransaccion: number | null;
 
-  @Column('decimal', { name: 'LatitudInicial', precision: 10, scale: 7, nullable: true })
+  @Column('decimal', {
+    name: 'LatitudInicial',
+    precision: 10,
+    scale: 7,
+    nullable: true,
+  })
   latitudInicial: number | null;
 
-  @Column('decimal', { name: 'LongitudInicial', precision: 10, scale: 7, nullable: true })
+  @Column('decimal', {
+    name: 'LongitudInicial',
+    precision: 10,
+    scale: 7,
+    nullable: true,
+  })
   longitudInicial: number | null;
 
   @Column('datetime', { name: 'FechaHoraInicio', nullable: true })
   fechaHoraInicio: Date | null;
 
-  @Column('decimal', { name: 'DistanciaInicialKm', precision: 10, scale: 2, nullable: true })
+  @Column('decimal', {
+    name: 'DistanciaInicialKm',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+  })
   distanciaInicialKm: number | null;
 
   @Column('decimal', {

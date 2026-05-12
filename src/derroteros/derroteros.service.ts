@@ -20,9 +20,9 @@ import { Derroteros } from 'src/entities/Derroteros';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import { UsuariosRegiones } from 'src/entities/UsuariosRegiones';
 import { UpdateDerroterosEstatusDto } from './dto/update-derrotero-estatus.dto';
-import { Clientes } from 'src/entities/Clientes';
 import { EnumModulos } from 'src/common/estatus.enum';
 import { Tarifas } from 'src/entities/Tarifas';
+import { ClientesJerarquiaService } from 'src/clientes-jerarquia/clientes-jerarquia.service';
 
 @Injectable()
 export class DerroterosService {
@@ -35,10 +35,9 @@ export class DerroterosService {
     private readonly usuariosregionesRepository: Repository<UsuariosRegiones>,
     @InjectRepository(Derroteros)
     private readonly derroterosRepository: Repository<Derroteros>,
-    @InjectRepository(Clientes)
-    private readonly clienteRepository: Repository<Clientes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
-  ) { }
+    private readonly clientesJerarquia: ClientesJerarquiaService,
+  ) {}
 
   async create(
     idUser: number,
@@ -107,7 +106,7 @@ export class DerroterosService {
         tipoTarifa,
         estatus: estatusTarifa ?? 1,
         idDerrotero: derroteroSave.id,
-      })
+      });
 
       const tarifaSave = await this.tarifasRepository.save(newTarifa);
 
@@ -133,7 +132,7 @@ export class DerroterosService {
 
         const {
           recorridoDetallado: recorridoRegreso,
-          distanciaKm: distanciaRegreso
+          distanciaKm: distanciaRegreso,
         } = await generarRecorridoDetallado(puntosRegreso as any);
 
         // Crear derrotero de regreso
@@ -149,7 +148,8 @@ export class DerroterosService {
 
         derroteroRegreso.recorridoInterpolar = recorridoRegreso;
 
-        derroteroRegresoSave = await this.derroterosRepository.save(derroteroRegreso);
+        derroteroRegresoSave =
+          await this.derroterosRepository.save(derroteroRegreso);
 
         await this.bitacoraLogger.logToBitacora(
           'Derroteros',
@@ -243,7 +243,6 @@ export class DerroterosService {
       };
 
       return result;
-
     } catch (error) {
       console.log(error);
       await this.bitacoraLogger.logToBitacora(
@@ -268,32 +267,13 @@ export class DerroterosService {
     }
   }
 
-  //funcion para obtener los clientes hijos
-  private async clienteHijos(cliente: number) {
-    const clientesFiltrado = await this.clienteRepository.query(
-      `CALL spGetClientes(?);`,
-      [cliente],
-    );
-
-    const idsFiltrados = clientesFiltrado[0]; // El primer índice contiene los resultados
-    const ids = idsFiltrados
-      .map((clientesFiltrado: any) => Number(clientesFiltrado.Id))
-      .filter(Boolean);
-    if (ids.length === 0) {
-      return { data: [] }; // No hay clientes que consultar
-    }
-
-    // 3. Construir el query dinámico con los IDs
-    const placeholders = ids.map(() => '?').join(', ');
-    return { ids, placeholders };
-  }
-
   private async consultarDerroteroPaginado(
     cliente: number,
     limit: number,
     offset: number,
   ) {
-    const { ids, placeholders } = await this.clienteHijos(cliente);
+    const { ids, placeholders } =
+      await this.clientesJerarquia.obtenerJerarquia(cliente);
     const query = `
   SELECT 
     -- Datos del derrotero (datos principales)
@@ -360,7 +340,8 @@ ORDER BY d.Id DESC
   }
 
   private async consultarTotalDerroteroPaginados(cliente: number) {
-    const { ids, placeholders } = await this.clienteHijos(cliente);
+    const { ids, placeholders } =
+      await this.clientesJerarquia.obtenerJerarquia(cliente);
     const query = `  
     SELECT COUNT(*) AS total
 FROM Derroteros d
@@ -501,7 +482,8 @@ WHERE ru.Estatus = 1         -- Solo rutas activas
 
         default:
           // Consulta de datos paginados Usuario
-          const { ids, placeholders } = await this.clienteHijos(cliente)
+          const { ids, placeholders } =
+            await this.clientesJerarquia.obtenerJerarquia(cliente);
           data = await this.usuariosregionesRepository.query(
             `
   SELECT 
@@ -620,7 +602,8 @@ WHERE ur.IdUsuario = ?
   }
 
   private async consultarDerroteroListado(cliente: number) {
-    const { ids, placeholders } = await this.clienteHijos(cliente);
+    const { ids, placeholders } =
+      await this.clientesJerarquia.obtenerJerarquia(cliente);
     const query = `
   SELECT 
     -- Datos del derrotero (datos principales)
@@ -771,7 +754,8 @@ ORDER BY d.Id DESC;
 
         default:
           // Consulta de datos paginados Usuario
-          const { ids, placeholders } = await this.clienteHijos(cliente)
+          const { ids, placeholders } =
+            await this.clientesJerarquia.obtenerJerarquia(cliente);
           data = await this.usuariosregionesRepository.query(
             `
       SELECT 
@@ -964,7 +948,8 @@ ORDER BY d.Id DESC
   }
 
   private async consultarDerroteroOne(cliente: number, id: number) {
-    const { ids, placeholders } = await this.clienteHijos(cliente);
+    const { ids, placeholders } =
+      await this.clientesJerarquia.obtenerJerarquia(cliente);
     const query = `
   SELECT 
     -- Datos del derrotero (datos principales)
@@ -1118,7 +1103,8 @@ WHERE ur.IdUsuario = ?
 
         default:
           // Consulta de datos paginados Usuario
-          const { ids, placeholders } = await this.clienteHijos(cliente)
+          const { ids, placeholders } =
+            await this.clientesJerarquia.obtenerJerarquia(cliente);
           data = await this.usuariosregionesRepository.query(
             `
     SELECT 
@@ -1283,7 +1269,7 @@ WHERE ur.IdUsuario = ?
     updateDerroteroDto: UpdateDerroteroDto,
   ) {
     try {
-      let newDerrotero = this.derroterosRepository.create(updateDerroteroDto);
+      const newDerrotero = this.derroterosRepository.create(updateDerroteroDto);
 
       if (
         Array.isArray(updateDerroteroDto.recorridoDetallado) &&

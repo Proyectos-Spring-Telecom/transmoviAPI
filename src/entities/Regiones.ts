@@ -6,51 +6,51 @@ import {
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
-} from "typeorm";
-import { Clientes } from "./Clientes";
-import { Rutas } from "./Rutas";
-import { UsuariosRegiones } from "./UsuariosRegiones";
-import { applySchema } from "src/common/apply-schema.decorator";
+} from 'typeorm';
+import { Clientes } from './Clientes';
+import { Rutas } from './Rutas';
+import { UsuariosRegiones } from './UsuariosRegiones';
+import { applySchema } from 'src/common/apply-schema.decorator';
 
 @applySchema
-@Index("FK_Regiones_Clientes", ["idCliente"], {})
-@Entity("Regiones")
+@Index('FK_Regiones_Clientes', ['idCliente'], {})
+@Entity('Regiones')
 export class Regiones {
-  @PrimaryGeneratedColumn({ type: "bigint", name: "Id" })
+  @PrimaryGeneratedColumn({ type: 'bigint', name: 'Id' })
   id: number;
 
-  @Column("varchar", { name: "Nombre", length: 100 })
+  @Column('varchar', { name: 'Nombre', length: 100 })
   nombre: string;
 
-  @Column("varchar", { name: "Descripcion", nullable: true, length: 255 })
+  @Column('varchar', { name: 'Descripcion', nullable: true, length: 255 })
   descripcion: string | null;
 
   @Column('json', { name: 'Geocerca', nullable: true })
   geocerca: object | null;
 
-  @Column("datetime", {
-    name: "FechaCreacion",
-    default: () => "CURRENT_TIMESTAMP",
+  @Column('datetime', {
+    name: 'FechaCreacion',
+    default: () => 'CURRENT_TIMESTAMP',
   })
   fechaCreacion: Date;
 
-  @Column("datetime", {
-    name: "FechaActualizacion",
-    default: () => "CURRENT_TIMESTAMP",
+  @Column('datetime', {
+    name: 'FechaActualizacion',
+    default: () => 'CURRENT_TIMESTAMP',
   })
   fechaActualizacion: Date;
 
-  @Column("tinyint", { name: "Estatus", default: () => "'1'" })
+  @Column('tinyint', { name: 'Estatus', default: () => "'1'" })
   estatus: number;
 
-  @Column("bigint", { name: "IdCliente" })
+  @Column('bigint', { name: 'IdCliente' })
   idCliente: number;
 
   @ManyToOne(() => Clientes, (clientes) => clientes.regiones, {
-    onDelete: "NO ACTION",
-    onUpdate: "NO ACTION",
+    onDelete: 'NO ACTION',
+    onUpdate: 'NO ACTION',
   })
-  @JoinColumn([{ name: "IdCliente", referencedColumnName: "id" }])
+  @JoinColumn([{ name: 'IdCliente', referencedColumnName: 'id' }])
   idCliente2: Clientes;
 
   @OneToMany(() => Rutas, (rutas) => rutas.idRegion2)
@@ -58,7 +58,7 @@ export class Regiones {
 
   @OneToMany(
     () => UsuariosRegiones,
-    (usuariosRegiones) => usuariosRegiones.idRegion2
+    (usuariosRegiones) => usuariosRegiones.idRegion2,
   )
   usuariosRegiones: UsuariosRegiones[];
 }

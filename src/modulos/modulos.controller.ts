@@ -16,7 +16,14 @@ import {
 import { ModulosService } from './modulos.service';
 import { CreateModuloDto } from './dto/create-modulo.dto';
 import { UpdateModuloDto } from './dto/update-modulo.dto';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiBody, ApiParam } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiParam,
+} from '@nestjs/swagger';
 import { UpdateModulosEstatusDto } from './dto/update-modulo-estatus.dto';
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
@@ -31,7 +38,8 @@ export class ModulosController {
   @Post()
   @ApiOperation({
     summary: 'Crear módulo',
-    description: 'Registra un nuevo módulo del sistema con nombre, descripción y estatus.',
+    description:
+      'Registra un nuevo módulo del sistema con nombre, descripción y estatus.',
   })
   @ApiBody({
     type: CreateModuloDto,
@@ -65,7 +73,8 @@ export class ModulosController {
   @Get('list')
   @ApiOperation({
     summary: 'Listar módulos',
-    description: 'Obtiene el listado de todos los módulos activos sin paginación.',
+    description:
+      'Obtiene el listado de todos los módulos activos sin paginación.',
   })
   @ApiResponse({
     status: 200,
@@ -105,12 +114,21 @@ export class ModulosController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, nombre: { type: 'string' }, descripcion: { type: 'string' }, estatus: { type: 'number' } },
+            properties: {
+              id: { type: 'number' },
+              nombre: { type: 'string' },
+              descripcion: { type: 'string' },
+              estatus: { type: 'number' },
+            },
           },
         },
         paginated: {
           type: 'object',
-          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+          properties: {
+            total: { type: 'number' },
+            page: { type: 'number' },
+            lastPage: { type: 'number' },
+          },
         },
       },
     },
@@ -137,7 +155,12 @@ export class ModulosController {
       properties: {
         data: {
           type: 'object',
-          properties: { id: { type: 'number' }, nombre: { type: 'string' }, descripcion: { type: 'string' }, estatus: { type: 'number' } },
+          properties: {
+            id: { type: 'number' },
+            nombre: { type: 'string' },
+            descripcion: { type: 'string' },
+            estatus: { type: 'number' },
+          },
         },
       },
     },
@@ -179,9 +202,9 @@ export class ModulosController {
     @Param('id', ParseIntPipe) id: number,
     @Body() updateModuloDto: UpdateModuloDto,
     @Request() req,
-  ): Promise <ApiCrudResponse> {
+  ): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
-    return await this.modulosService.update(id,updateModuloDto, idUser);
+    return await this.modulosService.update(id, updateModuloDto, idUser);
   }
 
   @Patch(':id/estatus')
@@ -214,8 +237,8 @@ export class ModulosController {
   async updateModuloEstatus(
     @Param('id') id: string,
     @Request() req,
-    @Body()updateModulosEstatusDto: UpdateModulosEstatusDto,
-  ):Promise <ApiCrudResponse> {
+    @Body() updateModulosEstatusDto: UpdateModulosEstatusDto,
+  ): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
     return await this.modulosService.updateModulosStatus(
       +id,
@@ -247,8 +270,11 @@ export class ModulosController {
   })
   @ApiResponse({ status: 404, description: 'Módulo no encontrado' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
-  async remove(@Param('id',ParseIntPipe)id:number,@Request()req):Promise <ApiCrudResponse> {
+  async remove(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req,
+  ): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
-    return await this.modulosService.deleteModulo(id,idUser);
+    return await this.modulosService.deleteModulo(id, idUser);
   }
 }

@@ -16,7 +16,14 @@ import { UpdateTurnoDto } from './dto/update-turno.dto';
 import { UpdateTurnosEstatusDto } from './dto/update-turno-estatus.dto';
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiParam,
+} from '@nestjs/swagger';
 
 @ApiTags('Turnos')
 @ApiBearerAuth('bearer-token')
@@ -49,7 +56,10 @@ export class TurnosController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Error de validación o turno abierto existente' })
+  @ApiResponse({
+    status: 400,
+    description: 'Error de validación o turno abierto existente',
+  })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   async create(
     @Body() createTurnoDto: CreateTurnoDto,
@@ -59,13 +69,19 @@ export class TurnosController {
     const idUser = req.user.userId;
     const rol = req.user.rol;
     const idOperador = req.user.idOperador;
-    return await this.turnosService.create(+idUser, +cliente, +idOperador, createTurnoDto);
+    return await this.turnosService.create(
+      +idUser,
+      +cliente,
+      +idOperador,
+      createTurnoDto,
+    );
   }
 
   @Get('list')
   @ApiOperation({
     summary: 'Listar turnos',
-    description: 'Obtiene el listado de turnos. El acceso depende del rol del usuario.',
+    description:
+      'Obtiene el listado de turnos. El acceso depende del rol del usuario.',
   })
   @ApiResponse({
     status: 200,
@@ -77,7 +93,13 @@ export class TurnosController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, idOperador: { type: 'number' }, idVehiculo: { type: 'number' }, fechaInicio: { type: 'string' }, fechaFin: { type: 'string' } },
+            properties: {
+              id: { type: 'number' },
+              idOperador: { type: 'number' },
+              idVehiculo: { type: 'number' },
+              fechaInicio: { type: 'string' },
+              fechaFin: { type: 'string' },
+            },
           },
         },
       },
@@ -94,7 +116,8 @@ export class TurnosController {
   @Get(':page/:limit')
   @ApiOperation({
     summary: 'Listar turnos paginados',
-    description: 'Obtiene el catálogo paginado de turnos. El acceso depende del rol del usuario.',
+    description:
+      'Obtiene el catálogo paginado de turnos. El acceso depende del rol del usuario.',
   })
   @ApiParam({ name: 'page', description: 'Número de página (desde 1)' })
   @ApiParam({ name: 'limit', description: 'Registros por página' })
@@ -108,12 +131,24 @@ export class TurnosController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, idOperador: { type: 'number' }, idVehiculo: { type: 'number' }, idDispositivo: { type: 'number' }, fechaInicio: { type: 'string' }, fechaFin: { type: 'string' }, estatus: { type: 'number' } },
+            properties: {
+              id: { type: 'number' },
+              idOperador: { type: 'number' },
+              idVehiculo: { type: 'number' },
+              idDispositivo: { type: 'number' },
+              fechaInicio: { type: 'string' },
+              fechaFin: { type: 'string' },
+              estatus: { type: 'number' },
+            },
           },
         },
         paginated: {
           type: 'object',
-          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+          properties: {
+            total: { type: 'number' },
+            page: { type: 'number' },
+            lastPage: { type: 'number' },
+          },
         },
       },
     },
@@ -122,12 +157,18 @@ export class TurnosController {
   async findAll(
     @Param('page', ParseIntPipe) page: number,
     @Param('limit', ParseIntPipe) limit: number,
-    @Request() req
+    @Request() req,
   ): Promise<ApiResponseCommon> {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
     const rol = req.user.rol;
-    return await this.turnosService.findAll(+idUser, +cliente, +rol, page, limit);
+    return await this.turnosService.findAll(
+      +idUser,
+      +cliente,
+      +rol,
+      page,
+      limit,
+    );
   }
 
   @Get(':id')
@@ -144,7 +185,16 @@ export class TurnosController {
       properties: {
         data: {
           type: 'object',
-          properties: { id: { type: 'number' }, idOperador: { type: 'number' }, idVehiculo: { type: 'number' }, idDispositivo: { type: 'number' }, idRuta: { type: 'number' }, fechaInicio: { type: 'string' }, fechaFin: { type: 'string' }, estatus: { type: 'number' } },
+          properties: {
+            id: { type: 'number' },
+            idOperador: { type: 'number' },
+            idVehiculo: { type: 'number' },
+            idDispositivo: { type: 'number' },
+            idRuta: { type: 'number' },
+            fechaInicio: { type: 'string' },
+            fechaFin: { type: 'string' },
+            estatus: { type: 'number' },
+          },
         },
       },
     },
@@ -193,18 +243,24 @@ export class TurnosController {
     const cliente = req.user.cliente;
     const idUser = req.user.userId;
     const rol = req.user.rol;
-    return await this.turnosService.updateEstatus(id, +idUser, updateTurnosEstatusDto);
+    return await this.turnosService.updateEstatus(
+      id,
+      +idUser,
+      updateTurnosEstatusDto,
+    );
   }
 
   @Patch(':id')
   @ApiOperation({
     summary: 'Actualizar turno',
-    description: 'Modifica los datos de un turno existente (ej. cierre de turno).',
+    description:
+      'Modifica los datos de un turno existente (ej. cierre de turno).',
   })
   @ApiParam({ name: 'id', description: 'ID del turno a actualizar' })
   @ApiBody({
     type: UpdateTurnoDto,
-    description: 'Campos a actualizar: fechaFin, idVehiculo, idDispositivo, idRuta, etc.',
+    description:
+      'Campos a actualizar: fechaFin, idVehiculo, idDispositivo, idRuta, etc.',
   })
   @ApiResponse({
     status: 200,
@@ -232,7 +288,13 @@ export class TurnosController {
     const idUser = req.user.userId;
     const rol = req.user.rol;
     const idOperador = req.user.idOperador;
-    return await this.turnosService.update(id, +idUser, +cliente, +idOperador, updateTurnoDto);
+    return await this.turnosService.update(
+      id,
+      +idUser,
+      +cliente,
+      +idOperador,
+      updateTurnoDto,
+    );
   }
 
   @Delete(':id')

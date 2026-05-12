@@ -10,7 +10,6 @@ import { UpdateMantenimientoCombustibleDto } from './dto/update-mantenimiento-co
 import { InjectRepository } from '@nestjs/typeorm';
 import { MantenimientoCombustible } from 'src/entities/MantenimientoCombustible';
 import { Instalaciones } from 'src/entities/Instalaciones';
-import { Clientes } from 'src/entities/Clientes';
 import { Repository, In } from 'typeorm';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import {
@@ -18,6 +17,7 @@ import {
   ApiResponseCommon,
   EstatusEnumBitcora,
 } from 'src/common/ApiResponse';
+import { ClientesJerarquiaService } from 'src/clientes-jerarquia/clientes-jerarquia.service';
 
 @Injectable()
 export class MantenimientoCombustibleService {
@@ -26,30 +26,9 @@ export class MantenimientoCombustibleService {
     private readonly mantenimientoCombustibleRepository: Repository<MantenimientoCombustible>,
     @InjectRepository(Instalaciones)
     private readonly instalacionesRepository: Repository<Instalaciones>,
-    @InjectRepository(Clientes)
-    private readonly clienteRepository: Repository<Clientes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
-  ) { }
-
-  //funcion para obtener los clientes hijos
-  private async clienteHijos(cliente: number) {
-    const clientesFiltrado = await this.clienteRepository.query(
-      `CALL spGetClientes(?);`,
-      [cliente],
-    );
-
-    const idsFiltrados = clientesFiltrado[0]; // El primer índice contiene los resultados
-    const ids = idsFiltrados
-      .map((clientesFiltrado: any) => Number(clientesFiltrado.Id))
-      .filter(Boolean);
-    if (ids.length === 0) {
-      return { ids: [], placeholders: '' }; // No hay clientes que consultar
-    }
-
-    // Construir el query dinámico con los IDs
-    const placeholders = ids.map(() => '?').join(', ');
-    return { ids, placeholders };
-  }
+    private readonly clientesJerarquia: ClientesJerarquiaService,
+  ) {}
 
   async create(
     createMantenimientoCombustibleDto: CreateMantenimientoCombustibleDto,
@@ -107,7 +86,12 @@ export class MantenimientoCombustibleService {
     }
   }
 
-  async findAll(page: number, limit: number, idCliente: number, rol: number): Promise<ApiResponseCommon> {
+  async findAll(
+    page: number,
+    limit: number,
+    idCliente: number,
+    rol: number,
+  ): Promise<ApiResponseCommon> {
     try {
       const offset = (page - 1) * limit;
       let mantenimientos;
@@ -169,7 +153,8 @@ INNER JOIN Clientes c ON i.IdCliente = c.Id
           break;
 
         default:
-          const { ids, placeholders } = await this.clienteHijos(idCliente);
+          const { ids, placeholders } =
+            await this.clientesJerarquia.obtenerJerarquia(idCliente);
           if (ids.length === 0) {
             return {
               data: [],
@@ -237,9 +222,15 @@ WHERE c.Id IN (${placeholders})
       // Transformar los datos
       const mantenimientosTransformados = mantenimientos.map((item: any) => ({
         id: Number(item.id),
-        idTipoCombustible: item.idTipoCombustible ? Number(item.idTipoCombustible) : null,
-        cantidadCombustible: item.cantidadCombustible ? Number(item.cantidadCombustible) : null,
-        precioCombustible: item.precioCombustible ? Number(item.precioCombustible) : null,
+        idTipoCombustible: item.idTipoCombustible
+          ? Number(item.idTipoCombustible)
+          : null,
+        cantidadCombustible: item.cantidadCombustible
+          ? Number(item.cantidadCombustible)
+          : null,
+        precioCombustible: item.precioCombustible
+          ? Number(item.precioCombustible)
+          : null,
         idInstalacion: item.idInstalacion ? Number(item.idInstalacion) : null,
         estatus: item.estatus,
         fechaHora: item.fechaHora,
@@ -249,21 +240,27 @@ WHERE c.Id IN (${placeholders})
         placaVehiculo: item.placaVehiculo || null,
         imagenVehiculo: item.imagenVehiculo || null,
         nombreOperador: item.nombreOperador?.trim() || null,
-        tipoCombustible: item.tipoCombustibleId ? {
-          id: Number(item.tipoCombustibleId),
-          nombre: item.tipoCombustibleNombre,
-        } : null,
-        instalacion: item.idInstalacion ? { id: Number(item.idInstalacion) } : null,
+        tipoCombustible: item.tipoCombustibleId
+          ? {
+              id: Number(item.tipoCombustibleId),
+              nombre: item.tipoCombustibleNombre,
+            }
+          : null,
+        instalacion: item.idInstalacion
+          ? { id: Number(item.idInstalacion) }
+          : null,
         operador: item.idOperador ? { id: Number(item.idOperador) } : null,
-        ...(rol === 1 || rol === 2) && item.idClienteData ? {
-          cliente: {
-            id: Number(item.idClienteData),
-            nombre: item.nombreClienteData,
-            apellidoPaterno: item.apellidoPaternoCliente,
-            apellidoMaterno: item.apellidoMaternoCliente,
-            estatus: item.estatusCliente,
-          },
-        } : {},
+        ...((rol === 1 || rol === 2) && item.idClienteData
+          ? {
+              cliente: {
+                id: Number(item.idClienteData),
+                nombre: item.nombreClienteData,
+                apellidoPaterno: item.apellidoPaternoCliente,
+                apellidoMaterno: item.apellidoMaternoCliente,
+                estatus: item.estatusCliente,
+              },
+            }
+          : {}),
       }));
 
       const result: ApiResponseCommon = {
@@ -286,7 +283,11 @@ WHERE c.Id IN (${placeholders})
     }
   }
 
-  async findOne(id: number, idCliente: number, rol: number): Promise<ApiResponseCommon> {
+  async findOne(
+    id: number,
+    idCliente: number,
+    rol: number,
+  ): Promise<ApiResponseCommon> {
     try {
       let mantenimientos;
 
@@ -335,9 +336,12 @@ WHERE mc.Id = ?
           break;
 
         default:
-          const { ids, placeholders } = await this.clienteHijos(idCliente);
+          const { ids, placeholders } =
+            await this.clientesJerarquia.obtenerJerarquia(idCliente);
           if (ids.length === 0) {
-            throw new NotFoundException('Mantenimiento de combustible no encontrado');
+            throw new NotFoundException(
+              'Mantenimiento de combustible no encontrado',
+            );
           }
 
           // Consulta para resto de usuarios
@@ -379,7 +383,9 @@ AND mc.Id = ?
       }
 
       if (mantenimientos.length === 0) {
-        throw new NotFoundException('Mantenimiento de combustible no encontrado');
+        throw new NotFoundException(
+          'Mantenimiento de combustible no encontrado',
+        );
       }
 
       const item = mantenimientos[0];
@@ -388,10 +394,18 @@ AND mc.Id = ?
         data: [
           {
             id: Number(item.id),
-            idTipoCombustible: item.idTipoCombustible ? Number(item.idTipoCombustible) : null,
-            cantidadCombustible: item.cantidadCombustible ? Number(item.cantidadCombustible) : null,
-            precioCombustible: item.precioCombustible ? Number(item.precioCombustible) : null,
-            idInstalacion: item.idInstalacion ? Number(item.idInstalacion) : null,
+            idTipoCombustible: item.idTipoCombustible
+              ? Number(item.idTipoCombustible)
+              : null,
+            cantidadCombustible: item.cantidadCombustible
+              ? Number(item.cantidadCombustible)
+              : null,
+            precioCombustible: item.precioCombustible
+              ? Number(item.precioCombustible)
+              : null,
+            idInstalacion: item.idInstalacion
+              ? Number(item.idInstalacion)
+              : null,
             estatus: item.estatus,
             fechaHora: item.fechaHora,
             fhRegistro: item.fhRegistro,
@@ -400,21 +414,27 @@ AND mc.Id = ?
             placaVehiculo: item.placaVehiculo || null,
             imagenVehiculo: item.imagenVehiculo || null,
             nombreOperador: item.nombreOperador?.trim() || null,
-            tipoCombustible: item.tipoCombustibleId ? {
-              id: Number(item.tipoCombustibleId),
-              nombre: item.tipoCombustibleNombre,
-            } : null,
-            instalacion: item.idInstalacion ? { id: Number(item.idInstalacion) } : null,
+            tipoCombustible: item.tipoCombustibleId
+              ? {
+                  id: Number(item.tipoCombustibleId),
+                  nombre: item.tipoCombustibleNombre,
+                }
+              : null,
+            instalacion: item.idInstalacion
+              ? { id: Number(item.idInstalacion) }
+              : null,
             operador: item.idOperador ? { id: Number(item.idOperador) } : null,
-            ...(rol === 1 || rol === 2) && item.idClienteData ? {
-              cliente: {
-                id: Number(item.idClienteData),
-                nombre: item.nombreClienteData,
-                apellidoPaterno: item.apellidoPaternoCliente,
-                apellidoMaterno: item.apellidoMaternoCliente,
-                estatus: item.estatusCliente,
-              },
-            } : {},
+            ...((rol === 1 || rol === 2) && item.idClienteData
+              ? {
+                  cliente: {
+                    id: Number(item.idClienteData),
+                    nombre: item.nombreClienteData,
+                    apellidoPaterno: item.apellidoPaternoCliente,
+                    apellidoMaterno: item.apellidoMaternoCliente,
+                    estatus: item.estatusCliente,
+                  },
+                }
+              : {}),
           },
         ],
       };
@@ -436,20 +456,24 @@ AND mc.Id = ?
     idUser: number,
   ): Promise<ApiCrudResponse> {
     try {
-      const mantenimiento = await this.mantenimientoCombustibleRepository.findOne({
-        where: { id: id },
-      });
+      const mantenimiento =
+        await this.mantenimientoCombustibleRepository.findOne({
+          where: { id: id },
+        });
       if (!mantenimiento) {
-        throw new NotFoundException('Mantenimiento de combustible no encontrado');
+        throw new NotFoundException(
+          'Mantenimiento de combustible no encontrado',
+        );
       }
 
       await this.mantenimientoCombustibleRepository.update(
         id,
         updateMantenimientoCombustibleDto,
       );
-      const mantenimientoResult = await this.mantenimientoCombustibleRepository.findOne({
-        where: { id: id },
-      });
+      const mantenimientoResult =
+        await this.mantenimientoCombustibleRepository.findOne({
+          where: { id: id },
+        });
 
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { updateMantenimientoCombustibleDto };
@@ -498,12 +522,15 @@ AND mc.Id = ?
 
   async desactivar(id: number, idUser: number): Promise<ApiCrudResponse> {
     try {
-      const mantenimiento = await this.mantenimientoCombustibleRepository.findOne({
-        where: { id: id },
-      });
+      const mantenimiento =
+        await this.mantenimientoCombustibleRepository.findOne({
+          where: { id: id },
+        });
 
       if (!mantenimiento) {
-        throw new NotFoundException('Mantenimiento de combustible no encontrado');
+        throw new NotFoundException(
+          'Mantenimiento de combustible no encontrado',
+        );
       }
 
       await this.mantenimientoCombustibleRepository.update(id, { estatus: 0 });
@@ -557,16 +584,21 @@ AND mc.Id = ?
 
   async activar(id: number, idUser: number): Promise<ApiCrudResponse> {
     try {
-      const mantenimiento = await this.mantenimientoCombustibleRepository.findOne({
-        where: { id: id },
-      });
+      const mantenimiento =
+        await this.mantenimientoCombustibleRepository.findOne({
+          where: { id: id },
+        });
 
       if (!mantenimiento) {
-        throw new NotFoundException('Mantenimiento de combustible no encontrado');
+        throw new NotFoundException(
+          'Mantenimiento de combustible no encontrado',
+        );
       }
 
       if (mantenimiento.estatus === 1) {
-        throw new BadRequestException('El mantenimiento de combustible ya está activo');
+        throw new BadRequestException(
+          'El mantenimiento de combustible ya está activo',
+        );
       }
 
       await this.mantenimientoCombustibleRepository.update(id, { estatus: 1 });

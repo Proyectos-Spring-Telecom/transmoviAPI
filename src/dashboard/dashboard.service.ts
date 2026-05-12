@@ -1,4 +1,8 @@
-import { HttpException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+  HttpException,
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { KpiDto } from './dto/kpi.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Clientes } from 'src/entities/Clientes';
@@ -6,13 +10,12 @@ import { Repository } from 'typeorm';
 import { EnumFiltros } from 'src/common/estatus.enum';
 import { error, log } from 'console';
 
-
 @Injectable()
 export class DashboardService {
   constructor(
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
-  ) { }
+  ) {}
 
   //funcion para obtener los clientes hijos
   private async clienteHijos(cliente: number) {
@@ -38,16 +41,35 @@ export class DashboardService {
   // ========================================
   async dashboardkpi(kpiDto: KpiDto, rol: number, cliente: number) {
     try {
-      const { fechaInicio, fechaFin, filtro, idCliente } = kpiDto
+      const { fechaInicio, fechaFin, filtro, idCliente } = kpiDto;
       let data;
       if (fechaInicio && fechaFin) {
-
-        data = await this.resolverPorFecha(fechaInicio, fechaFin, idCliente, cliente, rol)
+        data = await this.resolverPorFecha(
+          fechaInicio,
+          fechaFin,
+          idCliente,
+          cliente,
+          rol,
+        );
       } else {
-        const { fechaIni, fechaFinal } = await this.resolverPorFiltro(filtro || 1);
-        data = await this.resolverPorRol(fechaIni, fechaFinal, idCliente, cliente, rol)
+        const { fechaIni, fechaFinal } = await this.resolverPorFiltro(
+          filtro || 1,
+        );
+        data = await this.resolverPorRol(
+          fechaIni,
+          fechaFinal,
+          idCliente,
+          cliente,
+          rol,
+        );
       }
-      const { graficaIngresosTotales, graficaPasajerosPorRuta, graficaAscensosVsBoleto, dataGripTop5RutasPorIngresos, velocidadPromedioRuta } = data
+      const {
+        graficaIngresosTotales,
+        graficaPasajerosPorRuta,
+        graficaAscensosVsBoleto,
+        dataGripTop5RutasPorIngresos,
+        velocidadPromedioRuta,
+      } = data;
 
       //Forzamos a cambiar el id a number
       const graficaIngresos = graficaIngresosTotales.map((item) => ({
@@ -74,11 +96,13 @@ export class DashboardService {
         idRuta: Number(item.idRuta),
       }));
 
-      const dataGripTop5RutasPorIngreso = dataGripTop5RutasPorIngresos.map((item) => ({
-        ...item,
-        idRuta: Number(item.idRuta),
-        totalViajes: Number(item.totalViajes),
-      }));
+      const dataGripTop5RutasPorIngreso = dataGripTop5RutasPorIngresos.map(
+        (item) => ({
+          ...item,
+          idRuta: Number(item.idRuta),
+          totalViajes: Number(item.totalViajes),
+        }),
+      );
 
       //console.log(data)
       const kpi1 = data.kpi1?.[0] ?? {};
@@ -116,7 +140,6 @@ export class DashboardService {
         velocidadPromedioPorRuta,
         dataGripTop5RutasPorIngreso,
       };
-
     } catch (error) {
       console.log(error);
       if (error instanceof HttpException) {
@@ -134,12 +157,18 @@ export class DashboardService {
     fechaFin: string,
     idCliente: number,
     cliente: number,
-    rol: number
+    rol: number,
   ) {
     try {
-      fechaInicio = fechaInicio.split("T")[0];
-      fechaFin = fechaFin.split("T")[0];
-      return await this.resolverPorRol(fechaInicio, fechaFin, idCliente, cliente, rol)
+      fechaInicio = fechaInicio.split('T')[0];
+      fechaFin = fechaFin.split('T')[0];
+      return await this.resolverPorRol(
+        fechaInicio,
+        fechaFin,
+        idCliente,
+        cliente,
+        rol,
+      );
     } catch (error) {
       console.log(error);
       if (error instanceof HttpException) {
@@ -152,9 +181,7 @@ export class DashboardService {
     }
   }
 
-  async resolverPorFiltro(
-    filtro: number,
-  ): Promise<any> {
+  async resolverPorFiltro(filtro: number): Promise<any> {
     try {
       function pad(n: number) {
         return n < 10 ? '0' + n : n;
@@ -176,29 +203,30 @@ export class DashboardService {
           const fechaMesAntes = `${fechaHaceUnMes.getFullYear()}-${pad(fechaHaceUnMes.getMonth() + 1)}-${pad(fechaHaceUnMes.getDate())}`;
 
           //Retornamos las fechas correspondientes
-          fechaIni = fechaMesAntes
-          fechaFinal = fechaActual
+          fechaIni = fechaMesAntes;
+          fechaFinal = fechaActual;
           break;
         case EnumFiltros.SEMANA:
           // Restar 7 días (7 * 24 * 60 * 60 * 1000 ms)
-          const hace7Dias = new Date(fechaDesfasada.getTime() - 7 * 24 * 60 * 60 * 1000);
+          const hace7Dias = new Date(
+            fechaDesfasada.getTime() - 7 * 24 * 60 * 60 * 1000,
+          );
 
           // Solo la fecha
           const fechaSemanaAntes = `${hace7Dias.getFullYear()}-${pad(hace7Dias.getMonth() + 1)}-${pad(hace7Dias.getDate())}`;
 
           //Retornamos las fechas correspondientes
-          fechaIni = fechaSemanaAntes
-          fechaFinal = fechaActual
+          fechaIni = fechaSemanaAntes;
+          fechaFinal = fechaActual;
           break;
 
         default:
-
           //Retornamos las fechas correspondientes
-          fechaIni = fechaActual
-          fechaFinal = fechaActual
+          fechaIni = fechaActual;
+          fechaFinal = fechaActual;
           break;
       }
-      return { fechaIni, fechaFinal }
+      return { fechaIni, fechaFinal };
     } catch (error) {
       console.log(error);
       if (error instanceof HttpException) {
@@ -209,7 +237,6 @@ export class DashboardService {
         error: error.message,
       });
     }
-
   }
 
   async resolverPorRol(
@@ -217,7 +244,7 @@ export class DashboardService {
     fechaFin: string,
     idCliente: number,
     cliente: number,
-    rol: number
+    rol: number,
   ) {
     try {
       let kpi1;
@@ -231,61 +258,210 @@ export class DashboardService {
       switch (rol) {
         case 1:
           if (idCliente === cliente) {
-            kpi1 = await this.kpiParte1ClientePadre(fechaInicio, fechaFin, idCliente);
-            kpi2 = await this.kpiParte2ClientePadre(fechaInicio, fechaFin, idCliente);
-            kpiPorcentajePagos = await this.kpiPorcentajePagosClientePadre(fechaInicio, fechaFin, idCliente);
-            graficaIngresosTotales = await this.graficaIngresosTotalesSA(fechaInicio, fechaFin, idCliente);
-            graficaPasajerosPorRuta = await this.graficaPasajerosPorRutaSA(fechaInicio, fechaFin, idCliente);
-            graficaAscensosVsBoleto = await this.graficaAscensosVsBoletoSA(fechaInicio, fechaFin, idCliente);
-            velocidadPromedioRuta = await this.velocidadPromedioRutaSA(fechaInicio, fechaFin, idCliente);
-            dataGripTop5RutasPorIngresos = await this.dataGripTop5RutasPorIngresosSA(fechaInicio, fechaFin, idCliente);
+            kpi1 = await this.kpiParte1ClientePadre(
+              fechaInicio,
+              fechaFin,
+              idCliente,
+            );
+            kpi2 = await this.kpiParte2ClientePadre(
+              fechaInicio,
+              fechaFin,
+              idCliente,
+            );
+            kpiPorcentajePagos = await this.kpiPorcentajePagosClientePadre(
+              fechaInicio,
+              fechaFin,
+              idCliente,
+            );
+            graficaIngresosTotales = await this.graficaIngresosTotalesSA(
+              fechaInicio,
+              fechaFin,
+              idCliente,
+            );
+            graficaPasajerosPorRuta = await this.graficaPasajerosPorRutaSA(
+              fechaInicio,
+              fechaFin,
+              idCliente,
+            );
+            graficaAscensosVsBoleto = await this.graficaAscensosVsBoletoSA(
+              fechaInicio,
+              fechaFin,
+              idCliente,
+            );
+            velocidadPromedioRuta = await this.velocidadPromedioRutaSA(
+              fechaInicio,
+              fechaFin,
+              idCliente,
+            );
+            dataGripTop5RutasPorIngresos =
+              await this.dataGripTop5RutasPorIngresosSA(
+                fechaInicio,
+                fechaFin,
+                idCliente,
+              );
           } else {
             kpi1 = await this.kpiParte1(fechaInicio, fechaFin, idCliente);
             kpi2 = await this.kpi2Parte2(fechaInicio, fechaFin, idCliente);
-            kpiPorcentajePagos = await this.kpiPorcentajePagos(fechaInicio, fechaFin, idCliente);
-            graficaIngresosTotales = await this.graficaIngresosTotales(fechaInicio, fechaFin, idCliente);
-            graficaPasajerosPorRuta = await this.graficaPasajerosPorRuta(fechaInicio, fechaFin, idCliente);
-            graficaAscensosVsBoleto = await this.graficaAscensosVsBoleto(fechaInicio, fechaFin, idCliente);
-            velocidadPromedioRuta = await this.velocidadPromedioRuta(fechaInicio, fechaFin, idCliente);
-            dataGripTop5RutasPorIngresos = await this.dataGripTop5RutasPorIngresos(fechaInicio, fechaFin, idCliente);
+            kpiPorcentajePagos = await this.kpiPorcentajePagos(
+              fechaInicio,
+              fechaFin,
+              idCliente,
+            );
+            graficaIngresosTotales = await this.graficaIngresosTotales(
+              fechaInicio,
+              fechaFin,
+              idCliente,
+            );
+            graficaPasajerosPorRuta = await this.graficaPasajerosPorRuta(
+              fechaInicio,
+              fechaFin,
+              idCliente,
+            );
+            graficaAscensosVsBoleto = await this.graficaAscensosVsBoleto(
+              fechaInicio,
+              fechaFin,
+              idCliente,
+            );
+            velocidadPromedioRuta = await this.velocidadPromedioRuta(
+              fechaInicio,
+              fechaFin,
+              idCliente,
+            );
+            dataGripTop5RutasPorIngresos =
+              await this.dataGripTop5RutasPorIngresos(
+                fechaInicio,
+                fechaFin,
+                idCliente,
+              );
           }
 
           break;
         case 2:
           if (idCliente === cliente) {
-            kpi1 = await this.kpiParte1ClientePadre(fechaInicio, fechaFin, idCliente);
-            kpi2 = await this.kpiParte2ClientePadre(fechaInicio, fechaFin, idCliente);
-            kpiPorcentajePagos = await this.kpiPorcentajePagosClientePadre(fechaInicio, fechaFin, idCliente);
-            graficaIngresosTotales = await this.graficaIngresosTotalesSA(fechaInicio, fechaFin, idCliente);
-            graficaPasajerosPorRuta = await this.graficaPasajerosPorRutaSA(fechaInicio, fechaFin, idCliente);
-            graficaAscensosVsBoleto = await this.graficaAscensosVsBoletoSA(fechaInicio, fechaFin, idCliente);
-            velocidadPromedioRuta = await this.velocidadPromedioRutaSA(fechaInicio, fechaFin, idCliente);
-            dataGripTop5RutasPorIngresos = await this.dataGripTop5RutasPorIngresosSA(fechaInicio, fechaFin, idCliente);
+            kpi1 = await this.kpiParte1ClientePadre(
+              fechaInicio,
+              fechaFin,
+              idCliente,
+            );
+            kpi2 = await this.kpiParte2ClientePadre(
+              fechaInicio,
+              fechaFin,
+              idCliente,
+            );
+            kpiPorcentajePagos = await this.kpiPorcentajePagosClientePadre(
+              fechaInicio,
+              fechaFin,
+              idCliente,
+            );
+            graficaIngresosTotales = await this.graficaIngresosTotalesSA(
+              fechaInicio,
+              fechaFin,
+              idCliente,
+            );
+            graficaPasajerosPorRuta = await this.graficaPasajerosPorRutaSA(
+              fechaInicio,
+              fechaFin,
+              idCliente,
+            );
+            graficaAscensosVsBoleto = await this.graficaAscensosVsBoletoSA(
+              fechaInicio,
+              fechaFin,
+              idCliente,
+            );
+            velocidadPromedioRuta = await this.velocidadPromedioRutaSA(
+              fechaInicio,
+              fechaFin,
+              idCliente,
+            );
+            dataGripTop5RutasPorIngresos =
+              await this.dataGripTop5RutasPorIngresosSA(
+                fechaInicio,
+                fechaFin,
+                idCliente,
+              );
           } else {
             kpi1 = await this.kpiParte1(fechaInicio, fechaFin, idCliente);
             kpi2 = await this.kpi2Parte2(fechaInicio, fechaFin, idCliente);
-            kpiPorcentajePagos = await this.kpiPorcentajePagos(fechaInicio, fechaFin, idCliente);
-            graficaIngresosTotales = await this.graficaIngresosTotales(fechaInicio, fechaFin, idCliente);
-            graficaPasajerosPorRuta = await this.graficaPasajerosPorRuta(fechaInicio, fechaFin, idCliente);
-            graficaAscensosVsBoleto = await this.graficaAscensosVsBoleto(fechaInicio, fechaFin, idCliente);
-            velocidadPromedioRuta = await this.velocidadPromedioRuta(fechaInicio, fechaFin, idCliente);
-            dataGripTop5RutasPorIngresos = await this.dataGripTop5RutasPorIngresos(fechaInicio, fechaFin, idCliente);
+            kpiPorcentajePagos = await this.kpiPorcentajePagos(
+              fechaInicio,
+              fechaFin,
+              idCliente,
+            );
+            graficaIngresosTotales = await this.graficaIngresosTotales(
+              fechaInicio,
+              fechaFin,
+              idCliente,
+            );
+            graficaPasajerosPorRuta = await this.graficaPasajerosPorRuta(
+              fechaInicio,
+              fechaFin,
+              idCliente,
+            );
+            graficaAscensosVsBoleto = await this.graficaAscensosVsBoleto(
+              fechaInicio,
+              fechaFin,
+              idCliente,
+            );
+            velocidadPromedioRuta = await this.velocidadPromedioRuta(
+              fechaInicio,
+              fechaFin,
+              idCliente,
+            );
+            dataGripTop5RutasPorIngresos =
+              await this.dataGripTop5RutasPorIngresos(
+                fechaInicio,
+                fechaFin,
+                idCliente,
+              );
           }
           break;
 
         default:
           kpi1 = await this.kpiParte1(fechaInicio, fechaFin, idCliente);
           kpi2 = await this.kpi2Parte2(fechaInicio, fechaFin, idCliente);
-          kpiPorcentajePagos = await this.kpiPorcentajePagos(fechaInicio, fechaFin, idCliente);
-          graficaIngresosTotales = await this.graficaIngresosTotales(fechaInicio, fechaFin, idCliente);
-          graficaPasajerosPorRuta = await this.graficaPasajerosPorRuta(fechaInicio, fechaFin, idCliente);
-          graficaAscensosVsBoleto = await this.graficaAscensosVsBoleto(fechaInicio, fechaFin, idCliente);
-          velocidadPromedioRuta = await this.velocidadPromedioRuta(fechaInicio, fechaFin, idCliente);
-          dataGripTop5RutasPorIngresos = await this.dataGripTop5RutasPorIngresos(fechaInicio, fechaFin, idCliente);
+          kpiPorcentajePagos = await this.kpiPorcentajePagos(
+            fechaInicio,
+            fechaFin,
+            idCliente,
+          );
+          graficaIngresosTotales = await this.graficaIngresosTotales(
+            fechaInicio,
+            fechaFin,
+            idCliente,
+          );
+          graficaPasajerosPorRuta = await this.graficaPasajerosPorRuta(
+            fechaInicio,
+            fechaFin,
+            idCliente,
+          );
+          graficaAscensosVsBoleto = await this.graficaAscensosVsBoleto(
+            fechaInicio,
+            fechaFin,
+            idCliente,
+          );
+          velocidadPromedioRuta = await this.velocidadPromedioRuta(
+            fechaInicio,
+            fechaFin,
+            idCliente,
+          );
+          dataGripTop5RutasPorIngresos =
+            await this.dataGripTop5RutasPorIngresos(
+              fechaInicio,
+              fechaFin,
+              idCliente,
+            );
           break;
       }
-      return { kpi1, kpi2, kpiPorcentajePagos, graficaIngresosTotales, graficaPasajerosPorRuta, graficaAscensosVsBoleto, dataGripTop5RutasPorIngresos, velocidadPromedioRuta }
-
+      return {
+        kpi1,
+        kpi2,
+        kpiPorcentajePagos,
+        graficaIngresosTotales,
+        graficaPasajerosPorRuta,
+        graficaAscensosVsBoleto,
+        dataGripTop5RutasPorIngresos,
+        velocidadPromedioRuta,
+      };
     } catch (error) {
       console.log(error);
       if (error instanceof HttpException) {
@@ -298,11 +474,10 @@ export class DashboardService {
     }
   }
 
-
   private async kpiParte1ClientePadre(
     fechaInicio: string,
     fechaFin: string,
-    idCliente: number
+    idCliente: number,
   ) {
     const { ids, placeholders } = await this.clienteHijos(idCliente);
     const fechaInicioParam = `${fechaInicio}T00:00:00Z`;
@@ -342,15 +517,21 @@ INNER JOIN Dispositivos d ON td.NumeroSerieDispositivo = d.NumeroSerie
 INNER JOIN Clientes c ON d.IdCliente = c.Id
 WHERE td.FechaHoraFinal BETWEEN ? AND ?
   AND c.Id IN (${placeholders})
-  GROUP BY c.Id;`
+  GROUP BY c.Id;`;
 
-    return this.clienteRepository.query(query, [fechaFinParam, fechaFinParam, fechaInicioParam, fechaFinParam, ...ids]);
+    return this.clienteRepository.query(query, [
+      fechaFinParam,
+      fechaFinParam,
+      fechaInicioParam,
+      fechaFinParam,
+      ...ids,
+    ]);
   }
 
   private async kpiParte2ClientePadre(
     fechaInicio: string,
     fechaFin: string,
-    idCliente: number
+    idCliente: number,
   ) {
     const { ids, placeholders } = await this.clienteHijos(idCliente);
     const fechaInicioParam = `${fechaInicio}T00:00:00Z`;
@@ -370,8 +551,7 @@ WITH Ocupacion AS (
     INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
     INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id
     INNER JOIN Viajes vi ON vi.IdTurno = t.Id
-    INNER JOIN ViajesConteos vc ON vc.IdViaje = vi.Id
-    INNER JOIN ConteoPasajeros cp ON cp.Id = vc.IdConteo
+    INNER JOIN ConteoPasajeros cp ON cp.IdViaje = vi.Id
     WHERE t.Estatus = 1
       AND v.Estatus = 1
       AND cp.FechaHora >= ?
@@ -419,15 +599,21 @@ LEFT JOIN Turnos t ON t.IdCliente = v.IdCliente
 LEFT JOIN Ocupacion o ON o.IdCliente = v.IdCliente AND o.idVehiculo = v.Id
 WHERE v.Estatus = 1
   AND v.IdCliente IN (${placeholders});
-`
-    return this.clienteRepository.query(query, [fechaInicioParam, fechaFinParam, fechaInicioParam, fechaFinParam, ...ids]);
+`;
+    return this.clienteRepository.query(query, [
+      fechaInicioParam,
+      fechaFinParam,
+      fechaInicioParam,
+      fechaFinParam,
+      ...ids,
+    ]);
   }
 
   /////////*/*/*/*/*/*//*//////////////////////////////////////////******/////*/*/*/*/*/*/*/*/*/*/*/*/*/*/*//*/*/**/***/*/****
   private async kpiParte1(
     fechaInicio: string,
     fechaFin: string,
-    idCliente: number
+    idCliente: number,
   ) {
     const fechaInicioParam = `${fechaInicio}T00:00:00Z`;
     const fechaFinParam = `${fechaFin}T23:59:59Z`;
@@ -468,15 +654,21 @@ WHERE td.FechaHoraFinal BETWEEN ? AND ?
   AND c.Id = ?
   
   GROUP BY c.Id;
-`
+`;
 
-    return this.clienteRepository.query(query, [fechaFinParam, fechaFinParam, fechaInicioParam, fechaFinParam, idCliente]);
+    return this.clienteRepository.query(query, [
+      fechaFinParam,
+      fechaFinParam,
+      fechaInicioParam,
+      fechaFinParam,
+      idCliente,
+    ]);
   }
 
   private async kpi2Parte2(
     fechaInicio: string,
     fechaFin: string,
-    idCliente: number
+    idCliente: number,
   ) {
     const fechaInicioParam = `${fechaInicio}T00:00:00Z`;
     const fechaFinParam = `${fechaFin}T23:59:59Z`;
@@ -496,8 +688,7 @@ WITH Ocupacion AS (
     INNER JOIN Instalaciones i ON t.IdInstalacion = i.Id
     INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id
     INNER JOIN Viajes vi ON vi.IdTurno = t.Id
-    INNER JOIN ViajesConteos vc ON vc.IdViaje = vi.Id
-    INNER JOIN ConteoPasajeros cp ON cp.Id = vc.IdConteo
+    INNER JOIN ConteoPasajeros cp ON cp.IdViaje = vi.Id
     WHERE t.Estatus = 1
       AND v.Estatus = 1
       AND cp.FechaHora >= ?
@@ -545,14 +736,20 @@ LEFT JOIN Turnos t ON t.IdCliente = v.IdCliente
 LEFT JOIN Ocupacion o ON o.IdCliente = v.IdCliente AND o.idVehiculo = v.Id
 WHERE v.Estatus = 1
   AND v.IdCliente = ?;
-`
-    return this.clienteRepository.query(query, [fechaInicioParam, fechaFinParam, fechaInicioParam, fechaFinParam, idCliente]);
+`;
+    return this.clienteRepository.query(query, [
+      fechaInicioParam,
+      fechaFinParam,
+      fechaInicioParam,
+      fechaFinParam,
+      idCliente,
+    ]);
   }
 
   private async kpiPorcentajePagos(
     fechaInicio: string,
     fechaFin: string,
-    idCliente: number
+    idCliente: number,
   ) {
     const fechaInicioParam = `${fechaInicio}T00:00:00Z`;
     const fechaFinParam = `${fechaFin}T23:59:59Z`;
@@ -572,14 +769,18 @@ INNER JOIN Monederos m ON tr.NumeroSerieMonedero = m.NumeroSerie
 INNER JOIN Clientes c ON m.IdCliente = c.Id
 WHERE tr.FHRegistro BETWEEN ? AND ?
   AND c.Id = ?;
-`
-    return this.clienteRepository.query(query, [fechaInicioParam, fechaFinParam, idCliente]);
+`;
+    return this.clienteRepository.query(query, [
+      fechaInicioParam,
+      fechaFinParam,
+      idCliente,
+    ]);
   }
 
   private async kpiPorcentajePagosClientePadre(
     fechaInicio: string,
     fechaFin: string,
-    idCliente: number
+    idCliente: number,
   ) {
     const { ids, placeholders } = await this.clienteHijos(idCliente);
     const fechaInicioParam = `${fechaInicio}T00:00:00Z`;
@@ -600,8 +801,12 @@ INNER JOIN Monederos m ON tr.NumeroSerieMonedero = m.NumeroSerie
 INNER JOIN Clientes c ON m.IdCliente = c.Id
 WHERE tr.FHRegistro BETWEEN ? AND ?
   AND c.Id IN (${placeholders});
-`
-    return this.clienteRepository.query(query, [fechaInicioParam, fechaFinParam, ...ids]);
+`;
+    return this.clienteRepository.query(query, [
+      fechaInicioParam,
+      fechaFinParam,
+      ...ids,
+    ]);
   }
 
   /////////*/*/*/*/*/*//*//////////////////////////////////////////******/////*/*/*/*/*/*/*/*/*/*/*/*/*/*/*//*/*/**/***/*/****
@@ -609,7 +814,7 @@ WHERE tr.FHRegistro BETWEEN ? AND ?
   private async graficaIngresosTotales(
     fechaInicio: string,
     fechaFin: string,
-    idCliente: number
+    idCliente: number,
   ) {
     const fechaInicioParam = `${fechaInicio}T00:00:00Z`;
     const fechaFinParam = `${fechaFin}T23:59:59Z`;
@@ -677,14 +882,20 @@ SELECT
 FROM datos
 ORDER BY periodo;
 
-`
-    return this.clienteRepository.query(query, [fechaFinParam, fechaInicioParam, fechaInicioParam, fechaFinParam, idCliente]);
+`;
+    return this.clienteRepository.query(query, [
+      fechaFinParam,
+      fechaInicioParam,
+      fechaInicioParam,
+      fechaFinParam,
+      idCliente,
+    ]);
   }
 
   private async graficaIngresosTotalesSA(
     fechaInicio: string,
     fechaFin: string,
-    idCliente: number
+    idCliente: number,
   ) {
     const { ids, placeholders } = await this.clienteHijos(idCliente);
     const fechaInicioParam = `${fechaInicio}T00:00:00Z`;
@@ -753,8 +964,14 @@ SELECT
 FROM datos
 ORDER BY periodo;
 
-`
-    return this.clienteRepository.query(query, [fechaFinParam, fechaInicioParam, fechaInicioParam, fechaFinParam, ...ids]);
+`;
+    return this.clienteRepository.query(query, [
+      fechaFinParam,
+      fechaInicioParam,
+      fechaInicioParam,
+      fechaFinParam,
+      ...ids,
+    ]);
   }
 
   /////////*/*/*/*/*/*//*//////////////////////////////////////////******/////*/*/*/*/*/*/*/*/*/*/*/*/*/*/*//*/*/**/***/*/****
@@ -762,7 +979,7 @@ ORDER BY periodo;
   private async graficaPasajerosPorRuta(
     fechaInicio: string,
     fechaFin: string,
-    idCliente: number
+    idCliente: number,
   ) {
     const fechaInicioParam = `${fechaInicio}T00:00:00`;
     const fechaFinParam = `${fechaFin}T23:59:59`;
@@ -811,14 +1028,20 @@ SELECT *
 FROM Pasajeros
 ORDER BY periodo, ruta;
 
-`
-    return this.clienteRepository.query(query, [fechaFinParam, fechaInicioParam, fechaInicioParam, fechaFinParam, idCliente]);
+`;
+    return this.clienteRepository.query(query, [
+      fechaFinParam,
+      fechaInicioParam,
+      fechaInicioParam,
+      fechaFinParam,
+      idCliente,
+    ]);
   }
 
   private async graficaPasajerosPorRutaSA(
     fechaInicio: string,
     fechaFin: string,
-    idCliente: number
+    idCliente: number,
   ) {
     const { ids, placeholders } = await this.clienteHijos(idCliente);
     const fechaInicioParam = `${fechaInicio}T00:00:00`;
@@ -868,8 +1091,14 @@ SELECT *
 FROM Pasajeros
 ORDER BY periodo, ruta;
 
-`
-    return this.clienteRepository.query(query, [fechaFinParam, fechaInicioParam, fechaInicioParam, fechaFinParam, ...ids]);
+`;
+    return this.clienteRepository.query(query, [
+      fechaFinParam,
+      fechaInicioParam,
+      fechaInicioParam,
+      fechaFinParam,
+      ...ids,
+    ]);
   }
 
   /////////*/*/*/*/*/*//*//////////////////////////////////////////******/////*/*/*/*/*/*/*/*/*/*/*/*/*/*/*//*/*/**/***/*/****
@@ -877,7 +1106,7 @@ ORDER BY periodo, ruta;
   private async graficaAscensosVsBoleto(
     fechaInicio: string,
     fechaFin: string,
-    idCliente: number
+    idCliente: number,
   ) {
     const fechaInicioParam = `${fechaInicio}T00:00:00Z`;
     const fechaFinParam = `${fechaFin}T23:59:59Z`;
@@ -973,20 +1202,29 @@ LEFT JOIN ascensos a ON a.periodo = p.periodo
 LEFT JOIN boletos  b ON b.periodo = p.periodo
 ORDER BY p.periodo;
 
-`
+`;
     return this.clienteRepository.query(query, [
-      fechaFinParam, fechaInicioParam, // DATEDIFF
-      idCliente, fechaInicioParam, fechaFinParam, // periodos - primera parte UNION
-      idCliente, fechaInicioParam, fechaFinParam, // periodos - segunda parte UNION
-      idCliente, fechaInicioParam, fechaFinParam, // ascensos
-      idCliente, fechaInicioParam, fechaFinParam, // boletos
+      fechaFinParam,
+      fechaInicioParam, // DATEDIFF
+      idCliente,
+      fechaInicioParam,
+      fechaFinParam, // periodos - primera parte UNION
+      idCliente,
+      fechaInicioParam,
+      fechaFinParam, // periodos - segunda parte UNION
+      idCliente,
+      fechaInicioParam,
+      fechaFinParam, // ascensos
+      idCliente,
+      fechaInicioParam,
+      fechaFinParam, // boletos
     ]);
   }
 
   private async graficaAscensosVsBoletoSA(
     fechaInicio: string,
     fechaFin: string,
-    idCliente: number
+    idCliente: number,
   ) {
     const { ids, placeholders } = await this.clienteHijos(idCliente);
     const fechaInicioParam = `${fechaInicio}T00:00:00Z`;
@@ -1083,13 +1321,22 @@ LEFT JOIN ascensos a ON a.periodo = p.periodo
 LEFT JOIN boletos  b ON b.periodo = p.periodo
 ORDER BY p.periodo;
 
-`
+`;
     return this.clienteRepository.query(query, [
-      fechaFinParam, fechaInicioParam, // DATEDIFF
-      ...ids, fechaInicioParam, fechaFinParam, // periodos - primera parte UNION
-      ...ids, fechaInicioParam, fechaFinParam, // periodos - segunda parte UNION
-      ...ids, fechaInicioParam, fechaFinParam, // ascensos
-      ...ids, fechaInicioParam, fechaFinParam, // boletos
+      fechaFinParam,
+      fechaInicioParam, // DATEDIFF
+      ...ids,
+      fechaInicioParam,
+      fechaFinParam, // periodos - primera parte UNION
+      ...ids,
+      fechaInicioParam,
+      fechaFinParam, // periodos - segunda parte UNION
+      ...ids,
+      fechaInicioParam,
+      fechaFinParam, // ascensos
+      ...ids,
+      fechaInicioParam,
+      fechaFinParam, // boletos
     ]);
   }
 
@@ -1098,7 +1345,7 @@ ORDER BY p.periodo;
   private async dataGripTop5RutasPorIngresos(
     fechaInicio: string,
     fechaFin: string,
-    idCliente: number
+    idCliente: number,
   ) {
     const fechaInicioParam = `${fechaInicio} 00:00:00`;
     const fechaFinParam = `${fechaFin} 23:59:59`;
@@ -1111,12 +1358,10 @@ WITH ingresos AS (
         COUNT(DISTINCT v.Id) AS totalViajes,
         SUM(td.Monto) AS ingresosTotales
     FROM HistoricoTransaccionesDebito td
-    JOIN ViajesTransacciones vt 
-            ON vt.IdTransaccionDebito = td.Id
     JOIN Viajes v 
-            ON v.Id = vt.IdViaje
+        ON v.Id = td.IdViajes
     JOIN Derroteros d 
-            ON d.Id = v.IdDerrotero
+        ON d.Id = v.IdDerrotero
     JOIN Rutas r 
             ON r.Id = d.IdRuta
     JOIN Regiones reg 
@@ -1132,14 +1377,18 @@ FROM ingresos
 ORDER BY ingresosTotales DESC
 LIMIT 5;
 
-`
-    return await this.clienteRepository.query(query, [fechaInicioParam, fechaFinParam, idCliente]);
+`;
+    return await this.clienteRepository.query(query, [
+      fechaInicioParam,
+      fechaFinParam,
+      idCliente,
+    ]);
   }
 
   private async dataGripTop5RutasPorIngresosSA(
     fechaInicio: string,
     fechaFin: string,
-    idCliente: number
+    idCliente: number,
   ) {
     const { ids, placeholders } = await this.clienteHijos(idCliente);
     const fechaInicioParam = `${fechaInicio} 00:00:00`;
@@ -1152,12 +1401,10 @@ WITH ingresos AS (
         COUNT(DISTINCT v.Id) AS totalViajes,
         SUM(td.Monto) AS ingresosTotales
     FROM HistoricoTransaccionesDebito td
-    JOIN ViajesTransacciones vt 
-            ON vt.IdTransaccionDebito = td.Id
     JOIN Viajes v 
-            ON v.Id = vt.IdViaje
+        ON v.Id = td.IdViajes
     JOIN Derroteros d 
-            ON d.Id = v.IdDerrotero
+        ON d.Id = v.IdDerrotero
     JOIN Rutas r 
             ON r.Id = d.IdRuta
     JOIN Regiones reg 
@@ -1173,8 +1420,12 @@ FROM ingresos
 ORDER BY ingresosTotales DESC
 LIMIT 5;
 
-`
-    return await this.clienteRepository.query(query, [fechaInicioParam, fechaFinParam, ...ids]);
+`;
+    return await this.clienteRepository.query(query, [
+      fechaInicioParam,
+      fechaFinParam,
+      ...ids,
+    ]);
   }
 
   /////////*/*/*/*/*/*//*//////////////////////////////////////////******/////*/*/*/*/*/*/*/*/*/*/*/*/*/*/*//*/*/**/***/*/****
@@ -1182,7 +1433,7 @@ LIMIT 5;
   private async velocidadPromedioRuta(
     fechaInicio: string,
     fechaFin: string,
-    idCliente: number
+    idCliente: number,
   ) {
     const fechaInicioParam = `${fechaInicio}T00:00:00`;
     const fechaFinParam = `${fechaFin}T23:59:59`;
@@ -1238,14 +1489,20 @@ SELECT *
 FROM VelocidadRuta
 ORDER BY periodo, ruta;
 
-`
-    return this.clienteRepository.query(query, [fechaFinParam, fechaInicioParam, fechaInicioParam, fechaFinParam, idCliente]);
+`;
+    return this.clienteRepository.query(query, [
+      fechaFinParam,
+      fechaInicioParam,
+      fechaInicioParam,
+      fechaFinParam,
+      idCliente,
+    ]);
   }
 
   private async velocidadPromedioRutaSA(
     fechaInicio: string,
     fechaFin: string,
-    idCliente: number
+    idCliente: number,
   ) {
     const { ids, placeholders } = await this.clienteHijos(idCliente);
     const fechaInicioParam = `${fechaInicio}T00:00:00`;
@@ -1302,7 +1559,13 @@ SELECT *
 FROM VelocidadRuta
 ORDER BY periodo, ruta;
 
-`
-    return this.clienteRepository.query(query, [fechaFinParam, fechaInicioParam, fechaInicioParam, fechaFinParam, ...ids]);
+`;
+    return this.clienteRepository.query(query, [
+      fechaFinParam,
+      fechaInicioParam,
+      fechaInicioParam,
+      fechaFinParam,
+      ...ids,
+    ]);
   }
 }

@@ -1,14 +1,21 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
 import { CattipolicenciaService } from './cattipolicencia.service';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+} from '@nestjs/swagger';
 
 @ApiTags('Catálogo tipo licencia')
 @ApiBearerAuth('bearer-token')
 @UseGuards(JwtAuthGuard)
 @Controller('cattipolicencia')
 export class CattipolicenciaController {
-  constructor(private readonly cattipolicenciaService: CattipolicenciaService) {}
+  constructor(
+    private readonly cattipolicenciaService: CattipolicenciaService,
+  ) {}
 
   @Get('list')
   @ApiOperation({
@@ -27,8 +34,14 @@ export class CattipolicenciaController {
           items: {
             type: 'object',
             properties: {
-              idCatTipoLicencia: { type: 'number', description: 'ID del tipo de licencia' },
-              nombreCatTipoLicencia: { type: 'string', description: 'Nombre del tipo de licencia' },
+              idCatTipoLicencia: {
+                type: 'number',
+                description: 'ID del tipo de licencia',
+              },
+              nombreCatTipoLicencia: {
+                type: 'string',
+                description: 'Nombre del tipo de licencia',
+              },
             },
           },
         },

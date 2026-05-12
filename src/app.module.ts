@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -7,6 +9,7 @@ import { UsuariosModule } from './usuarios/usuarios.module';
 import { AuthModule } from './auth/auth.module';
 import { BitacoraModule } from './bitacora/bitacora.module';
 import { ClientesModule } from './clientes/clientes.module';
+import { ClientesJerarquiaModule } from './clientes-jerarquia/clientes-jerarquia.module';
 import { DispositivosModule } from './dispositivos/dispositivos.module';
 import { ModulosModule } from './modulos/modulos.module';
 import { MonederosModule } from './monederos/monederos.module';
@@ -71,6 +74,75 @@ import Joi from 'joi';
         AWS_SECRET_ACCESS_KEY: Joi.string().required(),
         AWS_S3_BUCKET: Joi.string().required(),
         UPLOAD_MAX_SIZE: Joi.string().required(),
+        THROTTLE_DEFAULT_TTL_MS: Joi.number()
+          .integer()
+          .min(1000)
+          .default(60_000),
+        THROTTLE_DEFAULT_LIMIT: Joi.number().integer().min(1).default(100),
+        THROTTLE_LOGIN_LIMIT: Joi.number().integer().min(1).default(5),
+        THROTTLE_LOGIN_TTL_MS: Joi.number().integer().min(1000).default(60_000),
+        THROTTLE_PIN_LIMIT: Joi.number().integer().min(1).default(5),
+        THROTTLE_PIN_TTL_MS: Joi.number().integer().min(1000).default(60_000),
+        THROTTLE_RECUPERACION_LIMIT: Joi.number().integer().min(1).default(2),
+        THROTTLE_RECUPERACION_TTL_MS: Joi.number()
+          .integer()
+          .min(1000)
+          .default(60_000),
+        THROTTLE_RECUPERACION_CONFIRMACION_LIMIT: Joi.number()
+          .integer()
+          .min(1)
+          .default(5),
+        THROTTLE_RECUPERACION_CONFIRMACION_TTL_MS: Joi.number()
+          .integer()
+          .min(1000)
+          .default(60_000),
+        THROTTLE_VERIFY_LIMIT: Joi.number().integer().min(1).default(3),
+        THROTTLE_VERIFY_TTL_MS: Joi.number()
+          .integer()
+          .min(1000)
+          .default(60_000),
+        THROTTLE_REFRESH_LIMIT: Joi.number().integer().min(1).default(5),
+        THROTTLE_REFRESH_TTL_MS: Joi.number()
+          .integer()
+          .min(1000)
+          .default(60_000),
+        THROTTLE_LOGOUT_LIMIT: Joi.number().integer().min(1).default(5),
+        THROTTLE_LOGOUT_TTL_MS: Joi.number()
+          .integer()
+          .min(1000)
+          .default(60_000),
+        THROTTLE_RESET_PASSWORD_LIMIT: Joi.number().integer().min(1).default(5),
+        THROTTLE_RESET_PASSWORD_TTL_MS: Joi.number()
+          .integer()
+          .min(1000)
+          .default(60_000),
+        THROTTLE_PASAJERO_REGISTRO_LIMIT: Joi.number()
+          .integer()
+          .min(1)
+          .default(5),
+        THROTTLE_PASAJERO_REGISTRO_TTL_MS: Joi.number()
+          .integer()
+          .min(1000)
+          .default(60_000),
+        THROTTLE_VALIDATE_FACE_LIMIT: Joi.number().integer().min(1).default(5),
+        THROTTLE_VALIDATE_FACE_TTL_MS: Joi.number()
+          .integer()
+          .min(1000)
+          .default(60_000),
+      }),
+    }),
+
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        throttlers: [
+          {
+            name: 'default',
+            ttl: config.get<number>('THROTTLE_DEFAULT_TTL_MS')!,
+            limit: config.get<number>('THROTTLE_DEFAULT_LIMIT')!,
+          },
+        ],
       }),
     }),
 
@@ -88,6 +160,7 @@ import Joi from 'joi';
         entities: [__dirname + '/entities/*{.ts,.js}'],
         synchronize: false, //Nunca poner en true
         dateStrings: false,
+        logging: true,
         timezone: 'Z',
         extra: {
           // Evita que bigint se devuelvan como string
@@ -103,6 +176,8 @@ import Joi from 'joi';
     BitacoraModule,
 
     ClientesModule,
+
+    ClientesJerarquiaModule,
 
     DispositivosModule,
 
@@ -197,6 +272,6 @@ import Joi from 'joi';
     CatMetodoPagoModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

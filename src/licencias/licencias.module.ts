@@ -7,7 +7,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Clientes } from 'src/entities/Clientes';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Licencias,Clientes]), BitacoraModule],
+  imports: [TypeOrmModule.forFeature([Licencias, Clientes]), BitacoraModule],
   controllers: [LicenciasController],
   providers: [LicenciasService],
   exports: [LicenciasService],

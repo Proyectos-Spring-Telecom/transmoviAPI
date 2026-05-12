@@ -20,7 +20,11 @@ import { LoginAuthResetDto } from './dto/login-recuperacion.dto';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import { ApiCrudResponse, EstatusEnumBitcora } from 'src/common/ApiResponse';
 import { CodigoAutenticacion } from 'src/entities/CodigoAutenticacion';
-import { EnumSolicitudPasajero, EstatusEnum, TipoCodigoAutenticacion } from 'src/common/estatus.enum';
+import {
+  EnumSolicitudPasajero,
+  EstatusEnum,
+  TipoCodigoAutenticacion,
+} from 'src/common/estatus.enum';
 import { CreateAltaPasajaroDto } from './dto/create-pasajero.dto';
 import { MonederosService } from 'src/monederos/monederos.service';
 import { PasajerosService } from 'src/pasajeros/pasajeros.service';
@@ -42,7 +46,7 @@ export class AuthService {
     private readonly bitacoraLogger: BitacoraLoggerService,
     private readonly monederoService: MonederosService,
     private readonly pasajeroService: PasajerosService,
-  ) { }
+  ) {}
 
   // ========================================
   //Creacion de una afiliacion
@@ -232,7 +236,6 @@ export class AuthService {
         },
       });
 
-
       if (user?.idCliente2?.estatus === 0) {
         throw new UnauthorizedException(
           'Acceso denegado: el cliente ha sido dado de baja.',
@@ -242,7 +245,9 @@ export class AuthService {
         throw new NotFoundException('No se encontró al usuario.');
       }
       if (user.deviceId !== loginAuthPin.deviceId) {
-        throw new NotFoundException('El dispositivo reportado no coincide con el dispositivo asignado al usuario.');
+        throw new NotFoundException(
+          'El dispositivo reportado no coincide con el dispositivo asignado al usuario.',
+        );
       }
 
       if (
@@ -329,14 +334,14 @@ SELECT
     lj.Licencias
 FROM DatosUsuario du
 LEFT JOIN LicenciasJSON lj ON lj.IdUsuario = du.IdUsuario;
-          `)
+          `);
 
       const payload = {
         id: user.id,
         email: user.userName,
         cliente: user.idCliente,
         rol: user.idRol,
-        idOperador: operador[0].idOperador
+        idOperador: operador[0].idOperador,
       };
       return {
         message: `login exitoso`,
@@ -348,7 +353,8 @@ LEFT JOIN LicenciasJSON lj ON lj.IdUsuario = du.IdUsuario;
         identificacion: operador[0].identificacion,
         comprobanteDomicilioOperador: operador[0].comprobanteDomicilioOperador,
         certificadoMedicoOperador: operador[0].certificadoMedicoOperador,
-        antecedentesNoPenalesOperador: operador[0].antecedentesNoPenalesOperador,
+        antecedentesNoPenalesOperador:
+          operador[0].antecedentesNoPenalesOperador,
         estatusOperador: operador[0].estatusOperador,
         idCliente: Number(operador[0].idCliente),
         nombreCliente: operador[0].nombreCliente,
@@ -494,13 +500,13 @@ SELECT
     lj.Licencias
 FROM DatosUsuario du
 LEFT JOIN LicenciasJSON lj ON lj.IdUsuario = du.IdUsuario;
-          `)
+          `);
         const payload = {
           id: user.id,
           email: user.userName,
           cliente: user.idCliente,
           rol: user.idRol,
-          idOperador: operador[0].idOperador
+          idOperador: operador[0].idOperador,
         };
         return {
           message: `login exitoso`,
@@ -510,9 +516,11 @@ LEFT JOIN LicenciasJSON lj ON lj.IdUsuario = du.IdUsuario;
           apellidoMaterno: operador[0].apellidoMaterno,
           fechaNacimiento: operador[0].fechaNacimiento,
           identificacion: operador[0].identificacion,
-          comprobanteDomicilioOperador: operador[0].comprobanteDomicilioOperador,
+          comprobanteDomicilioOperador:
+            operador[0].comprobanteDomicilioOperador,
           certificadoMedicoOperador: operador[0].certificadoMedicoOperador,
-          antecedentesNoPenalesOperador: operador[0].antecedentesNoPenalesOperador,
+          antecedentesNoPenalesOperador:
+            operador[0].antecedentesNoPenalesOperador,
           estatusOperador: operador[0].estatusOperador,
           idCliente: Number(operador[0].idCliente),
           nombreCliente: operador[0].nombreCliente,

@@ -25,7 +25,19 @@ import { TurnosModule } from 'src/turnos/turnos.module';
     ScheduleModule.forRoot(),
     forwardRef(() => ViajesModule),
     forwardRef(() => TurnosModule),
-    TypeOrmModule.forFeature([TransaccionesRecarga, TransaccionesDebito, HistoricoTransaccionesDebito, HistoricoTransaccionesRecarga, Dispositivos, Clientes, Monederos, CatTiposPasajeros, Viajes, CatMetodoPago, Monederos]),
+    TypeOrmModule.forFeature([
+      TransaccionesRecarga,
+      TransaccionesDebito,
+      HistoricoTransaccionesDebito,
+      HistoricoTransaccionesRecarga,
+      Dispositivos,
+      Clientes,
+      Monederos,
+      CatTiposPasajeros,
+      Viajes,
+      CatMetodoPago,
+      Monederos,
+    ]),
     MonederosModule,
     BitacoraModule,
     PasajerosModule,
@@ -34,4 +46,4 @@ import { TurnosModule } from 'src/turnos/turnos.module';
   providers: [TransaccionesService, TransaccionesCronService],
   exports: [TransaccionesService],
 })
-export class TransaccionesModule { }
+export class TransaccionesModule {}

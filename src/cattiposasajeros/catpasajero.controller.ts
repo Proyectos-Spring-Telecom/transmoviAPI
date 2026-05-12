@@ -112,7 +112,8 @@ export class CatpasajeroController {
   @Get('clientes/:id')
   @ApiOperation({
     summary: 'Listar tipos de pasajero por cliente',
-    description: 'Obtiene los tipos de pasajero activos (estatus=1) de un cliente específico.',
+    description:
+      'Obtiene los tipos de pasajero activos (estatus=1) de un cliente específico.',
   })
   @ApiParam({ name: 'id', description: 'ID del cliente' })
   @ApiResponse({
@@ -182,12 +183,14 @@ export class CatpasajeroController {
   @Put(':id')
   @ApiOperation({
     summary: 'Actualizar tipo de pasajero',
-    description: 'Modifica los datos de un tipo de pasajero existente (nombre, tipo descuento, cantidad, estatus, idCliente).',
+    description:
+      'Modifica los datos de un tipo de pasajero existente (nombre, tipo descuento, cantidad, estatus, idCliente).',
   })
   @ApiParam({ name: 'id', description: 'ID del tipo de pasajero a actualizar' })
   @ApiBody({
     type: UpdateCatpasajeroDto,
-    description: 'nombre, idCatTipoDescuento, cantidad, estatus, idCliente (todos opcionales)',
+    description:
+      'nombre, idCatTipoDescuento, cantidad, estatus, idCliente (todos opcionales)',
   })
   @ApiResponse({
     status: 200,
@@ -204,7 +207,10 @@ export class CatpasajeroController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Tipo de pasajero no encontrado o error de validación' })
+  @ApiResponse({
+    status: 400,
+    description: 'Tipo de pasajero no encontrado o error de validación',
+  })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   update(
     @Param('id') id: string,
@@ -221,7 +227,8 @@ export class CatpasajeroController {
   @Patch('estatus/:id')
   @ApiOperation({
     summary: 'Actualizar estatus de tipo de pasajero',
-    description: 'Cambia el estatus de un tipo de pasajero (0=Inactivo, 1=Activo).',
+    description:
+      'Cambia el estatus de un tipo de pasajero (0=Inactivo, 1=Activo).',
   })
   @ApiParam({ name: 'id', description: 'ID del tipo de pasajero' })
   @ApiBody({
@@ -264,7 +271,8 @@ export class CatpasajeroController {
   @Delete(':id')
   @ApiOperation({
     summary: 'Eliminar tipo de pasajero',
-    description: 'Eliminación lógica: cambia el estatus del tipo de pasajero a inactivo (0).',
+    description:
+      'Eliminación lógica: cambia el estatus del tipo de pasajero a inactivo (0).',
   })
   @ApiParam({ name: 'id', description: 'ID del tipo de pasajero a eliminar' })
   @ApiResponse({

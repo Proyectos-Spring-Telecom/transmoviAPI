@@ -27,7 +27,7 @@ export class LicenciasService {
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
-  ) { }
+  ) {}
 
   // ========================================
   // 🔹 CREAR UNA LICENCIA
@@ -438,7 +438,7 @@ ORDER BY l.Id ASC
       }
 
       if (licencias.length === 0) {
-        throw new NotFoundException('Licencia no encontrada.')
+        throw new NotFoundException('Licencia no encontrada.');
       }
 
       //Forzamos lo id string a number

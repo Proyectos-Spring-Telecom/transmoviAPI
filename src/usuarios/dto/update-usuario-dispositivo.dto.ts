@@ -11,8 +11,6 @@ import {
   ValidatorConstraintInterface,
 } from 'class-validator';
 
-
-
 export class UpdateUsuarioDispositivoDto {
   @IsEmail()
   @IsNotEmpty()
@@ -30,5 +28,4 @@ export class UpdateUsuarioDispositivoDto {
     required: true,
   })
   deviceId: string;
-  
 }

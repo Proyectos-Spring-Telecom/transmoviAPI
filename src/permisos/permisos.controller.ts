@@ -18,7 +18,14 @@ import { UpdatePermisoDto } from './dto/update-permiso.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { UpdatePermisoEstatusDto } from './dto/update-permiso-estatus.dto';
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
-import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiParam,
+} from '@nestjs/swagger';
 
 @ApiTags('Permisos')
 @ApiBearerAuth('bearer-token')
@@ -78,12 +85,21 @@ export class PermisosController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, nombre: { type: 'string' }, idModulo: { type: 'number' }, estatus: { type: 'number' } },
+            properties: {
+              id: { type: 'number' },
+              nombre: { type: 'string' },
+              idModulo: { type: 'number' },
+              estatus: { type: 'number' },
+            },
           },
         },
         paginated: {
           type: 'object',
-          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+          properties: {
+            total: { type: 'number' },
+            page: { type: 'number' },
+            lastPage: { type: 'number' },
+          },
         },
       },
     },
@@ -99,7 +115,8 @@ export class PermisosController {
   @Get('list')
   @ApiOperation({
     summary: 'Listar permisos',
-    description: 'Obtiene el listado de todos los permisos activos sin paginación.',
+    description:
+      'Obtiene el listado de todos los permisos activos sin paginación.',
   })
   @ApiResponse({
     status: 200,
@@ -111,7 +128,11 @@ export class PermisosController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, nombre: { type: 'string' }, idModulo: { type: 'number' } },
+            properties: {
+              id: { type: 'number' },
+              nombre: { type: 'string' },
+              idModulo: { type: 'number' },
+            },
           },
         },
       },
@@ -125,7 +146,8 @@ export class PermisosController {
   @Get('permisosAgrupados')
   @ApiOperation({
     summary: 'Obtener permisos agrupados por módulo',
-    description: 'Obtiene los permisos del usuario actual agrupados por módulo.',
+    description:
+      'Obtiene los permisos del usuario actual agrupados por módulo.',
   })
   @ApiResponse({
     status: 200,
@@ -134,7 +156,10 @@ export class PermisosController {
       type: 'array',
       items: {
         type: 'object',
-        properties: { modulo: { type: 'string' }, permisos: { type: 'array', items: { type: 'object' } } },
+        properties: {
+          modulo: { type: 'string' },
+          permisos: { type: 'array', items: { type: 'object' } },
+        },
       },
     },
   })
@@ -160,7 +185,12 @@ export class PermisosController {
       properties: {
         data: {
           type: 'object',
-          properties: { id: { type: 'number' }, nombre: { type: 'string' }, idModulo: { type: 'number' }, estatus: { type: 'number' } },
+          properties: {
+            id: { type: 'number' },
+            nombre: { type: 'string' },
+            idModulo: { type: 'number' },
+            estatus: { type: 'number' },
+          },
         },
       },
     },
@@ -250,7 +280,8 @@ export class PermisosController {
   @Delete(':id')
   @ApiOperation({
     summary: 'Eliminar permiso',
-    description: 'Eliminación lógica: cambia el estatus del permiso a inactivo.',
+    description:
+      'Eliminación lógica: cambia el estatus del permiso a inactivo.',
   })
   @ApiParam({ name: 'id', description: 'ID del permiso a eliminar' })
   @ApiResponse({

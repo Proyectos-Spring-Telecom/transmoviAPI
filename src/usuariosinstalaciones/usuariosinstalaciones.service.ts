@@ -13,7 +13,11 @@ import { Repository } from 'typeorm';
 import { Instalaciones } from 'src/entities/Instalaciones';
 import { Usuarios } from 'src/entities/Usuarios';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
-import { ApiCrudResponse, ApiResponseCommon, EstatusEnumBitcora } from 'src/common/ApiResponse';
+import {
+  ApiCrudResponse,
+  ApiResponseCommon,
+  EstatusEnumBitcora,
+} from 'src/common/ApiResponse';
 import { UpdateUsuariosInstalacionesEstatusDto } from './dto/update-usuariosinstalacione-estatus.dto';
 
 @Injectable()
@@ -123,7 +127,7 @@ export class UsuariosinstalacionesService {
         EstatusEnumBitcora.ERROR,
         error.message,
       );
-      
+
       if (error instanceof HttpException) {
         throw error;
       }

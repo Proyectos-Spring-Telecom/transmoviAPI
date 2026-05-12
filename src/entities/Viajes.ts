@@ -12,8 +12,9 @@ import { Derroteros } from './Derroteros';
 import { Operadores } from './Operadores';
 import { Turnos } from './Turnos';
 import { ConteoPasajeros } from './ConteoPasajeros';
+import { HistoricoConteoPasajeros } from './HistoricoConteoPasajeros';
 import { ViajesConteos } from './ViajesConteos';
-import { applySchema } from "src/common/apply-schema.decorator";
+import { applySchema } from 'src/common/apply-schema.decorator';
 
 @applySchema
 @Index('IX_Viajes_IdTurno_Inicio', ['inicio', 'idTurno'], {})
@@ -89,8 +90,17 @@ export class Viajes {
 
   // 🔹 RELACIÓN OneToMany con ConteoPasajeros
   // Un viaje puede tener múltiples conteos de pasajeros asociados
-  @OneToMany(() => ConteoPasajeros, (conteoPasajeros) => conteoPasajeros.idViaje2)
+  @OneToMany(
+    () => ConteoPasajeros,
+    (conteoPasajeros) => conteoPasajeros.idViaje2,
+  )
   conteoPasajeros: ConteoPasajeros[];
+
+  @OneToMany(
+    () => HistoricoConteoPasajeros,
+    (historicoConteoPasajeros) => historicoConteoPasajeros.idViaje2,
+  )
+  historicoConteoPasajeros: HistoricoConteoPasajeros[];
 
   @OneToMany(() => ViajesConteos, (vc) => vc.viaje)
   viajesConteos: ViajesConteos[];

@@ -49,7 +49,7 @@ export class OperadoresService {
           `El operador con licencia número: ${createOperadoreDto.numeroLicencia} ya se encuentra registrado.`,
         );
       }
-      console.log(createOperadoreDto)
+      console.log(createOperadoreDto);
       const usuarioOperador = await this.operadoresRepository.findOne({
         where: { idUsuario: createOperadoreDto.idUsuario },
       });
@@ -117,7 +117,7 @@ export class OperadoresService {
       return result;
     } catch (error) {
       console.log(error);
-      console.log(error)
+      console.log(error);
       //-----Registro en la bitacora-----SUCCESS
       const querylogger = { createOperadoreDto };
       await this.bitacoraLogger.logToBitacora(
@@ -389,7 +389,7 @@ AND u.Estatus = 1
       return result;
     } catch (error) {
       console.log(error);
-      console.log(error)
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -517,7 +517,7 @@ ORDER BY o.Id DESC;
       return data;
     } catch (error) {
       console.log(error);
-      console.log(error)
+      console.log(error);
       if (error instanceof HttpException) {
         throw error;
       }

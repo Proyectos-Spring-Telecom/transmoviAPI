@@ -11,8 +11,8 @@ function interpolar(p1: Punto, p2: Punto, distancia: number): Punto[] {
   const pasos = Math.floor(total / distancia);
 
   for (let i = 1; i <= pasos; i++) {
-    const lat = p1.lat + (p2.lat - p1.lat) * (i * distancia / total);
-    const lng = p1.lng + (p2.lng - p1.lng) * (i * distancia / total);
+    const lat = p1.lat + (p2.lat - p1.lat) * ((i * distancia) / total);
+    const lng = p1.lng + (p2.lng - p1.lng) * ((i * distancia) / total);
     puntos.push({ lat, lng });
   }
 
@@ -25,7 +25,7 @@ function interpolar(p1: Punto, p2: Punto, distancia: number): Punto[] {
 
 export async function generarRecorridoDetallado(
   recorrido: Punto[],
-  distanciaInterpolacion = 100
+  distanciaInterpolacion = 100,
 ): Promise<ResultadoRecorrido> {
   if (!recorrido || recorrido.length < 2) {
     throw new Error('El recorrido debe tener al menos dos puntos.');
@@ -48,10 +48,7 @@ export async function generarRecorridoDetallado(
     recorridoDetallado: resultado,
     distanciaKm: parseFloat((distanciaTotal / 1000).toFixed(2)),
   };
-
-
 }
-
 
 /**
  * Calcula la distancia real total de un recorrido
@@ -59,9 +56,7 @@ export async function generarRecorridoDetallado(
  *
  * @returns distancia en METROS
  */
-export function calcularDistanciaReal(
-  recorrido: Punto[]
-): number {
+export function calcularDistanciaReal(recorrido: Punto[]): number {
   if (!recorrido || recorrido.length < 2) {
     return 0;
   }
@@ -69,10 +64,7 @@ export function calcularDistanciaReal(
   let distanciaTotal = 0;
 
   for (let i = 0; i < recorrido.length - 1; i++) {
-    distanciaTotal += haversine(
-      recorrido[i],
-      recorrido[i + 1]
-    );
+    distanciaTotal += haversine(recorrido[i], recorrido[i + 1]);
   }
 
   return distanciaTotal;
@@ -85,7 +77,7 @@ export function calcularDistanciaReal(
  */
 export function calcularDistanciaHastaIndex(
   recorrido: Punto[],
-  index: number
+  index: number,
 ): number {
   if (!recorrido || recorrido.length < 2 || index <= 0) {
     return 0;
@@ -95,15 +87,11 @@ export function calcularDistanciaHastaIndex(
   const limite = Math.min(index, recorrido.length - 1);
 
   for (let i = 0; i < limite; i++) {
-    distancia += haversine(
-      recorrido[i],
-      recorrido[i + 1]
-    );
+    distancia += haversine(recorrido[i], recorrido[i + 1]);
   }
 
   return distancia;
 }
-
 
 /**
  * Encuentra el punto más cercano en el recorrido
@@ -112,12 +100,11 @@ export function calcularDistanciaHastaIndex(
  */
 export function snapToRoute(
   current: Punto,
-  recorrido: Punto[]
+  recorrido: Punto[],
 ): {
   index: number;
   distanciaMetros: number;
 } {
-
   if (!recorrido || recorrido.length === 0) {
     return { index: -1, distanciaMetros: Infinity };
   }

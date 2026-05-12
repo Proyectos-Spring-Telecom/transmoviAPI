@@ -19,7 +19,11 @@ import {
 import { UpdateVehiculoEstatusDto } from './dto/update-vehiculos-estatus.dto';
 import { Instalaciones } from 'src/entities/Instalaciones';
 import { Clientes } from 'src/entities/Clientes';
-import { EnumModulos, EstadoComponente, EstatusEnum } from 'src/common/estatus.enum';
+import {
+  EnumModulos,
+  EstadoComponente,
+  EstatusEnum,
+} from 'src/common/estatus.enum';
 
 @Injectable()
 export class VehiculosService {
@@ -31,7 +35,7 @@ export class VehiculosService {
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
-  ) { }
+  ) {}
   async create(createVehiculoDto: CreateVehiculoDto, idUser: number) {
     try {
       const vehiculoExist = await this.vehiculoRepository.findOne({
@@ -204,12 +208,18 @@ ORDER BY v.Id DESC
         ...item,
         id: Number(item.id),
         ano: Number(item.ano),
-        pasajerosSentados: item.pasajerosSentados ? Number(item.pasajerosSentados) : null,
-        pasajerosParados: item.pasajerosParados ? Number(item.pasajerosParados) : null,
+        pasajerosSentados: item.pasajerosSentados
+          ? Number(item.pasajerosSentados)
+          : null,
+        pasajerosParados: item.pasajerosParados
+          ? Number(item.pasajerosParados)
+          : null,
         idCliente: Number(item.idCliente),
         km: item.km ? Number(item.km) : null,
         idCombustible: item.idCombustible ? Number(item.idCombustible) : null,
-        capacidadLitros: item.capacidadLitros ? Number(item.capacidadLitros) : null,
+        capacidadLitros: item.capacidadLitros
+          ? Number(item.capacidadLitros)
+          : null,
       }));
 
       const result: ApiResponseCommon = {

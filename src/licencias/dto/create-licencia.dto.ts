@@ -7,7 +7,10 @@ import {
   IsIn,
   IsEnum,
 } from 'class-validator';
-import { EnumCategoriaLicencia, EnumTipoLicencia } from 'src/common/estatus.enum';
+import {
+  EnumCategoriaLicencia,
+  EnumTipoLicencia,
+} from 'src/common/estatus.enum';
 
 export class CreateLicenciaDto {
   @ApiProperty({

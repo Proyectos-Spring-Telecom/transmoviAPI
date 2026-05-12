@@ -10,7 +10,6 @@ import { UpdateMantenimientoKilometrajeDto } from './dto/update-mantenimiento-ki
 import { InjectRepository } from '@nestjs/typeorm';
 import { MantenimientoKilometraje } from 'src/entities/MantenimientoKilometraje';
 import { Instalaciones } from 'src/entities/Instalaciones';
-import { Clientes } from 'src/entities/Clientes';
 import { Posiciones } from 'src/entities/Posiciones';
 import { Repository, In } from 'typeorm';
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
@@ -19,6 +18,7 @@ import {
   ApiResponseCommon,
   EstatusEnumBitcora,
 } from 'src/common/ApiResponse';
+import { ClientesJerarquiaService } from 'src/clientes-jerarquia/clientes-jerarquia.service';
 
 @Injectable()
 export class MantenimientoKilometrajeService {
@@ -29,32 +29,11 @@ export class MantenimientoKilometrajeService {
     private readonly mantenimientoKilometrajeRepository: Repository<MantenimientoKilometraje>,
     @InjectRepository(Instalaciones)
     private readonly instalacionesRepository: Repository<Instalaciones>,
-    @InjectRepository(Clientes)
-    private readonly clienteRepository: Repository<Clientes>,
     @InjectRepository(Posiciones)
     private readonly posicionesRepository: Repository<Posiciones>,
     private readonly bitacoraLogger: BitacoraLoggerService,
+    private readonly clientesJerarquia: ClientesJerarquiaService,
   ) {}
-
-  //funcion para obtener los clientes hijos
-  private async clienteHijos(cliente: number) {
-    const clientesFiltrado = await this.clienteRepository.query(
-      `CALL spGetClientes(?);`,
-      [cliente],
-    );
-
-    const idsFiltrados = clientesFiltrado[0]; // El primer índice contiene los resultados
-    const ids = idsFiltrados
-      .map((clientesFiltrado: any) => Number(clientesFiltrado.Id))
-      .filter(Boolean);
-    if (ids.length === 0) {
-      return { ids: [], placeholders: '' }; // No hay clientes que consultar
-    }
-
-    // Construir el query dinámico con los IDs
-    const placeholders = ids.map(() => '?').join(', ');
-    return { ids, placeholders };
-  }
 
   async create(
     createMantenimientoKilometrajeDto: CreateMantenimientoKilometrajeDto,
@@ -112,7 +91,12 @@ export class MantenimientoKilometrajeService {
     }
   }
 
-  async findAll(page: number, limit: number, idCliente: number, rol: number): Promise<ApiResponseCommon> {
+  async findAll(
+    page: number,
+    limit: number,
+    idCliente: number,
+    rol: number,
+  ): Promise<ApiResponseCommon> {
     try {
       const offset = (page - 1) * limit;
       let mantenimientos;
@@ -175,7 +159,8 @@ INNER JOIN Clientes c ON i.IdCliente = c.Id
           break;
 
         default:
-          const { ids, placeholders } = await this.clienteHijos(idCliente);
+          const { ids, placeholders } =
+            await this.clientesJerarquia.obtenerJerarquia(idCliente);
           if (ids.length === 0) {
             return {
               data: [],
@@ -253,33 +238,43 @@ WHERE c.Id IN (${placeholders})
         estatus: item.estatus,
         placaVehiculo: item.placaVehiculo || null,
         imagenVehiculo: item.imagenVehiculo || null,
-        instalacion: item.idInstalacion ? { id: Number(item.idInstalacion) } : null,
-        instalacionDispositivo: item.instalacionDispositivoId ? {
-          id: Number(item.instalacionDispositivoId),
-          numeroSerie: item.instalacionDispositivoNumeroSerie,
-          marca: item.instalacionDispositivoMarca,
-          modelo: item.instalacionDispositivoModelo,
-        } : null,
-        instalacionBlueVox: item.instalacionBlueVoxId ? {
-          id: Number(item.instalacionBlueVoxId),
-          numeroSerie: item.instalacionBlueVoxNumeroSerie,
-          marca: item.instalacionBlueVoxMarca,
-          modelo: item.instalacionBlueVoxModelo,
-        } : null,
-        instalacionVehiculo: item.instalacionVehiculoId ? {
-          id: Number(item.instalacionVehiculoId),
-          marca: item.instalacionVehiculoMarca,
-          modelo: item.instalacionVehiculoModelo,
-        } : null,
-        ...(rol === 1 || rol === 2) && item.idClienteData ? {
-          instalacionCliente: {
-            id: Number(item.idClienteData),
-            nombre: item.nombreClienteData,
-            apellidoPaterno: item.apellidoPaternoCliente,
-            apellidoMaterno: item.apellidoMaternoCliente,
-            estatus: item.estatusCliente,
-          },
-        } : {},
+        instalacion: item.idInstalacion
+          ? { id: Number(item.idInstalacion) }
+          : null,
+        instalacionDispositivo: item.instalacionDispositivoId
+          ? {
+              id: Number(item.instalacionDispositivoId),
+              numeroSerie: item.instalacionDispositivoNumeroSerie,
+              marca: item.instalacionDispositivoMarca,
+              modelo: item.instalacionDispositivoModelo,
+            }
+          : null,
+        instalacionBlueVox: item.instalacionBlueVoxId
+          ? {
+              id: Number(item.instalacionBlueVoxId),
+              numeroSerie: item.instalacionBlueVoxNumeroSerie,
+              marca: item.instalacionBlueVoxMarca,
+              modelo: item.instalacionBlueVoxModelo,
+            }
+          : null,
+        instalacionVehiculo: item.instalacionVehiculoId
+          ? {
+              id: Number(item.instalacionVehiculoId),
+              marca: item.instalacionVehiculoMarca,
+              modelo: item.instalacionVehiculoModelo,
+            }
+          : null,
+        ...((rol === 1 || rol === 2) && item.idClienteData
+          ? {
+              instalacionCliente: {
+                id: Number(item.idClienteData),
+                nombre: item.nombreClienteData,
+                apellidoPaterno: item.apellidoPaternoCliente,
+                apellidoMaterno: item.apellidoMaternoCliente,
+                estatus: item.estatusCliente,
+              },
+            }
+          : {}),
       }));
 
       const result: ApiResponseCommon = {
@@ -302,7 +297,11 @@ WHERE c.Id IN (${placeholders})
     }
   }
 
-  async findOne(id: number, idCliente: number, rol: number): Promise<ApiResponseCommon> {
+  async findOne(
+    id: number,
+    idCliente: number,
+    rol: number,
+  ): Promise<ApiResponseCommon> {
     try {
       let mantenimientos;
 
@@ -352,9 +351,12 @@ WHERE mk.Id = ?
           break;
 
         default:
-          const { ids, placeholders } = await this.clienteHijos(idCliente);
+          const { ids, placeholders } =
+            await this.clientesJerarquia.obtenerJerarquia(idCliente);
           if (ids.length === 0) {
-            throw new NotFoundException('Mantenimiento por kilometraje no encontrado');
+            throw new NotFoundException(
+              'Mantenimiento por kilometraje no encontrado',
+            );
           }
 
           // Consulta para resto de usuarios
@@ -397,7 +399,9 @@ AND mk.Id = ?
       }
 
       if (mantenimientos.length === 0) {
-        throw new NotFoundException('Mantenimiento por kilometraje no encontrado');
+        throw new NotFoundException(
+          'Mantenimiento por kilometraje no encontrado',
+        );
       }
 
       const item = mantenimientos[0];
@@ -406,7 +410,9 @@ AND mk.Id = ?
         data: [
           {
             id: Number(item.id),
-            idInstalacion: item.idInstalacion ? Number(item.idInstalacion) : null,
+            idInstalacion: item.idInstalacion
+              ? Number(item.idInstalacion)
+              : null,
             kmInicial: item.kmInicial ? Number(item.kmInicial) : null,
             kmDeseado: item.kmDeseado ? Number(item.kmDeseado) : null,
             periodo: item.periodo,
@@ -415,33 +421,43 @@ AND mk.Id = ?
             estatus: item.estatus,
             placaVehiculo: item.placaVehiculo || null,
             imagenVehiculo: item.imagenVehiculo || null,
-            instalacion: item.idInstalacion ? { id: Number(item.idInstalacion) } : null,
-            instalacionDispositivo: item.instalacionDispositivoId ? {
-              id: Number(item.instalacionDispositivoId),
-              numeroSerie: item.instalacionDispositivoNumeroSerie,
-              marca: item.instalacionDispositivoMarca,
-              modelo: item.instalacionDispositivoModelo,
-            } : null,
-            instalacionBlueVox: item.instalacionBlueVoxId ? {
-              id: Number(item.instalacionBlueVoxId),
-              numeroSerie: item.instalacionBlueVoxNumeroSerie,
-              marca: item.instalacionBlueVoxMarca,
-              modelo: item.instalacionBlueVoxModelo,
-            } : null,
-            instalacionVehiculo: item.instalacionVehiculoId ? {
-              id: Number(item.instalacionVehiculoId),
-              marca: item.instalacionVehiculoMarca,
-              modelo: item.instalacionVehiculoModelo,
-            } : null,
-            ...(rol === 1 || rol === 2) && item.idClienteData ? {
-              instalacionCliente: {
-                id: Number(item.idClienteData),
-                nombre: item.nombreClienteData,
-                apellidoPaterno: item.apellidoPaternoCliente,
-                apellidoMaterno: item.apellidoMaternoCliente,
-                estatus: item.estatusCliente,
-              },
-            } : {},
+            instalacion: item.idInstalacion
+              ? { id: Number(item.idInstalacion) }
+              : null,
+            instalacionDispositivo: item.instalacionDispositivoId
+              ? {
+                  id: Number(item.instalacionDispositivoId),
+                  numeroSerie: item.instalacionDispositivoNumeroSerie,
+                  marca: item.instalacionDispositivoMarca,
+                  modelo: item.instalacionDispositivoModelo,
+                }
+              : null,
+            instalacionBlueVox: item.instalacionBlueVoxId
+              ? {
+                  id: Number(item.instalacionBlueVoxId),
+                  numeroSerie: item.instalacionBlueVoxNumeroSerie,
+                  marca: item.instalacionBlueVoxMarca,
+                  modelo: item.instalacionBlueVoxModelo,
+                }
+              : null,
+            instalacionVehiculo: item.instalacionVehiculoId
+              ? {
+                  id: Number(item.instalacionVehiculoId),
+                  marca: item.instalacionVehiculoMarca,
+                  modelo: item.instalacionVehiculoModelo,
+                }
+              : null,
+            ...((rol === 1 || rol === 2) && item.idClienteData
+              ? {
+                  instalacionCliente: {
+                    id: Number(item.idClienteData),
+                    nombre: item.nombreClienteData,
+                    apellidoPaterno: item.apellidoPaternoCliente,
+                    apellidoMaterno: item.apellidoMaternoCliente,
+                    estatus: item.estatusCliente,
+                  },
+                }
+              : {}),
           },
         ],
       };
@@ -463,20 +479,24 @@ AND mk.Id = ?
     idUser: number,
   ): Promise<ApiCrudResponse> {
     try {
-      const mantenimiento = await this.mantenimientoKilometrajeRepository.findOne({
-        where: { id: id },
-      });
+      const mantenimiento =
+        await this.mantenimientoKilometrajeRepository.findOne({
+          where: { id: id },
+        });
       if (!mantenimiento) {
-        throw new NotFoundException('Mantenimiento por kilometraje no encontrado');
+        throw new NotFoundException(
+          'Mantenimiento por kilometraje no encontrado',
+        );
       }
 
       await this.mantenimientoKilometrajeRepository.update(
         id,
         updateMantenimientoKilometrajeDto,
       );
-      const mantenimientoResult = await this.mantenimientoKilometrajeRepository.findOne({
-        where: { id: id },
-      });
+      const mantenimientoResult =
+        await this.mantenimientoKilometrajeRepository.findOne({
+          where: { id: id },
+        });
 
       //-----Registro en la bitacora----- SUCCESS
       const querylogger = { updateMantenimientoKilometrajeDto };
@@ -525,12 +545,15 @@ AND mk.Id = ?
 
   async desactivar(id: number, idUser: number): Promise<ApiCrudResponse> {
     try {
-      const mantenimiento = await this.mantenimientoKilometrajeRepository.findOne({
-        where: { id: id },
-      });
+      const mantenimiento =
+        await this.mantenimientoKilometrajeRepository.findOne({
+          where: { id: id },
+        });
 
       if (!mantenimiento) {
-        throw new NotFoundException('Mantenimiento por kilometraje no encontrado');
+        throw new NotFoundException(
+          'Mantenimiento por kilometraje no encontrado',
+        );
       }
 
       await this.mantenimientoKilometrajeRepository.update(id, { estatus: 0 });
@@ -584,16 +607,21 @@ AND mk.Id = ?
 
   async activar(id: number, idUser: number): Promise<ApiCrudResponse> {
     try {
-      const mantenimiento = await this.mantenimientoKilometrajeRepository.findOne({
-        where: { id: id },
-      });
+      const mantenimiento =
+        await this.mantenimientoKilometrajeRepository.findOne({
+          where: { id: id },
+        });
 
       if (!mantenimiento) {
-        throw new NotFoundException('Mantenimiento por kilometraje no encontrado');
+        throw new NotFoundException(
+          'Mantenimiento por kilometraje no encontrado',
+        );
       }
 
       if (mantenimiento.estatus === 1) {
-        throw new BadRequestException('El mantenimiento por kilometraje ya está activo');
+        throw new BadRequestException(
+          'El mantenimiento por kilometraje ya está activo',
+        );
       }
 
       await this.mantenimientoKilometrajeRepository.update(id, { estatus: 1 });

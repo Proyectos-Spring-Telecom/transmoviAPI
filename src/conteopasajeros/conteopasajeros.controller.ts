@@ -31,7 +31,7 @@ import { UpdateConteoPasajerosDto } from './dto/update-conteopasajero.dto';
 export class ConteopasajerosController {
   constructor(
     private readonly conteopasajerosService: ConteopasajerosService,
-  ) { }
+  ) {}
 
   @UseGuards(JwtAuthGuard)
   @Post()
@@ -42,7 +42,8 @@ export class ConteopasajerosController {
   })
   @ApiBody({
     type: CreateConteoPasajerosDto,
-    description: 'entradas, salidas, diferencia (obligatorio), fechaHora (obligatorio), numeroSerieBlueVox (obligatorio), estatus (opcional), idViaje (opcional)',
+    description:
+      'entradas, salidas, diferencia (obligatorio), fechaHora (obligatorio), numeroSerieBlueVox (obligatorio), estatus (opcional), idViaje (opcional)',
   })
   @ApiResponse({
     status: 201,
@@ -51,7 +52,10 @@ export class ConteopasajerosController {
       type: 'object',
       properties: {
         status: { type: 'string', example: 'success' },
-        message: { type: 'string', example: 'El registro de ConteoPasajero se realizó con éxito.' },
+        message: {
+          type: 'string',
+          example: 'El registro de ConteoPasajero se realizó con éxito.',
+        },
         data: {
           type: 'object',
           properties: {
@@ -82,7 +86,8 @@ export class ConteopasajerosController {
       +idUser,
       +cliente,
       +rol,
-      createConteopasajeroDto);
+      createConteopasajeroDto,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
@@ -92,10 +97,14 @@ export class ConteopasajerosController {
     description:
       'Actualiza un registro existente. Todos los campos son opcionales. No se puede actualizar si el conteo tiene estatus=0 (inactivo) o si el viaje asociado está inactivo.',
   })
-  @ApiParam({ name: 'id', description: 'ID del registro de conteo a actualizar' })
+  @ApiParam({
+    name: 'id',
+    description: 'ID del registro de conteo a actualizar',
+  })
   @ApiBody({
     type: UpdateConteoPasajerosDto,
-    description: 'entradas, salidas, diferencia, fechaHora, estatus, idViaje (todos opcionales)',
+    description:
+      'entradas, salidas, diferencia, fechaHora, estatus, idViaje (todos opcionales)',
   })
   @ApiResponse({
     status: 200,
@@ -104,7 +113,10 @@ export class ConteopasajerosController {
       type: 'object',
       properties: {
         status: { type: 'string', example: 'success' },
-        message: { type: 'string', example: 'ConteoPasajero fue actualizada correctamente' },
+        message: {
+          type: 'string',
+          example: 'ConteoPasajero fue actualizada correctamente',
+        },
         data: {
           type: 'object',
           properties: {
@@ -117,7 +129,8 @@ export class ConteopasajerosController {
   })
   @ApiResponse({
     status: 400,
-    description: 'No se puede actualizar: el conteo tiene estatus 0 o el viaje asociado está inactivo',
+    description:
+      'No se puede actualizar: el conteo tiene estatus 0 o el viaje asociado está inactivo',
   })
   @ApiResponse({
     status: 404,
@@ -130,16 +143,18 @@ export class ConteopasajerosController {
   async update(
     @Request() req,
     @Param('id', ParseIntPipe) id: number,
-    @Body() updateConteoPasajerosDto: UpdateConteoPasajerosDto): Promise<ApiCrudResponse> {
-      const cliente = req.user.cliente;
+    @Body() updateConteoPasajerosDto: UpdateConteoPasajerosDto,
+  ): Promise<ApiCrudResponse> {
+    const cliente = req.user.cliente;
     const rol = req.user.rol;
     const idUser = req.user.userId;
     return this.conteopasajerosService.update(
-      +id, 
+      +id,
       +idUser,
       +cliente,
       +rol,
-      updateConteoPasajerosDto)
+      updateConteoPasajerosDto,
+    );
   }
 
   // RUTAS ESPECÍFICAS PRIMERO (orden correcto)
@@ -147,7 +162,8 @@ export class ConteopasajerosController {
   @Get('list')
   @ApiOperation({
     summary: 'Listar todos los conteos de pasajeros',
-    description: 'Obtiene el listado completo de registros de conteo de pasajeros, ordenado por fecha y hora descendente.',
+    description:
+      'Obtiene el listado completo de registros de conteo de pasajeros, ordenado por fecha y hora descendente.',
   })
   @ApiResponse({
     status: 200,
@@ -188,7 +204,11 @@ export class ConteopasajerosController {
     description: 'Obtiene los registros de conteo del día actual, paginados.',
   })
   @ApiQuery({ name: 'page', required: true, description: 'Número de página' })
-  @ApiQuery({ name: 'limit', required: true, description: 'Registros por página' })
+  @ApiQuery({
+    name: 'limit',
+    required: true,
+    description: 'Registros por página',
+  })
   @ApiResponse({
     status: 200,
     description: 'Lista paginada de conteos de hoy',
@@ -198,7 +218,11 @@ export class ConteopasajerosController {
         data: { type: 'array', items: { type: 'object' } },
         paginated: {
           type: 'object',
-          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+          properties: {
+            total: { type: 'number' },
+            page: { type: 'number' },
+            lastPage: { type: 'number' },
+          },
         },
       },
     },
@@ -215,10 +239,15 @@ export class ConteopasajerosController {
   @Get('ultima-semana')
   @ApiOperation({
     summary: 'Conteos de la última semana (paginado)',
-    description: 'Obtiene los registros de conteo de los últimos 7 días, paginados.',
+    description:
+      'Obtiene los registros de conteo de los últimos 7 días, paginados.',
   })
   @ApiQuery({ name: 'page', required: true, description: 'Número de página' })
-  @ApiQuery({ name: 'limit', required: true, description: 'Registros por página' })
+  @ApiQuery({
+    name: 'limit',
+    required: true,
+    description: 'Registros por página',
+  })
   @ApiResponse({
     status: 200,
     description: 'Lista paginada de conteos de la última semana',
@@ -228,7 +257,11 @@ export class ConteopasajerosController {
         data: { type: 'array', items: { type: 'object' } },
         paginated: {
           type: 'object',
-          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+          properties: {
+            total: { type: 'number' },
+            page: { type: 'number' },
+            lastPage: { type: 'number' },
+          },
         },
       },
     },
@@ -245,11 +278,16 @@ export class ConteopasajerosController {
   @Get('fecha/:fecha')
   @ApiOperation({
     summary: 'Conteos por fecha (paginado)',
-    description: 'Obtiene los registros de conteo de un día específico. Formato fecha: YYYY-MM-DD.',
+    description:
+      'Obtiene los registros de conteo de un día específico. Formato fecha: YYYY-MM-DD.',
   })
   @ApiParam({ name: 'fecha', description: 'Fecha en formato YYYY-MM-DD' })
   @ApiQuery({ name: 'page', required: true, description: 'Número de página' })
-  @ApiQuery({ name: 'limit', required: true, description: 'Registros por página' })
+  @ApiQuery({
+    name: 'limit',
+    required: true,
+    description: 'Registros por página',
+  })
   @ApiResponse({
     status: 200,
     description: 'Lista paginada de conteos del día',
@@ -259,7 +297,11 @@ export class ConteopasajerosController {
         data: { type: 'array', items: { type: 'object' } },
         paginated: {
           type: 'object',
-          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+          properties: {
+            total: { type: 'number' },
+            page: { type: 'number' },
+            lastPage: { type: 'number' },
+          },
         },
       },
     },
@@ -281,12 +323,23 @@ export class ConteopasajerosController {
   @Get('rango/:fechaInicio/:fechaFin')
   @ApiOperation({
     summary: 'Conteos por rango de fechas (paginado)',
-    description: 'Obtiene los registros de conteo entre dos fechas. Formato: YYYY-MM-DD. El acceso depende del rol del usuario.',
+    description:
+      'Obtiene los registros de conteo entre dos fechas. Formato: YYYY-MM-DD. El acceso depende del rol del usuario.',
   })
   @ApiParam({ name: 'fechaInicio', description: 'Fecha inicio (YYYY-MM-DD)' })
   @ApiParam({ name: 'fechaFin', description: 'Fecha fin (YYYY-MM-DD)' })
-  @ApiQuery({ name: 'page', required: false, description: 'Número de página', example: 1 })
-  @ApiQuery({ name: 'limit', required: false, description: 'Registros por página', example: 10 })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    description: 'Número de página',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Registros por página',
+    example: 10,
+  })
   @ApiResponse({
     status: 200,
     description: 'Lista paginada de conteos en el rango',
@@ -311,7 +364,11 @@ export class ConteopasajerosController {
         },
         paginated: {
           type: 'object',
-          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+          properties: {
+            total: { type: 'number' },
+            page: { type: 'number' },
+            lastPage: { type: 'number' },
+          },
         },
       },
     },
@@ -342,12 +399,17 @@ export class ConteopasajerosController {
   @Get('fecha-hora/:fecha/:hora')
   @ApiOperation({
     summary: 'Conteos por fecha y hora (paginado)',
-    description: 'Obtiene los registros de conteo de una hora específica. Formato: fecha YYYY-MM-DD, hora HH.',
+    description:
+      'Obtiene los registros de conteo de una hora específica. Formato: fecha YYYY-MM-DD, hora HH.',
   })
   @ApiParam({ name: 'fecha', description: 'Fecha (YYYY-MM-DD)' })
   @ApiParam({ name: 'hora', description: 'Hora (0-23)' })
   @ApiQuery({ name: 'page', required: false, description: 'Número de página' })
-  @ApiQuery({ name: 'limit', required: false, description: 'Registros por página' })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Registros por página',
+  })
   @ApiResponse({
     status: 200,
     description: 'Lista paginada de conteos de la hora indicada',
@@ -357,7 +419,11 @@ export class ConteopasajerosController {
         data: { type: 'array', items: { type: 'object' } },
         paginated: {
           type: 'object',
-          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+          properties: {
+            total: { type: 'number' },
+            page: { type: 'number' },
+            lastPage: { type: 'number' },
+          },
         },
       },
     },
@@ -381,11 +447,16 @@ export class ConteopasajerosController {
   @Get('bluevox/:numeroSerie/hoy')
   @ApiOperation({
     summary: 'Conteos de un BlueVox hoy (paginado)',
-    description: 'Obtiene los registros de conteo del día actual para un dispositivo BlueVox específico.',
+    description:
+      'Obtiene los registros de conteo del día actual para un dispositivo BlueVox específico.',
   })
   @ApiParam({ name: 'numeroSerie', description: 'Número de serie del BlueVox' })
   @ApiQuery({ name: 'page', required: false, description: 'Número de página' })
-  @ApiQuery({ name: 'limit', required: false, description: 'Registros por página' })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Registros por página',
+  })
   @ApiResponse({
     status: 200,
     description: 'Lista paginada de conteos del BlueVox hoy',
@@ -395,7 +466,11 @@ export class ConteopasajerosController {
         data: { type: 'array', items: { type: 'object' } },
         paginated: {
           type: 'object',
-          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+          properties: {
+            total: { type: 'number' },
+            page: { type: 'number' },
+            lastPage: { type: 'number' },
+          },
         },
       },
     },
@@ -420,13 +495,18 @@ export class ConteopasajerosController {
   @Get('bluevox/:numeroSerie/rango/:fechaInicio/:fechaFin')
   @ApiOperation({
     summary: 'Conteos de un BlueVox por rango de fechas (paginado)',
-    description: 'Obtiene los registros de conteo de un BlueVox entre dos fechas. Formato fechas: YYYY-MM-DD.',
+    description:
+      'Obtiene los registros de conteo de un BlueVox entre dos fechas. Formato fechas: YYYY-MM-DD.',
   })
   @ApiParam({ name: 'numeroSerie', description: 'Número de serie del BlueVox' })
   @ApiParam({ name: 'fechaInicio', description: 'Fecha inicio (YYYY-MM-DD)' })
   @ApiParam({ name: 'fechaFin', description: 'Fecha fin (YYYY-MM-DD)' })
   @ApiQuery({ name: 'page', required: false, description: 'Número de página' })
-  @ApiQuery({ name: 'limit', required: false, description: 'Registros por página' })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Registros por página',
+  })
   @ApiResponse({
     status: 200,
     description: 'Lista paginada de conteos del BlueVox en el rango',
@@ -436,7 +516,11 @@ export class ConteopasajerosController {
         data: { type: 'array', items: { type: 'object' } },
         paginated: {
           type: 'object',
-          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+          properties: {
+            total: { type: 'number' },
+            page: { type: 'number' },
+            lastPage: { type: 'number' },
+          },
         },
       },
     },
@@ -462,12 +546,14 @@ export class ConteopasajerosController {
   @Get('resumen-horas/:fecha')
   @ApiOperation({
     summary: 'Resumen horario de un día',
-    description: 'Obtiene el resumen agregado por hora de un día: totalEntradas, totalSalidas, totalDiferencia, registros por hora.',
+    description:
+      'Obtiene el resumen agregado por hora de un día: totalEntradas, totalSalidas, totalDiferencia, registros por hora.',
   })
   @ApiParam({ name: 'fecha', description: 'Fecha en formato YYYY-MM-DD' })
   @ApiResponse({
     status: 200,
-    description: 'Array con resumen por hora (hora, totalEntradas, totalSalidas, totalDiferencia, registros)',
+    description:
+      'Array con resumen por hora (hora, totalEntradas, totalSalidas, totalDiferencia, registros)',
     schema: {
       type: 'array',
       items: {
@@ -491,13 +577,15 @@ export class ConteopasajerosController {
   @Get('resumen-diario/:year/:month')
   @ApiOperation({
     summary: 'Resumen diario de un mes',
-    description: 'Obtiene el resumen agregado por día de un mes: totalEntradas, totalSalidas, totalDiferencia, registros por fecha.',
+    description:
+      'Obtiene el resumen agregado por día de un mes: totalEntradas, totalSalidas, totalDiferencia, registros por fecha.',
   })
   @ApiParam({ name: 'year', description: 'Año (ej: 2025)' })
   @ApiParam({ name: 'month', description: 'Mes (1-12)' })
   @ApiResponse({
     status: 200,
-    description: 'Array con resumen por día (fecha, totalEntradas, totalSalidas, totalDiferencia, registros)',
+    description:
+      'Array con resumen por día (fecha, totalEntradas, totalSalidas, totalDiferencia, registros)',
     schema: {
       type: 'array',
       items: {
@@ -524,7 +612,8 @@ export class ConteopasajerosController {
   @Get(':page/:limit')
   @ApiOperation({
     summary: 'Listar conteos paginados',
-    description: 'Obtiene el catálogo paginado de conteos de pasajeros. El acceso depende del rol (SuperAdmin ve todos; otros ven solo sus clientes).',
+    description:
+      'Obtiene el catálogo paginado de conteos de pasajeros. El acceso depende del rol (SuperAdmin ve todos; otros ven solo sus clientes).',
   })
   @ApiParam({ name: 'page', description: 'Número de página (desde 1)' })
   @ApiParam({ name: 'limit', description: 'Registros por página' })
@@ -555,7 +644,11 @@ export class ConteopasajerosController {
         },
         paginated: {
           type: 'object',
-          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+          properties: {
+            total: { type: 'number' },
+            page: { type: 'number' },
+            lastPage: { type: 'number' },
+          },
         },
       },
     },
@@ -574,7 +667,7 @@ export class ConteopasajerosController {
       +cliente,
       +rol,
       page,
-      limit
+      limit,
     );
   }
 
@@ -582,7 +675,8 @@ export class ConteopasajerosController {
   @Get(':id')
   @ApiOperation({
     summary: 'Obtener conteo por ID',
-    description: 'Obtiene el detalle de un registro de conteo de pasajeros por su ID.',
+    description:
+      'Obtiene el detalle de un registro de conteo de pasajeros por su ID.',
   })
   @ApiParam({ name: 'id', description: 'ID del registro de conteo' })
   @ApiResponse({

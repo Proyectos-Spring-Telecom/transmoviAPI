@@ -43,12 +43,28 @@ export class BitacoraController {
             properties: {
               id: { type: 'number', description: 'ID del registro' },
               modulo: { type: 'string', description: 'Módulo del sistema' },
-              descripcion: { type: 'string', description: 'Descripción de la acción' },
-              accion: { type: 'string', description: 'Tipo de acción (CREATE, UPDATE, DELETE)' },
-              query: { type: 'object', description: 'Detalle técnico o query ejecutada' },
-              fechaCreacion: { type: 'string', description: 'Fecha y hora del registro' },
+              descripcion: {
+                type: 'string',
+                description: 'Descripción de la acción',
+              },
+              accion: {
+                type: 'string',
+                description: 'Tipo de acción (CREATE, UPDATE, DELETE)',
+              },
+              query: {
+                type: 'object',
+                description: 'Detalle técnico o query ejecutada',
+              },
+              fechaCreacion: {
+                type: 'string',
+                description: 'Fecha y hora del registro',
+              },
               estatus: { type: 'string', description: 'success o error' },
-              error: { type: 'string', nullable: true, description: 'Mensaje de error si aplica' },
+              error: {
+                type: 'string',
+                nullable: true,
+                description: 'Mensaje de error si aplica',
+              },
               idUsuario: { type: 'number' },
               nombreUsuario: { type: 'string' },
               apellidoPaternoUsuario: { type: 'string' },

@@ -14,7 +14,14 @@ import { LicenciasService } from './licencias.service';
 import { CreateLicenciaDto } from './dto/create-licencia.dto';
 import { UpdateLicenciaDto } from './dto/update-licencia.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiBody,
+} from '@nestjs/swagger';
 
 @ApiTags('Licencias')
 @ApiBearerAuth('bearer-token')
@@ -26,11 +33,13 @@ export class LicenciasController {
   @Post()
   @ApiOperation({
     summary: 'Crear licencia',
-    description: 'Registra una nueva licencia de operador. El número de licencia debe ser único.',
+    description:
+      'Registra una nueva licencia de operador. El número de licencia debe ser único.',
   })
   @ApiBody({
     type: CreateLicenciaDto,
-    description: 'numeroLicencia, idOperador, idCatTipoLicencia, idCategoriaLicencia, fechaExpedicion, fechaVencimiento, estatus',
+    description:
+      'numeroLicencia, idOperador, idCatTipoLicencia, idCategoriaLicencia, fechaExpedicion, fechaVencimiento, estatus',
   })
   @ApiResponse({
     status: 201,
@@ -59,7 +68,8 @@ export class LicenciasController {
   @Get('list')
   @ApiOperation({
     summary: 'Listar licencias',
-    description: 'Obtiene el listado de licencias sin paginación. El acceso depende del rol del usuario.',
+    description:
+      'Obtiene el listado de licencias sin paginación. El acceso depende del rol del usuario.',
   })
   @ApiResponse({
     status: 200,
@@ -96,7 +106,8 @@ export class LicenciasController {
   @Get(':page/:limit')
   @ApiOperation({
     summary: 'Listar licencias paginadas',
-    description: 'Obtiene el catálogo paginado de licencias. El acceso depende del rol del usuario.',
+    description:
+      'Obtiene el catálogo paginado de licencias. El acceso depende del rol del usuario.',
   })
   @ApiParam({ name: 'page', description: 'Número de página (desde 1)' })
   @ApiParam({ name: 'limit', description: 'Registros por página' })
@@ -109,7 +120,11 @@ export class LicenciasController {
         data: { type: 'array', items: { type: 'object' } },
         paginated: {
           type: 'object',
-          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+          properties: {
+            total: { type: 'number' },
+            page: { type: 'number' },
+            lastPage: { type: 'number' },
+          },
         },
       },
     },
@@ -156,14 +171,11 @@ export class LicenciasController {
   })
   @ApiResponse({ status: 404, description: 'Licencia no encontrada' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
-  findOne(
-    @Param('id') id: string,
-    @Request() req,
-  ) {
+  findOne(@Param('id') id: string, @Request() req) {
     const idUser = req.user.userId;
     const cliente = req.user.cliente;
     const rol = req.user.rol;
-    return this.licenciasService.findOne(+id, +cliente, +rol );
+    return this.licenciasService.findOne(+id, +cliente, +rol);
   }
 
   @Put(':id')
@@ -227,10 +239,7 @@ export class LicenciasController {
   })
   @ApiResponse({ status: 404, description: 'Licencia no encontrada' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
-  remove(
-    @Param('id') id: string,
-    @Request() req,
-  ) {
+  remove(@Param('id') id: string, @Request() req) {
     const idUser = req.user.userId;
     const cliente = req.user.cliente;
     const rol = req.user.rol;

@@ -113,7 +113,8 @@ export class CatTipoVerificacionesController {
   @Get(':page/:limit')
   @ApiOperation({
     summary: 'Listar tipos de verificación paginados',
-    description: 'Obtiene el catálogo paginado de tipos de verificación. Ordenado por nombre ascendente.',
+    description:
+      'Obtiene el catálogo paginado de tipos de verificación. Ordenado por nombre ascendente.',
   })
   @ApiParam({ name: 'page', description: 'Número de página (desde 1)' })
   @ApiParam({ name: 'limit', description: 'Registros por página' })
@@ -195,9 +196,13 @@ export class CatTipoVerificacionesController {
   @Patch(':id')
   @ApiOperation({
     summary: 'Actualizar tipo de verificación',
-    description: 'Modifica el nombre de un tipo de verificación existente. El nombre debe seguir siendo único.',
+    description:
+      'Modifica el nombre de un tipo de verificación existente. El nombre debe seguir siendo único.',
   })
-  @ApiParam({ name: 'id', description: 'ID del tipo de verificación a actualizar' })
+  @ApiParam({
+    name: 'id',
+    description: 'ID del tipo de verificación a actualizar',
+  })
   @ApiBody({
     type: UpdateCatTipoVerificacionesDto,
     description: 'nombre (opcional, máx. 100 caracteres)',
@@ -245,9 +250,13 @@ export class CatTipoVerificacionesController {
   @Delete(':id')
   @ApiOperation({
     summary: 'Eliminar tipo de verificación',
-    description: 'Elimina permanentemente un tipo de verificación del catálogo.',
+    description:
+      'Elimina permanentemente un tipo de verificación del catálogo.',
   })
-  @ApiParam({ name: 'id', description: 'ID del tipo de verificación a eliminar' })
+  @ApiParam({
+    name: 'id',
+    description: 'ID del tipo de verificación a eliminar',
+  })
   @ApiResponse({
     status: 200,
     description: 'Tipo de verificación eliminado correctamente',

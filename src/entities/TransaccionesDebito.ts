@@ -9,9 +9,15 @@ import {
 import { applySchema } from 'src/common/apply-schema.decorator';
 
 @applySchema
-@Index('FK_TransaccionesDebito_CatTiposTransacciones_idx', ['idTipoTransaccion'],)
-@Index('FK_TransaccionesDebito_NumeroSerieMonedero_idx', ['numeroSerieMonedero'],)
-@Index('FK_TransaccionesDebito_NumeroSerieDispositivo_idx', ['numeroSerieDispositivo'],)
+@Index('FK_TransaccionesDebito_CatTiposTransacciones_idx', [
+  'idTipoTransaccion',
+])
+@Index('FK_TransaccionesDebito_NumeroSerieMonedero_idx', [
+  'numeroSerieMonedero',
+])
+@Index('FK_TransaccionesDebito_NumeroSerieDispositivo_idx', [
+  'numeroSerieDispositivo',
+])
 @Entity('TransaccionesDebito')
 export class TransaccionesDebito {
   @PrimaryGeneratedColumn({ type: 'bigint', name: 'Id' })
@@ -26,22 +32,47 @@ export class TransaccionesDebito {
   @Column('bigint', { name: 'IdControlTransaccion', nullable: true })
   idControlTransaccion: number | null;
 
-  @Column('decimal', { name: 'LatitudInicial', precision: 10, scale: 7, nullable: true })
+  @Column('decimal', {
+    name: 'LatitudInicial',
+    precision: 10,
+    scale: 7,
+    nullable: true,
+  })
   latitudInicial: number | null;
 
-  @Column('decimal', { name: 'LongitudInicial', precision: 10, scale: 7, nullable: true })
+  @Column('decimal', {
+    name: 'LongitudInicial',
+    precision: 10,
+    scale: 7,
+    nullable: true,
+  })
   longitudInicial: number | null;
 
   @Column('datetime', { name: 'FechaHoraInicio', nullable: true })
   fechaHoraInicio: Date | null;
 
-  @Column('decimal', { name: 'DistanciaInicialKm', precision: 10, scale: 2, nullable: true })
+  @Column('decimal', {
+    name: 'DistanciaInicialKm',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+  })
   distanciaInicialKm: number | null;
 
-  @Column('decimal', { name: 'LatitudFinal', precision: 10, scale: 7, nullable: true })
+  @Column('decimal', {
+    name: 'LatitudFinal',
+    precision: 10,
+    scale: 7,
+    nullable: true,
+  })
   latitudFinal: number | null;
 
-  @Column('decimal', { name: 'LongitudFinal', precision: 10, scale: 7, nullable: true })
+  @Column('decimal', {
+    name: 'LongitudFinal',
+    precision: 10,
+    scale: 7,
+    nullable: true,
+  })
   longitudFinal: number | null;
 
   @Column('datetime', { name: 'FechaHoraFinal', nullable: true })

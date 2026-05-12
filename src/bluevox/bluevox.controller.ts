@@ -222,7 +222,8 @@ export class BluevoxController {
   @Put(':id')
   @ApiOperation({
     summary: 'Actualizar BlueVox',
-    description: 'Actualiza la información del dispositivo (número de serie, marca, modelo, cliente).',
+    description:
+      'Actualiza la información del dispositivo (número de serie, marca, modelo, cliente).',
   })
   @ApiParam({ name: 'id', description: 'ID del BlueVox' })
   @ApiBody({ type: UpdateBluevoxDto })
@@ -234,7 +235,10 @@ export class BluevoxController {
       properties: {
         status: { type: 'string', example: 'success' },
         message: { type: 'string' },
-        data: { type: 'object', properties: { id: { type: 'number' }, nombre: { type: 'string' } } },
+        data: {
+          type: 'object',
+          properties: { id: { type: 'number' }, nombre: { type: 'string' } },
+        },
       },
     },
   })
@@ -299,7 +303,10 @@ export class BluevoxController {
       properties: {
         status: { type: 'string' },
         message: { type: 'string' },
-        estatus: { type: 'object', properties: { estatus: { type: 'number' } } },
+        estatus: {
+          type: 'object',
+          properties: { estatus: { type: 'number' } },
+        },
         data: { type: 'object' },
       },
     },

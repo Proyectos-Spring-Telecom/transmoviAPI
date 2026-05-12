@@ -35,7 +35,8 @@ export class MantenimientoCombustibleController {
   @Post()
   @ApiOperation({
     summary: 'Crear un nuevo registro de mantenimiento de combustible',
-    description: 'Crea un nuevo registro de abastecimiento de combustible con toda la información del servicio realizado.',
+    description:
+      'Crea un nuevo registro de abastecimiento de combustible con toda la información del servicio realizado.',
   })
   @ApiBody({
     type: CreateMantenimientoCombustibleDto,
@@ -65,7 +66,8 @@ export class MantenimientoCombustibleController {
     description: 'No autorizado',
   })
   async create(
-    @Body() createMantenimientoCombustibleDto: CreateMantenimientoCombustibleDto,
+    @Body()
+    createMantenimientoCombustibleDto: CreateMantenimientoCombustibleDto,
     @Request() req,
   ): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
@@ -78,7 +80,8 @@ export class MantenimientoCombustibleController {
   @Get(':page/:limit')
   @ApiOperation({
     summary: 'Obtener mantenimientos de combustible paginados',
-    description: 'Obtiene un listado paginado de registros de abastecimiento de combustible con sus relaciones.',
+    description:
+      'Obtiene un listado paginado de registros de abastecimiento de combustible con sus relaciones.',
   })
   @ApiParam({ name: 'page', description: 'Número de página (desde 1)' })
   @ApiParam({ name: 'limit', description: 'Registros por página' })
@@ -91,7 +94,11 @@ export class MantenimientoCombustibleController {
         data: { type: 'array', items: { type: 'object' } },
         paginated: {
           type: 'object',
-          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+          properties: {
+            total: { type: 'number' },
+            page: { type: 'number' },
+            lastPage: { type: 'number' },
+          },
         },
       },
     },
@@ -107,13 +114,19 @@ export class MantenimientoCombustibleController {
   ): Promise<ApiResponseCommon> {
     const idCliente = req.user.cliente;
     const rol = req.user.rol;
-    return this.mantenimientoCombustibleService.findAll(page, limit, Number(idCliente), Number(rol));
+    return this.mantenimientoCombustibleService.findAll(
+      page,
+      limit,
+      Number(idCliente),
+      Number(rol),
+    );
   }
 
   @Get(':id')
   @ApiOperation({
     summary: 'Obtener un mantenimiento de combustible por ID',
-    description: 'Obtiene los detalles completos de un registro de abastecimiento de combustible específico por su ID, incluyendo todas sus relaciones.',
+    description:
+      'Obtiene los detalles completos de un registro de abastecimiento de combustible específico por su ID, incluyendo todas sus relaciones.',
   })
   @ApiParam({
     name: 'id',
@@ -133,16 +146,24 @@ export class MantenimientoCombustibleController {
     status: 401,
     description: 'No autorizado',
   })
-  findOne(@Param('id', ParseIntPipe) id: number, @Request() req): Promise<ApiResponseCommon> {
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req,
+  ): Promise<ApiResponseCommon> {
     const idCliente = req.user.cliente;
     const rol = req.user.rol;
-    return this.mantenimientoCombustibleService.findOne(id, Number(idCliente), Number(rol));
+    return this.mantenimientoCombustibleService.findOne(
+      id,
+      Number(idCliente),
+      Number(rol),
+    );
   }
 
   @Patch(':id')
   @ApiOperation({
     summary: 'Actualizar un mantenimiento de combustible',
-    description: 'Actualiza los datos de un registro de abastecimiento de combustible existente. Solo se actualizan los campos proporcionados.',
+    description:
+      'Actualiza los datos de un registro de abastecimiento de combustible existente. Solo se actualizan los campos proporcionados.',
   })
   @ApiParam({
     name: 'id',
@@ -172,7 +193,8 @@ export class MantenimientoCombustibleController {
   })
   async update(
     @Param('id', ParseIntPipe) id: number,
-    @Body() updateMantenimientoCombustibleDto: UpdateMantenimientoCombustibleDto,
+    @Body()
+    updateMantenimientoCombustibleDto: UpdateMantenimientoCombustibleDto,
     @Request() req,
   ): Promise<ApiCrudResponse> {
     const idUser = req.user.userId;
@@ -186,7 +208,8 @@ export class MantenimientoCombustibleController {
   @Patch(':id/desactivar')
   @ApiOperation({
     summary: 'Desactivar un mantenimiento de combustible',
-    description: 'Desactiva un registro de abastecimiento de combustible cambiando su estatus a 0.',
+    description:
+      'Desactiva un registro de abastecimiento de combustible cambiando su estatus a 0.',
   })
   @ApiParam({
     name: 'id',
@@ -217,7 +240,8 @@ export class MantenimientoCombustibleController {
   @Patch(':id/activar')
   @ApiOperation({
     summary: 'Activar un mantenimiento de combustible',
-    description: 'Activa un registro de abastecimiento de combustible cambiando su estatus a 1 si estaba previamente en 0.',
+    description:
+      'Activa un registro de abastecimiento de combustible cambiando su estatus a 1 si estaba previamente en 0.',
   })
   @ApiParam({
     name: 'id',

@@ -13,23 +13,32 @@ import { PosicionesService } from './posiciones.service';
 import { CreatePosicionesDto } from './dto/create-posicione.dto';
 import { ApiCrudResponse, ApiResponseCommon } from 'src/common/ApiResponse';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiParam,
+} from '@nestjs/swagger';
 import { UpdatePosicionesDto } from './dto/update-posicione.dto';
 
 @ApiTags('Posiciones')
 @ApiBearerAuth('bearer-token')
 @Controller('posiciones')
 export class PosicionesController {
-  constructor(private readonly posicionesService: PosicionesService) { }
+  constructor(private readonly posicionesService: PosicionesService) {}
 
   @Post()
   @ApiOperation({
     summary: 'Registrar posición',
-    description: 'Registra una nueva posición GPS de un dispositivo (ej. desde el validador).',
+    description:
+      'Registra una nueva posición GPS de un dispositivo (ej. desde el validador).',
   })
   @ApiBody({
     type: CreatePosicionesDto,
-    description: 'Datos de la posición: idDispositivo, latitud, longitud, fechaHora, etc.',
+    description:
+      'Datos de la posición: idDispositivo, latitud, longitud, fechaHora, etc.',
   })
   @ApiResponse({
     status: 201,
@@ -41,7 +50,10 @@ export class PosicionesController {
         message: { type: 'string' },
         data: {
           type: 'object',
-          properties: { id: { type: 'number' }, idDispositivo: { type: 'number' } },
+          properties: {
+            id: { type: 'number' },
+            idDispositivo: { type: 'number' },
+          },
         },
       },
     },
@@ -84,12 +96,12 @@ export class PosicionesController {
     return this.posicionesService.update(id, updatePosicionesDto);
   }
 
-
   @UseGuards(JwtAuthGuard)
   @Get('list')
   @ApiOperation({
     summary: 'Listar posiciones',
-    description: 'Obtiene el listado de posiciones/dispositivos. El acceso depende del rol del usuario.',
+    description:
+      'Obtiene el listado de posiciones/dispositivos. El acceso depende del rol del usuario.',
   })
   @ApiResponse({
     status: 200,
@@ -101,29 +113,31 @@ export class PosicionesController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, latitud: { type: 'number' }, longitud: { type: 'number' }, idDispositivo: { type: 'number' } },
+            properties: {
+              id: { type: 'number' },
+              latitud: { type: 'number' },
+              longitud: { type: 'number' },
+              idDispositivo: { type: 'number' },
+            },
           },
         },
       },
     },
   })
   @ApiResponse({ status: 401, description: 'No autorizado' })
-  async findAllList(@Request() req,): Promise<ApiResponseCommon> {
+  async findAllList(@Request() req): Promise<ApiResponseCommon> {
     const cliente = req.user.cliente;
     const rol = req.user.rol;
     const idUser = req.user.userId;
-    return await this.posicionesService.findAllList(
-      +idUser,
-      +cliente,
-      +rol,
-    );
+    return await this.posicionesService.findAllList(+idUser, +cliente, +rol);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get(':page/:limit')
   @ApiOperation({
     summary: 'Listar posiciones paginadas',
-    description: 'Obtiene el catálogo paginado de posiciones. El acceso depende del rol del usuario.',
+    description:
+      'Obtiene el catálogo paginado de posiciones. El acceso depende del rol del usuario.',
   })
   @ApiParam({ name: 'page', description: 'Número de página (desde 1)' })
   @ApiParam({ name: 'limit', description: 'Registros por página' })
@@ -137,12 +151,22 @@ export class PosicionesController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, latitud: { type: 'number' }, longitud: { type: 'number' }, idDispositivo: { type: 'number' }, fechaHora: { type: 'string' } },
+            properties: {
+              id: { type: 'number' },
+              latitud: { type: 'number' },
+              longitud: { type: 'number' },
+              idDispositivo: { type: 'number' },
+              fechaHora: { type: 'string' },
+            },
           },
         },
         paginated: {
           type: 'object',
-          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+          properties: {
+            total: { type: 'number' },
+            page: { type: 'number' },
+            lastPage: { type: 'number' },
+          },
         },
       },
     },
@@ -161,7 +185,8 @@ export class PosicionesController {
       +cliente,
       +rol,
       page,
-      limit);
+      limit,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
@@ -179,7 +204,13 @@ export class PosicionesController {
       properties: {
         data: {
           type: 'object',
-          properties: { id: { type: 'number' }, latitud: { type: 'number' }, longitud: { type: 'number' }, idDispositivo: { type: 'number' }, fechaHora: { type: 'string' } },
+          properties: {
+            id: { type: 'number' },
+            latitud: { type: 'number' },
+            longitud: { type: 'number' },
+            idDispositivo: { type: 'number' },
+            fechaHora: { type: 'string' },
+          },
         },
       },
     },
@@ -189,6 +220,4 @@ export class PosicionesController {
   findOne(@Param('id') id: string) {
     return this.posicionesService.findOne(+id);
   }
-
-
 }

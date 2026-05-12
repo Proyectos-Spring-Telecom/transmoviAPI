@@ -16,7 +16,14 @@ import { CreateTallereDto } from './dto/create-tallere.dto';
 import { UpdateTallereDto } from './dto/update-tallere.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
-import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiParam,
+} from '@nestjs/swagger';
 
 @ApiTags('Talleres')
 @ApiBearerAuth('bearer-token')
@@ -28,11 +35,13 @@ export class TalleresController {
   @Post()
   @ApiOperation({
     summary: 'Crear taller',
-    description: 'Registra un nuevo taller de mantenimiento asociado al cliente.',
+    description:
+      'Registra un nuevo taller de mantenimiento asociado al cliente.',
   })
   @ApiBody({
     type: CreateTallereDto,
-    description: 'Datos del taller: nombre, dirección, teléfono, idCliente, etc.',
+    description:
+      'Datos del taller: nombre, dirección, teléfono, idCliente, etc.',
   })
   @ApiResponse({
     status: 201,
@@ -60,7 +69,8 @@ export class TalleresController {
   @Get('list')
   @ApiOperation({
     summary: 'Listar talleres',
-    description: 'Obtiene el listado de talleres del cliente del usuario autenticado.',
+    description:
+      'Obtiene el listado de talleres del cliente del usuario autenticado.',
   })
   @ApiResponse({
     status: 200,
@@ -72,15 +82,20 @@ export class TalleresController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, nombre: { type: 'string' }, direccion: { type: 'string' }, idCliente: { type: 'number' } },
+            properties: {
+              id: { type: 'number' },
+              nombre: { type: 'string' },
+              direccion: { type: 'string' },
+              idCliente: { type: 'number' },
+            },
           },
         },
       },
     },
   })
   @ApiResponse({ status: 401, description: 'No autorizado' })
-  findAll(@Req() req:any) {
-    console.log(req.user)
+  findAll(@Req() req: any) {
+    console.log(req.user);
     return this.talleresService.findAll(req);
   }
 
@@ -101,12 +116,22 @@ export class TalleresController {
           type: 'array',
           items: {
             type: 'object',
-            properties: { id: { type: 'number' }, nombre: { type: 'string' }, direccion: { type: 'string' }, idCliente: { type: 'number' }, estatus: { type: 'number' } },
+            properties: {
+              id: { type: 'number' },
+              nombre: { type: 'string' },
+              direccion: { type: 'string' },
+              idCliente: { type: 'number' },
+              estatus: { type: 'number' },
+            },
           },
         },
         paginated: {
           type: 'object',
-          properties: { total: { type: 'number' }, page: { type: 'number' }, lastPage: { type: 'number' } },
+          properties: {
+            total: { type: 'number' },
+            page: { type: 'number' },
+            lastPage: { type: 'number' },
+          },
         },
       },
     },
@@ -134,7 +159,14 @@ export class TalleresController {
       properties: {
         data: {
           type: 'object',
-          properties: { id: { type: 'number' }, nombre: { type: 'string' }, direccion: { type: 'string' }, telefono: { type: 'string' }, idCliente: { type: 'number' }, estatus: { type: 'number' } },
+          properties: {
+            id: { type: 'number' },
+            nombre: { type: 'string' },
+            direccion: { type: 'string' },
+            telefono: { type: 'string' },
+            idCliente: { type: 'number' },
+            estatus: { type: 'number' },
+          },
         },
       },
     },
@@ -172,8 +204,12 @@ export class TalleresController {
   })
   @ApiResponse({ status: 404, description: 'Taller no encontrado' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
-  update(@Param('id') id: string, @Body() updateTallereDto: UpdateTallereDto,@Req() req) {
-    return this.talleresService.update(+id, updateTallereDto,req.user.userId);
+  update(
+    @Param('id') id: string,
+    @Body() updateTallereDto: UpdateTallereDto,
+    @Req() req,
+  ) {
+    return this.talleresService.update(+id, updateTallereDto, req.user.userId);
   }
   @Patch('desactivar/:id')
   @ApiOperation({
@@ -198,8 +234,8 @@ export class TalleresController {
   })
   @ApiResponse({ status: 404, description: 'Taller no encontrado' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
-  remove(@Param('id') id: number,@Req() req:any) {
-    return this.talleresService.remove(+id,Number(req.user.userId));
+  remove(@Param('id') id: number, @Req() req: any) {
+    return this.talleresService.remove(+id, Number(req.user.userId));
   }
   @Patch('activar/:id')
   @ApiOperation({
@@ -224,7 +260,7 @@ export class TalleresController {
   })
   @ApiResponse({ status: 404, description: 'Taller no encontrado' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
-  activar(@Param('id') id: number,@Req() req:any) {
-    return this.talleresService.activar(+id,Number(req.user.userId));
+  activar(@Param('id') id: number, @Req() req: any) {
+    return this.talleresService.activar(+id, Number(req.user.userId));
   }
 }

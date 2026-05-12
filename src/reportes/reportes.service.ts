@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Clientes } from 'src/entities/Clientes';
@@ -7,31 +11,15 @@ import { RecaudacionPorOperadorDto } from './dto/recaudacion-por-operador.dto';
 import { RecaudacionPorVehiculoDto } from './dto/recaudacion-por-vehiculo.dto';
 import { RecaudacionPorDispositivoDto } from './dto/recaudacion-por-dispositivo.dto';
 import { ApiResponseCommon } from 'src/common/ApiResponse';
+import { ClientesJerarquiaService } from 'src/clientes-jerarquia/clientes-jerarquia.service';
 
 @Injectable()
 export class ReportesService {
   constructor(
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
+    private readonly clientesJerarquia: ClientesJerarquiaService,
   ) {}
-
-  private async clienteHijos(cliente: number) {
-    const clientesFiltrado = await this.clienteRepository.query(
-      `CALL spGetClientes(?);`,
-      [cliente],
-    );
-
-    const idsFiltrados = clientesFiltrado[0];
-    const ids = idsFiltrados
-      .map((clientesFiltrado: any) => Number(clientesFiltrado.Id))
-      .filter(Boolean);
-    if (ids.length === 0) {
-      return { ids: [], placeholders: '' };
-    }
-
-    const placeholders = ids.map(() => '?').join(', ');
-    return { ids, placeholders };
-  }
 
   async recaudacionDiariaPorRuta(
     filtros: RecaudacionDiariaRutaDto,
@@ -39,7 +27,8 @@ export class ReportesService {
   ): Promise<ApiResponseCommon> {
     try {
       // Obtener jerarquía de clientes
-      const { ids: clienteIds, placeholders } = await this.clienteHijos(cliente);
+      const { ids: clienteIds, placeholders } =
+        await this.clientesJerarquia.obtenerJerarquia(cliente);
 
       console.log('clienteIds', clienteIds);
       if (clienteIds.length === 0) {
@@ -86,7 +75,8 @@ export class ReportesService {
         parametros.push(filtros.idDerrotero);
       }
 
-      const whereClause = condiciones.length > 0 ? `WHERE ${condiciones.join(' AND ')}` : '';
+      const whereClause =
+        condiciones.length > 0 ? `WHERE ${condiciones.join(' AND ')}` : '';
 
       const query = `
 SELECT
@@ -134,9 +124,9 @@ ORDER BY DATE(htd.FHRegistro) DESC, reg.Nombre, r.Nombre, d.Nombre;
       console.log('Filtros recibidos:', filtros);
       console.log('Cliente IDs:', clienteIds);
       console.log('Parámetros:', parametros);
-      
+
       const resultados = await this.clienteRepository.query(query, parametros);
-      
+
       console.log('Resultados obtenidos:', resultados.length);
       console.log('=== FIN DEBUG ===');
 
@@ -151,12 +141,23 @@ ORDER BY DATE(htd.FHRegistro) DESC, reg.Nombre, r.Nombre, d.Nombre;
         nombreDerrotero: row.nombreDerrotero || null,
         viajes: row.viajes ? Number(row.viajes) : 0,
         validaciones: row.validaciones ? Number(row.validaciones) : 0,
-        ingresos: row.ingresos ? Number(parseFloat(String(row.ingresos)).toFixed(2)) : 0,
-        ticketPromedio: row.ticketPromedio ? Number(parseFloat(String(row.ticketPromedio)).toFixed(2)) : 0,
-        porcentajeElectronico: row.porcentajeElectronico ? Number(parseFloat(String(row.porcentajeElectronico)).toFixed(2)) : 0,
+        ingresos: row.ingresos
+          ? Number(parseFloat(String(row.ingresos)).toFixed(2))
+          : 0,
+        ticketPromedio: row.ticketPromedio
+          ? Number(parseFloat(String(row.ticketPromedio)).toFixed(2))
+          : 0,
+        porcentajeElectronico: row.porcentajeElectronico
+          ? Number(parseFloat(String(row.porcentajeElectronico)).toFixed(2))
+          : 0,
         ascensos: row.ascensos ? Number(row.ascensos) : 0,
-        evasionAbsoluta: row.evasionAbsoluta !== null && row.evasionAbsoluta !== undefined ? Number(row.evasionAbsoluta) : 0,
-        evasionPorcentual: row.evasionPorcentual ? Number(parseFloat(String(row.evasionPorcentual)).toFixed(2)) : 0,
+        evasionAbsoluta:
+          row.evasionAbsoluta !== null && row.evasionAbsoluta !== undefined
+            ? Number(row.evasionAbsoluta)
+            : 0,
+        evasionPorcentual: row.evasionPorcentual
+          ? Number(parseFloat(String(row.evasionPorcentual)).toFixed(2))
+          : 0,
       }));
 
       return {
@@ -182,8 +183,9 @@ ORDER BY DATE(htd.FHRegistro) DESC, reg.Nombre, r.Nombre, d.Nombre;
   ): Promise<ApiResponseCommon> {
     try {
       // Obtener jerarquía de clientes
-      const { ids: clienteIds, placeholders } = await this.clienteHijos(cliente);
-      
+      const { ids: clienteIds, placeholders } =
+        await this.clientesJerarquia.obtenerJerarquia(cliente);
+
       if (clienteIds.length === 0) {
         return {
           data: [],
@@ -191,7 +193,9 @@ ORDER BY DATE(htd.FHRegistro) DESC, reg.Nombre, r.Nombre, d.Nombre;
       }
 
       // Preparar filtros de fecha — FHRegistro en HistoricoTransaccionesDebito
-      const fechaInicio = filtros.fechaInicio ? filtros.fechaInicio.split('T')[0] : null;
+      const fechaInicio = filtros.fechaInicio
+        ? filtros.fechaInicio.split('T')[0]
+        : null;
       const fechaFin = filtros.fechaFin ? filtros.fechaFin.split('T')[0] : null;
 
       // HistoricoTransaccionesDebito → Viajes (IdViajes) → Operador; agrupado por día + operador
@@ -270,8 +274,8 @@ ORDER BY datos.fecha DESC, datos.ingresos DESC, datos.operador ASC;
 
       // Construir parámetros para la consulta principal
       // Orden: clienteIds, fechas WHERE principal (histórico débito), idOperador
-      const parametrosCompletos = [...clienteIds];
-      
+      const parametrosCompletos: (string | number)[] = [...clienteIds];
+
       // Parámetros de fecha para el WHERE principal (HistoricoTransaccionesDebito.FHRegistro)
       if (fechaInicio) {
         parametrosCompletos.push(fechaInicio);
@@ -279,7 +283,7 @@ ORDER BY datos.fecha DESC, datos.ingresos DESC, datos.operador ASC;
       if (fechaFin) {
         parametrosCompletos.push(fechaFin);
       }
-      
+
       // Parámetro de operador si existe
       if (filtros.idOperador) {
         parametrosCompletos.push(filtros.idOperador);
@@ -289,9 +293,12 @@ ORDER BY datos.fecha DESC, datos.ingresos DESC, datos.operador ASC;
       console.log('Filtros:', filtros);
       console.log('Cliente IDs:', clienteIds);
       console.log('Parámetros completos:', parametrosCompletos);
-      
-      const resultados = await this.clienteRepository.query(query, parametrosCompletos);
-      
+
+      const resultados = await this.clienteRepository.query(
+        query,
+        parametrosCompletos,
+      );
+
       console.log('Resultados obtenidos:', resultados.length);
       console.log('=== FIN DEBUG ===');
 
@@ -307,8 +314,10 @@ ORDER BY datos.fecha DESC, datos.ingresos DESC, datos.operador ASC;
           viajes: Number(row.viajes) || 0,
           validaciones: Number(row.validaciones) || 0,
           ingresos: Number(parseFloat(String(row.ingresos)).toFixed(2)) || 0,
-          ticketPromedio: Number(parseFloat(String(row.ticketPromedio)).toFixed(2)) || 0,
-          evasionPorcentual: Number(parseFloat(String(row.evasionPorcentual)).toFixed(2)) || 0,
+          ticketPromedio:
+            Number(parseFloat(String(row.ticketPromedio)).toFixed(2)) || 0,
+          evasionPorcentual:
+            Number(parseFloat(String(row.evasionPorcentual)).toFixed(2)) || 0,
           ultimoTurno: row.ultimoTurno || null,
         };
       });
@@ -336,8 +345,9 @@ ORDER BY datos.fecha DESC, datos.ingresos DESC, datos.operador ASC;
   ): Promise<ApiResponseCommon> {
     try {
       // Obtener jerarquía de clientes
-      const { ids: clienteIds, placeholders } = await this.clienteHijos(cliente);
-      
+      const { ids: clienteIds, placeholders } =
+        await this.clientesJerarquia.obtenerJerarquia(cliente);
+
       if (clienteIds.length === 0) {
         return {
           data: [],
@@ -345,7 +355,9 @@ ORDER BY datos.fecha DESC, datos.ingresos DESC, datos.operador ASC;
       }
 
       // Preparar filtros de fecha — FHRegistro en HistoricoTransaccionesDebito
-      const fechaInicio = filtros.fechaInicio ? filtros.fechaInicio.split('T')[0] : null;
+      const fechaInicio = filtros.fechaInicio
+        ? filtros.fechaInicio.split('T')[0]
+        : null;
       const fechaFin = filtros.fechaFin ? filtros.fechaFin.split('T')[0] : null;
 
       // HistoricoTransaccionesDebito → Viajes (IdViajes) → Turnos → Instalaciones → Vehículo; ruta: Viajes → Derroteros → Rutas
@@ -429,8 +441,8 @@ ORDER BY datos.fecha DESC, datos.ingresos DESC, datos.numeroEconomico ASC;
 
       // Construir parámetros para la consulta principal
       // Orden: clienteIds, fechas (HistoricoTransaccionesDebito), idVehiculo, idRuta
-      const parametrosCompletos = [...clienteIds];
-      
+      const parametrosCompletos: (string | number)[] = [...clienteIds];
+
       // Parámetros de fecha (HistoricoTransaccionesDebito.FHRegistro)
       if (fechaInicio) {
         parametrosCompletos.push(fechaInicio);
@@ -438,12 +450,12 @@ ORDER BY datos.fecha DESC, datos.ingresos DESC, datos.numeroEconomico ASC;
       if (fechaFin) {
         parametrosCompletos.push(fechaFin);
       }
-      
+
       // Parámetro de vehículo si existe
       if (filtros.idVehiculo) {
         parametrosCompletos.push(filtros.idVehiculo);
       }
-      
+
       // Parámetro de ruta si existe
       if (filtros.idRuta) {
         parametrosCompletos.push(filtros.idRuta);
@@ -453,9 +465,12 @@ ORDER BY datos.fecha DESC, datos.ingresos DESC, datos.numeroEconomico ASC;
       console.log('Filtros:', filtros);
       console.log('Cliente IDs:', clienteIds);
       console.log('Parámetros completos:', parametrosCompletos);
-      
-      const resultados = await this.clienteRepository.query(query, parametrosCompletos);
-      
+
+      const resultados = await this.clienteRepository.query(
+        query,
+        parametrosCompletos,
+      );
+
       console.log('Resultados obtenidos:', resultados.length);
       console.log('=== FIN DEBUG ===');
 
@@ -468,13 +483,16 @@ ORDER BY datos.fecha DESC, datos.ingresos DESC, datos.numeroEconomico ASC;
         marca: row.marca || null,
         modelo: row.modelo || null,
         ano: row.ano ? Number(row.ano) : null,
-        marcaModeloAno: `${row.marca || ''} ${row.modelo || ''} ${row.ano || ''}`.trim(),
+        marcaModeloAno:
+          `${row.marca || ''} ${row.modelo || ''} ${row.ano || ''}`.trim(),
         turnos: Number(row.turnos) || 0,
         viajes: Number(row.viajes) || 0,
         validaciones: Number(row.validaciones) || 0,
         ingresos: Number(parseFloat(String(row.ingresos)).toFixed(2)) || 0,
-        ticketPromedio: Number(parseFloat(String(row.ticketPromedio)).toFixed(2)) || 0,
-        horasServicio: Number(parseFloat(String(row.horasServicio)).toFixed(2)) || 0,
+        ticketPromedio:
+          Number(parseFloat(String(row.ticketPromedio)).toFixed(2)) || 0,
+        horasServicio:
+          Number(parseFloat(String(row.horasServicio)).toFixed(2)) || 0,
       }));
 
       return {
@@ -500,8 +518,9 @@ ORDER BY datos.fecha DESC, datos.ingresos DESC, datos.numeroEconomico ASC;
   ): Promise<ApiResponseCommon> {
     try {
       // Obtener jerarquía de clientes
-      const { ids: clienteIds, placeholders } = await this.clienteHijos(cliente);
-      
+      const { ids: clienteIds, placeholders } =
+        await this.clientesJerarquia.obtenerJerarquia(cliente);
+
       if (clienteIds.length === 0) {
         return {
           data: [],
@@ -509,7 +528,9 @@ ORDER BY datos.fecha DESC, datos.ingresos DESC, datos.numeroEconomico ASC;
       }
 
       // Preparar filtros de fecha — FHRegistro en HistoricoTransaccionesDebito
-      const fechaInicio = filtros.fechaInicio ? filtros.fechaInicio.split('T')[0] : null;
+      const fechaInicio = filtros.fechaInicio
+        ? filtros.fechaInicio.split('T')[0]
+        : null;
       const fechaFin = filtros.fechaFin ? filtros.fechaFin.split('T')[0] : null;
 
       // HistoricoTransaccionesDebito → Viajes (IdViajes) → Turnos → Instalación/vehículo; dispositivo validador vía NumeroSerieDispositivo
@@ -582,8 +603,8 @@ ORDER BY datos.ingresos DESC, datos.serieDispositivo ASC;
 
       // Construir parámetros para la consulta principal
       // Orden: clienteIds, fechas (HistoricoTransaccionesDebito), idDispositivo, idInstalacion
-      const parametrosCompletos = [...clienteIds];
-      
+      const parametrosCompletos: (string | number)[] = [...clienteIds];
+
       // Parámetros de fecha (HistoricoTransaccionesDebito.FHRegistro)
       if (fechaInicio) {
         parametrosCompletos.push(fechaInicio);
@@ -591,12 +612,12 @@ ORDER BY datos.ingresos DESC, datos.serieDispositivo ASC;
       if (fechaFin) {
         parametrosCompletos.push(fechaFin);
       }
-      
+
       // Parámetro de dispositivo si existe
       if (filtros.idDispositivo) {
         parametrosCompletos.push(filtros.idDispositivo);
       }
-      
+
       // Parámetro de instalación si existe
       if (filtros.idInstalacion) {
         parametrosCompletos.push(filtros.idInstalacion);
@@ -606,9 +627,12 @@ ORDER BY datos.ingresos DESC, datos.serieDispositivo ASC;
       console.log('Filtros:', filtros);
       console.log('Cliente IDs:', clienteIds);
       console.log('Parámetros completos:', parametrosCompletos);
-      
-      const resultados = await this.clienteRepository.query(query, parametrosCompletos);
-      
+
+      const resultados = await this.clienteRepository.query(
+        query,
+        parametrosCompletos,
+      );
+
       console.log('Resultados obtenidos:', resultados.length);
       console.log('=== FIN DEBUG ===');
 
@@ -622,12 +646,20 @@ ORDER BY datos.ingresos DESC, datos.serieDispositivo ASC;
         vehiculo: row.vehiculo || null,
         validaciones: Number(row.validaciones) || 0,
         ingresos: Number(parseFloat(String(row.ingresos)).toFixed(2)) || 0,
-        estadoDispositivo: row.estadoDispositivo !== null ? Number(row.estadoDispositivo) : null,
-        ultimaPosicion: row.ultimaPosicionLatitud && row.ultimaPosicionLongitud ? {
-          latitud: Number(parseFloat(String(row.ultimaPosicionLatitud)).toFixed(7)),
-          longitud: Number(parseFloat(String(row.ultimaPosicionLongitud)).toFixed(7)),
-          fecha: row.ultimaPosicionFecha || null,
-        } : null,
+        estadoDispositivo:
+          row.estadoDispositivo !== null ? Number(row.estadoDispositivo) : null,
+        ultimaPosicion:
+          row.ultimaPosicionLatitud && row.ultimaPosicionLongitud
+            ? {
+                latitud: Number(
+                  parseFloat(String(row.ultimaPosicionLatitud)).toFixed(7),
+                ),
+                longitud: Number(
+                  parseFloat(String(row.ultimaPosicionLongitud)).toFixed(7),
+                ),
+                fecha: row.ultimaPosicionFecha || null,
+              }
+            : null,
       }));
 
       return {

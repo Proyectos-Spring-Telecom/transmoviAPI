@@ -1,6 +1,12 @@
 import { Controller, Post, Body, UseGuards, Request } from '@nestjs/common';
 import { DashboardService } from './dashboard.service';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags, ApiBody } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+  ApiBody,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { KpiDto } from './dto/kpi.dto';
 
@@ -28,26 +34,71 @@ export class DashboardController {
     schema: {
       type: 'object',
       properties: {
-        ingresosAlDia: { type: 'number', description: 'Ingresos totales del período' },
-        totalMovimientos: { type: 'number', description: 'Total de intentos de validación' },
-        pasajerosValidados: { type: 'number', description: 'Monederos únicos con validación exitosa' },
-        totalMonederosUnicos: { type: 'number', description: 'Monederos activos' },
-        ticketPromedio: { type: 'number', description: 'Ticket promedio por pasajero' },
-        pasajerosAfiliados: { type: 'number', description: 'Monederos con pasajero asociado' },
-        validacionesExitosas: { type: 'number', description: 'Validaciones exitosas (tipo 2)' },
-        validacionesFallidas: { type: 'number', description: 'Validaciones fallidas (tipo 3)' },
-        unidadesEnServicio: { type: 'number', description: 'Unidades actualmente en servicio' },
-        totalUnidades: { type: 'number', description: 'Total de unidades del cliente' },
-        cumplimientoTurnos: { type: 'number', description: 'Porcentaje de turnos cerrados' },
+        ingresosAlDia: {
+          type: 'number',
+          description: 'Ingresos totales del período',
+        },
+        totalMovimientos: {
+          type: 'number',
+          description: 'Total de intentos de validación',
+        },
+        pasajerosValidados: {
+          type: 'number',
+          description: 'Monederos únicos con validación exitosa',
+        },
+        totalMonederosUnicos: {
+          type: 'number',
+          description: 'Monederos activos',
+        },
+        ticketPromedio: {
+          type: 'number',
+          description: 'Ticket promedio por pasajero',
+        },
+        pasajerosAfiliados: {
+          type: 'number',
+          description: 'Monederos con pasajero asociado',
+        },
+        validacionesExitosas: {
+          type: 'number',
+          description: 'Validaciones exitosas (tipo 2)',
+        },
+        validacionesFallidas: {
+          type: 'number',
+          description: 'Validaciones fallidas (tipo 3)',
+        },
+        unidadesEnServicio: {
+          type: 'number',
+          description: 'Unidades actualmente en servicio',
+        },
+        totalUnidades: {
+          type: 'number',
+          description: 'Total de unidades del cliente',
+        },
+        cumplimientoTurnos: {
+          type: 'number',
+          description: 'Porcentaje de turnos cerrados',
+        },
         totalTurnos: { type: 'number', description: 'Total de turnos' },
         totalTurnosCerrado: { type: 'number', description: 'Turnos cerrados' },
-        ocupacionPromedio: { type: 'number', description: 'Ocupación promedio de vehículos' },
-        capacidadTeorica: { type: 'number', description: 'Capacidad teórica total' },
+        ocupacionPromedio: {
+          type: 'number',
+          description: 'Ocupación promedio de vehículos',
+        },
+        capacidadTeorica: {
+          type: 'number',
+          description: 'Capacidad teórica total',
+        },
         porcentajePagos: {
           type: 'object',
           properties: {
-            efectivo: { type: 'number', description: 'Porcentaje pagos en efectivo' },
-            otrosMetodos: { type: 'number', description: 'Porcentaje pagos con otros métodos' },
+            efectivo: {
+              type: 'number',
+              description: 'Porcentaje pagos en efectivo',
+            },
+            otrosMetodos: {
+              type: 'number',
+              description: 'Porcentaje pagos con otros métodos',
+            },
           },
         },
         graficaIngresos: {

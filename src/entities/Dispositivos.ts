@@ -8,7 +8,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Clientes } from './Clientes';
-import { Instalaciones } from './Instalaciones';
+import { InstalacionesDispositivos } from './InstalacionesDispositivos';
 import { Posiciones } from './Posiciones';
 import { applySchema } from 'src/common/apply-schema.decorator';
 
@@ -58,14 +58,15 @@ export class Dispositivos {
   @JoinColumn([{ name: 'IdCliente', referencedColumnName: 'id' }])
   idCliente2: Clientes;
 
-  @OneToMany(() => Instalaciones, (instalaciones) => instalaciones.dispositivos)
-  instalaciones: Instalaciones[];
+  @OneToMany(
+    () => InstalacionesDispositivos,
+    (instalacionesDispositivos) => instalacionesDispositivos.idDispositivo2,
+  )
+  instalacionesDispositivos: InstalacionesDispositivos[];
 
   @OneToMany(
     () => Posiciones,
     (posiciones) => posiciones.numeroSerieDispositivo2,
   )
   posiciones: Posiciones[];
-
-
 }

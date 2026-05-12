@@ -34,7 +34,7 @@ export class RutasService {
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
-  ) { }
+  ) {}
 
   // ========================================
   // 🔹 CREAR UNA RUTA
@@ -53,7 +53,7 @@ export class RutasService {
       });
       if (!region) throw new NotFoundException('Region no encontrada');
 
-      const { estatusRutaRegreso: _, ...bodyRuta } = createRutaDto
+      const { estatusRutaRegreso: _, ...bodyRuta } = createRutaDto;
 
       if (createRutaDto.estatusRutaRegreso === 1) {
         const rutaRegreso = this.rutasRepository.create({
@@ -63,17 +63,27 @@ export class RutasService {
           puntoFin: bodyRuta.puntoInicio,
           nombreFin: bodyRuta.nombreInicio,
           estatus: EstatusEnum.ACTIVO,
-          idRegion: bodyRuta.idRegionFin === undefined || bodyRuta.idRegionFin === null ? bodyRuta.idRegion : bodyRuta.idRegionFin,
-          idRegionFin: bodyRuta.idRegionFin === null || bodyRuta.idRegionFin === undefined ? null : bodyRuta.idRegion
-        })
+          idRegion:
+            bodyRuta.idRegionFin === undefined || bodyRuta.idRegionFin === null
+              ? bodyRuta.idRegion
+              : bodyRuta.idRegionFin,
+          idRegionFin:
+            bodyRuta.idRegionFin === null || bodyRuta.idRegionFin === undefined
+              ? null
+              : bodyRuta.idRegion,
+        });
         const rutaRegresoSave = await this.rutasRepository.save(rutaRegreso);
-        idRutaRegreso = rutaRegresoSave.id
+        idRutaRegreso = rutaRegresoSave.id;
 
-        console.log('Ruta regreso', rutaRegreso, 'ver id region: ', typeof (bodyRuta.idRegion))
+        console.log(
+          'Ruta regreso',
+          rutaRegreso,
+          'ver id region: ',
+          typeof bodyRuta.idRegion,
+        );
       } else {
-        idRutaRegreso = null
+        idRutaRegreso = null;
       }
-
 
       const newRuta = this.rutasRepository.create({
         nombre: bodyRuta.nombre,
@@ -84,9 +94,9 @@ export class RutasService {
         estatus: EstatusEnum.ACTIVO,
         idRegion: bodyRuta.idRegion,
         idRegionFin: bodyRuta.idRegionFin || null,
-        idRutaRegreso: idRutaRegreso
+        idRutaRegreso: idRutaRegreso,
       });
-      console.log('DTO: ', bodyRuta)
+      console.log('DTO: ', bodyRuta);
 
       const rutaSave = await this.rutasRepository.save(newRuta);
 
@@ -211,11 +221,7 @@ ORDER BY ru.Id DESC
 
   LIMIT ? OFFSET ?;
     `;
-    return this.usuarioregionesRepository.query(query, [
-      ...ids,
-      limit,
-      offset,
-    ]);
+    return this.usuarioregionesRepository.query(query, [...ids, limit, offset]);
   }
 
   private async consultarTotalRutasPaginados(cliente: number) {
@@ -811,7 +817,6 @@ ORDER BY ru.Id DESC;
     `;
     return await this.usuarioregionesRepository.query(query, [...ids, id]);
   }
-
 
   // ========================================
   // 🔹 OBTENER UNA RUTA

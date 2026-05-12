@@ -108,13 +108,12 @@ export class HistoricoinstalacionesService {
         : this.historicoInstalacionesRepository;
 
       // Buscar el histórico activo (sin fechaBaja) para esta instalación
-      const historicoActivo =
-        await repo.findOne({
-          where: {
-            idInstalacion: instalacion.idInstalacion,
-            fechaBaja: IsNull(),
-          },
-        });
+      const historicoActivo = await repo.findOne({
+        where: {
+          idInstalacion: instalacion.idInstalacion,
+          fechaBaja: IsNull(),
+        },
+      });
 
       const mismoDispositivo =
         historicoActivo?.idDispositivo === idDispositivoUp;

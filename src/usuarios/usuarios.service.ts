@@ -25,10 +25,10 @@ import { UpdateUsuarioOperadorDto } from './dto/update-usuario-operador.dto';
 import { UpdateUsuarioContrasena } from './dto/update-usuario-contrasena.dto';
 import { MailService } from 'src/mail/mail.service';
 import { JwtService } from '@nestjs/jwt';
-import { Clientes } from 'src/entities/Clientes';
 import { EnumModulos, EstatusEnum } from 'src/common/estatus.enum';
 import { UpdateUsuarioDispositivoDto } from './dto/update-usuario-dispositivo.dto';
 import { Dispositivos } from 'src/entities/Dispositivos';
+import { ClientesJerarquiaService } from 'src/clientes-jerarquia/clientes-jerarquia.service';
 
 @Injectable()
 export class UsuariosService {
@@ -41,32 +41,11 @@ export class UsuariosService {
     private usuariosPermisosRepository: Repository<UsuariosPermisos>,
     @InjectRepository(Dispositivos)
     private dispositivosRepository: Repository<Dispositivos>,
-    @InjectRepository(Clientes)
-    private readonly clienteRepository: Repository<Clientes>,
     private readonly emailService: MailService,
     private readonly jwtService: JwtService,
     @InjectDataSource() private readonly dataSource: DataSource,
+    private readonly clientesJerarquia: ClientesJerarquiaService,
   ) {}
-
-  //funcion para obtener los clientes hijos
-  private async clienteHijos(cliente: number) {
-    const clientesFiltrado = await this.clienteRepository.query(
-      `CALL spGetClientes(?);`,
-      [cliente],
-    );
-
-    const idsFiltrados = clientesFiltrado[0]; // El primer índice contiene los resultados
-    const ids = idsFiltrados
-      .map((clientesFiltrado: any) => Number(clientesFiltrado.Id))
-      .filter(Boolean);
-    if (ids.length === 0) {
-      return { data: [] }; // No hay clientes que consultar
-    }
-
-    // 3. Construir el query dinámico con los IDs
-    const placeholders = ids.map(() => '?').join(', ');
-    return { ids, placeholders };
-  }
 
   // Obtener todos los usuarios con paginación
   async getAllUsuario(
@@ -133,7 +112,8 @@ LIMIT ? OFFSET ?;
           break;
 
         default:
-          const { ids, placeholders } = await this.clienteHijos(cliente);
+          const { ids, placeholders } =
+            await this.clientesJerarquia.obtenerJerarquia(cliente);
           // Consulta de datos paginados resto Usuario
           usuarios = await this.usuarioRepository.query(
             `
@@ -266,7 +246,8 @@ ORDER BY u.Id DESC;
 
         default:
           // Consulta de datos listado resto Usuario
-          const { ids, placeholders } = await this.clienteHijos(cliente);
+          const { ids, placeholders } =
+            await this.clientesJerarquia.obtenerJerarquia(cliente);
           usuarios = await this.usuarioRepository.query(
             `
 SELECT
@@ -453,7 +434,8 @@ ORDER BY u.Id DESC
 
         default:
           // Consulta de datos paginados resto Usuario
-          const { ids, placeholders } = await this.clienteHijos(cliente);
+          const { ids, placeholders } =
+            await this.clientesJerarquia.obtenerJerarquia(cliente);
           usuarioData = await this.usuarioRepository.query(
             `
 SELECT
@@ -738,8 +720,15 @@ ORDER BY u.Id DESC
         throw new BadRequestException('El usuario ya se encuentra registrado.');
       }
 
-      const hashedPassword = await bcrypt.hash(createUsuarioDto.passwordHash, 10);
-      const { passwordHash: _plain, permisosIds, ...restDto } = createUsuarioDto;
+      const hashedPassword = await bcrypt.hash(
+        createUsuarioDto.passwordHash,
+        10,
+      );
+      const {
+        passwordHash: _plain,
+        permisosIds,
+        ...restDto
+      } = createUsuarioDto;
       const userData = {
         ...restDto,
         passwordHash: hashedPassword,

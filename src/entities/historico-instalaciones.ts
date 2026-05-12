@@ -1,9 +1,4 @@
-import {
-  Column,
-  Entity,
-  Index,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
+import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { applySchema } from 'src/common/apply-schema.decorator';
 
 @applySchema
@@ -42,6 +37,4 @@ export class HistoricoInstalaciones {
 
   @Column('text', { name: 'Comentario', nullable: true })
   comentario: string | null;
-
- 
 }

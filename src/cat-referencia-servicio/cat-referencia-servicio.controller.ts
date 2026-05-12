@@ -58,7 +58,10 @@ export class CatReferenciaServicioController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'La referencia ya existe o error de validación' })
+  @ApiResponse({
+    status: 400,
+    description: 'La referencia ya existe o error de validación',
+  })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   async create(
     @Body() createCatReferenciaServicioDto: CreateCatReferenciaServicioDto,
@@ -106,7 +109,8 @@ export class CatReferenciaServicioController {
   @Get(':page/:limit')
   @ApiOperation({
     summary: 'Listar referencias de servicio paginadas',
-    description: 'Obtiene el catálogo paginado. Ordenado por nombre ascendente.',
+    description:
+      'Obtiene el catálogo paginado. Ordenado por nombre ascendente.',
   })
   @ApiParam({ name: 'page', description: 'Número de página (desde 1)' })
   @ApiParam({ name: 'limit', description: 'Registros por página' })
@@ -183,7 +187,8 @@ export class CatReferenciaServicioController {
   @Patch(':id')
   @ApiOperation({
     summary: 'Actualizar referencia de servicio',
-    description: 'Modifica nombre y/o estatus de una referencia existente. El nombre debe seguir siendo único.',
+    description:
+      'Modifica nombre y/o estatus de una referencia existente. El nombre debe seguir siendo único.',
   })
   @ApiParam({ name: 'id', description: 'ID de la referencia a actualizar' })
   @ApiBody({
@@ -205,7 +210,10 @@ export class CatReferenciaServicioController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'El nombre ya existe o error de validación' })
+  @ApiResponse({
+    status: 400,
+    description: 'El nombre ya existe o error de validación',
+  })
   @ApiResponse({ status: 404, description: 'Referencia no encontrada' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   async update(
@@ -224,7 +232,8 @@ export class CatReferenciaServicioController {
   @Delete(':id')
   @ApiOperation({
     summary: 'Eliminar referencia de servicio',
-    description: 'Elimina una referencia del catálogo. No se puede eliminar si está asociada a mantenimientos vehiculares.',
+    description:
+      'Elimina una referencia del catálogo. No se puede eliminar si está asociada a mantenimientos vehiculares.',
   })
   @ApiParam({ name: 'id', description: 'ID de la referencia a eliminar' })
   @ApiResponse({
