@@ -167,8 +167,9 @@ ORDER BY d.Id DESC
 
       const posicion = ultimaPosicion.map((item: any) => ({
         ...item,
-        id: Number(item.id),
-        idDispositivo: Number(item.idDispositivo),
+        id: item.id != null ? Number(item.id) : null,
+        idDispositivo:
+          item.idDispositivo != null ? Number(item.idDispositivo) : null,
         blueVoxs: this.parseBlueVoxs(item.blueVoxs),
         idVehiculo: item.idVehiculo != null ? Number(item.idVehiculo) : null,
       }));
@@ -237,16 +238,16 @@ SELECT
     IFNULL(CONCAT(' ', c.ApellidoMaterno), '')
   ) AS nombreCompletoCliente
 FROM Instalaciones i
-INNER JOIN (
-  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
-  FROM InstalacionesDispositivos
-  WHERE Estatus = 1
-  GROUP BY IdInstalacion
-) id_disp ON id_disp.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
+LEFT JOIN InstalacionesDispositivos id_disp
+  ON id_disp.IdInstalacion = i.Id
+  AND id_disp.Estatus = 1
+  AND id_disp.Principal = 1
+LEFT JOIN Dispositivos d
+  ON d.Id = id_disp.IdDispositivo
+  AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
-INNER JOIN UltimaPosicion up ON d.NumeroSerie = up.NumeroSerieDispositivo
+LEFT JOIN UltimaPosicion up ON d.NumeroSerie = up.NumeroSerieDispositivo
 WHERE i.Estatus = 1
   AND c.Estatus = 1
 ORDER BY up.Id DESC
@@ -301,16 +302,16 @@ SELECT
     IFNULL(CONCAT(' ', c.ApellidoMaterno), '')
   ) AS nombreCompletoCliente
 FROM Instalaciones i
-INNER JOIN (
-  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
-  FROM InstalacionesDispositivos
-  WHERE Estatus = 1
-  GROUP BY IdInstalacion
-) id_disp ON id_disp.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
+LEFT JOIN InstalacionesDispositivos id_disp
+  ON id_disp.IdInstalacion = i.Id
+  AND id_disp.Estatus = 1
+  AND id_disp.Principal = 1
+LEFT JOIN Dispositivos d
+  ON d.Id = id_disp.IdDispositivo
+  AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
-INNER JOIN UltimaPosicion up ON d.NumeroSerie = up.NumeroSerieDispositivo
+LEFT JOIN UltimaPosicion up ON d.NumeroSerie = up.NumeroSerieDispositivo
 WHERE c.Id = ?
   AND i.Estatus = 1
   AND c.Estatus = 1
@@ -398,13 +399,13 @@ SELECT
     IFNULL(CONCAT(' ', c.ApellidoMaterno), '')
   ) AS nombreCompletoCliente
 FROM Instalaciones i
-INNER JOIN (
-  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
-  FROM InstalacionesDispositivos
-  WHERE Estatus = 1
-  GROUP BY IdInstalacion
-) id_disp ON id_disp.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
+INNER JOIN InstalacionesDispositivos id_disp
+  ON id_disp.IdInstalacion = i.Id
+  AND id_disp.Estatus = 1
+  AND id_disp.Principal = 1
+INNER JOIN Dispositivos d
+  ON d.Id = id_disp.IdDispositivo
+  AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 INNER JOIN Posiciones up ON d.NumeroSerie = up.NumeroSerieDispositivo

@@ -219,8 +219,25 @@ SELECT
 	-- Datos del Turnos
     tu.Id AS idTurno,
     tu.Estatus AS estatusTurno,
-    -- Datos del Dispositivos
-    dp.NumeroSerie AS numeroSerieDispositivo,
+    COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idDispositivo', d.Id,
+          'numeroSerieDispositivo', d.NumeroSerie,
+          'marcaDispositivo', d.Marca,
+          'modeloDispositivo', d.Modelo,
+          'principal', idd.Principal
+        )
+      )
+      FROM InstalacionesDispositivos idd
+      INNER JOIN Dispositivos d ON idd.IdDispositivo = d.Id
+      WHERE idd.IdInstalacion = i.Id
+        AND idd.Estatus = 1
+        AND d.IdCliente = i.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS dispositivos,
     -- Datos de entidad Derrotero
     d.Id As idDerrotero,
     d.RecorridoInterpolar AS  recorridoInterpolar,
@@ -238,13 +255,6 @@ INNER JOIN Operadores op ON op.Id = v.IdOperador
 INNER JOIN Usuarios us ON us.Id = op.IdUsuario
 INNER JOIN Turnos tu ON tu.Id = v.IdTurno
 INNER JOIN Instalaciones i ON i.Id = tu.IdInstalacion
-INNER JOIN (
-  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
-  FROM InstalacionesDispositivos
-  WHERE Estatus = 1
-  GROUP BY IdInstalacion
-) id_disp ON id_disp.IdInstalacion = i.Id
-INNER JOIN Dispositivos dp ON dp.Id = id_disp.IdDispositivo AND dp.IdCliente = i.IdCliente
 INNER JOIN Derroteros d ON d.Id  = v.IdDerrotero
 INNER JOIN Tarifas t ON t.IdDerrotero = d.Id
 
@@ -699,6 +709,28 @@ WHERE v.Id = ?
   }
 
   /**
+   * Parsea el JSON de dispositivos devuelto por JSON_ARRAYAGG (misma forma que turnos/instalaciones).
+   */
+  private parseDispositivos(raw: unknown): Array<{
+    idDispositivo: number;
+    numeroSerieDispositivo: string;
+    marcaDispositivo: string;
+    modeloDispositivo: string;
+    principal: number | null;
+  }> {
+    if (raw == null) return [];
+    const arr = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (!Array.isArray(arr)) return [];
+    return arr.map((row: Record<string, unknown>) => ({
+      idDispositivo: row.idDispositivo != null ? Number(row.idDispositivo) : 0,
+      numeroSerieDispositivo: String(row.numeroSerieDispositivo ?? ''),
+      marcaDispositivo: String(row.marcaDispositivo ?? ''),
+      modeloDispositivo: String(row.modeloDispositivo ?? ''),
+      principal: row.principal === 1 ? 1 : null,
+    }));
+  }
+
+  /**
    * Consulta SQL privada: Obtiene viajes de un cliente específico (sin jerarquía).
    *
    * Utilizada por roles Cliente (rol 3) para obtener solo sus propios viajes.
@@ -727,10 +759,26 @@ SELECT
   t.Inicio AS inicioTurno,
   t.IdInstalacion AS idInstalacion,
 
-  -- Instalación
-  id_disp.IdDispositivo AS idDispositivo,
-  -- Dispositivo
-  d.NumeroSerie AS numeroSerieDispositivo,
+  -- Instalación (dispositivos)
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idDispositivo', d.Id,
+          'numeroSerieDispositivo', d.NumeroSerie,
+          'marcaDispositivo', d.Marca,
+          'modeloDispositivo', d.Modelo,
+          'principal', idd.Principal
+        )
+      )
+      FROM InstalacionesDispositivos idd
+      INNER JOIN Dispositivos d ON idd.IdDispositivo = d.Id
+      WHERE idd.IdInstalacion = ins.Id
+        AND idd.Estatus = 1
+        AND d.IdCliente = ins.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS dispositivos,
   COALESCE(
     (
       SELECT JSON_ARRAYAGG(
@@ -781,13 +829,6 @@ FROM Viajes v
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
-INNER JOIN (
-  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
-  FROM InstalacionesDispositivos
-  WHERE Estatus = 1
-  GROUP BY IdInstalacion
-) id_disp ON id_disp.IdInstalacion = ins.Id
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND d.Id = id_disp.IdDispositivo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -836,8 +877,25 @@ SELECT
   t.IdInstalacion AS idInstalacion,
 
   -- Instalación
-  id_disp.IdDispositivo AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idDispositivo', d.Id,
+          'numeroSerieDispositivo', d.NumeroSerie,
+          'marcaDispositivo', d.Marca,
+          'modeloDispositivo', d.Modelo,
+          'principal', idd.Principal
+        )
+      )
+      FROM InstalacionesDispositivos idd
+      INNER JOIN Dispositivos d ON idd.IdDispositivo = d.Id
+      WHERE idd.IdInstalacion = ins.Id
+        AND idd.Estatus = 1
+        AND d.IdCliente = ins.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS dispositivos,
   COALESCE(
     (
       SELECT JSON_ARRAYAGG(
@@ -882,13 +940,6 @@ FROM Viajes v
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
-INNER JOIN (
-  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
-  FROM InstalacionesDispositivos
-  WHERE Estatus = 1
-  GROUP BY IdInstalacion
-) id_disp ON id_disp.IdInstalacion = ins.Id
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND d.Id = id_disp.IdDispositivo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -937,8 +988,25 @@ SELECT
   t.Id AS idTurno,
   t.Inicio AS inicioTurno,
   t.IdInstalacion AS idInstalacion,
-  id_disp.IdDispositivo AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idDispositivo', d.Id,
+          'numeroSerieDispositivo', d.NumeroSerie,
+          'marcaDispositivo', d.Marca,
+          'modeloDispositivo', d.Modelo,
+          'principal', idd.Principal
+        )
+      )
+      FROM InstalacionesDispositivos idd
+      INNER JOIN Dispositivos d ON idd.IdDispositivo = d.Id
+      WHERE idd.IdInstalacion = ins.Id
+        AND idd.Estatus = 1
+        AND d.IdCliente = ins.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS dispositivos,
   COALESCE(
     (
       SELECT JSON_ARRAYAGG(
@@ -980,13 +1048,6 @@ FROM Viajes v
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
-INNER JOIN (
-  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
-  FROM InstalacionesDispositivos
-  WHERE Estatus = 1
-  GROUP BY IdInstalacion
-) id_disp ON id_disp.IdInstalacion = ins.Id
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND d.Id = id_disp.IdDispositivo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -1025,7 +1086,7 @@ ORDER BY v.Id DESC
         idCliente: Number(item.idCliente),
         idTurno: Number(item.idTurno),
         idInstalacion: Number(item.idInstalacion),
-        idDispositivo: Number(item.idDispositivo),
+        dispositivos: this.parseDispositivos(item.dispositivos),
         blueVoxs: this.parseBlueVoxs(item.blueVoxs),
         idVehiculo: Number(item.idVehiculo),
         idOperador: Number(item.idOperador),
@@ -1097,8 +1158,25 @@ SELECT
   t.IdInstalacion AS idInstalacion,
 
   -- Instalación
-  id_disp.IdDispositivo AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idDispositivo', d.Id,
+          'numeroSerieDispositivo', d.NumeroSerie,
+          'marcaDispositivo', d.Marca,
+          'modeloDispositivo', d.Modelo,
+          'principal', idd.Principal
+        )
+      )
+      FROM InstalacionesDispositivos idd
+      INNER JOIN Dispositivos d ON idd.IdDispositivo = d.Id
+      WHERE idd.IdInstalacion = ins.Id
+        AND idd.Estatus = 1
+        AND d.IdCliente = ins.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS dispositivos,
   COALESCE(
     (
       SELECT JSON_ARRAYAGG(
@@ -1143,13 +1221,6 @@ FROM Viajes v
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
-INNER JOIN (
-  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
-  FROM InstalacionesDispositivos
-  WHERE Estatus = 1
-  GROUP BY IdInstalacion
-) id_disp ON id_disp.IdInstalacion = ins.Id
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND d.Id = id_disp.IdDispositivo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -1184,13 +1255,6 @@ FROM Viajes v
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
-INNER JOIN (
-  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
-  FROM InstalacionesDispositivos
-  WHERE Estatus = 1
-  GROUP BY IdInstalacion
-) id_disp ON id_disp.IdInstalacion = ins.Id
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND d.Id = id_disp.IdDispositivo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -1226,8 +1290,25 @@ SELECT
   t.Id AS idTurno,
   t.Inicio AS inicioTurno,
   t.IdInstalacion AS idInstalacion,
-  id_disp.IdDispositivo AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idDispositivo', d.Id,
+          'numeroSerieDispositivo', d.NumeroSerie,
+          'marcaDispositivo', d.Marca,
+          'modeloDispositivo', d.Modelo,
+          'principal', idd.Principal
+        )
+      )
+      FROM InstalacionesDispositivos idd
+      INNER JOIN Dispositivos d ON idd.IdDispositivo = d.Id
+      WHERE idd.IdInstalacion = ins.Id
+        AND idd.Estatus = 1
+        AND d.IdCliente = ins.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS dispositivos,
   COALESCE(
     (
       SELECT JSON_ARRAYAGG(
@@ -1268,13 +1349,6 @@ FROM Viajes v
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
-INNER JOIN (
-  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
-  FROM InstalacionesDispositivos
-  WHERE Estatus = 1
-  GROUP BY IdInstalacion
-) id_disp ON id_disp.IdInstalacion = ins.Id
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND d.Id = id_disp.IdDispositivo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -1298,13 +1372,6 @@ FROM Viajes v
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
-INNER JOIN (
-  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
-  FROM InstalacionesDispositivos
-  WHERE Estatus = 1
-  GROUP BY IdInstalacion
-) id_disp ON id_disp.IdInstalacion = ins.Id
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND d.Id = id_disp.IdDispositivo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -1334,8 +1401,25 @@ SELECT
   t.Id AS idTurno,
   t.Inicio AS inicioTurno,
   t.IdInstalacion AS idInstalacion,
-  id_disp.IdDispositivo AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idDispositivo', d.Id,
+          'numeroSerieDispositivo', d.NumeroSerie,
+          'marcaDispositivo', d.Marca,
+          'modeloDispositivo', d.Modelo,
+          'principal', idd.Principal
+        )
+      )
+      FROM InstalacionesDispositivos idd
+      INNER JOIN Dispositivos d ON idd.IdDispositivo = d.Id
+      WHERE idd.IdInstalacion = ins.Id
+        AND idd.Estatus = 1
+        AND d.IdCliente = ins.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS dispositivos,
   COALESCE(
     (
       SELECT JSON_ARRAYAGG(
@@ -1376,13 +1460,6 @@ FROM Viajes v
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
-INNER JOIN (
-  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
-  FROM InstalacionesDispositivos
-  WHERE Estatus = 1
-  GROUP BY IdInstalacion
-) id_disp ON id_disp.IdInstalacion = ins.Id
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND d.Id = id_disp.IdDispositivo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -1427,8 +1504,25 @@ SELECT
   t.Id AS idTurno,
   t.Inicio AS inicioTurno,
   t.IdInstalacion AS idInstalacion,
-  id_disp.IdDispositivo AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idDispositivo', d.Id,
+          'numeroSerieDispositivo', d.NumeroSerie,
+          'marcaDispositivo', d.Marca,
+          'modeloDispositivo', d.Modelo,
+          'principal', idd.Principal
+        )
+      )
+      FROM InstalacionesDispositivos idd
+      INNER JOIN Dispositivos d ON idd.IdDispositivo = d.Id
+      WHERE idd.IdInstalacion = ins.Id
+        AND idd.Estatus = 1
+        AND d.IdCliente = ins.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS dispositivos,
   COALESCE(
     (
       SELECT JSON_ARRAYAGG(
@@ -1470,13 +1564,6 @@ FROM Viajes v
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
-INNER JOIN (
-  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
-  FROM InstalacionesDispositivos
-  WHERE Estatus = 1
-  GROUP BY IdInstalacion
-) id_disp ON id_disp.IdInstalacion = ins.Id
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND d.Id = id_disp.IdDispositivo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -1508,13 +1595,6 @@ FROM Viajes v
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
-INNER JOIN (
-  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
-  FROM InstalacionesDispositivos
-  WHERE Estatus = 1
-  GROUP BY IdInstalacion
-) id_disp ON id_disp.IdInstalacion = ins.Id
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND d.Id = id_disp.IdDispositivo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -1574,8 +1654,25 @@ SELECT
   t.Id AS idTurno,
   t.Inicio AS inicioTurno,
   t.IdInstalacion AS idInstalacion,
-  id_disp.IdDispositivo AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idDispositivo', d.Id,
+          'numeroSerieDispositivo', d.NumeroSerie,
+          'marcaDispositivo', d.Marca,
+          'modeloDispositivo', d.Modelo,
+          'principal', idd.Principal
+        )
+      )
+      FROM InstalacionesDispositivos idd
+      INNER JOIN Dispositivos d ON idd.IdDispositivo = d.Id
+      WHERE idd.IdInstalacion = ins.Id
+        AND idd.Estatus = 1
+        AND d.IdCliente = ins.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS dispositivos,
   COALESCE(
     (
       SELECT JSON_ARRAYAGG(
@@ -1617,13 +1714,6 @@ FROM Viajes v
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
-INNER JOIN (
-  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
-  FROM InstalacionesDispositivos
-  WHERE Estatus = 1
-  GROUP BY IdInstalacion
-) id_disp ON id_disp.IdInstalacion = ins.Id
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND d.Id = id_disp.IdDispositivo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -1645,13 +1735,6 @@ FROM Viajes v
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
-INNER JOIN (
-  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
-  FROM InstalacionesDispositivos
-  WHERE Estatus = 1
-  GROUP BY IdInstalacion
-) id_disp ON id_disp.IdInstalacion = ins.Id
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND d.Id = id_disp.IdDispositivo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -1695,7 +1778,7 @@ WHERE c.Estatus = 1
         idCliente: Number(item.idCliente),
         idTurno: Number(item.idTurno),
         idInstalacion: Number(item.idInstalacion),
-        idDispositivo: Number(item.idDispositivo),
+        dispositivos: this.parseDispositivos(item.dispositivos),
         blueVoxs: this.parseBlueVoxs(item.blueVoxs),
         idVehiculo: Number(item.idVehiculo),
         idOperador: Number(item.idOperador),
@@ -1771,8 +1854,25 @@ SELECT
   t.Id AS idTurno,
   t.Inicio AS inicioTurno,
   t.IdInstalacion AS idInstalacion,
-  id_disp.IdDispositivo AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idDispositivo', d.Id,
+          'numeroSerieDispositivo', d.NumeroSerie,
+          'marcaDispositivo', d.Marca,
+          'modeloDispositivo', d.Modelo,
+          'principal', idd.Principal
+        )
+      )
+      FROM InstalacionesDispositivos idd
+      INNER JOIN Dispositivos d ON idd.IdDispositivo = d.Id
+      WHERE idd.IdInstalacion = ins.Id
+        AND idd.Estatus = 1
+        AND d.IdCliente = ins.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS dispositivos,
   COALESCE(
     (
       SELECT JSON_ARRAYAGG(
@@ -1814,13 +1914,6 @@ FROM Viajes v
 JOIN Clientes c ON v.IdCliente = c.Id
 JOIN Turnos t ON v.IdTurno = t.Id
 JOIN Instalaciones ins ON t.IdInstalacion = ins.Id
-INNER JOIN (
-  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
-  FROM InstalacionesDispositivos
-  WHERE Estatus = 1
-  GROUP BY IdInstalacion
-) id_disp ON id_disp.IdInstalacion = ins.Id
-JOIN Dispositivos d ON ins.IdCliente = d.IdCliente AND d.Id = id_disp.IdDispositivo
 JOIN Vehiculos vhl ON ins.IdCliente = vhl.IdCliente AND ins.IdVehiculo = vhl.Id
 JOIN Operadores o ON v.IdOperador = o.Id
 JOIN Usuarios u ON o.IdUsuario = u.Id
@@ -1848,7 +1941,7 @@ ORDER BY v.Id DESC
         idCliente: Number(viaje.idCliente),
         idTurno: Number(viaje.idTurno),
         idInstalacion: Number(viaje.idInstalacion),
-        idDispositivo: Number(viaje.idDispositivo),
+        dispositivos: this.parseDispositivos(viaje.dispositivos),
         blueVoxs: this.parseBlueVoxs(viaje.blueVoxs),
         idVehiculo: Number(viaje.idVehiculo),
         idOperador: Number(viaje.idOperador),

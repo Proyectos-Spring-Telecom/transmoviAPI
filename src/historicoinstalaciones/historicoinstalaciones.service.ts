@@ -28,7 +28,11 @@ export class HistoricoinstalacionesService {
   //Crear un historico
   async createHistorico(
     idInstalacion: number,
-    dispositivosSnapshot: Array<{ Id: number; NumeroSerie: string }>,
+    dispositivosSnapshot: {
+      Id: number;
+      NumeroSerie: string;
+      Principal: number | null;
+    }[],
     blueVoxs: Array<{ Id: number; NumeroSerie: string }>,
     idVehiculo: number,
     idCliente: number,
@@ -94,7 +98,11 @@ export class HistoricoinstalacionesService {
 
   async updateHistorico(
     instalacion: UpdateHistoricoDto,
-    dispositivosSnapshot: Array<{ Id: number; NumeroSerie: string }>,
+    dispositivosSnapshot: {
+      Id: number;
+      NumeroSerie: string;
+      Principal: number | null;
+    }[],
     blueVoxsUp: Array<{ Id: number; NumeroSerie: string }>,
     idVehiculoUp: number,
     idClienteUp: number,

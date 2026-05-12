@@ -17,7 +17,7 @@ import { applySchema } from 'src/common/apply-schema.decorator';
   { unique: true },
 )
 @Index('FK_InstalacionesDispositivos_Instalaciones', ['idInstalacion'], {})
-@Index('FK_InstalacionesDispositivos_Dispositivos', ['idDispositivo'], {})
+@Index('FK_InstalacionesDispositivos_IdDispositivo', ['idDispositivo'], {})
 @Entity('InstalacionesDispositivos')
 export class InstalacionesDispositivos {
   @PrimaryGeneratedColumn({ type: 'bigint', name: 'Id' })
@@ -37,6 +37,9 @@ export class InstalacionesDispositivos {
 
   @Column('tinyint', { name: 'Estatus', default: () => "'1'" })
   estatus: number;
+
+  @Column('tinyint', { name: 'Principal', nullable: true })
+  principal: number | null;
 
   @Column('bigint', { name: 'IdInstalacion' })
   idInstalacion: number;

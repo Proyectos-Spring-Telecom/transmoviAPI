@@ -90,6 +90,20 @@ export class InstalacionesService {
         );
       }
 
+      const idDispositivoPrincipal =
+        createInstalacioneDto.idDispositivoPrincipal !== undefined
+          ? Number(createInstalacioneDto.idDispositivoPrincipal)
+          : null;
+
+      if (
+        idDispositivoPrincipal !== null &&
+        !idsDispositivos.includes(idDispositivoPrincipal)
+      ) {
+        throw new BadRequestException(
+          `El dispositivo principal (ID ${idDispositivoPrincipal}) debe estar incluido en la lista de dispositivos asociados.`,
+        );
+      }
+
       // Transacción para evitar estados inconsistentes (componentes “asignados” sin instalación, etc.).
       const queryRunner = this.dataSource.createQueryRunner();
       await queryRunner.connect();
@@ -273,6 +287,11 @@ export class InstalacionesService {
             idInstalacion: instalacionSave.id,
             idDispositivo: idDisp,
             estatus: 1,
+            principal:
+              idDispositivoPrincipal !== null &&
+              idDisp === idDispositivoPrincipal
+                ? 1
+                : null,
           }),
         );
         await instalacionesDispositivosRepo.save(instalacionesDispositivosRows);
@@ -304,6 +323,11 @@ export class InstalacionesService {
         const dispositivosSnapshot = dispositivos.map((d) => ({
           Id: Number(d.id),
           NumeroSerie: d.numeroSerie,
+          Principal:
+            idDispositivoPrincipal !== null &&
+            Number(d.id) === idDispositivoPrincipal
+              ? 1
+              : null,
         }));
 
         await this.historicoinstalacionesService.createHistorico(
@@ -416,16 +440,17 @@ export class InstalacionesService {
     numeroSerieDispositivo: string;
     marcaDispositivo: string;
     modeloDispositivo: string;
+    principal: number | null;
   }> {
     if (raw == null) return [];
     const arr = typeof raw === 'string' ? JSON.parse(raw) : raw;
     if (!Array.isArray(arr)) return [];
     return arr.map((row: Record<string, unknown>) => ({
-      idDispositivo:
-        row.idDispositivo != null ? Number(row.idDispositivo) : 0,
+      idDispositivo: row.idDispositivo != null ? Number(row.idDispositivo) : 0,
       numeroSerieDispositivo: String(row.numeroSerieDispositivo ?? ''),
       marcaDispositivo: String(row.marcaDispositivo ?? ''),
       modeloDispositivo: String(row.modeloDispositivo ?? ''),
+      principal: row.principal === 1 ? 1 : null,
     }));
   }
 
@@ -451,7 +476,8 @@ SELECT
           'idDispositivo', d.Id,
           'numeroSerieDispositivo', d.NumeroSerie,
           'marcaDispositivo', d.Marca,
-          'modeloDispositivo', d.Modelo
+          'modeloDispositivo', d.Modelo,
+          'principal', idd.Principal
         )
       )
       FROM InstalacionesDispositivos idd
@@ -560,7 +586,8 @@ SELECT
           'idDispositivo', d.Id,
           'numeroSerieDispositivo', d.NumeroSerie,
           'marcaDispositivo', d.Marca,
-          'modeloDispositivo', d.Modelo
+          'modeloDispositivo', d.Modelo,
+          'principal', idd.Principal
         )
       )
       FROM InstalacionesDispositivos idd
@@ -699,7 +726,8 @@ SELECT
           'idDispositivo', d.Id,
           'numeroSerieDispositivo', d.NumeroSerie,
           'marcaDispositivo', d.Marca,
-          'modeloDispositivo', d.Modelo
+          'modeloDispositivo', d.Modelo,
+          'principal', idd.Principal
         )
       )
       FROM InstalacionesDispositivos idd
@@ -827,7 +855,8 @@ SELECT
           'idDispositivo', d.Id,
           'numeroSerieDispositivo', d.NumeroSerie,
           'marcaDispositivo', d.Marca,
-          'modeloDispositivo', d.Modelo
+          'modeloDispositivo', d.Modelo,
+          'principal', idd.Principal
         )
       )
       FROM InstalacionesDispositivos idd
@@ -917,7 +946,8 @@ SELECT
           'idDispositivo', d.Id,
           'numeroSerieDispositivo', d.NumeroSerie,
           'marcaDispositivo', d.Marca,
-          'modeloDispositivo', d.Modelo
+          'modeloDispositivo', d.Modelo,
+          'principal', idd.Principal
         )
       )
       FROM InstalacionesDispositivos idd
@@ -1015,7 +1045,8 @@ SELECT
           'idDispositivo', d.Id,
           'numeroSerieDispositivo', d.NumeroSerie,
           'marcaDispositivo', d.Marca,
-          'modeloDispositivo', d.Modelo
+          'modeloDispositivo', d.Modelo,
+          'principal', idd.Principal
         )
       )
       FROM InstalacionesDispositivos idd
@@ -1123,7 +1154,8 @@ SELECT
           'idDispositivo', d.Id,
           'numeroSerieDispositivo', d.NumeroSerie,
           'marcaDispositivo', d.Marca,
-          'modeloDispositivo', d.Modelo
+          'modeloDispositivo', d.Modelo,
+          'principal', idd.Principal
         )
       )
       FROM InstalacionesDispositivos idd
@@ -1207,7 +1239,8 @@ SELECT
           'idDispositivo', d.Id,
           'numeroSerieDispositivo', d.NumeroSerie,
           'marcaDispositivo', d.Marca,
-          'modeloDispositivo', d.Modelo
+          'modeloDispositivo', d.Modelo,
+          'principal', idd.Principal
         )
       )
       FROM InstalacionesDispositivos idd
@@ -1305,7 +1338,8 @@ SELECT
           'idDispositivo', d.Id,
           'numeroSerieDispositivo', d.NumeroSerie,
           'marcaDispositivo', d.Marca,
-          'modeloDispositivo', d.Modelo
+          'modeloDispositivo', d.Modelo,
+          'principal', idd.Principal
         )
       )
       FROM InstalacionesDispositivos idd
@@ -1778,9 +1812,12 @@ ORDER BY i.Id DESC;
               where: { idInstalacion: id, idDispositivo: disp.idDispositivo },
             });
           if (asociacion && asociacion.estatus === 1) {
-            await this.instalacionesDispositivosRepository.update(asociacion.id, {
-              estatus: 0,
-            });
+            await this.instalacionesDispositivosRepository.update(
+              asociacion.id,
+              {
+                estatus: 0,
+              },
+            );
           }
         }
       }
@@ -1819,7 +1856,6 @@ ORDER BY i.Id DESC;
             id: In(nuevaListaDisp),
             idCliente: idClienteParaValidacion,
             estatus: 1,
-            estadoActual: EstadoComponente.DISPONIBLE
           },
         });
         if (dispositivosSolicitados.length !== nuevaListaDisp.length) {
@@ -1917,6 +1953,52 @@ ORDER BY i.Id DESC;
       }
 
       // ==========================================
+      // RECONCILIACIÓN DE PRINCIPAL
+      // ==========================================
+      // Regla: máximo un dispositivo principal por instalación. Si se envía
+      // `idDispositivoPrincipal`, debe estar entre los dispositivos activos
+      // (Estatus=1) de la instalación tras aplicar la matriz de decisiones.
+      // Orden crítico: limpiar el viejo (Principal=NULL) ANTES de marcar el nuevo (Principal=1),
+      // si no, el UNIQUE constraint UQ_InstalacionesDispositivos_IdInstalacion_Principal lanza ER_DUP_ENTRY.
+      if (updateInstalacioneDto.idDispositivoPrincipal !== undefined) {
+        const idPrincipal = Number(
+          updateInstalacioneDto.idDispositivoPrincipal,
+        );
+
+        const asociacionActiva =
+          await this.instalacionesDispositivosRepository.findOne({
+            where: {
+              idInstalacion: id,
+              idDispositivo: idPrincipal,
+              estatus: 1,
+            },
+          });
+
+        if (!asociacionActiva) {
+          throw new BadRequestException(
+            `El dispositivo principal (ID ${idPrincipal}) no está asociado activamente a esta instalación.`,
+          );
+        }
+
+        // 1) Limpiar el principal anterior → NULL (no 0)
+        await this.instalacionesDispositivosRepository
+          .createQueryBuilder()
+          .update(InstalacionesDispositivos)
+          .set({ principal: null })
+          .where('IdInstalacion = :id', { id })
+          .andWhere('Principal = 1')
+          .execute();
+
+        // 2) Marcar el nuevo principal
+        await this.instalacionesDispositivosRepository.update(
+          asociacionActiva.id,
+          {
+            principal: 1,
+          },
+        );
+      }
+
+      // ==========================================
       // ACTUALIZACIÓN DE BLUEVOXS (MATRIZ DE DECISIONES tipo usuarios-permisos)
       // ==========================================
       // nuevaLista → IDs que deben estar asociados (idsBlueVoxs)
@@ -2008,7 +2090,6 @@ ORDER BY i.Id DESC;
           const disponibles = await this.bluevoxsRepository.find({
             where: {
               id: In(blueVoxsNuevos),
-              estadoActual: EstadoComponente.DISPONIBLE,
             },
           });
           if (disponibles.length !== blueVoxsNuevos.length) {
@@ -2148,11 +2229,11 @@ ORDER BY i.Id DESC;
         });
 
       const dispositivosSnapshot = instalacionesDispositivosUpdate
-        .map((row) => row.idDispositivo2)
-        .filter((d) => d != null)
-        .map((d) => ({
-          Id: Number(d.id),
-          NumeroSerie: d.numeroSerie,
+        .filter((row) => row.idDispositivo2 != null)
+        .map((row) => ({
+          Id: Number(row.idDispositivo2.id),
+          NumeroSerie: row.idDispositivo2.numeroSerie,
+          Principal: row.principal === 1 ? 1 : null,
         }));
 
       await this.historicoinstalacionesService.updateHistorico(

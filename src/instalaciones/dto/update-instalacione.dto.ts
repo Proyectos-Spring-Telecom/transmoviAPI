@@ -45,7 +45,6 @@ export class DispositivoAnteriorDto {
 }
 
 export class UpdateInstalacioneDto {
-  
   @ApiProperty({
     description: 'ID del vehículo asociado a la instalación',
     example: 303,
@@ -63,7 +62,7 @@ export class UpdateInstalacioneDto {
   @IsOptional()
   @IsNumber()
   idCliente?: number;
-  
+
   @ApiProperty({
     description:
       'IDs de Dispositivos asociados a la instalación. Si se envía, se actualizan las asociaciones mediante la matriz en servidor. Deben pertenecer al mismo cliente.',
@@ -74,6 +73,16 @@ export class UpdateInstalacioneDto {
   @IsArray()
   @IsNumber({}, { each: true })
   idsDispositivos?: number[];
+
+  @ApiProperty({
+    description:
+      'ID del dispositivo a marcar como principal. Debe estar entre los dispositivos asociados activos de la instalación tras aplicar `idsDispositivos`. Opcional: si no se envía, no se modifica el principal actual.',
+    example: 101,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  idDispositivoPrincipal?: number;
 
   @ApiProperty({
     description:
@@ -110,7 +119,7 @@ export class UpdateInstalacioneDto {
   @IsArray()
   @IsNumber({}, { each: true })
   idsBlueVoxs?: number[];
-  
+
   @ApiProperty({
     description:
       'Lista de BlueVoxs anteriores que se van a cambiar con su estatus anterior',
@@ -135,5 +144,4 @@ export class UpdateInstalacioneDto {
   @IsString()
   @IsOptional()
   comentariosBluevox?: string;
-
 }

@@ -20,6 +20,16 @@ export class CreateInstalacionesDto {
   idsDispositivos: number[];
 
   @ApiProperty({
+    description:
+      'ID del dispositivo que se marca como principal de la instalación. Debe estar incluido en `idsDispositivos`. Opcional: si no se envía, la instalación queda sin dispositivo principal.',
+    example: 101,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  idDispositivoPrincipal?: number;
+
+  @ApiProperty({
     description: 'ID del vehículo asociado a la instalación',
     example: 303,
   })
