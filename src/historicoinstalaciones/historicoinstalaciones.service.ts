@@ -38,8 +38,7 @@ export class HistoricoinstalacionesService {
     try {
       const historico = {
         idInstalacion: idInstalacion,
-        idDispositivo: dispositivosSnapshot[0]?.Id ?? 0,
-        idsDispositivos: dispositivosSnapshot,
+        idDispositivo: dispositivosSnapshot,
         idsBlueVoxs: blueVoxs,
         idVehiculo: idVehiculo,
         idCliente: idCliente,
@@ -117,7 +116,7 @@ export class HistoricoinstalacionesService {
       });
 
       const mismoDispositivos =
-        JSON.stringify(historicoActivo?.idsDispositivos ?? null) ===
+        JSON.stringify(historicoActivo?.idDispositivo ?? null) ===
         JSON.stringify(dispositivosSnapshot);
       const mismoBlueVoxs =
         JSON.stringify(historicoActivo?.idsBlueVoxs ?? null) ===
@@ -150,8 +149,7 @@ export class HistoricoinstalacionesService {
       // 🆕 Insertar nuevo histórico con los datos actualizados
       const historico = repo.create({
         idInstalacion: instalacion.idInstalacion,
-        idDispositivo: dispositivosSnapshot[0]?.Id ?? 0,
-        idsDispositivos: dispositivosSnapshot,
+        idDispositivo: dispositivosSnapshot,
         idsBlueVoxs: blueVoxsUp,
         idVehiculo: idVehiculoUp, // el vehículo no cambia, pero se registra
         idCliente: idClienteUp,

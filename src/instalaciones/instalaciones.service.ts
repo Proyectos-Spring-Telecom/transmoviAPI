@@ -22,7 +22,6 @@ import { Dispositivos } from 'src/entities/Dispositivos';
 import { BlueVoxs } from 'src/entities/BlueVoxs';
 import { Vehiculos } from 'src/entities/Vehiculos';
 import { Clientes } from 'src/entities/Clientes';
-import { HistoricoInstalaciones } from 'src/entities/historico-instalaciones';
 import { InstalacionesBlueVoxs } from 'src/entities/InstalacionesBlueVoxs';
 import { InstalacionesDispositivos } from 'src/entities/InstalacionesDispositivos';
 import { HistoricoinstalacionesService } from 'src/historicoinstalaciones/historicoinstalaciones.service';
@@ -412,6 +411,24 @@ export class InstalacionesService {
     return { ids, placeholders };
   }
 
+  private parseDispositivos(raw: unknown): Array<{
+    idDispositivo: number;
+    numeroSerieDispositivo: string;
+    marcaDispositivo: string;
+    modeloDispositivo: string;
+  }> {
+    if (raw == null) return [];
+    const arr = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (!Array.isArray(arr)) return [];
+    return arr.map((row: Record<string, unknown>) => ({
+      idDispositivo:
+        row.idDispositivo != null ? Number(row.idDispositivo) : 0,
+      numeroSerieDispositivo: String(row.numeroSerieDispositivo ?? ''),
+      marcaDispositivo: String(row.marcaDispositivo ?? ''),
+      modeloDispositivo: String(row.modeloDispositivo ?? ''),
+    }));
+  }
+
   private async consultarInstalacionesPaginado(
     cliente: number,
     limit: number,
@@ -426,11 +443,25 @@ SELECT
   i.FechaActualizacion AS fechaActualizacion,
   i.Estatus AS estatus,
 
-  -- Dispositivo
-  id_disp.IdDispositivo AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
+  -- Dispositivos (1..N) asociado(s) mediante tabla intermedia InstalacionesDispositivos
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idDispositivo', d.Id,
+          'numeroSerieDispositivo', d.NumeroSerie,
+          'marcaDispositivo', d.Marca,
+          'modeloDispositivo', d.Modelo
+        )
+      )
+      FROM InstalacionesDispositivos idd
+      INNER JOIN Dispositivos d ON idd.IdDispositivo = d.Id
+      WHERE idd.IdInstalacion = i.Id
+        AND idd.Estatus = 1
+        AND d.IdCliente = i.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS dispositivos,
 
   -- BlueVoxs (1..N) asociado(s) mediante tabla intermedia InstalacionesBlueVoxs
   -- IMPORTANTE: La relación se gestiona mediante InstalacionesBlueVoxs (tabla intermedia),
@@ -470,13 +501,6 @@ SELECT
   c.Estatus AS estatusCliente
 
 FROM Instalaciones i
-INNER JOIN (
-  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
-  FROM InstalacionesDispositivos
-  WHERE Estatus = 1
-  GROUP BY IdInstalacion
-) id_disp ON id_disp.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -493,13 +517,6 @@ LIMIT ? OFFSET ?;
     const query = `  
   SELECT COUNT(*) AS total
   FROM Instalaciones i
-INNER JOIN (
-  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
-  FROM InstalacionesDispositivos
-  WHERE Estatus = 1
-  GROUP BY IdInstalacion
-) id_disp ON id_disp.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -535,11 +552,25 @@ SELECT
   i.FechaActualizacion AS fechaActualizacion,
   i.Estatus AS estatus,
 
-  -- Dispositivo
-  id_disp.IdDispositivo AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
+  -- Dispositivos (1..N) asociado(s) mediante tabla intermedia InstalacionesDispositivos
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idDispositivo', d.Id,
+          'numeroSerieDispositivo', d.NumeroSerie,
+          'marcaDispositivo', d.Marca,
+          'modeloDispositivo', d.Modelo
+        )
+      )
+      FROM InstalacionesDispositivos idd
+      INNER JOIN Dispositivos d ON idd.IdDispositivo = d.Id
+      WHERE idd.IdInstalacion = i.Id
+        AND idd.Estatus = 1
+        AND d.IdCliente = i.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS dispositivos,
 
   -- BlueVoxs (1..N) asociado(s) mediante tabla intermedia InstalacionesBlueVoxs
   COALESCE(
@@ -576,13 +607,6 @@ SELECT
   c.Estatus AS estatusCliente
 
 FROM Instalaciones i
-INNER JOIN (
-  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
-  FROM InstalacionesDispositivos
-  WHERE Estatus = 1
-  GROUP BY IdInstalacion
-) id_disp ON id_disp.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -599,13 +623,6 @@ ORDER BY i.Id DESC
             `
   SELECT COUNT(*) AS total
   FROM Instalaciones i
-INNER JOIN (
-  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
-  FROM InstalacionesDispositivos
-  WHERE Estatus = 1
-  GROUP BY IdInstalacion
-) id_disp ON id_disp.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -674,11 +691,25 @@ SELECT
   i.FechaActualizacion AS fechaActualizacion,
   i.Estatus AS estatus,
   
-  -- Dispositivo
-  id_disp.IdDispositivo AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
+  -- Dispositivos (1..N) asociado(s) mediante tabla intermedia InstalacionesDispositivos
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idDispositivo', d.Id,
+          'numeroSerieDispositivo', d.NumeroSerie,
+          'marcaDispositivo', d.Marca,
+          'modeloDispositivo', d.Modelo
+        )
+      )
+      FROM InstalacionesDispositivos idd
+      INNER JOIN Dispositivos d ON idd.IdDispositivo = d.Id
+      WHERE idd.IdInstalacion = i.Id
+        AND idd.Estatus = 1
+        AND d.IdCliente = i.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS dispositivos,
   
   -- BlueVoxs (1..N) asociado(s) mediante tabla intermedia InstalacionesBlueVoxs
   COALESCE(
@@ -716,13 +747,6 @@ SELECT
 
 FROM UsuariosInstalaciones ui
 INNER JOIN Instalaciones i ON ui.IdInstalacion = i.Id
-INNER JOIN (
-  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
-  FROM InstalacionesDispositivos
-  WHERE Estatus = 1
-  GROUP BY IdInstalacion
-) id_disp ON id_disp.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -741,13 +765,6 @@ ORDER BY i.Id DESC
     SELECT COUNT(*) AS total
   FROM UsuariosInstalaciones ui
 INNER JOIN Instalaciones i ON ui.IdInstalacion = i.Id
-INNER JOIN (
-  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
-  FROM InstalacionesDispositivos
-  WHERE Estatus = 1
-  GROUP BY IdInstalacion
-) id_disp ON id_disp.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 	WHERE ui.IdUsuario = ?
@@ -764,9 +781,9 @@ INNER JOIN Clientes c ON i.IdCliente = c.Id
       const data = instalaciones.map((item) => ({
         ...item,
         id: Number(item.id),
-        idDispositivo: Number(item.idDispositivo),
         idVehiculo: Number(item.idVehiculo),
         idCliente: Number(item.idCliente),
+        dispositivos: this.parseDispositivos(item.dispositivos),
       }));
 
       //APi response
@@ -802,11 +819,25 @@ SELECT
   i.FechaActualizacion AS fechaActualizacion,
   i.Estatus AS estatus,
 
-  -- Dispositivo
-  id_disp.IdDispositivo AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
+  -- Dispositivos (1..N) asociado(s) mediante tabla intermedia InstalacionesDispositivos
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idDispositivo', d.Id,
+          'numeroSerieDispositivo', d.NumeroSerie,
+          'marcaDispositivo', d.Marca,
+          'modeloDispositivo', d.Modelo
+        )
+      )
+      FROM InstalacionesDispositivos idd
+      INNER JOIN Dispositivos d ON idd.IdDispositivo = d.Id
+      WHERE idd.IdInstalacion = i.Id
+        AND idd.Estatus = 1
+        AND d.IdCliente = i.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS dispositivos,
 
   -- BlueVoxs (1..N)
   COALESCE(
@@ -843,13 +874,6 @@ SELECT
   c.Estatus AS estatusCliente
 
 FROM Instalaciones i
-INNER JOIN (
-  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
-  FROM InstalacionesDispositivos
-  WHERE Estatus = 1
-  GROUP BY IdInstalacion
-) id_disp ON id_disp.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -885,11 +909,25 @@ SELECT
   i.FechaActualizacion AS fechaActualizacion,
   i.Estatus AS estatus,
 
-  -- Dispositivo
-  id_disp.IdDispositivo AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
+  -- Dispositivos (1..N) asociado(s) mediante tabla intermedia InstalacionesDispositivos
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idDispositivo', d.Id,
+          'numeroSerieDispositivo', d.NumeroSerie,
+          'marcaDispositivo', d.Marca,
+          'modeloDispositivo', d.Modelo
+        )
+      )
+      FROM InstalacionesDispositivos idd
+      INNER JOIN Dispositivos d ON idd.IdDispositivo = d.Id
+      WHERE idd.IdInstalacion = i.Id
+        AND idd.Estatus = 1
+        AND d.IdCliente = i.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS dispositivos,
 
   -- BlueVoxs (1..N)
   COALESCE(
@@ -926,13 +964,6 @@ SELECT
   c.Estatus AS estatusCliente
 
 FROM Instalaciones i
-INNER JOIN (
-  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
-  FROM InstalacionesDispositivos
-  WHERE Estatus = 1
-  GROUP BY IdInstalacion
-) id_disp ON id_disp.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -976,11 +1007,25 @@ SELECT
   i.FechaActualizacion AS fechaActualizacion,
   i.Estatus AS estatus,
   
-  -- Dispositivo
-  id_disp.IdDispositivo AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
+  -- Dispositivos (1..N) asociado(s) mediante tabla intermedia InstalacionesDispositivos
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idDispositivo', d.Id,
+          'numeroSerieDispositivo', d.NumeroSerie,
+          'marcaDispositivo', d.Marca,
+          'modeloDispositivo', d.Modelo
+        )
+      )
+      FROM InstalacionesDispositivos idd
+      INNER JOIN Dispositivos d ON idd.IdDispositivo = d.Id
+      WHERE idd.IdInstalacion = i.Id
+        AND idd.Estatus = 1
+        AND d.IdCliente = i.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS dispositivos,
   
   -- BlueVoxs (1..N)
   COALESCE(
@@ -1018,13 +1063,6 @@ SELECT
 
 FROM UsuariosInstalaciones ui
 INNER JOIN Instalaciones i ON ui.IdInstalacion = i.Id
-INNER JOIN (
-  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
-  FROM InstalacionesDispositivos
-  WHERE Estatus = 1
-  GROUP BY IdInstalacion
-) id_disp ON id_disp.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -1045,9 +1083,9 @@ ORDER BY i.Id DESC;
       const data = instalaciones.map((item) => ({
         ...item,
         id: Number(item.id),
-        idDispositivo: Number(item.idDispositivo),
         idVehiculo: Number(item.idVehiculo),
         idCliente: Number(item.idCliente),
+        dispositivos: this.parseDispositivos(item.dispositivos),
       }));
 
       const result: ApiResponseCommon = {
@@ -1077,11 +1115,25 @@ SELECT
   i.FechaActualizacion AS fechaActualizacion,
   i.Estatus AS estatus,
 
-  -- Dispositivo
-  id_disp.IdDispositivo AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
+  -- Dispositivos (1..N) asociado(s) mediante tabla intermedia InstalacionesDispositivos
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idDispositivo', d.Id,
+          'numeroSerieDispositivo', d.NumeroSerie,
+          'marcaDispositivo', d.Marca,
+          'modeloDispositivo', d.Modelo
+        )
+      )
+      FROM InstalacionesDispositivos idd
+      INNER JOIN Dispositivos d ON idd.IdDispositivo = d.Id
+      WHERE idd.IdInstalacion = i.Id
+        AND idd.Estatus = 1
+        AND d.IdCliente = i.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS dispositivos,
 
   -- BlueVoxs (1..N)
   COALESCE(
@@ -1118,13 +1170,6 @@ SELECT
   c.Estatus AS estatusCliente
 
 FROM Instalaciones i
-INNER JOIN (
-  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
-  FROM InstalacionesDispositivos
-  WHERE Estatus = 1
-  GROUP BY IdInstalacion
-) id_disp ON id_disp.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -1154,11 +1199,25 @@ SELECT
   i.FechaActualizacion AS fechaActualizacion,
   i.Estatus AS estatus,
 
-  -- Dispositivo
-  id_disp.IdDispositivo AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
+  -- Dispositivos (1..N) asociado(s) mediante tabla intermedia InstalacionesDispositivos
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idDispositivo', d.Id,
+          'numeroSerieDispositivo', d.NumeroSerie,
+          'marcaDispositivo', d.Marca,
+          'modeloDispositivo', d.Modelo
+        )
+      )
+      FROM InstalacionesDispositivos idd
+      INNER JOIN Dispositivos d ON idd.IdDispositivo = d.Id
+      WHERE idd.IdInstalacion = i.Id
+        AND idd.Estatus = 1
+        AND d.IdCliente = i.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS dispositivos,
 
   -- BlueVoxs (1..N)
   COALESCE(
@@ -1195,13 +1254,6 @@ SELECT
   c.Estatus AS estatusCliente
 
 FROM Instalaciones i
-INNER JOIN (
-  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
-  FROM InstalacionesDispositivos
-  WHERE Estatus = 1
-  GROUP BY IdInstalacion
-) id_disp ON id_disp.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -1245,11 +1297,25 @@ SELECT
   i.FechaActualizacion AS fechaActualizacion,
   i.Estatus AS estatus,
   
-  -- Dispositivo
-  id_disp.IdDispositivo AS idDispositivo,
-  d.NumeroSerie AS numeroSerieDispositivo,
-  d.Marca AS marcaDispositivo,
-  d.Modelo AS modeloDispositivo,
+  -- Dispositivos (1..N) asociado(s) mediante tabla intermedia InstalacionesDispositivos
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'idDispositivo', d.Id,
+          'numeroSerieDispositivo', d.NumeroSerie,
+          'marcaDispositivo', d.Marca,
+          'modeloDispositivo', d.Modelo
+        )
+      )
+      FROM InstalacionesDispositivos idd
+      INNER JOIN Dispositivos d ON idd.IdDispositivo = d.Id
+      WHERE idd.IdInstalacion = i.Id
+        AND idd.Estatus = 1
+        AND d.IdCliente = i.IdCliente
+    ),
+    JSON_ARRAY()
+  ) AS dispositivos,
   
   -- BlueVoxs (1..N)
   COALESCE(
@@ -1287,13 +1353,6 @@ SELECT
 
 FROM UsuariosInstalaciones ui
 INNER JOIN Instalaciones i ON ui.IdInstalacion = i.Id
-INNER JOIN (
-  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
-  FROM InstalacionesDispositivos
-  WHERE Estatus = 1
-  GROUP BY IdInstalacion
-) id_disp ON id_disp.IdInstalacion = i.Id
-INNER JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
 INNER JOIN Vehiculos v ON i.IdVehiculo = v.Id AND i.IdCliente = v.IdCliente
 INNER JOIN Clientes c ON i.IdCliente = c.Id
 
@@ -1317,9 +1376,9 @@ ORDER BY i.Id DESC;
       const data = instalaciones.map((item) => ({
         ...item,
         id: Number(item.id),
-        idDispositivo: Number(item.idDispositivo),
         idVehiculo: Number(item.idVehiculo),
         idCliente: Number(item.idCliente),
+        dispositivos: this.parseDispositivos(item.dispositivos),
       }));
 
       return { data: data };
@@ -1692,6 +1751,40 @@ ORDER BY i.Id DESC;
       // ==========================================
       // ACTUALIZACIÓN DE DISPOSITIVOS (MATRIZ — InstalacionesDispositivos)
       // ==========================================
+      // Pre-procesamiento: Dispositivos anteriores (estado al desasociar)
+      const dispositivosAnterioresMap = new Map<number, number>();
+      if (
+        updateInstalacioneDto.dispositivosAnteriores &&
+        Array.isArray(updateInstalacioneDto.dispositivosAnteriores)
+      ) {
+        for (const disp of updateInstalacioneDto.dispositivosAnteriores) {
+          const dx = await this.dispositivosRepository.findOne({
+            where: { id: disp.idDispositivo },
+          });
+          if (!dx) {
+            throw new BadRequestException(
+              `El Dispositivo con ID ${disp.idDispositivo} no existe en el sistema.`,
+            );
+          }
+          dispositivosAnterioresMap.set(
+            Number(disp.idDispositivo),
+            disp.estatusAnterior,
+          );
+          await this.dispositivosRepository.update(disp.idDispositivo, {
+            estadoActual: disp.estatusAnterior,
+          });
+          const asociacion =
+            await this.instalacionesDispositivosRepository.findOne({
+              where: { idInstalacion: id, idDispositivo: disp.idDispositivo },
+            });
+          if (asociacion && asociacion.estatus === 1) {
+            await this.instalacionesDispositivosRepository.update(asociacion.id, {
+              estatus: 0,
+            });
+          }
+        }
+      }
+
       if (
         updateInstalacioneDto.idsDispositivos &&
         Array.isArray(updateInstalacioneDto.idsDispositivos)
@@ -1726,6 +1819,7 @@ ORDER BY i.Id DESC;
             id: In(nuevaListaDisp),
             idCliente: idClienteParaValidacion,
             estatus: 1,
+            estadoActual: EstadoComponente.DISPONIBLE
           },
         });
         if (dispositivosSolicitados.length !== nuevaListaDisp.length) {
@@ -1788,11 +1882,6 @@ ORDER BY i.Id DESC;
           }
         }
 
-        const estatusDispAnterior =
-          updateInstalacioneDto.estatusDispositivoAnterior;
-        const dispositivosAnterioresValor =
-          estatusDispAnterior ?? EstadoComponente.DISPONIBLE;
-
         for (const dispositivoId of todosIdsDisp) {
           const enNueva = nuevaSetDisp.has(dispositivoId);
           const creado = creadaMapDisp.get(dispositivoId);
@@ -1817,8 +1906,11 @@ ORDER BY i.Id DESC;
             await this.instalacionesDispositivosRepository.update(creado.id, {
               estatus: 0,
             });
+            const estadoAlDesactivar =
+              dispositivosAnterioresMap.get(dispositivoId) ??
+              EstadoComponente.DISPONIBLE;
             await this.dispositivosRepository.update(dispositivoId, {
-              estadoActual: dispositivosAnterioresValor,
+              estadoActual: estadoAlDesactivar,
             });
           }
         }
@@ -2022,23 +2114,8 @@ ORDER BY i.Id DESC;
         ? Number(updateInstalacioneDto.idCliente)
         : instalacionActualizada.idCliente;
 
-      const instalacionesDispositivosUpdate =
-        await this.instalacionesDispositivosRepository.find({
-          where: { idInstalacion: id, estatus: 1 },
-          relations: ['idDispositivo2'],
-        });
-
-      const dispositivosSnapshot = instalacionesDispositivosUpdate
-        .map((row) => row.idDispositivo2)
-        .filter((d) => d != null)
-        .map((d) => ({
-          Id: Number(d.id),
-          NumeroSerie: d.numeroSerie,
-        }));
-
       const body = {
         idInstalacion: id,
-        idDispositivo: dispositivosSnapshot[0]?.Id ?? 0,
         idVehiculo: instalacionActualizada.idVehiculo,
         idCliente: clienteFinal,
       };
@@ -2064,6 +2141,20 @@ ORDER BY i.Id DESC;
         NumeroSerie: b.numeroSerie,
       }));
 
+      const instalacionesDispositivosUpdate =
+        await this.instalacionesDispositivosRepository.find({
+          where: { idInstalacion: id, estatus: 1 },
+          relations: ['idDispositivo2'],
+        });
+
+      const dispositivosSnapshot = instalacionesDispositivosUpdate
+        .map((row) => row.idDispositivo2)
+        .filter((d) => d != null)
+        .map((d) => ({
+          Id: Number(d.id),
+          NumeroSerie: d.numeroSerie,
+        }));
+
       await this.historicoinstalacionesService.updateHistorico(
         body,
         dispositivosSnapshot,
@@ -2080,9 +2171,7 @@ ORDER BY i.Id DESC;
         message: 'Las instalaciones se actualizaron con éxito.',
         data: {
           id: id,
-          nombre:
-            `Instalación ${instalacion.id} asociada a Dispositivos: ${dispositivosSnapshot.map((d) => d.Id).join(', ')} y Vehículo: ${instalacion.idVehiculo}.` ||
-            '',
+          nombre: `Instalación ${instalacion.id} actualizada (Vehículo: ${instalacion.idVehiculo}, ${dispositivosSnapshot.length} dispositivo(s) asociado(s)).`,
         },
       };
       return result;
