@@ -7,10 +7,6 @@ export class UpdateHistoricoDto {
 
   @IsOptional()
   @IsNumber()
-  idDispositivo?: number;
-
-  @IsOptional()
-  @IsNumber()
   idBlueVox?: number;
 
   @IsOptional()

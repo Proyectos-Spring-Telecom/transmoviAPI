@@ -3,7 +3,6 @@ import { applySchema } from 'src/common/apply-schema.decorator';
 
 @applySchema
 @Index('FK_HistoricoInstalaciones_Instalaciones', ['idInstalacion'], {})
-@Index('FK_HistoricoInstalaciones_Dispositivo', ['idDispositivo'], {})
 @Index('FK_HistoricoInstalaciones_Vehiculo', ['idVehiculo'], {})
 @Index('FK_HistoricoInstalaciones_Cliente', ['idCliente'], {})
 @Entity('HistoricoInstalaciones')
@@ -14,13 +13,11 @@ export class HistoricoInstalaciones {
   @Column('bigint', { name: 'IdInstalacion' })
   idInstalacion: number;
 
-  @Column('bigint', { name: 'IdDispositivo' })
-  idDispositivo: number;
+  /** Snapshot JSON de todos los dispositivos asociados (misma forma que en create/update). */
+  @Column('json', { name: 'IdDispositivo' })
+  idDispositivo: Array<{ Id: number; NumeroSerie: string }>;
 
-  @Column('json', { name: 'IdsDispositivos', nullable: true })
-  idsDispositivos: Array<{ Id: number; NumeroSerie: string }> | null;
-
-  @Column('json', { name: 'IdsBlueVoxs', nullable: false })
+  @Column('json', { name: 'idsBlueVoxs' })
   idsBlueVoxs: Array<{ Id: number; NumeroSerie: string }>;
 
   @Column('bigint', { name: 'IdVehiculo' })

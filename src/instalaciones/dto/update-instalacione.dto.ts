@@ -1,5 +1,4 @@
-import { ApiProperty, PartialType } from '@nestjs/swagger';
-import { CreateInstalacionesDto } from './create-instalacione.dto';
+import { ApiProperty } from '@nestjs/swagger';
 import {
   IsArray,
   IsIn,
@@ -28,22 +27,82 @@ export class BlueVoxAnteriorDto {
   estatusAnterior: number;
 }
 
-export class UpdateInstalacioneDto extends PartialType(CreateInstalacionesDto) {
+export class DispositivoAnteriorDto {
   @ApiProperty({
-    description:
-      'Para saber el estado de los componentes en caso de cambiarlos',
+    description: 'ID del Dispositivo anterior',
     example: 101,
   })
-  @IsOptional({
-    message: 'Para saber el estado de los componentes en caso de cambiarlos',
+  @IsNumber()
+  idDispositivo: number;
+
+  @ApiProperty({
+    description: 'Estatus anterior del Dispositivo',
+    example: 5,
   })
   @IsInt()
   @IsIn([0, 1, 2, 3, 4, 5], { message: 'Solo se permite 0, 1, 2, 3, 4, 5' })
-  estatusDispositivoAnterior?: number;
+  estatusAnterior: number;
+}
+
+export class UpdateInstalacioneDto {
+  
+  @ApiProperty({
+    description: 'ID del vehículo asociado a la instalación',
+    example: 303,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  idVehiculo?: number;
+
+  @ApiProperty({
+    description: 'ID del cliente asociado a la instalación',
+    example: 404,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  idCliente?: number;
+  
+  @ApiProperty({
+    description:
+      'IDs de Dispositivos asociados a la instalación. Si se envía, se actualizan las asociaciones mediante la matriz en servidor. Deben pertenecer al mismo cliente.',
+    example: [101, 102],
+    required: false,
+  })
+  @IsOptional()
+  @IsArray()
+  @IsNumber({}, { each: true })
+  idsDispositivos?: number[];
 
   @ApiProperty({
     description:
-      'IDs de BlueVoxs asociados a la instalación. Si se envía, se actualizan las asociaciones usando la matriz de decisiones (similar a usuarios-permisos). Deben pertenecer al mismo cliente.',
+      'Lista de Dispositivos anteriores que se van a cambiar con su estatus anterior',
+    example: [
+      { idDispositivo: 101, estatusAnterior: 5 },
+      { idDispositivo: 102, estatusAnterior: 1 },
+    ],
+    required: false,
+    type: [DispositivoAnteriorDto],
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => DispositivoAnteriorDto)
+  dispositivosAnteriores?: DispositivoAnteriorDto[];
+
+  @ApiProperty({
+    description: 'Comentario acerca de los componentes (dispositivos)',
+    example: 'Cambio de unidad',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  comentariosDispositivo?: string;
+
+  @ApiProperty({
+    description:
+      'IDs de BlueVoxs asociados a la instalación. Si se envía, se actualizan las asociaciones usando la matriz de decisiones. Deben pertenecer al mismo cliente.',
     example: [202, 203, 205],
     required: false,
   })
@@ -51,43 +110,7 @@ export class UpdateInstalacioneDto extends PartialType(CreateInstalacionesDto) {
   @IsArray()
   @IsNumber({}, { each: true })
   idsBlueVoxs?: number[];
-
-  @ApiProperty({
-    description: 'Para saber el estado de los BlueVox en caso de cambiarlos',
-    example: 101,
-  })
-  @IsOptional({
-    message: 'Para saber el estado de los componentes en caso de cambiarlos',
-  })
-  @IsInt()
-  @IsIn([0, 1, 2, 3, 4, 5], { message: 'Solo se permite 0, 1, 2, 3, 4, 5' })
-  estatusBluevoxsAnterior?: number;
-
-  @ApiProperty({
-    description: 'Comentario acerca de los componentes',
-    example: 404,
-  })
-  @IsString()
-  @IsOptional()
-  comentariosDispositivo?: string;
-
-  @ApiProperty({
-    description: 'Comentario acerca de los componentes',
-    example: 404,
-  })
-  @IsString()
-  @IsOptional()
-  comentariosBluevox?: string;
-
-  @ApiProperty({
-    description: 'ID del cliente asociado a la instalación',
-    example: 6,
-    required: false,
-  })
-  @IsOptional()
-  @IsNumber()
-  idCliente?: number;
-
+  
   @ApiProperty({
     description:
       'Lista de BlueVoxs anteriores que se van a cambiar con su estatus anterior',
@@ -103,4 +126,14 @@ export class UpdateInstalacioneDto extends PartialType(CreateInstalacionesDto) {
   @ValidateNested({ each: true })
   @Type(() => BlueVoxAnteriorDto)
   blueVoxsAnteriores?: BlueVoxAnteriorDto[];
+
+  @ApiProperty({
+    description: 'Comentario acerca de los BlueVox',
+    example: 'Reemplazo de equipo',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  comentariosBluevox?: string;
+
 }
