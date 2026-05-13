@@ -6,10 +6,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { BlueVoxs } from 'src/entities/BlueVoxs';
 import { Instalaciones } from 'src/entities/Instalaciones';
 import { Clientes } from 'src/entities/Clientes';
+import { InstalacionesBlueVoxs } from 'src/entities/InstalacionesBlueVoxs';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([BlueVoxs, Instalaciones, Clientes]),
+    TypeOrmModule.forFeature([BlueVoxs, Instalaciones, Clientes, InstalacionesBlueVoxs]),
     BitacoraModule,
   ],
   controllers: [BluevoxController],
