@@ -24,9 +24,7 @@ import {
   ApiBody,
   ApiParam,
 } from '@nestjs/swagger';
-import {
-  openApiTurnoListadoItem,
-} from 'src/common/openapi-instalaciones-monitoreo.schemas';
+import { openApiTurnoListadoItem } from 'src/common/openapi-instalaciones-monitoreo.schemas';
 
 @ApiTags('Turnos')
 @ApiBearerAuth('bearer-token')

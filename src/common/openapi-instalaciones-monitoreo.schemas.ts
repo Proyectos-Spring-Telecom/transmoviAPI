@@ -130,7 +130,11 @@ export const openApiTurnoListadoItem = {
     fechaActualizacion: { type: 'string', format: 'date-time', nullable: true },
     estatus: { type: 'number' },
     idInstalacion: { type: 'number' },
-    fechaCreacionInstalacion: { type: 'string', format: 'date-time', nullable: true },
+    fechaCreacionInstalacion: {
+      type: 'string',
+      format: 'date-time',
+      nullable: true,
+    },
     fechaActualizacionInstalacion: {
       type: 'string',
       format: 'date-time',
@@ -156,7 +160,11 @@ export const openApiTurnoListadoItem = {
     apellidoMaternoCliente: { type: 'string', nullable: true },
     estatusCliente: { type: 'number', nullable: true },
     idOperador: { type: 'number' },
-    fechaNacimientoOperador: { type: 'string', format: 'date-time', nullable: true },
+    fechaNacimientoOperador: {
+      type: 'string',
+      format: 'date-time',
+      nullable: true,
+    },
     nombreOperador: { type: 'string', nullable: true },
     apellidoPaternoOperador: { type: 'string', nullable: true },
     apellidoMaternoOperador: { type: 'string', nullable: true },

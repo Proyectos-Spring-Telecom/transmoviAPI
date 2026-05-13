@@ -223,9 +223,6 @@ export class TransaccionesService {
       });
       await historicoTransaccionesRecargaRepo.save(historicoRecarga);
 
-      await queryRunner.commitTransaction();
-
-      // Bitácora fuera de la transacción; ya se hizo commit.
       const querylogger = { createTransaccioneRecargaDto };
       await this.bitacoraLogger.logToBitacora(
         'Transacciones',
@@ -236,6 +233,8 @@ export class TransaccionesService {
         EnumModulos.TRANSACCIONES,
         EstatusEnumBitcora.SUCCESS,
       );
+
+      await queryRunner.commitTransaction();
 
       const result: ApiCrudTransaccionRecarga = {
         status: 'success',
@@ -319,49 +318,48 @@ export class TransaccionesService {
     });
   }
 
-  async findTarifaByOtherViaje(idViaje: number) {
+  async findTarifaByOtherViaje(
+    idViaje: number,
+    numeroSerieDispositivo: string,
+  ) {
     const query = `
 SELECT
-	-- Datos de entidad Viajes
-	v.Id AS idViajes,
-    v.Estatus AS estatusViaje,
-    us.Id AS idUsuario,
-    us.Nombre AS nombreOperador,
-	-- Datos del Turnos
-    tu.Id AS idTurno,
-    tu.Estatus AS estatusTurno,
-    -- Datos del Dispositivos
-    dp.NumeroSerie AS numeroSerieDispositivo,
-    -- Datos de entidad Derrotero
-    d.Id As idDerrotero,
-    d.RecorridoInterpolar AS  recorridoInterpolar,
-    d.DistanciaKm AS distanciaKm,
-    -- Datos de entidad Tarifas
-    t.Id AS idTarifa,
-    t.TarifaBase AS tarifaBase,
-    t.DistanciaBaseKm AS DistanciaBaseKm,
-    t.IncrementoCadaMetros AS incrementoCadaMetros,
-    t.CostoAdicional AS costoAdicional,
-    t.TipoTarifa AS tipoTarifa
-    
+  v.Id AS idViajes,
+  v.Estatus AS estatusViaje,
+  us.Id AS idUsuario,
+  us.Nombre AS nombreOperador,
+  tu.Id AS idTurno,
+  tu.Estatus AS estatusTurno,
+  dp.NumeroSerie AS numeroSerieDispositivo,
+  d.Id AS idDerrotero,
+  d.RecorridoInterpolar AS recorridoInterpolar,
+  d.DistanciaKm AS distanciaKm,
+  t.Id AS idTarifa,
+  t.TarifaBase AS tarifaBase,
+  t.DistanciaBaseKm AS DistanciaBaseKm,
+  t.IncrementoCadaMetros AS incrementoCadaMetros,
+  t.CostoAdicional AS costoAdicional,
+  t.TipoTarifa AS tipoTarifa
 FROM Viajes v
 INNER JOIN Operadores op ON op.Id = v.IdOperador
 INNER JOIN Usuarios us ON us.Id = op.IdUsuario
 INNER JOIN Turnos tu ON tu.Id = v.IdTurno
 INNER JOIN Instalaciones i ON i.Id = tu.IdInstalacion
-INNER JOIN (
-  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
-  FROM InstalacionesDispositivos
-  WHERE Estatus = 1
-  GROUP BY IdInstalacion
-) id_disp ON id_disp.IdInstalacion = i.Id
-INNER JOIN Dispositivos dp ON dp.Id = id_disp.IdDispositivo AND dp.IdCliente = i.IdCliente
-INNER JOIN Derroteros d ON d.Id  = v.IdDerrotero
+INNER JOIN InstalacionesDispositivos id_disp
+  ON id_disp.IdInstalacion = i.Id
+  AND id_disp.Estatus = 1
+INNER JOIN Dispositivos dp
+  ON dp.Id = id_disp.IdDispositivo
+  AND dp.IdCliente = i.IdCliente
+  AND dp.NumeroSerie = ?
+INNER JOIN Derroteros d ON d.Id = v.IdDerrotero
 INNER JOIN Tarifas t ON t.IdDerrotero = d.Id
-
-WHERE v.Id = ${idViaje}
+WHERE v.Id = ?
     `;
-    return await this.viajesRepository.query(query);
+    return await this.viajesRepository.query(query, [
+      numeroSerieDispositivo,
+      idViaje,
+    ]);
   }
 
   // ========================================
@@ -398,21 +396,34 @@ WHERE v.Id = ${idViaje}
 
       // CRÍTICO: Si hay transacciones abiertas, calcular monto por cada una según tarifa (estacionaria vs incremental).
       if (transacciones.length > 0) {
-        const viajeData = await this.findTarifaByOtherViaje(idViaje);
-        const {
-          idUsuario,
-          estatusTurno,
-          estatusViaje,
-          recorridoInterpolar,
-          distanciaKm,
-          tarifaBase,
-          DistanciaBaseKm,
-          incrementoCadaMetros,
-          costoAdicional,
-          tipoTarifa,
-        } = viajeData[0];
-
         for (const i of transacciones) {
+          const viajeData = await this.findTarifaByOtherViaje(
+            idViaje,
+            i.numeroSerieDispositivo,
+          );
+          if (!viajeData || viajeData.length === 0) {
+            console.warn(
+              '[viajeCierre] Dispositivo ya no asociado a instalación. Transacción no cerrada.',
+              {
+                idTransaccion: i.id,
+                numeroSerieDispositivo: i.numeroSerieDispositivo,
+              },
+            );
+            continue;
+          }
+          const {
+            idUsuario,
+            estatusTurno,
+            estatusViaje,
+            recorridoInterpolar,
+            distanciaKm,
+            tarifaBase,
+            DistanciaBaseKm,
+            incrementoCadaMetros,
+            costoAdicional,
+            tipoTarifa,
+          } = viajeData[0];
+
           const { latitudInicial, longitudInicial } = i;
           if (latitudInicial && longitudInicial) {
             const posicionActual = {
@@ -581,7 +592,10 @@ WHERE v.Id = ${idViaje}
       queryRunner.manager.getRepository(CatTiposPasajeros);
 
     const idUsuario = await this.obtenerIdUsuarioPasajero(monedero.numeroSerie);
-    const viajeData = await this.findTarifa(dto.idViaje);
+    const viajeData = await this.findTarifa(
+      dto.idViaje,
+      dto.numeroSerieDispositivo,
+    );
     if (!viajeData || viajeData.length === 0) {
       throw new NotFoundException(
         `No se encontraron datos de tarifa para el viaje ${dto.idViaje}`,
@@ -777,6 +791,7 @@ WHERE v.Id = ${idViaje}
     try {
       const viajeFlag = await this.findTarifa(
         createTransaccioneDebitoDto.idViaje,
+        createTransaccioneDebitoDto.numeroSerieDispositivo,
       );
       console.log(
         '[createOrCloseTransaccionDebito] 2. Validación viaje/dispositivo',
@@ -787,6 +802,12 @@ WHERE v.Id = ${idViaje}
             createTransaccioneDebitoDto.numeroSerieDispositivo,
         },
       );
+
+      if (!viajeFlag || viajeFlag.length === 0) {
+        throw new BadRequestException(
+          `El viaje ${createTransaccioneDebitoDto.idViaje} no existe o el dispositivo ${createTransaccioneDebitoDto.numeroSerieDispositivo} no pertenece a la instalación del viaje.`,
+        );
+      }
       if (
         viajeFlag[0].estatusViaje === EstatusEnum.INACTIVO ||
         viajeFlag[0].numeroSerieDispositivo !==
@@ -849,6 +870,7 @@ WHERE v.Id = ${idViaje}
       );
 
       // CRÍTICO: Cerrar transacciones abiertas de otro viaje en la misma transacción. Pasar queryRunner para evitar lock conflict.
+      const idsViajesAnteriores = new Set<number>();
       for (const open of openList) {
         if (Number(open.idViajes) !== createTransaccioneDebitoDto.idViaje) {
           console.log(
@@ -859,23 +881,37 @@ WHERE v.Id = ${idViaje}
             },
           );
           await this.viajeCierre(Number(open.idViajes), queryRunner);
+          idsViajesAnteriores.add(Number(open.idViajes));
         }
       }
 
-      //En caso de que la transacciones encontradas sean diferentes al viaje actual, se manda un error
-      for (const open of openList) {
-        if (Number(open.idViajes) !== createTransaccioneDebitoDto.idViaje) {
-          console.log(
-            '[createOrCloseTransaccionDebito] 6. Error: aún hay abiertas de otro viaje tras cierre',
-            {
-              idViajeConflicto: open.idViajes,
-            },
-          );
-          throw new BadRequestException(
-            `Usted tenia transacciónes del viaje ${open.idViajes} abiertas, estas han sido cerradas correctamente, Pase de nuevo su monedero para poder viajar`,
-          );
-        }
-        continue;
+      // Si se cerraron transacciones de viajes anteriores: COMMIT primero (persistir los cierres)
+      // y luego pedir al pasajero pasar el monedero nuevamente para abrir/cobrar en el viaje actual.
+      if (idsViajesAnteriores.size > 0) {
+        const idsViajesStr = Array.from(idsViajesAnteriores).join(', ');
+        console.log(
+          '[createOrCloseTransaccionDebito] 6. Cierres de viajes anteriores persistidos — solicitando segundo toque',
+          {
+            idsViajesAnteriores: Array.from(idsViajesAnteriores),
+          },
+        );
+        await this.bitacoraLogger.logToBitacora(
+          'Transacciones',
+          `Transacciones de viaje(s) anterior(es) ${idsViajesStr} cerradas. Se solicita segundo toque al pasajero.`,
+          'UPDATE',
+          {
+            idsViajesAnteriores: Array.from(idsViajesAnteriores),
+            numeroSerieMonedero: monedero.numeroSerie,
+          },
+          idUser,
+          EnumModulos.TRANSACCIONES,
+          EstatusEnumBitcora.SUCCESS,
+        );
+        await queryRunner.commitTransaction();
+        await queryRunner.release();
+        throw new BadRequestException(
+          `Usted tenía transacciónes del viaje ${idsViajesStr} abiertas, estas han sido cerradas correctamente. Pase de nuevo su monedero para poder viajar.`,
+        );
       }
 
       if (openList.length > 0) {
@@ -945,8 +981,6 @@ WHERE v.Id = ${idViaje}
               closedAsPagado,
             },
           );
-          await queryRunner.commitTransaction();
-          await queryRunner.release();
           await this.bitacoraLogger.logToBitacora(
             'Transacciones',
             `Transacción de débito cerrada (tiempo excedido)`,
@@ -956,6 +990,8 @@ WHERE v.Id = ${idViaje}
             EnumModulos.TRANSACCIONES,
             EstatusEnumBitcora.SUCCESS,
           );
+          await queryRunner.commitTransaction();
+          await queryRunner.release();
           return {
             status: 'success',
             message: 'Transacción cerrada correctamente',
@@ -977,6 +1013,7 @@ WHERE v.Id = ${idViaje}
       );
       const viajeData = await this.findTarifa(
         createTransaccioneDebitoDto.idViaje,
+        createTransaccioneDebitoDto.numeroSerieDispositivo,
       );
       if (!viajeData || viajeData.length === 0) {
         throw new NotFoundException(
@@ -1047,7 +1084,7 @@ WHERE v.Id = ${idViaje}
         controlTransaccion,
       });
 
-      // Obtenemos la fecha con desfase de 6 horas
+      // Obtenemos la fecha con desfase de 6 horas :3
       const { fechaDesfasada } = await horaDesfasada();
 
       if (montoFinal < 0) {
@@ -1057,7 +1094,7 @@ WHERE v.Id = ${idViaje}
         const transaccionRechazo = transaccionesDebitoRepo.create({
           idTipoTransaccion: EnumTipoTransaccion.RECHAZO,
           monto: montoConDescuento,
-          idControlTransaccion: EnumControlTransacciones.ABIERTA,
+          idControlTransaccion: EnumControlTransacciones.PAGADO,
           latitudInicial: createTransaccioneDebitoDto.latitud,
           longitudInicial: createTransaccioneDebitoDto.longitud,
           fechaHoraInicio: fechaDesfasada,
@@ -1086,8 +1123,6 @@ WHERE v.Id = ${idViaje}
           contexto: 'Transaccion rechazada: saldo insuficiente',
         });
         await historicoTransaccionesDebitoRepo.save(historicoRechazo);
-        await queryRunner.commitTransaction();
-        await queryRunner.release();
         await this.bitacoraLogger.logToBitacora(
           'Transacciones',
           `Transacción de débito RECHAZADA por saldo insuficiente`,
@@ -1098,6 +1133,8 @@ WHERE v.Id = ${idViaje}
           EstatusEnumBitcora.ERROR,
           'Saldo insuficiente',
         );
+        await queryRunner.commitTransaction();
+        await queryRunner.release();
         throw new BadRequestException('Saldo insuficiente');
       }
 
@@ -1121,6 +1158,71 @@ WHERE v.Id = ${idViaje}
       };
 
       if (controlTransaccion === EnumControlTransacciones.ABIERTA) {
+        const abiertasActuales = openList.length;
+        const totalProyectado =
+          (abiertasActuales + 1) * montoConDescuento;
+        const saldoSuficienteProyectado =
+          Number(monedero.saldo) >= totalProyectado;
+
+        if (!saldoSuficienteProyectado) {
+          const transaccionRechazo = transaccionesDebitoRepo.create({
+            idTipoTransaccion: EnumTipoTransaccion.RECHAZO,
+            monto: montoConDescuento,
+            idControlTransaccion: EnumControlTransacciones.ABIERTA,
+            latitudInicial: createTransaccioneDebitoDto.latitud,
+            longitudInicial: createTransaccioneDebitoDto.longitud,
+            fechaHoraInicio: fechaDesfasada,
+            distanciaInicialKm: distanciaInicial,
+            numeroSerieMonedero: createTransaccioneDebitoDto.numeroSerieMonedero,
+            numeroSerieDispositivo:
+              createTransaccioneDebitoDto.numeroSerieDispositivo,
+            idViajes: createTransaccioneDebitoDto.idViaje,
+            idUsuario: idUsuario,
+            contexto: `Transaccion rechazada: saldo insuficiente para cubrir ${abiertasActuales + 1} transacciones abiertas proyectadas (${totalProyectado})`,
+          });
+          const transaccionRechazoSave =
+            await transaccionesDebitoRepo.save(transaccionRechazo);
+
+          const historicoRechazo = historicoTransaccionesDebitoRepo.create({
+            idTipoTransaccion: transaccionRechazoSave.idTipoTransaccion,
+            monto: transaccionRechazoSave.monto,
+            idControlTransaccion: transaccionRechazoSave.idControlTransaccion,
+            latitudInicial: transaccionRechazoSave.latitudInicial,
+            longitudInicial: transaccionRechazoSave.longitudInicial,
+            fechaHoraInicio: transaccionRechazoSave.fechaHoraInicio,
+            distanciaInicialKm: transaccionRechazoSave.distanciaInicialKm,
+            numeroSerieMonedero: transaccionRechazoSave.numeroSerieMonedero,
+            numeroSerieDispositivo:
+              transaccionRechazoSave.numeroSerieDispositivo,
+            idViajes: transaccionRechazoSave.idViajes,
+            idUsuario: transaccionRechazoSave.idUsuario,
+            contexto: transaccionRechazoSave.contexto,
+          });
+          await historicoTransaccionesDebitoRepo.save(historicoRechazo);
+
+          await this.bitacoraLogger.logToBitacora(
+            'Transacciones',
+            `Transacción de débito RECHAZADA: saldo insuficiente para cobertura proyectada (${abiertasActuales + 1} abiertas)`,
+            'CREATE',
+            {
+              transaccionRechazo: transaccionRechazoSave,
+              totalProyectado,
+              saldoMonedero: monedero.saldo,
+            },
+            idUser,
+            EnumModulos.TRANSACCIONES,
+            EstatusEnumBitcora.ERROR,
+            'Saldo insuficiente proyectado',
+          );
+
+          await queryRunner.commitTransaction();
+          await queryRunner.release();
+
+          throw new BadRequestException(
+            `Saldo insuficiente. Su monedero tiene ${abiertasActuales} transacción(es) abierta(s) y el saldo no cubre el cobro proyectado total de ${totalProyectado}.`,
+          );
+        }
+
         (bodyTransaccionDebito as any).monto = 0;
         (bodyTransaccionDebito as any).idControlTransaccion =
           EnumControlTransacciones.ABIERTA;
@@ -1182,8 +1284,6 @@ WHERE v.Id = ${idViaje}
             idHistorico: transaccionSaveHis?.id,
           },
         );
-        await queryRunner.commitTransaction();
-        await queryRunner.release();
         await this.bitacoraLogger.logToBitacora(
           'Transacciones',
           `Transacción de débito APROBADA`,
@@ -1193,6 +1293,8 @@ WHERE v.Id = ${idViaje}
           EnumModulos.TRANSACCIONES,
           EstatusEnumBitcora.SUCCESS,
         );
+        await queryRunner.commitTransaction();
+        await queryRunner.release();
 
         return {
           status: 'success',
@@ -1209,8 +1311,6 @@ WHERE v.Id = ${idViaje}
       console.log(
         '[createOrCloseTransaccionDebito] 14. Éxito ABIERTA — COMMIT (sin histórico completo de cierre)',
       );
-      await queryRunner.commitTransaction();
-      await queryRunner.release();
       await this.bitacoraLogger.logToBitacora(
         'Transacciones',
         `Transacción de débito APROBADA`,
@@ -1220,6 +1320,8 @@ WHERE v.Id = ${idViaje}
         EnumModulos.TRANSACCIONES,
         EstatusEnumBitcora.SUCCESS,
       );
+      await queryRunner.commitTransaction();
+      await queryRunner.release();
 
       return {
         status: 'success',
@@ -1311,45 +1413,41 @@ WHERE
    * Obtiene los datos del viaje, turno, derrotero y tarifa para un viaje específico.
    * Usa query parametrizada para prevenir SQL injection.
    */
-  async findTarifa(idViaje: number) {
+  async findTarifa(idViaje: number, numeroSerieDispositivo: string) {
     const query = `
 SELECT
-	-- Datos de entidad Viajes
-	v.Id AS idViajes,
-    v.Estatus AS estatusViaje,
-	-- Datos del Turnos
-    tu.Id AS idTurno,
-    tu.Estatus AS estatusTurno,
-    -- Datos del Dispositivos
-    dp.NumeroSerie AS numeroSerieDispositivo,
-    -- Datos de entidad Derrotero
-    d.Id As idDerrotero,
-    d.RecorridoInterpolar AS  recorridoInterpolar,
-    d.DistanciaKm AS distanciaKm,
-    -- Datos de entidad Tarifas
-    t.Id AS idTarifa,
-    t.TarifaBase AS tarifaBase,
-    t.DistanciaBaseKm AS DistanciaBaseKm,
-    t.IncrementoCadaMetros AS incrementoCadaMetros,
-    t.CostoAdicional AS costoAdicional,
-    t.TipoTarifa AS tipoTarifa
-    
+  v.Id AS idViajes,
+  v.Estatus AS estatusViaje,
+  tu.Id AS idTurno,
+  tu.Estatus AS estatusTurno,
+  dp.NumeroSerie AS numeroSerieDispositivo,
+  d.Id AS idDerrotero,
+  d.RecorridoInterpolar AS recorridoInterpolar,
+  d.DistanciaKm AS distanciaKm,
+  t.Id AS idTarifa,
+  t.TarifaBase AS tarifaBase,
+  t.DistanciaBaseKm AS DistanciaBaseKm,
+  t.IncrementoCadaMetros AS incrementoCadaMetros,
+  t.CostoAdicional AS costoAdicional,
+  t.TipoTarifa AS tipoTarifa
 FROM Viajes v
 INNER JOIN Turnos tu ON tu.Id = v.IdTurno
 INNER JOIN Instalaciones i ON i.Id = tu.IdInstalacion
-INNER JOIN (
-  SELECT IdInstalacion, MIN(IdDispositivo) AS IdDispositivo
-  FROM InstalacionesDispositivos
-  WHERE Estatus = 1
-  GROUP BY IdInstalacion
-) id_disp ON id_disp.IdInstalacion = i.Id
-INNER JOIN Dispositivos dp ON dp.Id = id_disp.IdDispositivo AND dp.IdCliente = i.IdCliente
-INNER JOIN Derroteros d ON d.Id  = v.IdDerrotero
+INNER JOIN InstalacionesDispositivos id_disp
+  ON id_disp.IdInstalacion = i.Id
+  AND id_disp.Estatus = 1
+INNER JOIN Dispositivos dp
+  ON dp.Id = id_disp.IdDispositivo
+  AND dp.IdCliente = i.IdCliente
+  AND dp.NumeroSerie = ?
+INNER JOIN Derroteros d ON d.Id = v.IdDerrotero
 INNER JOIN Tarifas t ON t.IdDerrotero = d.Id
-
 WHERE v.Id = ?
     `;
-    return await this.viajesRepository.query(query, [idViaje]);
+    return await this.viajesRepository.query(query, [
+      numeroSerieDispositivo,
+      idViaje,
+    ]);
   }
 
   /**
