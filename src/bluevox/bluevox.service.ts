@@ -20,11 +20,13 @@ import { UpdateBlueVoxEstatusDto } from './dto/update-bluevox-estatus.dto';
 import { Instalaciones } from 'src/entities/Instalaciones';
 import { Clientes } from 'src/entities/Clientes';
 import { UpdateBluevoxEstadoDto } from './dto/update-bluevox.estado.dto';
+import { InstalacionesBlueVoxs } from 'src/entities/InstalacionesBlueVoxs';
 import {
   EnumModulos,
   EstadoComponente,
   EstatusEnum,
 } from 'src/common/estatus.enum';
+
 
 @Injectable()
 export class BluevoxService {
@@ -33,6 +35,8 @@ export class BluevoxService {
     private readonly bluevoxsRepository: Repository<BlueVoxs>,
     @InjectRepository(Instalaciones)
     private readonly instalacionesRepository: Repository<Instalaciones>,
+    @InjectRepository(InstalacionesBlueVoxs)
+    private readonly instalacionesBlueVoxsRepository: Repository<InstalacionesBlueVoxs>,
     @InjectRepository(Clientes)
     private readonly clienteRepository: Repository<Clientes>,
     private readonly bitacoraLogger: BitacoraLoggerService,
@@ -629,8 +633,8 @@ ORDER BY b.Id DESC;
         throw new NotFoundException(`No se encontró un BlueVox con ID: ${id}.`);
 
       //buscamos que no este asiganada a una instalacion
-      const bluevoxInstalacion = await this.instalacionesRepository.findOne({
-        where: { id: bluevoxs.id, estatus: 1 },
+      const bluevoxInstalacion = await this.instalacionesBlueVoxsRepository.findOne({
+        where: { idBlueVox: bluevoxs.id, estatus: 1 },
       });
       if (bluevoxInstalacion)
         throw new BadRequestException(
