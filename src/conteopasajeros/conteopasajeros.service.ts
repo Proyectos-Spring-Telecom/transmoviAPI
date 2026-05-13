@@ -17,7 +17,7 @@ import {
 import { BitacoraLoggerService } from 'src/bitacora/bitacora.service';
 import { BlueVoxs } from 'src/entities/BlueVoxs';
 import { Usuarios } from 'src/entities/Usuarios';
-import { EnumModulos, EstatusEnum } from 'src/common/estatus.enum';
+import { EnumModulos, EstatusEnum, EnumTipoTransaccion } from 'src/common/estatus.enum';
 import { Clientes } from 'src/entities/Clientes';
 import { UpdateConteoPasajerosDto } from './dto/update-conteopasajero.dto';
 import { Viajes } from 'src/entities/Viajes';
@@ -225,8 +225,12 @@ LIMIT 1
     cliente: number,
     limit: number,
     offset: number,
+    ordenarPorIdViaje = false,
   ) {
     const { ids, placeholders } = await this.clienteHijos(cliente);
+    const orderSql = ordenarPorIdViaje
+      ? 'ORDER BY IFNULL(cp.IdViaje, -1) DESC, cp.Id DESC'
+      : 'ORDER BY cp.Id DESC';
     const query = `
 SELECT
     cp.Id AS id,
@@ -264,7 +268,7 @@ LEFT JOIN Vehiculos v
 INNER JOIN Clientes c
     ON bv.IdCliente = c.Id
 WHERE c.Id IN (${placeholders})
-ORDER BY cp.Id DESC
+${orderSql}
 LIMIT ? OFFSET ?;
   `;
     return this.conteopasajeroRepository.query(query, [...ids, limit, offset]);
@@ -299,7 +303,11 @@ WHERE c.Id IN (${placeholders})
     cliente: number,
     limit: number,
     offset: number,
+    ordenarPorIdViaje = false,
   ) {
+    const orderSql = ordenarPorIdViaje
+      ? 'ORDER BY IFNULL(cp.IdViaje, -1) DESC, cp.Id DESC'
+      : 'ORDER BY cp.Id DESC';
     const query = `
 SELECT
     cp.Id AS id,
@@ -337,7 +345,7 @@ LEFT JOIN Vehiculos v
 INNER JOIN Clientes c
     ON bv.IdCliente = c.Id
 WHERE c.Id = ?
-ORDER BY cp.Id DESC
+${orderSql}
 LIMIT ? OFFSET ?;
   `;
     return this.conteopasajeroRepository.query(query, [cliente, limit, offset]);
@@ -373,11 +381,15 @@ WHERE c.Id = ?
     rol: number,
     page: number,
     limit: number,
+    ordenarPorIdViaje = false,
   ): Promise<ApiResponseCommon> {
     try {
       let conteoPasajeros;
       const offset = (page - 1) * limit;
       let totalResult;
+      const orderSqlSuper = ordenarPorIdViaje
+        ? 'ORDER BY IFNULL(cp.IdViaje, -1) DESC, cp.Id DESC'
+        : 'ORDER BY cp.Id DESC';
       switch (rol) {
         case 1:
           conteoPasajeros = await this.conteopasajeroRepository.query(
@@ -417,7 +429,7 @@ LEFT JOIN Vehiculos v
     ON first_inst.IdVehiculo = v.Id AND first_inst.IdCliente = v.IdCliente
 INNER JOIN Clientes c
     ON bv.IdCliente = c.Id
-ORDER BY cp.Id DESC
+${orderSqlSuper}
 LIMIT ? OFFSET ?;
           `,
             [limit, offset],
@@ -451,6 +463,7 @@ INNER JOIN Clientes c
             cliente,
             limit,
             offset,
+            ordenarPorIdViaje,
           );
           totalResult =
             await this.consultarTotalConteoPasajerosPaginados(cliente);
@@ -461,6 +474,7 @@ INNER JOIN Clientes c
             cliente,
             limit,
             offset,
+            ordenarPorIdViaje,
           );
           totalResult =
             await this.consultarTotalConteoPasajerosPaginadosCl(cliente);
@@ -471,6 +485,7 @@ INNER JOIN Clientes c
             cliente,
             limit,
             offset,
+            ordenarPorIdViaje,
           );
           totalResult =
             await this.consultarTotalConteoPasajerosPaginados(cliente);
@@ -481,6 +496,7 @@ INNER JOIN Clientes c
             cliente,
             limit,
             offset,
+            ordenarPorIdViaje,
           );
           totalResult =
             await this.consultarTotalConteoPasajerosPaginados(cliente);
@@ -491,6 +507,7 @@ INNER JOIN Clientes c
             cliente,
             limit,
             offset,
+            ordenarPorIdViaje,
           );
           totalResult =
             await this.consultarTotalConteoPasajerosPaginadosCl(cliente);
@@ -521,6 +538,412 @@ INNER JOIN Clientes c
       throw new InternalServerErrorException({
         message: 'Error al obtener conteo pasajeros',
         error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Por viaje: compara ConteoPasajeros (ascensos) vs HistoricoTransaccionesDebito (boletos).
+   *
+   * Filtro de fechas: un viaje aparece si tiene actividad (conteo o débito) en el rango.
+   * Conteos totales (totalAscensos, totalBoletos) y el detalle anidado se calculan sobre
+   * TODO el histórico del viaje, sin recortar por fecha — alineado al query de referencia.
+   *
+   * Boletos: COUNT de HistoricoTransaccionesDebito por td.IdViajes con IdTipoTransaccion = DEBITO.
+   *
+   * Roles:
+   *  - 1: sin filtro de cliente.
+   *  - 2 / 8 / 10: jerarquía de cliente (lista de IDs).
+   *  - 3 y default: cliente del token.
+   */
+  async findResumenAscensosVsBoletosPorViaje(
+    _idUser: number,
+    cliente: number,
+    rol: number,
+    fechaInicio: string,
+    fechaFin: string,
+    page: number,
+    limit: number,
+  ): Promise<ApiResponseCommon> {
+    try {
+      const offset = (page - 1) * limit;
+      const fechaInicioParam = `${fechaInicio}T00:00:00`;
+      const fechaFinParam = `${fechaFin}T23:59:59`;
+      const tipoDebito = EnumTipoTransaccion.DEBITO;
+
+      const parseJson = (v: unknown): unknown => {
+        if (v == null) return v;
+        if (typeof v === 'string') {
+          try {
+            return JSON.parse(v) as unknown;
+          } catch {
+            return v;
+          }
+        }
+        return v;
+      };
+
+      const groupBy =
+        'v.Id, v.Inicio, v.Fin, v.IdCliente, veh.Id, veh.Placa, veh.Marca, veh.Modelo, veh.NumeroEconomico';
+
+      // SELECT + FROM compartidos: la única diferencia entre roles es el WHERE
+      // y los filtros internos de cliente en las subconsultas. Piezas por rol + esqueleto único.
+
+      type RolPieces = {
+        /** Subquery escalar de totalAscensos (debe terminar en cp.IdViaje = v.Id) */
+        totalAscensosSub: string;
+        /** Subquery escalar de totalBoletos */
+        totalBoletosSub: string;
+        /** Subquery para el array de conteos por BlueVox (cp.IdViaje = v.Id AND cp.NumeroSerieBlueVox = bv.NumeroSerie) */
+        conteosSub: string;
+        /** Filtro adicional en el JOIN de BlueVoxs externo (cliente) */
+        bvJoinExtra: string;
+        /** Cláusula WHERE de filtro de viajes (cliente + actividad en rango) */
+        whereClause: string;
+        /** Parámetros en el orden exacto en que aparecen los '?' del SQL completo (sqlData) */
+        buildParamsData: () => unknown[];
+        /** Parámetros en el orden exacto en que aparecen los '?' del sqlCount */
+        buildParamsCount: () => unknown[];
+      };
+
+      let pieces: RolPieces;
+
+      switch (rol) {
+        case 1: {
+          pieces = {
+            totalAscensosSub: `
+            SELECT COALESCE(SUM(cp.Entradas - cp.Salidas), 0)
+            FROM ConteoPasajeros cp
+            WHERE cp.IdViaje = v.Id`,
+            totalBoletosSub: `
+            SELECT COUNT(*)
+            FROM HistoricoTransaccionesDebito td
+            WHERE td.IdViajes = v.Id
+              AND td.IdTipoTransaccion = ${tipoDebito}`,
+            conteosSub: `
+            SELECT JSON_ARRAYAGG(
+              JSON_OBJECT(
+                'idConteo', cp.Id,
+                'entradas', cp.Entradas,
+                'salidas', cp.Salidas,
+                'diferencia', cp.Diferencia,
+                'fechaHora', cp.FechaHora
+              )
+            )
+            FROM ConteoPasajeros cp
+            WHERE cp.IdViaje = v.Id
+              AND cp.NumeroSerieBlueVox = bv.NumeroSerie`,
+            bvJoinExtra: '',
+            whereClause: `
+            WHERE (
+              EXISTS (
+                SELECT 1 FROM ConteoPasajeros cp2
+                WHERE cp2.IdViaje = v.Id
+                  AND cp2.FechaHora BETWEEN ? AND ?
+              )
+              OR EXISTS (
+                SELECT 1 FROM HistoricoTransaccionesDebito td2
+                WHERE td2.IdViajes = v.Id
+                  AND td2.FechaHoraFinal BETWEEN ? AND ?
+                  AND td2.IdTipoTransaccion = ${tipoDebito}
+              )
+            )`,
+            buildParamsData: () => [
+              fechaInicioParam,
+              fechaFinParam,
+              fechaInicioParam,
+              fechaFinParam,
+              limit,
+              offset,
+            ],
+            buildParamsCount: () => [
+              fechaInicioParam,
+              fechaFinParam,
+              fechaInicioParam,
+              fechaFinParam,
+            ],
+          };
+          break;
+        }
+
+        case 2:
+        case 8:
+        case 10: {
+          const jer = await this.clienteHijos(cliente);
+          if (!('ids' in jer) || jer.ids.length === 0) {
+            return {
+              data: [],
+              paginated: { total: 0, page, lastPage: 0 },
+            };
+          }
+          const { ids, placeholders } = jer as {
+            ids: number[];
+            placeholders: string;
+          };
+
+          pieces = {
+            totalAscensosSub: `
+            SELECT COALESCE(SUM(cp.Entradas - cp.Salidas), 0)
+            FROM ConteoPasajeros cp
+            INNER JOIN BlueVoxs bvx ON bvx.NumeroSerie = cp.NumeroSerieBlueVox
+              AND bvx.IdCliente IN (${placeholders})
+            WHERE cp.IdViaje = v.Id`,
+            totalBoletosSub: `
+            SELECT COUNT(*)
+            FROM HistoricoTransaccionesDebito td
+            INNER JOIN Dispositivos d ON d.NumeroSerie = td.NumeroSerieDispositivo
+              AND d.IdCliente IN (${placeholders})
+            WHERE td.IdViajes = v.Id
+              AND td.IdTipoTransaccion = ${tipoDebito}`,
+            // bv externo ya está filtrado por cliente; conteos sin JOIN extra a BlueVoxs
+            conteosSub: `
+            SELECT JSON_ARRAYAGG(
+              JSON_OBJECT(
+                'idConteo', cp.Id,
+                'entradas', cp.Entradas,
+                'salidas', cp.Salidas,
+                'diferencia', cp.Diferencia,
+                'fechaHora', cp.FechaHora
+              )
+            )
+            FROM ConteoPasajeros cp
+            WHERE cp.IdViaje = v.Id
+              AND cp.NumeroSerieBlueVox = bv.NumeroSerie`,
+            bvJoinExtra: `AND bv.IdCliente IN (${placeholders})`,
+            whereClause: `
+            WHERE v.IdCliente IN (${placeholders})
+              AND (
+                EXISTS (
+                  SELECT 1 FROM ConteoPasajeros cp2
+                  INNER JOIN BlueVoxs bve ON bve.NumeroSerie = cp2.NumeroSerieBlueVox
+                    AND bve.IdCliente IN (${placeholders})
+                  WHERE cp2.IdViaje = v.Id
+                    AND cp2.FechaHora BETWEEN ? AND ?
+                )
+                OR EXISTS (
+                  SELECT 1 FROM HistoricoTransaccionesDebito td2
+                  INNER JOIN Dispositivos de ON de.NumeroSerie = td2.NumeroSerieDispositivo
+                    AND de.IdCliente IN (${placeholders})
+                  WHERE td2.IdViajes = v.Id
+                    AND td2.FechaHoraFinal BETWEEN ? AND ?
+                    AND td2.IdTipoTransaccion = ${tipoDebito}
+                )
+              )`,
+            // Orden de '?' en sqlData:
+            //   1) totalAscensosSub:  ...ids
+            //   2) totalBoletosSub:   ...ids
+            //   3) bvJoinExtra:       ...ids
+            //   4) where v.IdCliente: ...ids
+            //   5) where EXISTS cp2:  ...ids, fechaIni, fechaFin
+            //   6) where EXISTS td2:  ...ids, fechaIni, fechaFin
+            //   7) LIMIT/OFFSET
+            buildParamsData: () => [
+              ...ids, // totalAscensosSub
+              ...ids, // totalBoletosSub
+              ...ids, // bvJoinExtra
+              ...ids, // v.IdCliente IN
+              ...ids, // EXISTS cp2
+              fechaInicioParam,
+              fechaFinParam,
+              ...ids, // EXISTS td2
+              fechaInicioParam,
+              fechaFinParam,
+              limit,
+              offset,
+            ],
+            // Para el count NO usamos las subqueries escalares, solo el FROM + WHERE
+            buildParamsCount: () => [
+              ...ids, // bvJoinExtra
+              ...ids, // v.IdCliente IN
+              ...ids, // EXISTS cp2
+              fechaInicioParam,
+              fechaFinParam,
+              ...ids, // EXISTS td2
+              fechaInicioParam,
+              fechaFinParam,
+            ],
+          };
+          break;
+        }
+
+        case 3:
+        default: {
+          pieces = {
+            totalAscensosSub: `
+            SELECT COALESCE(SUM(cp.Entradas - cp.Salidas), 0)
+            FROM ConteoPasajeros cp
+            INNER JOIN BlueVoxs bvx ON bvx.NumeroSerie = cp.NumeroSerieBlueVox
+              AND bvx.IdCliente = ?
+            WHERE cp.IdViaje = v.Id`,
+            totalBoletosSub: `
+            SELECT COUNT(*)
+            FROM HistoricoTransaccionesDebito td
+            INNER JOIN Dispositivos d ON d.NumeroSerie = td.NumeroSerieDispositivo
+              AND d.IdCliente = ?
+            WHERE td.IdViajes = v.Id
+              AND td.IdTipoTransaccion = ${tipoDebito}`,
+            conteosSub: `
+            SELECT JSON_ARRAYAGG(
+              JSON_OBJECT(
+                'idConteo', cp.Id,
+                'entradas', cp.Entradas,
+                'salidas', cp.Salidas,
+                'diferencia', cp.Diferencia,
+                'fechaHora', cp.FechaHora
+              )
+            )
+            FROM ConteoPasajeros cp
+            WHERE cp.IdViaje = v.Id
+              AND cp.NumeroSerieBlueVox = bv.NumeroSerie`,
+            bvJoinExtra: 'AND bv.IdCliente = ?',
+            whereClause: `
+            WHERE v.IdCliente = ?
+              AND (
+                EXISTS (
+                  SELECT 1 FROM ConteoPasajeros cp2
+                  INNER JOIN BlueVoxs bve ON bve.NumeroSerie = cp2.NumeroSerieBlueVox
+                    AND bve.IdCliente = ?
+                  WHERE cp2.IdViaje = v.Id
+                    AND cp2.FechaHora BETWEEN ? AND ?
+                )
+                OR EXISTS (
+                  SELECT 1 FROM HistoricoTransaccionesDebito td2
+                  INNER JOIN Dispositivos de ON de.NumeroSerie = td2.NumeroSerieDispositivo
+                    AND de.IdCliente = ?
+                  WHERE td2.IdViajes = v.Id
+                    AND td2.FechaHoraFinal BETWEEN ? AND ?
+                    AND td2.IdTipoTransaccion = ${tipoDebito}
+                )
+              )`,
+            buildParamsData: () => [
+              cliente, // totalAscensosSub
+              cliente, // totalBoletosSub
+              cliente, // bvJoinExtra
+              cliente, // v.IdCliente
+              cliente, // EXISTS cp2
+              fechaInicioParam,
+              fechaFinParam,
+              cliente, // EXISTS td2
+              fechaInicioParam,
+              fechaFinParam,
+              limit,
+              offset,
+            ],
+            buildParamsCount: () => [
+              cliente, // bvJoinExtra
+              cliente, // v.IdCliente
+              cliente, // EXISTS cp2
+              fechaInicioParam,
+              fechaFinParam,
+              cliente, // EXISTS td2
+              fechaInicioParam,
+              fechaFinParam,
+            ],
+          };
+          break;
+        }
+      }
+
+      const sqlData = `
+SELECT
+  v.Id AS idViaje,
+  v.Inicio AS inicioViaje,
+  v.Fin AS finViaje,
+  v.IdCliente AS idCliente,
+  (${pieces.totalAscensosSub}
+  ) AS totalAscensos,
+  (${pieces.totalBoletosSub}
+  ) AS totalBoletos,
+  JSON_OBJECT(
+    'idVehiculo', veh.Id,
+    'placa', veh.Placa,
+    'marca', veh.Marca,
+    'modelo', veh.Modelo,
+    'numeroEconomico', veh.NumeroEconomico
+  ) AS vehiculoJson,
+  COALESCE(
+    JSON_ARRAYAGG(
+      JSON_OBJECT(
+        'idBlueVox', bv.Id,
+        'numeroSerie', bv.NumeroSerie,
+        'conteos',
+        COALESCE(
+          (${pieces.conteosSub}
+          ),
+          JSON_ARRAY()
+        )
+      )
+    ),
+    JSON_ARRAY()
+  ) AS blueVoxsJson
+FROM Viajes v
+INNER JOIN Turnos t ON t.Id = v.IdTurno
+INNER JOIN Instalaciones i ON i.Id = t.IdInstalacion
+INNER JOIN Vehiculos veh ON veh.Id = i.IdVehiculo AND veh.IdCliente = i.IdCliente
+INNER JOIN InstalacionesBlueVoxs ibv ON ibv.IdInstalacion = i.Id AND ibv.Estatus = 1
+INNER JOIN BlueVoxs bv ON bv.Id = ibv.IdBlueVox ${pieces.bvJoinExtra}
+${pieces.whereClause}
+GROUP BY ${groupBy}
+ORDER BY v.Id DESC
+LIMIT ? OFFSET ?`;
+
+      const sqlCount = `
+SELECT COUNT(*) AS total
+FROM (
+  SELECT v.Id
+  FROM Viajes v
+  INNER JOIN Turnos t ON t.Id = v.IdTurno
+  INNER JOIN Instalaciones i ON i.Id = t.IdInstalacion
+  INNER JOIN Vehiculos veh ON veh.Id = i.IdVehiculo AND veh.IdCliente = i.IdCliente
+  INNER JOIN InstalacionesBlueVoxs ibv ON ibv.IdInstalacion = i.Id AND ibv.Estatus = 1
+  INNER JOIN BlueVoxs bv ON bv.Id = ibv.IdBlueVox ${pieces.bvJoinExtra}
+  ${pieces.whereClause}
+  GROUP BY ${groupBy}
+) cnt`;
+
+      const rows: Record<string, unknown>[] =
+        await this.conteopasajeroRepository.query(
+          sqlData,
+          pieces.buildParamsData(),
+        );
+      const totalResult: { total: string | number }[] =
+        await this.conteopasajeroRepository.query(
+          sqlCount,
+          pieces.buildParamsCount(),
+        );
+
+      const total = Number(totalResult[0]?.total || 0);
+      const data = rows.map((item) => {
+        const asc = Number(item.totalAscensos) || 0;
+        const bol = Number(item.totalBoletos) || 0;
+        return {
+          idViaje: Number(item.idViaje),
+          inicioViaje: item.inicioViaje,
+          finViaje: item.finViaje,
+          idCliente: Number(item.idCliente),
+          totalAscensos: asc,
+          totalBoletos: bol,
+          diferenciaAscensoBoleto: asc - bol,
+          vehiculo: parseJson(item.vehiculoJson),
+          blueVoxs: parseJson(item.blueVoxsJson),
+        };
+      });
+
+      return {
+        data,
+        paginated: {
+          total,
+          page,
+          lastPage: limit > 0 ? Math.ceil(total / limit) : 0,
+        },
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Error al obtener resumen ascensos vs boletos por viaje',
+        error: (error as Error).message,
       });
     }
   }
@@ -736,45 +1159,6 @@ AND c.Id = ?   -- 🔹 aquí colocas el ID del cliente que quieres consultar
     }
   }
 
-  // MÉTODOS CON PAGINACIÓN
-  async findByDatePaginated(
-    fecha: string,
-    page: number,
-    limit: number,
-  ): Promise<ApiResponseCommon> {
-    try {
-      const startDate = new Date(`${fecha}T00:00:00`);
-      const endDate = new Date(`${fecha}T23:59:59`);
-
-      const [data, total] = await this.conteopasajeroRepository.findAndCount({
-        where: { fechaHora: Between(startDate, endDate) },
-        skip: (page - 1) * limit,
-        take: limit,
-        order: { fechaHora: 'DESC' },
-      });
-
-      const conteoPasajeros = data.map((item) => ({
-        ...item,
-        id: Number(item.id),
-      }));
-
-      return {
-        data: conteoPasajeros,
-        paginated: {
-          total: total,
-          page,
-          lastPage: Math.ceil(total / limit),
-        },
-      };
-    } catch (error) {
-      console.log(error);
-      throw new InternalServerErrorException({
-        message: 'Error al obtener conteo pasajeros por fecha',
-        error: error.message,
-      });
-    }
-  }
-
   // ========================================
   // 🔹 OBTENER DATOS DE UN RANGO DE FECHAS
   // ========================================
@@ -972,213 +1356,6 @@ WHERE cp.FechaHora BETWEEN ? AND ?
         error: error.message,
       });
     }
-  }
-
-  // ⏰ 3. OBTENER DATOS DE UNA HORA ESPECÍFICA
-  async findByDateTimePaginated(
-    fecha: string,
-    hora: string,
-    page: number,
-    limit: number,
-  ): Promise<ApiResponseCommon> {
-    try {
-      const dateTime = new Date(`${fecha}T${hora}:00`);
-      const endDateTime = new Date(`${fecha}T${hora}:59`);
-
-      const [data, total] = await this.conteopasajeroRepository.findAndCount({
-        where: { fechaHora: Between(dateTime, endDateTime) },
-        skip: (page - 1) * limit,
-        take: limit,
-        order: { fechaHora: 'DESC' },
-      });
-
-      const conteoPasajeros = data.map((item) => ({
-        ...item,
-        id: Number(item.id),
-      }));
-
-      return {
-        data: conteoPasajeros,
-        paginated: {
-          total: total,
-          page,
-          lastPage: Math.ceil(total / limit),
-        },
-      };
-    } catch (error) {
-      console.log(error);
-      throw new InternalServerErrorException({
-        message: 'Error al obtener conteo pasajeros por fecha y hora',
-        error: error.message,
-      });
-    }
-  }
-
-  // 📊 4. OBTENER DATOS DE HOY
-  async findTodayPaginated(
-    page: number,
-    limit: number,
-  ): Promise<ApiResponseCommon> {
-    try {
-      const today = new Date();
-      const startOfDay = new Date(today.setHours(0, 0, 0, 0));
-      const endOfDay = new Date(today.setHours(23, 59, 59, 999));
-
-      const [data, total] = await this.conteopasajeroRepository.findAndCount({
-        where: { fechaHora: Between(startOfDay, endOfDay) },
-        skip: (page - 1) * limit,
-        take: limit,
-        order: { fechaHora: 'DESC' },
-      });
-
-      const conteoPasajeros = data.map((item) => ({
-        ...item,
-        id: Number(item.id),
-      }));
-
-      return {
-        data: conteoPasajeros,
-        paginated: {
-          total: total,
-          page,
-          lastPage: Math.ceil(total / limit),
-        },
-      };
-    } catch (error) {
-      console.log(error);
-      throw new InternalServerErrorException({
-        message: 'Error al obtener conteo pasajeros de hoy',
-        error: error.message,
-      });
-    }
-  }
-
-  // 📅 5. OBTENER DATOS DE LA ÚLTIMA SEMANA
-  async findLastWeekPaginated(
-    page: number,
-    limit: number,
-  ): Promise<ApiResponseCommon> {
-    try {
-      const today = new Date();
-      const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-      const [data, total] = await this.conteopasajeroRepository.findAndCount({
-        where: {
-          fechaHora: MoreThanOrEqual(lastWeek),
-        },
-        skip: (page - 1) * limit,
-        take: limit,
-        order: { fechaHora: 'DESC' },
-      });
-
-      const conteoPasajeros = data.map((item) => ({
-        ...item,
-        id: Number(item.id),
-      }));
-
-      return {
-        data: conteoPasajeros,
-        paginated: {
-          total: total,
-          page,
-          lastPage: Math.ceil(total / limit),
-        },
-      };
-    } catch (error) {
-      console.log(error);
-      throw new InternalServerErrorException({
-        message: 'Error al obtener conteo pasajeros de la última semana',
-        error: error.message,
-      });
-    }
-  }
-
-  // 🔍 6. BUSCAR CON FILTROS ESPECÍFICOS + FECHA
-  async findByBlueVoxAndDatePaginated(
-    numeroSerie: string,
-    fechaInicio: string,
-    fechaFin: string,
-    page: number,
-    limit: number,
-  ): Promise<ApiResponseCommon> {
-    try {
-      const startDate = new Date(`${fechaInicio}T00:00:00`);
-      const endDate = new Date(`${fechaFin}T23:59:59`);
-
-      const [data, total] = await this.conteopasajeroRepository.findAndCount({
-        where: {
-          numeroSerieBlueVox: numeroSerie,
-          fechaHora: Between(startDate, endDate),
-        },
-        relations: ['numeroSerieBlueVox2'],
-        skip: (page - 1) * limit,
-        take: limit,
-        order: { fechaHora: 'DESC' },
-      });
-
-      const conteoPasajeros = data.map((item) => ({
-        ...item,
-        id: Number(item.id),
-      }));
-
-      return {
-        data: conteoPasajeros,
-        paginated: {
-          total: total,
-          page,
-          lastPage: Math.ceil(total / limit),
-        },
-      };
-    } catch (error) {
-      console.log(error);
-      throw new InternalServerErrorException({
-        message: 'Error al obtener conteo pasajeros por BlueVox y fecha',
-        error: error.message,
-      });
-    }
-  }
-
-  // 📈 7. OBTENER RESUMEN POR HORAS DE UN DÍA
-  async getHourlySummary(fecha: string): Promise<any[]> {
-    const startDate = `${fecha} 00:00:00`;
-    const endDate = `${fecha} 23:59:59`;
-
-    return await this.conteopasajeroRepository
-      .createQueryBuilder('cp')
-      .select([
-        'HOUR(cp.fechaHora) as hora',
-        'SUM(cp.entradas) as totalEntradas',
-        'SUM(cp.salidas) as totalSalidas',
-        'SUM(cp.diferencia) as totalDiferencia',
-        'COUNT(*) as registros',
-      ])
-      .where('cp.fechaHora BETWEEN :startDate AND :endDate', {
-        startDate,
-        endDate,
-      })
-      .groupBy('HOUR(cp.fechaHora)')
-      .orderBy('hora', 'ASC')
-      .getRawMany();
-  }
-
-  // 📊 8. OBTENER RESUMEN DIARIO DE UN MES
-  async getDailySummary(year: number, month: number): Promise<any[]> {
-    return await this.conteopasajeroRepository
-      .createQueryBuilder('cp')
-      .select([
-        'DATE(cp.fechaHora) as fecha',
-        'SUM(cp.entradas) as totalEntradas',
-        'SUM(cp.salidas) as totalSalidas',
-        'SUM(cp.diferencia) as totalDiferencia',
-        'COUNT(*) as registros',
-      ])
-      .where('YEAR(cp.fechaHora) = :year AND MONTH(cp.fechaHora) = :month', {
-        year,
-        month,
-      })
-      .groupBy('DATE(cp.fechaHora)')
-      .orderBy('fecha', 'ASC')
-      .getRawMany();
   }
 
   // ========================================

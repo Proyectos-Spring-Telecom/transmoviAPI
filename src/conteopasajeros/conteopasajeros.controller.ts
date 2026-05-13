@@ -198,128 +198,6 @@ export class ConteopasajerosController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get('hoy')
-  @ApiOperation({
-    summary: 'Conteos de hoy (paginado)',
-    description: 'Obtiene los registros de conteo del día actual, paginados.',
-  })
-  @ApiQuery({ name: 'page', required: true, description: 'Número de página' })
-  @ApiQuery({
-    name: 'limit',
-    required: true,
-    description: 'Registros por página',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Lista paginada de conteos de hoy',
-    schema: {
-      type: 'object',
-      properties: {
-        data: { type: 'array', items: { type: 'object' } },
-        paginated: {
-          type: 'object',
-          properties: {
-            total: { type: 'number' },
-            page: { type: 'number' },
-            lastPage: { type: 'number' },
-          },
-        },
-      },
-    },
-  })
-  @ApiResponse({ status: 401, description: 'No autorizado' })
-  async findToday(
-    @Query('page') page: number,
-    @Query('limit') limit: number,
-  ): Promise<ApiResponseCommon> {
-    return await this.conteopasajerosService.findTodayPaginated(page, limit);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Get('ultima-semana')
-  @ApiOperation({
-    summary: 'Conteos de la última semana (paginado)',
-    description:
-      'Obtiene los registros de conteo de los últimos 7 días, paginados.',
-  })
-  @ApiQuery({ name: 'page', required: true, description: 'Número de página' })
-  @ApiQuery({
-    name: 'limit',
-    required: true,
-    description: 'Registros por página',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Lista paginada de conteos de la última semana',
-    schema: {
-      type: 'object',
-      properties: {
-        data: { type: 'array', items: { type: 'object' } },
-        paginated: {
-          type: 'object',
-          properties: {
-            total: { type: 'number' },
-            page: { type: 'number' },
-            lastPage: { type: 'number' },
-          },
-        },
-      },
-    },
-  })
-  @ApiResponse({ status: 401, description: 'No autorizado' })
-  async findLastWeek(
-    @Query('page') page: number,
-    @Query('limit') limit: number,
-  ): Promise<ApiResponseCommon> {
-    return await this.conteopasajerosService.findLastWeekPaginated(page, limit);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Get('fecha/:fecha')
-  @ApiOperation({
-    summary: 'Conteos por fecha (paginado)',
-    description:
-      'Obtiene los registros de conteo de un día específico. Formato fecha: YYYY-MM-DD.',
-  })
-  @ApiParam({ name: 'fecha', description: 'Fecha en formato YYYY-MM-DD' })
-  @ApiQuery({ name: 'page', required: true, description: 'Número de página' })
-  @ApiQuery({
-    name: 'limit',
-    required: true,
-    description: 'Registros por página',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Lista paginada de conteos del día',
-    schema: {
-      type: 'object',
-      properties: {
-        data: { type: 'array', items: { type: 'object' } },
-        paginated: {
-          type: 'object',
-          properties: {
-            total: { type: 'number' },
-            page: { type: 'number' },
-            lastPage: { type: 'number' },
-          },
-        },
-      },
-    },
-  })
-  @ApiResponse({ status: 401, description: 'No autorizado' })
-  async findByDate(
-    @Param('fecha') fecha: string,
-    @Query('page') page: number,
-    @Query('limit') limit: number,
-  ): Promise<ApiResponseCommon> {
-    return await this.conteopasajerosService.findByDatePaginated(
-      fecha,
-      page,
-      limit,
-    );
-  }
-
-  @UseGuards(JwtAuthGuard)
   @Get('rango/:fechaInicio/:fechaFin')
   @ApiOperation({
     summary: 'Conteos por rango de fechas (paginado)',
@@ -396,216 +274,47 @@ export class ConteopasajerosController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get('fecha-hora/:fecha/:hora')
+  @Get('resumen-por-viaje/:fechaInicio/:fechaFin')
   @ApiOperation({
-    summary: 'Conteos por fecha y hora (paginado)',
+    summary: 'Resumen ascensos vs boletos por viaje (paginado)',
     description:
-      'Obtiene los registros de conteo de una hora específica. Formato: fecha YYYY-MM-DD, hora HH.',
+      'Por viaje en el rango: totalAscensos (SUM Entradas-Salidas en ConteoPasajeros), totalBoletos (COUNT HistoricoTransaccionesDebito tipo débito), vehiculo (JSON camelCase), blueVoxs (array JSON con conteos en rango por serie). Roles: 1 global; 2/8/10 jerarquía; 3 y default un cliente.',
   })
-  @ApiParam({ name: 'fecha', description: 'Fecha (YYYY-MM-DD)' })
-  @ApiParam({ name: 'hora', description: 'Hora (0-23)' })
-  @ApiQuery({ name: 'page', required: false, description: 'Número de página' })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    description: 'Registros por página',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Lista paginada de conteos de la hora indicada',
-    schema: {
-      type: 'object',
-      properties: {
-        data: { type: 'array', items: { type: 'object' } },
-        paginated: {
-          type: 'object',
-          properties: {
-            total: { type: 'number' },
-            page: { type: 'number' },
-            lastPage: { type: 'number' },
-          },
-        },
-      },
-    },
-  })
-  @ApiResponse({ status: 401, description: 'No autorizado' })
-  async findByDateTime(
-    @Param('fecha') fecha: string,
-    @Param('hora') hora: string,
-    @Query('page') page: number = 1,
-    @Query('limit') limit: number = 10,
-  ): Promise<ApiResponseCommon> {
-    return await this.conteopasajerosService.findByDateTimePaginated(
-      fecha,
-      hora,
-      page,
-      limit,
-    );
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Get('bluevox/:numeroSerie/hoy')
-  @ApiOperation({
-    summary: 'Conteos de un BlueVox hoy (paginado)',
-    description:
-      'Obtiene los registros de conteo del día actual para un dispositivo BlueVox específico.',
-  })
-  @ApiParam({ name: 'numeroSerie', description: 'Número de serie del BlueVox' })
-  @ApiQuery({ name: 'page', required: false, description: 'Número de página' })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    description: 'Registros por página',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Lista paginada de conteos del BlueVox hoy',
-    schema: {
-      type: 'object',
-      properties: {
-        data: { type: 'array', items: { type: 'object' } },
-        paginated: {
-          type: 'object',
-          properties: {
-            total: { type: 'number' },
-            page: { type: 'number' },
-            lastPage: { type: 'number' },
-          },
-        },
-      },
-    },
-  })
-  @ApiResponse({ status: 401, description: 'No autorizado' })
-  async findByBlueVoxToday(
-    @Param('numeroSerie') numeroSerie: string,
-    @Query('page') page: number = 1,
-    @Query('limit') limit: number = 10,
-  ): Promise<ApiResponseCommon> {
-    const today = new Date().toISOString().split('T')[0];
-    return await this.conteopasajerosService.findByBlueVoxAndDatePaginated(
-      numeroSerie,
-      today,
-      today,
-      page,
-      limit,
-    );
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Get('bluevox/:numeroSerie/rango/:fechaInicio/:fechaFin')
-  @ApiOperation({
-    summary: 'Conteos de un BlueVox por rango de fechas (paginado)',
-    description:
-      'Obtiene los registros de conteo de un BlueVox entre dos fechas. Formato fechas: YYYY-MM-DD.',
-  })
-  @ApiParam({ name: 'numeroSerie', description: 'Número de serie del BlueVox' })
   @ApiParam({ name: 'fechaInicio', description: 'Fecha inicio (YYYY-MM-DD)' })
   @ApiParam({ name: 'fechaFin', description: 'Fecha fin (YYYY-MM-DD)' })
-  @ApiQuery({ name: 'page', required: false, description: 'Número de página' })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    description: 'Número de página',
+    example: 1,
+  })
   @ApiQuery({
     name: 'limit',
     required: false,
-    description: 'Registros por página',
+    description: 'Viajes por página',
+    example: 10,
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Lista paginada de conteos del BlueVox en el rango',
-    schema: {
-      type: 'object',
-      properties: {
-        data: { type: 'array', items: { type: 'object' } },
-        paginated: {
-          type: 'object',
-          properties: {
-            total: { type: 'number' },
-            page: { type: 'number' },
-            lastPage: { type: 'number' },
-          },
-        },
-      },
-    },
-  })
+  @ApiResponse({ status: 200, description: 'Lista paginada por viaje' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
-  async findByBlueVoxAndDate(
-    @Param('numeroSerie') numeroSerie: string,
+  findResumenPorViaje(
     @Param('fechaInicio') fechaInicio: string,
     @Param('fechaFin') fechaFin: string,
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
+    @Request() req,
   ): Promise<ApiResponseCommon> {
-    return await this.conteopasajerosService.findByBlueVoxAndDatePaginated(
-      numeroSerie,
+    const cliente = req.user.cliente;
+    const rol = req.user.rol;
+    const idUser = req.user.userId;
+    return this.conteopasajerosService.findResumenAscensosVsBoletosPorViaje(
+      +idUser,
+      +cliente,
+      +rol,
       fechaInicio,
       fechaFin,
       page,
       limit,
     );
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Get('resumen-horas/:fecha')
-  @ApiOperation({
-    summary: 'Resumen horario de un día',
-    description:
-      'Obtiene el resumen agregado por hora de un día: totalEntradas, totalSalidas, totalDiferencia, registros por hora.',
-  })
-  @ApiParam({ name: 'fecha', description: 'Fecha en formato YYYY-MM-DD' })
-  @ApiResponse({
-    status: 200,
-    description:
-      'Array con resumen por hora (hora, totalEntradas, totalSalidas, totalDiferencia, registros)',
-    schema: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          hora: { type: 'number' },
-          totalEntradas: { type: 'string' },
-          totalSalidas: { type: 'string' },
-          totalDiferencia: { type: 'string' },
-          registros: { type: 'string' },
-        },
-      },
-    },
-  })
-  @ApiResponse({ status: 401, description: 'No autorizado' })
-  async getHourlySummary(@Param('fecha') fecha: string): Promise<any[]> {
-    return await this.conteopasajerosService.getHourlySummary(fecha);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Get('resumen-diario/:year/:month')
-  @ApiOperation({
-    summary: 'Resumen diario de un mes',
-    description:
-      'Obtiene el resumen agregado por día de un mes: totalEntradas, totalSalidas, totalDiferencia, registros por fecha.',
-  })
-  @ApiParam({ name: 'year', description: 'Año (ej: 2025)' })
-  @ApiParam({ name: 'month', description: 'Mes (1-12)' })
-  @ApiResponse({
-    status: 200,
-    description:
-      'Array con resumen por día (fecha, totalEntradas, totalSalidas, totalDiferencia, registros)',
-    schema: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          fecha: { type: 'string' },
-          totalEntradas: { type: 'string' },
-          totalSalidas: { type: 'string' },
-          totalDiferencia: { type: 'string' },
-          registros: { type: 'string' },
-        },
-      },
-    },
-  })
-  @ApiResponse({ status: 401, description: 'No autorizado' })
-  async getDailySummary(
-    @Param('year', ParseIntPipe) year: number,
-    @Param('month', ParseIntPipe) month: number,
-  ): Promise<any[]> {
-    return await this.conteopasajerosService.getDailySummary(year, month);
   }
 
   @UseGuards(JwtAuthGuard)
