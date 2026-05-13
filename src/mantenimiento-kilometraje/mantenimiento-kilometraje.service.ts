@@ -146,12 +146,19 @@ LEFT JOIN (
   GROUP BY IdInstalacion
 ) id_disp ON id_disp.IdInstalacion = i.Id
 LEFT JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
-LEFT JOIN BlueVoxs bv ON i.IdBlueVox = bv.Id AND i.IdCliente = bv.IdCliente
+LEFT JOIN (
+  SELECT IdInstalacion, MIN(IdBlueVox) AS IdBlueVox
+  FROM InstalacionesBlueVoxs
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_bv ON id_bv.IdInstalacion = i.Id
+LEFT JOIN BlueVoxs bv ON bv.Id = id_bv.IdBlueVox AND bv.IdCliente = i.IdCliente
 ORDER BY mk.FHRegistro DESC
 LIMIT ? OFFSET ?;
             `,
             [limit, offset],
           );
+          
 
           // Query para total (sin paginación)
           totalResult = await this.mantenimientoKilometrajeRepository.query(
@@ -214,7 +221,13 @@ LEFT JOIN (
   GROUP BY IdInstalacion
 ) id_disp ON id_disp.IdInstalacion = i.Id
 LEFT JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
-LEFT JOIN BlueVoxs bv ON i.IdBlueVox = bv.Id AND i.IdCliente = bv.IdCliente
+LEFT JOIN (
+  SELECT IdInstalacion, MIN(IdBlueVox) AS IdBlueVox
+  FROM InstalacionesBlueVoxs
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_bv ON id_bv.IdInstalacion = i.Id
+LEFT JOIN BlueVoxs bv ON bv.Id = id_bv.IdBlueVox AND bv.IdCliente = i.IdCliente
 WHERE c.Id IN (${placeholders})
 ORDER BY mk.FHRegistro DESC
 LIMIT ? OFFSET ?;
@@ -361,7 +374,13 @@ LEFT JOIN (
   GROUP BY IdInstalacion
 ) id_disp ON id_disp.IdInstalacion = i.Id
 LEFT JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
-LEFT JOIN BlueVoxs bv ON i.IdBlueVox = bv.Id AND i.IdCliente = bv.IdCliente
+LEFT JOIN (
+  SELECT IdInstalacion, MIN(IdBlueVox) AS IdBlueVox
+  FROM InstalacionesBlueVoxs
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_bv ON id_bv.IdInstalacion = i.Id
+LEFT JOIN BlueVoxs bv ON bv.Id = id_bv.IdBlueVox AND bv.IdCliente = i.IdCliente
 WHERE mk.Id = ?
             `,
             [id],
@@ -413,7 +432,13 @@ LEFT JOIN (
   GROUP BY IdInstalacion
 ) id_disp ON id_disp.IdInstalacion = i.Id
 LEFT JOIN Dispositivos d ON d.Id = id_disp.IdDispositivo AND d.IdCliente = i.IdCliente
-LEFT JOIN BlueVoxs bv ON i.IdBlueVox = bv.Id AND i.IdCliente = bv.IdCliente
+LEFT JOIN (
+  SELECT IdInstalacion, MIN(IdBlueVox) AS IdBlueVox
+  FROM InstalacionesBlueVoxs
+  WHERE Estatus = 1
+  GROUP BY IdInstalacion
+) id_bv ON id_bv.IdInstalacion = i.Id
+LEFT JOIN BlueVoxs bv ON bv.Id = id_bv.IdBlueVox AND bv.IdCliente = i.IdCliente
 WHERE c.Id IN (${placeholders})
 AND mk.Id = ?
             `,
