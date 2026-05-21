@@ -135,7 +135,7 @@ export class MailService {
     token: string,
     codigo: string,
   ) {
-    const url = `https://transmovi.mx/transmoviDev/#/signup?token=${token}`;
+    const url = `https://qmt.mx/transmoviDev/account/signup?token=${token}`;
     // 👆 Este debe apuntar a tu frontend Angular (puedes ajustarlo a localhost:3000 si haces la prueba desde backend)
 
     await this.transporter.sendMail({
