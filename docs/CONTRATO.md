@@ -6,7 +6,7 @@ Documenta convenciones y el endpoint **resumen por viaje** tal como está implem
 
 - Cabecera: `Authorization: Bearer <JWT>`.
 - Guard: `JwtAuthGuard` en los endpoints protegidos.
-- El token debe aportar (uso típico en controladores): `req.user.userId`, `req.user.cliente`, `req.user.rol`.
+- El token debe aportar (uso típico en controladores): `req.user.userId`, `req.user.cliente`, `req.user.rol` (**IdRol** numérico; catálogo en [CONTEXTO.md](./CONTEXTO.md#roles-del-sistema-roles)).
 
 ## Formato de respuesta común — listas paginadas (`ApiResponseCommon`)
 

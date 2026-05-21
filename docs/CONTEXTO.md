@@ -17,6 +17,40 @@ API backend **NestJS 11** (`transmoviapi` v2.0.0) para operaciones Transmovi: co
 - Entidades TypeORM en `src/entities/`.
 - Enumeraciones y tipos compartidos en `src/common/`.
 
+## Roles del sistema (`Roles`)
+
+Catálogo oficial en base de datos (tabla `Roles`). El JWT guarda **`IdRol` (número)**; el login administrativo también devuelve el objeto **`rol`** (`nombre`, `descripcion`, etc.) para etiquetar en UI.
+
+| Id | Código / nombre | Descripción de negocio |
+|----|-----------------|-------------------------|
+| **1** | SA — Supér Administrador | Acceso global; sin acotar por cliente en la mayoría de listados. |
+| **2** | Administrador | Administración del cliente y jerarquía (`spGetClientes`). |
+| **3** | Operador | Operación en campo (viajes propios, PIN, conteos asociados al operador). |
+| **8** | Reportes | Rol orientado a generación de códigos / reportes; en muchos endpoints se trata como **jerarquía** (igual que 2 y 10). |
+| **9** | Pasajeros | Rol para clientes (pasajeros); en varios módulos operativos el backend **no expone listados** (p. ej. viajes paginados → vacío). |
+| **10** | Capturista | Captura de datos; suele compartir patrón de **jerarquía** con 2 y 8. |
+| **11** | Cajero | Operaciones financieras; en viajes listado/paginado suele ir con **9 → sin datos**. |
+| **13** | Monitoreo | Visualización del recorrido; en **monitoreo** usa jerarquía; en **viajes** listado se agrupa con 2/8/10. |
+
+### Patrones técnicos en el código (no son nombres de rol)
+
+Los servicios no leen el nombre del rol; usan `switch (rol)` con **agrupaciones** repetidas:
+
+| Patrón | Roles típicos | Efecto |
+|--------|---------------|--------|
+| **Global** | 1 | Sin filtro `IdCliente` (o equivalente). |
+| **Jerarquía** | 2, 8, 10, a veces **13** | `CALL spGetClientes(?)` → `IN (...)` sobre cliente del token y descendientes. |
+| **Cliente único** | 3, **default** en conteo/resumen | Solo `cliente` del token. |
+| **Operador / por usuario** | 3 | Filtros por `idOperador` o `idUsuario` (viajes, etc.). |
+| **Sin listado** | 9, 11 (viajes) | Respuesta vacía en algunos endpoints. |
+| **Monitoreo mixto** | 1 root; 3,8,9,10,11 un cliente; **default** jerarquía (incl. 2, 13) | Ver `monitoreo.service.ts`. |
+
+**Permisos de UI:** además del rol, cada usuario tiene filas en `UsuariosPermisos` (`idPermiso` activos en login). El menú del front suele cruzar esos IDs con el catálogo `Modulos` / `Permisos`; el backend **no** valida permiso por ruta en un guard central.
+
+**Reportes:** los endpoints bajo `reportes` filtran por **jerarquía del `cliente` del token** y **no** ramifican por `IdRol`.
+
+Al añadir endpoints nuevos, documentar aquí en qué patrón cae cada `IdRol` relevante.
+
 ## Módulo Conteo pasajeros (`conteopasajeros`)
 
 ### Resumen ascensos vs boletos por viaje
@@ -41,13 +75,13 @@ Implementado en `ConteopasajerosService.findResumenAscensosVsBoletosPorViaje` y 
 
 **Modelo SQL:** joins `Viajes` → `Turnos` → `Instalaciones` → `Vehiculos` → `InstalacionesBlueVoxs` (activos) → `BlueVoxs`; agregación `JSON_ARRAYAGG` + `GROUP BY` completo (`v.*` y columnas de vehículo necesarias para `ONLY_FULL_GROUP_BY`). Las variaciones por rol se arman con un objeto `pieces` (subconsultas y `WHERE`) y un único template de `sqlData` / `sqlCount`.
 
-**Roles (cliente / jerarquía):**
+**Roles en este endpoint** (ver catálogo arriba):
 
-| Rol | Comportamiento |
-|-----|----------------|
-| 1 | Sin filtro de cliente en ascensos/boletos/conteos/listado (salvo EXISTS de actividad en rango). |
-| 2, 8, 10 | Jerarquía vía `clienteHijos` / `spGetClientes`: lista de IDs; filtros en `BlueVoxs`, `Dispositivos`, `Viajes` y EXISTS acordes. |
-| 3 y demás | Cliente fijo del token (`cliente`). |
+| IdRol | Comportamiento en resumen por viaje |
+|-------|-----------------------------------|
+| 1 (SA) | Sin filtro de cliente (solo EXISTS de actividad en rango). |
+| 2, 8, 10 | Jerarquía `spGetClientes`; filtros en `BlueVoxs`, `Dispositivos`, `Viajes` y EXISTS. |
+| 3, 9, 11, 13 y **default** | Cliente fijo del token (`cliente`). |
 
 **Nota de inclusión:** al exigir `INNER JOIN` a instalación + BlueVox del turno, un viaje sin BlueVox vinculado en esa instalación **no** aparece aunque tenga conteos o débitos en rango.
 
